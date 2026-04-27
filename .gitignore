@@ -1,0 +1,93 @@
+# ============================================================
+# 咕咕嘎嘎 AI-VTuber — .gitignore
+# ============================================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+.venv/
+
+# ---------- 嵌入式 Python（~3GB+，不含在 Git 中）----------
+python/
+
+# ---------- 模型文件（超大，不含在 Git 中）----------
+# GPT-SoVITS 预训练底模
+GPT-SoVITS/GPT_SoVITS/pretrained_models/
+# GPT-SoVITS 训练权重
+GPT-SoVITS/GPT_weights_v3/
+GPT-SoVITS/SoVITS_weights_v3/
+# GPT-SoVITS 训练输出
+GPT-SoVITS/output/
+GPT-SoVITS/data/
+# 通用模型文件
+*.onnx
+*.bin
+*.pth
+*.ckpt
+*.safetensors
+*.pt
+
+# ---------- 模型缓存 ----------
+.cache/
+models/
+
+# ---------- 运行时缓存与密钥 ----------
+.env
+app/cache/api_keys.json
+app/cache/
+tts_cache/
+app/web/static/cache/
+
+# ---------- 日志 ----------
+logs/
+*.log
+
+# ---------- 构建产物 ----------
+GuguGaga.exe
+*.nsis
+
+# ---------- 压缩包 ----------
+*.zip
+*.7z
+*.tar.gz
+*.rar
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# ---------- OS ----------
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ---------- 临时文件 ----------
+*.tmp
+*.bak
+python-embed.zip
+get-pip.py
+install_report.txt
+
+# ---------- 记忆数据（运行时生成，含用户隐私）----------
+app/memory/state/
+app/memory/daily/
+app/memory/vector/
+app/memory/long_term.md
+app/memory/index.md
+memory/
+GPT-SoVITS/GPT_SoVITS/memory/
+GPT-SoVITS/memory/
+
+# ---------- HuggingFace 缓存 ----------
+.huggingface/
+
+# ---------- Node ----------
+node_modules/

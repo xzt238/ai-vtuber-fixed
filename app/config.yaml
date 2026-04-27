@@ -1,0 +1,134 @@
+# 咕咕嘎嘎 AI虚拟形象 - 配置文件
+# ================================
+
+# ==================== 语音识别 (ASR) ====================
+asr:
+  # 可选: faster_whisper / funasr / whisper
+  provider: "funasr"
+  faster_whisper:
+    model_size: "small"
+    device: "auto"
+    download_root: "./models/hf"
+  funasr:
+    model: "paraformer-zh"
+    device: "cuda"  # 保留GPU，6GB显存足够并行
+  
+# ==================== 语音合成 (TTS) ====================
+tts:
+  provider: "gptsovits"  # 主引擎: gptsovits(音色克隆) / edge(保底)
+  # gptsovits: 高质量音色克隆，适合预录音/正式对话
+  # edge: 微软保底，无需安装额外模型
+
+  edge:
+    voice: "zh-CN-XiaoxiaoNeural"
+    rate: "+0%"
+    pitch: "+0Hz"
+    volume: "+0%"
+  gptsovits:
+    # GPT-SoVITS 音色克隆配置
+    device: "cuda"                            # cuda/cpu
+    is_half: true                             # 是否使用半精度
+    root_dir: "./app/GPT-SoVITS"              # GPT-SoVITS 根目录
+    version: "v3"                             # 模型版本
+  # 备用引擎列表 (主引擎失败时自动切换)
+  fallback_engines:
+    - "edge"
+
+# ==================== 大语言模型 (LLM) ====================
+llm:
+  provider: "minimax"
+  # v2.0: 新增配置
+  max_tokens: 2048              # 单次回复最大 token 数（从 512 提升到 2048）
+  enable_rag_injection: true    # 启用 RAG 记忆注入
+  
+  minimax:
+    api_key: ""                     # 首次使用请在前端"API Key"面板中输入，或在此填入你的 MiniMax API Key
+    base_url: "https://api.minimaxi.com/anthropic"
+    model: "MiniMax-M2.7"
+    max_tokens: 2048            # 与全局保持一致
+
+# ==================== 视觉理解 (Vision) ====================
+vision:
+  default_provider: "minimax_vl"   # 默认: rapidocr/minimax_vl/minicpm/auto
+  rapidocr:
+    enabled: true
+  minimax_vl:
+    api_key: ""                    # 不填则自动从 llm.minimax.api_key 读取
+    api_host: "https://api.minimaxi.com"  # VLM API 地址
+    model: "MiniMax-VL-01"          # 视觉理解模型名（显示用）
+    jpeg_quality: 40               # 截图压缩质量（降低体积，加快上传）
+    timeout: 120                   # 请求超时（秒）
+  minicpm:
+    model_id: "OpenBMB/MiniCPM-V-2"  # HuggingFace 模型 ID (~4-5GB BF16)
+    use_int4: false                # 关闭 int4 量化（INT4 有 cos[position_ids] 兼容性问题），使用 BF16
+    model_path: ""                  # 本地模型路径（可选，优先使用 model_id 下载）
+
+# ==================== Live2D ====================
+live2d:
+  enabled: true
+  model_path: "./app/web/assets/model/shizuku"
+  idle_motion: "Idle"
+  
+# ==================== Web ====================
+web:
+  port: 12393
+  ws_port: 12394
+  
+# ==================== 语音输入 ====================
+voice_input:
+  provider: "web"
+
+# ==================== VAD 优化配置 (P0-3) ====================
+vad:
+  # 思考停顿容忍时间（ms）—— 短停顿继续倾听
+  thinking_pause_ms: 600
+  # 真正说完判定时间（ms）—— 超过此值才认为用户说完了
+  stop_threshold_ms: 1800
+  # 思考模式阈值因子（超过 stop_threshold 的此比例时显示"思考中"）
+  thinking_threshold_factor: 0.8
+  # 思考模式额外延长时间（ms）—— 检测到思考时额外给用户的时间
+  thinking_extend_ms: 2000
+
+# ==================== 记忆系统 ====================
+memory:
+  provider: "simple"   # simple (默认) / vector (使用 embedding 向量检索)
+  max_short_memory: 10  # 短期记忆条数（已废弃，改用 sliding window）
+  max_long_memory: 100  # 长期记忆条数（已废弃，改用遗忘机制）
+  auto_store: true     # 自动存储
+
+  # ===== Embedding 配置 (1GB显存推荐用 cpu 模式) =====
+  # device: cpu  = 零显存占用，内存约 100~500MB（取决于模型）
+  # device: cuda = 占用显存，但推理稍快
+  embedding_device: "cpu"
+  # 当前使用: BAAI/bge-base-zh-v1.5 (中文语义检索最优，768维)
+  # 备选模型：
+  #   BAAI/bge-small-zh-v1.5                  ~100MB  中文优化，512维，轻量首选
+  #   shibing624/text2vec-base-chinese        ~400MB  中文句向量，768维
+  #   nomic-ai/nomic-embed-text-v1.5          ~500MB  8192长上下文，768维
+  embedding_model: "BAAI/bge-base-zh-v1.5"
+
+  # ===== v2.1 新增配置 =====
+  # 工作记忆上限（超出触发摘要压缩）
+  working_memory_limit: 20
+  # 摘要触发阈值
+  summarize_threshold: 15
+  # 每次压缩条数
+  summarize_batch: 5
+  # 遗忘阈值（保留分数低于此值会被软删除）
+  forgetting_threshold: 0.3
+  # 时效衰减系数（每天衰减百分比）
+  decay_lambda: 0.01
+  # 混合检索权重
+  retrieval_weights:
+    vector: 0.7      # 向量相似度权重
+    keyword: 0.2     # 关键词匹配权重
+    recency: 0.1     # 时间衰减权重
+
+# ==================== 子Agent (参考 Claude Code) ====================
+subagent:
+  enabled: true  # 设为 true 启用
+  # Claude Code Opus 4.6 配置
+  api_key: "${SUBAGENT_API_KEY}"  # 从环境变量读取
+  base_url: "https://ccvibe.cc/v1"
+  model: "ccvibe/claude-opus-4-6"
+  max_concurrent: 3  # 最大并发数
