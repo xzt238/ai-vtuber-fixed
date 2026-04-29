@@ -290,7 +290,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
         
         # L2修复: 健康检查端点，用于部署监控和启动器检测后端就绪
         if self.path == "/api/health":
-            self.send_json({"status": "ok", "version": "1.9.30"})
+            self.send_json({"status": "ok", "version": "1.9.38"})
             return
 
         # 其他请求返回 405 Method Not Allowed
@@ -2170,17 +2170,7 @@ class WebSocketServer:
             }))
 
     def _handle_memory(self, client, data):
-        """
-        [功能说明]处理记忆 CRUD 请求
-
-        [参数说明]
-            client: WebSocket 客户端对象
-            data (dict): 消息数据,包含 action 字段(add/search/get/delete)
-
-        [返回值]
-            无(通过 WebSocket 发送响应)
-        """
-        """处理记忆功能请求(list/stats/summary/search/clear/export/import) - 适配四层RAG记忆系统."""
+        """处理记忆功能请求 - 适配 v3.0 记忆系统"""
         action = data.get("action", "list")
         
         if not self.app:
@@ -2196,92 +2186,170 @@ class WebSocketServer:
             }))
             return
         
+        def _item_to_dict(item, layer_name):
+            """MemoryItem → 前端友好的 dict（含遗忘详情）"""
+            hours_old = (time.time() - getattr(item, 'timestamp', time.time())) / 3600
+            retention = getattr(item, 'get_retention_score', None)
+            retention_score = retention() if callable(retention) else 0
+            return {
+                "role": getattr(item, 'role', '?'),
+                "content": getattr(item, 'content', str(item)),
+                "layer": layer_name,
+                "importance": getattr(item, 'importance', 0),
+                "timestamp": getattr(item, 'timestamp', None),
+                "is_summary": getattr(item, 'is_summary', False),
+                "tags": getattr(item, 'tags', []),
+                "facts": getattr(item, 'facts', []),
+                "summary_text": getattr(item, 'summary_text', ""),
+                # v3.0: 遗忘详情
+                "retention_score": round(retention_score, 3),
+                "access_count": getattr(item, 'access_count', 1),
+                "connectivity": getattr(item, 'connectivity', 0),
+                "is_forgotten": getattr(item, 'is_forgotten', False),
+                "hours_old": round(hours_old, 1),
+            }
+        
         try:
             if action == "list":
-                # 从四层记忆中获取：工作记忆 + 情景记忆
                 memories = []
-                # 工作记忆 (working_memory: List[MemoryItem])
-                if hasattr(memory, 'working_memory'):
-                    for item in memory.working_memory[-20:]:
-                        memories.append({
-                            "role": getattr(item, 'role', '?'),
-                            "content": getattr(item, 'content', str(item)),
-                            "layer": "工作记忆"
-                        })
-                # 情景记忆 (episodic_memory: List[MemoryItem])
-                if hasattr(memory, 'episodic_memory'):
-                    for item in memory.episodic_memory[-10:]:
-                        memories.append({
-                            "role": getattr(item, 'role', '?'),
-                            "content": getattr(item, 'content', str(item)),
-                            "layer": "情景记忆"
-                        })
+                # 工作记忆
+                for item in memory.working_memory[-30:]:
+                    memories.append(_item_to_dict(item, "工作记忆"))
+                # 情景记忆
+                for item in memory.episodic_memory[-20:]:
+                    memories.append(_item_to_dict(item, "情景记忆"))
+                # 事实库
+                facts = getattr(memory, 'facts', [])
+                for fact in facts:
+                    memories.append({
+                        "role": "fact",
+                        "content": fact.content,
+                        "layer": "事实库",
+                        "importance": 4,
+                        "timestamp": fact.timestamp,
+                        "is_summary": False,
+                        "tags": fact.tags,
+                        "source": fact.source,
+                        "confidence": fact.confidence,
+                    })
                 self.server.send_message(client, json.dumps({
-                    "type": "memory", "data": memories
+                    "type": "memory", "sub_type": "list", "data": memories
                 }))
+            
             elif action == "stats":
                 stats = memory.get_stats()
-                # 补充四层记忆的条目统计
-                stats["working_count"] = len(getattr(memory, 'working_memory', []))
-                stats["episodic_count"] = len(getattr(memory, 'episodic_memory', []))
-                # VectorStore 没有 __len__，用 get_stats() 获取条目数
+                stats["working_count"] = len(memory.working_memory)
+                stats["episodic_count"] = len(memory.episodic_memory)
                 vs = getattr(memory, 'vector_store', None)
                 stats["vector_count"] = vs.get_stats()["total_docs"] if vs and hasattr(vs, 'get_stats') else 0
-                # 程序记忆（file_storage层的daily日志数量）
                 fs = getattr(memory, 'file_storage', None)
                 stats["program_count"] = len(fs.list_daily_files()) if fs and hasattr(fs, 'list_daily_files') else 0
+                stats["facts_count"] = len(getattr(memory, 'facts', []))
                 self.server.send_message(client, json.dumps({
-                    "type": "memory", "data": [stats]
+                    "type": "memory", "sub_type": "stats", "data": stats
                 }))
+            
             elif action == "summary":
                 summary = memory.summarize()
                 self.server.send_message(client, json.dumps({
-                    "type": "memory", "data": [{"summary": summary}]
+                    "type": "memory", "sub_type": "summary", "data": [{"summary": summary}]
                 }))
+            
             elif action == "timeline":
-                # 合并工作记忆和情景记忆，按时间排序，适配前端 renderTimeline()
                 timeline = []
-                if hasattr(memory, 'working_memory'):
-                    for item in memory.working_memory:
-                        timeline.append({
-                            "role": getattr(item, 'role', 'unknown'),
-                            "content": getattr(item, 'content', str(item)),
-                            "importance": getattr(item, 'importance', 1)
-                        })
-                if hasattr(memory, 'episodic_memory'):
-                    for item in memory.episodic_memory:
-                        timeline.append({
-                            "role": getattr(item, 'role', 'unknown'),
-                            "content": getattr(item, 'content', str(item)),
-                            "importance": getattr(item, 'importance', 2)
-                        })
+                for item in memory.working_memory:
+                    timeline.append(_item_to_dict(item, "工作记忆"))
+                for item in memory.episodic_memory:
+                    timeline.append(_item_to_dict(item, "情景记忆"))
+                # 事实也加入时间线
+                for fact in getattr(memory, 'facts', []):
+                    timeline.append({
+                        "role": "fact",
+                        "content": fact.content,
+                        "importance": 4,
+                        "timestamp": fact.timestamp,
+                        "is_summary": False,
+                        "layer": "事实库",
+                        "tags": fact.tags,
+                    })
+                timeline.sort(key=lambda x: x.get("timestamp") or 0, reverse=True)
                 self.server.send_message(client, json.dumps({
                     "type": "memory_timeline", "data": timeline
                 }))
+            
             elif action == "search":
                 query = data.get("query", "")
                 results = memory.search(query, top_k=5)
-                # search 返回的格式适配
-                adapted = []
-                for r in results:
-                    if isinstance(r, dict):
-                        adapted.append(r)
-                    else:
-                        adapted.append({"content": str(r), "role": "system"})
+                adapted = [r if isinstance(r, dict) else {"content": str(r), "role": "system"} for r in results]
                 self.server.send_message(client, json.dumps({
-                    "type": "memory", "data": adapted
+                    "type": "memory", "sub_type": "search", "data": adapted
                 }))
+            
+            elif action == "delete":
+                # v3.0: 删除记忆
+                index = data.get("index", -1)
+                layer = data.get("layer", "working")
+                ok = memory.delete_memory(index, layer)
+                self.server.send_message(client, json.dumps({
+                    "type": "memory", "sub_type": "delete", "success": ok
+                }))
+            
+            elif action == "edit":
+                # v3.0: 编辑记忆内容
+                index = data.get("index", -1)
+                content = data.get("content", "")
+                layer = data.get("layer", "working")
+                ok = memory.edit_memory(index, content, layer)
+                self.server.send_message(client, json.dumps({
+                    "type": "memory", "sub_type": "edit", "success": ok
+                }))
+            
+            elif action == "set_importance":
+                # v3.0: 手动设置重要性
+                index = data.get("index", -1)
+                importance = data.get("importance", 0)
+                layer = data.get("layer", "working")
+                ok = memory.set_importance(index, importance, layer)
+                self.server.send_message(client, json.dumps({
+                    "type": "memory", "sub_type": "set_importance", "success": ok
+                }))
+            
+            elif action == "facts":
+                # v3.0: 获取事实列表
+                source = data.get("source", None)
+                facts = memory.get_facts(source)
+                self.server.send_message(client, json.dumps({
+                    "type": "memory", "sub_type": "facts", "data": facts
+                }))
+            
+            elif action == "delete_fact":
+                # v3.0: 删除事实
+                index = data.get("index", -1)
+                ok = memory.delete_fact(index)
+                self.server.send_message(client, json.dumps({
+                    "type": "memory", "sub_type": "delete_fact", "success": ok
+                }))
+            
+            elif action == "consolidate":
+                # v3.0: 记忆重整
+                result = memory.consolidate()
+                self.server.send_message(client, json.dumps({
+                    "type": "memory", "sub_type": "consolidate", "data": result
+                }))
+            
             elif action == "clear":
                 memory.clear_all()
                 self.server.send_message(client, json.dumps({
                     "type": "memory", "success": True
                 }))
+            
             elif action == "export":
                 exported = memory.export()
                 self.server.send_message(client, json.dumps({
                     "type": "memory", "data": [{"export": exported}],
                     "exported": exported[:1000]
                 }))
+            
             elif action == "import":
                 content = data.get("content", "")
                 if content:
@@ -2293,6 +2361,21 @@ class WebSocketServer:
                     self.server.send_message(client, json.dumps({
                         "type": "memory", "error": "No content"
                     }))
+            
+            elif action == "decay_preview":
+                # v3.0: 衰减预览
+                preview = memory.get_decay_preview()
+                self.server.send_message(client, json.dumps({
+                    "type": "memory", "sub_type": "decay_preview", "data": preview
+                }))
+            
+            elif action == "search_by_time":
+                # v3.0: 按时间范围搜索文件记录
+                days = data.get("days", 7)
+                results = memory.search_by_time(days)
+                self.server.send_message(client, json.dumps({
+                    "type": "memory", "sub_type": "search_by_time", "data": results
+                }))
         except Exception as e:
             self.server.send_message(client, json.dumps({
                 "type": "memory", "error": str(e)
@@ -3250,6 +3333,26 @@ class WebSocketServer:
                         self.app.config.config.setdefault('llm', {}).update(config['llm'])
                     if 'asr' in config:
                         self.app.config.config.setdefault('asr', {}).update(config['asr'])
+                    if 'memory' in config:
+                        mem_cfg = config['memory']
+                        self.app.config.config.setdefault('memory', {}).update(mem_cfg)
+                        # v3.0: 实时应用到记忆系统
+                        mem = getattr(self.app, 'memory', None)
+                        if mem is not None:
+                            if 'short_limit' in mem_cfg or 'working_memory_limit' in mem_cfg:
+                                mem.working_memory_limit = mem_cfg.get('working_memory_limit', mem_cfg.get('short_limit', mem.working_memory_limit))
+                            if 'summarize_threshold' in mem_cfg:
+                                mem.summarize_threshold = mem_cfg['summarize_threshold']
+                            if 'forgetting_threshold' in mem_cfg or 'importance_threshold' in mem_cfg:
+                                from memory import RetentionScorer
+                                RetentionScorer.RETENTION_THRESHOLD = mem_cfg.get('forgetting_threshold', mem_cfg.get('importance_threshold', 0.15))
+                            if 'decay_lambda' in mem_cfg:
+                                RetentionScorer.DECAY_LAMBDA = float(mem_cfg['decay_lambda'])
+                            if 'grace_period_hours' in mem_cfg:
+                                from memory import RetentionScorer
+                                RetentionScorer.GRACE_PERIOD_HOURS = float(mem_cfg['grace_period_hours'])
+                            if 'auto_store' in mem_cfg:
+                                mem.auto_store = bool(mem_cfg['auto_store'])
 
                 self.server.send_message(client, json.dumps({
                     "type": "config_result",
@@ -3409,6 +3512,16 @@ class WebSocketServer:
         
         configured = False
         key_preview = ""
+        
+        # v1.9.38: 先获取当前活跃的 provider（从 config 的 llm.provider 字段）
+        active_provider = provider
+        if self.app and hasattr(self.app, 'config'):
+            llm_cfg = self.app.config.config.get('llm', {})
+            active_provider = llm_cfg.get('provider', provider)
+        
+        # 如果前端传的 provider 与活跃 provider 不一致，用活跃 provider
+        if provider != active_provider:
+            provider = active_provider
         
         # 检查LLM模块（通过 _lazy_modules 字典访问）
         if self.app and hasattr(self.app, '_lazy_modules'):

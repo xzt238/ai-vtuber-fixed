@@ -38,9 +38,175 @@
 
 ================================================================================
 
-## 🟢 v1.9.30 (2026-04-27) ✅ STABLE
+## 🟢 v1.9.38 (2026-04-29) ✅ STABLE
 
-### 📝 GitHub 发布准备
+**前端 LLM 多 Provider 适配 + Ollama 原生 API** — 修复 Ollama 用户被 API Key 检查误拦的问题，新增 Ollama 原生 API 支持
+
+### 🔧 修复
+- `checkApiKeyStatus()`: 查询当前活跃 provider 而非硬编码 minimax
+- `sendMessage()`: 本地模型（Ollama/localhost）跳过 API Key 拦截
+- `saveApiKey()` / `saveApiKeyFromSettings()`: 发送当前活跃 provider
+- `api_key_status` 显示：根据 provider 显示正确名称（MiniMax/OpenAI/Anthropic）
+- 后端 `_handle_get_api_key_status`: 自动检测当前活跃 provider
+
+### ✨ 新增
+- LLM 配置面板：Provider 下拉新增 Anthropic 选项
+- LLM 配置面板：新增 Base URL 输入框（OpenAI/Ollama 模式显示）
+- LLM 配置面板：新增 API Key 输入框（各 provider 通用）
+- `onLlmProviderChange()` 函数：Provider 切换时联动字段显隐
+- `saveConfigSettings()` 保存 base_url + api_key 到对应 provider 子配置
+- 新手引导：Provider 选择 + Base URL 输入（Ollama 用户可跳过 API Key）
+- `onOnboardingProviderChange()` 函数：引导中 Provider 切换联动
+- **Ollama 原生 API**：自动检测 Ollama 端点，走 `/api/chat` 而非 `/v1/chat/completions`，传 `think:false` 关闭 Qwen3 思考模式
+- `_ollama_chat()` / `_ollama_stream_chat()`：Ollama 专用非流式/流式对话方法
+- `OpenAILLM._is_ollama` 标志：基于 base_url 自动检测
+
+================================================================================
+
+## 🟢 v1.9.37 (2026-04-29) ✅ STABLE
+
+**本地 LLM 适配** — Ollama + Qwen3-8B Q4_K_M，零代码改动接入
+
+### ✨ 新增
+- 本地 LLM 支持：通过 Ollama + OpenAI 兼容接口接入本地模型
+- 默认模型：Qwen3-8B Q4_K_M（CPU 推理，~5GB 内存，不占显存）
+- config.yaml 新增 `llm.openai` 配置段（api_key/base_url/model）
+- Qwen3 thinking 模式三层防护：
+  - System prompt 加 `/no_think` 指令（Qwen3 原生支持）
+  - 非流式：`content` 可能为 None 时的防护 + `_strip_thinking()` 兜底清理
+  - 流式：`in_thinking` 状态跟踪，thinking 阶段不触发 TTS 回调
+- `_strip_thinking()` 函数：正则移除 `<think >...</think >` 标签
+- 流式 SSE 中 `delta.reasoning` 与 `delta.content` 自然分离（Ollama 特性）
+
+### 🔧 修改
+- `config.yaml`：provider 从 minimax 改为 openai，新增 openai 配置段
+- `llm/__init__.py`：OpenAILLM.chat() 加 content None 防护 + thinking 清理
+- `llm/__init__.py`：所有三个引擎的流式方法加 thinking 过滤
+- `llm/prompts.py`：PERSONA 末尾加 `/no_think`
+
+### 📁 修改文件
+- `app/config.yaml`
+- `app/llm/__init__.py`
+- `app/llm/prompts.py`
+- 版本号同步: v1.9.37 (7处)
+
+---
+
+## 🟢 v1.9.36 (2026-04-29) ✅ STABLE
+
+**记忆前端功能补全** — 后端能力全面映射到前端 UI
+
+### ✨ 新增
+- 记忆编辑功能（✎ 按钮 → prompt 编辑 → WS edit action）
+- 重要性精确设置（0-5 下拉选择器，替代原来只能+1的⬆按钮）
+- 事实来源分类过滤（偏好/信息/事实 子标签）
+- 衰减预览可视化（📉 按钮 → 表格展示不同重要性在不同时长的保留分数）
+- 记忆详情展示（保留分数进度条、遗忘标记、hover 显示访问次数等）
+- 时间线事实过滤按钮（📌）
+- 配置面板补全（保护期小时数、向量去重阈值、自动存储开关）
+- 后端 WS 新增 `decay_preview` 和 `search_by_time` action
+- 后端 `_item_to_dict` 补全 `retention_score/access_count/connectivity/is_forgotten/hours_old` 字段
+
+### 🔧 修复
+- 删除 config.yaml 中 `memory.provider: "simple"` 死字段
+- 删除 `memory/__init__.py` 中 `self.provider` 赋值和统计输出
+
+### 📁 修改文件
+- `app/web/static/index.html` — 前端记忆面板全面增强
+- `app/web/__init__.py` — 后端 WS 新增 action + 字段补全 + 配置热更新
+- `app/memory/__init__.py` — 移除 provider 死字段
+- `app/config.yaml` — 移除 provider 死字段
+- 版本号同步: v1.9.36 (8处)
+
+---
+
+## 🟢 v1.9.35 (2026-04-28) ✅ STABLE
+
+### 🔧 记忆系统 v3.0 全面重构
+
+| # | 修改项 | 说明 |
+|---|--------|------|
+| 1 | 🆕 **多维梯度评分** | ImportanceScorer 重构，6个评分维度（长度/问题/个人信息/偏好/情感/知识），0-5连续梯度，不再只有0/4/5 |
+| 2 | 🆕 **LLM语义摘要** | SummaryGenerator 替代硬截断，优先用 LLM 生成语义摘要，降级到规则摘要 |
+| 3 | 🆕 **事实提取系统** | FactExtractor 规则提取用户偏好/个人信息；LLM 降级提取；独立 FactItem 持久化 |
+| 4 | 🆕 **向量库去重** | VectorStore 新增 `_is_duplicate()`，cosine>0.95 视为重复不重复存储 |
+| 5 | 🆕 **向量库入库阈值降低** | importance>=3 即入库（原>=4），语义记忆终于有数据 |
+| 6 | 🆕 **遗忘衰减调优** | DECAY_LAMBDA 0.01→0.005；RETENTION_THRESHOLD 0.3→0.15；新增12小时保护期 |
+| 7 | 🆕 **记忆去重合并** | `_text_similarity()` Jaccard相似度；`_merge_fact()` 合并重复事实 |
+| 8 | 🆕 **自动标签系统** | AutoTagger 基于关键词为记忆打标签（编程/AI/情感/日常等10个类别） |
+| 9 | 🆕 **记忆重整** | `consolidate()` 跨层整合：合并重复情景记忆、提升高保留分记忆、清理已遗忘记忆 |
+| 10 | 🆕 **记忆管理 CRUD** | 后端新增 delete/edit/set_importance/facts/consolidate/delete_fact action |
+| 11 | 🆕 **前端标签页切换** | 记忆面板支持 全部/工作/情景/事实 四标签切换 |
+| 12 | 🆕 **前端操作按钮** | 每条记忆可标重要(⬆) / 删除(✕)；新增重整按钮；事实库独立视图 |
+| 13 | 🆕 **衰减系数滑块** | 配置面板新增衰减系数控制；前端支持实时调节 |
+| 14 | 🆕 **LLM 回调绑定** | MemorySystem.set_llm_callback()，摘要生成和事实提取可调用 LLM |
+| 15 | 🔧 **前端口统计** | stats 显示 事实:数字；版本 v3.0 标识 |
+
+## 🟢 v1.9.34 (2026-04-28) ✅ STABLE
+
+### 🔧 记忆路径漂移修复 (Memory Path Drift Fix)
+
+| # | 修改项 | 说明 |
+|---|--------|------|
+| 1 | 🔧 MemorySystem 路径绝对化 | storage_dir 在初始化时立即 resolve 为绝对路径，防止 os.chdir() 漂移 |
+| 2 | 🔧 FileStorage 路径绝对化 | base_dir 同理，init 时立即解析绝对路径 |
+| 3 | 🔧 VectorStore 路径绝对化 | storage_dir 同理，init 时立即解析绝对路径 |
+| 4 | 🔧 历史数据迁移 | GPT-SoVITS/GPT_SoVITS/memory/ 下的12条工作记忆+5条情景记忆+8天日志+6条长期记忆 → 迁移回项目根 memory/ |
+| 5 | 🐛 根因 | gptsovits.py 第36/702行 os.chdir() 和 live2d/__init__.py 第462行 os.chdir() 改变全局工作目录，导致后续 ./memory 相对路径解析到错误目录 |
+
+## 🟢 v1.9.33 (2026-04-28) ✅ STABLE
+
+### 🔧 记忆面板全面修复 (Memory Panel Overhaul)
+
+| # | 修改项 | 说明 |
+|---|--------|------|
+| 1 | 🔧 后端 list 增强字段 | 添加 importance/timestamp/is_summary/tags 字段到记忆列表返回 |
+| 2 | 🔧 后端 timeline 增强字段 | 添加 timestamp/is_summary/layer 字段；按时间倒序排列 |
+| 3 | 🔧 WS sub_type 判别 | list/stats/timeline/search/summary 添加 sub_type 字段，避免 stats 被 list 覆盖 |
+| 4 | 🔧 后端配置实时应用 | _handle_config 新增 memory 配置块，修改参数即时生效 |
+| 5 | 🔧 前端记忆渲染增强 | 显示时间标签、层级标签、摘要徽章、重要性星标 |
+| 6 | 🔧 搜索框 Enter 支持 | 搜索框回车触发搜索 |
+| 7 | 🔧 面板可见性检测修复 | text_done 自动刷新改用 classList.contains('panel-hidden') |
+| 8 | 🔧 配置参数名对齐 | 前端 short_limit/medium_limit → working_memory_limit/summarize_threshold/forgetting_threshold |
+| 9 | 🔧 配置默认值修正 | 工作记忆上限 50→20（与后端一致）；摘要阈值/遗忘阈值滑块修正 |
+
+## 🟢 v1.9.32 (2026-04-28) ✅ STABLE
+
+### 🎨 交互动画全面升级 (Interaction & Animation)
+
+| # | 修改项 | 说明 |
+|---|--------|------|
+| 1 | 💬 消息气泡化 | 用户/AI消息分色气泡，右/左对齐，替代单调分割线 |
+| 2 | ✨ 消息入场动画 | 每条消息 slide-in + scale 微弹，cubic-bezier(0.16,1,0.3,1) |
+| 3 | 🪟 面板显示/隐藏动画 | 替代 display:none，改为 scale(0.95)+fade 过渡 250ms |
+| 4 | 📦 面板折叠/展开动画 | maxHeight 平滑过渡 350ms，不再瞬间消失 |
+| 5 | 🔦 输入框焦点发光 | focus 时边框渐变发光 + 外发光 box-shadow |
+| 6 | 💧 按钮涟漪效果 | 所有按钮点击时 Material Design 风格 ripple 动画 |
+| 7 | 📤 发送按钮脉冲 | 发送消息时按钮 box-shadow 脉冲反馈 |
+| 8 | 🌊 Header 渐变呼吸 | 标题渐变色 4s 缓慢流动动画 |
+| 9 | 🖱️ 按钮微交互增强 | hover 微抬+阴影、active 缩放、面板按钮 scale(1.15) |
+| 10 | 🎛️ 面板 hover 增强 | hover 时边框+阴影增强，Canvas 容器 hover 紫色辉光 |
+| 11 | ⌨️ Ctrl+Enter 发送 | 键盘快捷键增强 |
+| 12 | 🎵 宏播放呼吸灯 | 宏条目 playing 状态时内部辉光脉冲 |
+| 13 | 📋 模态框入场动画 | 宏编辑器等弹窗 scale(0.92)+translateY 入场 |
+| 14 | 🔄 批量面板动画 | toggleAllPanels 面板逐个依次出现(30ms间隔) |
+
+### 🟢 v1.9.31 (2026-04-28) ✅ STABLE
+
+### ✨ 用户体验重大改进 (UX Overhaul)
+
+| # | 修改项 | 说明 |
+|---|--------|------|
+| 1 | 🎉 新手引导系统 | 首次访问自动弹出 3 步引导（欢迎 → API Key 配置 → 功能介绍），localStorage 记录完成状态 |
+| 2 | 🔑 API Key 强制拦截 | 未配置 API Key 时发送消息会弹出 Toast + 引导配置，不再静默失败 |
+| 3 | 🔔 统一 Toast 通知 | 全局 Toast 系统（error/success/warning/info），替代所有 alert()，支持操作按钮 |
+| 4 | 💭 思考指示器 | LLM 回复等待期间显示 3 点弹跳动画，收到第一个 chunk 自动消失 |
+| 5 | 🛡️ 错误信息改进 | 兜底异常从"抱歉出错了喵"改为具体原因（API Key无效/超时/显存不足等）+ 操作建议 |
+| 6 | 🔧 CSS 语法修复 | index.html line 986 孤立 `}` 清理 |
+| 7 | 🔔 WS 状态通知 | 连接断开/重连成功/错误时 Toast 实时通知，不再只有日志 |
+| 8 | 版本号同步 | 8 处统一 v1.9.31 |
+
+### 📝 GitHub 发布准备 (从 v1.9.30 合并)
 
 | # | 修改项 | 说明 |
 |---|--------|------|
@@ -51,7 +217,7 @@
 | 5 | 新增 .env.example | 环境变量模板，新用户参考配置 |
 | 6 | install_deps.bat 增加 | 最终核对报告（✅/❌ 标记关键依赖是否就绪） |
 | 7 | download_models.bat 增加 | 嵌入式 Python 下载步骤 + 最终核对报告 |
-| 8 | 版本号同步 | main.py + index.html + web/__init__.py + go.bat + install_deps.bat 统一 v1.9.30 |
+| 8 | 版本号同步 | main.py + index.html + web/__init__.py + go.bat + install_deps.bat 统一 v1.9.31 |
 | 9 | Git 仓库初始化 | api_keys.json / 聊天记忆 / TTS 缓存已排除，历史干净无隐私泄露 |
 
 ================================================================================

@@ -419,6 +419,32 @@ def _parse_action(text: str) -> Optional[str]:
     return None
 
 
+# Qwen3 thinking 标签清理正则
+_THINK_RE = re.compile(r"<think\s*>.*?</think\s*>", re.DOTALL)
+
+
+def _strip_thinking(text: str) -> str:
+    """
+    【功能说明】移除 Qwen3 等模型的 <think >...</think > 思考过程标签
+
+    【参数说明】
+        text (str): LLM 原始输出文本
+
+    【返回值】
+        str: 清理后的文本（移除 thinking 标签及内容）
+
+    【设计意图】
+    Qwen3 支持 thinking 模式，会在回复中嵌入 <think >...</think > 标签。
+    虽然已通过 /no_think 指令和 Ollama reasoning 字段分离来抑制，
+    但部分版本/场景下 thinking 内容仍可能出现在 content 中，
+    此函数作为兜底清理，防止 TTS 读出思考过程。
+    """
+    if not text:
+        return ""
+    cleaned = _THINK_RE.sub("", text).strip()
+    return cleaned if cleaned else text  # 如果清理后为空，返回原文
+
+
 # ==================== 速率限制 & 重试 =====================
 
 class RateLimiter:
@@ -1084,6 +1110,7 @@ class MiniMaxLLM(LLMEngine):
         
         full_text = ""   # 完整回复文本（累积）
         buffer = ""      # 待触发回调的缓冲区
+        in_thinking = False  # Qwen3 thinking 标签跟踪
         
         # iter_lines(): 逐行读取 SSE 流，自动处理分块传输编码
         for line in response.iter_lines():
@@ -1102,9 +1129,20 @@ class MiniMaxLLM(LLMEngine):
                 chunk = json.loads(data_str)
                 # OpenAI SSE 格式：choices[0].delta.content 包含增量文本
                 delta = chunk["choices"][0].get("delta", {})
-                content = delta.get("content", "")
+                content = delta.get("content") or ""
                 
                 if content:
+                    # Qwen3 thinking 模式：跳过 <think >...</think > 内容
+                    if "<think" in content and ">" in content:
+                        in_thinking = True
+                    if in_thinking and "</think" in content and ">" in content:
+                        in_thinking = False
+                        content = re.sub(r"</think\s*>", "", content)
+                        if not content.strip():
+                            continue
+                    if in_thinking:
+                        continue
+                    
                     full_text += content   # 累积到完整文本
                     buffer += content      # 累积到回调缓冲区
                     
@@ -1114,6 +1152,9 @@ class MiniMaxLLM(LLMEngine):
                         buffer = ""  # 清空缓冲区
             except:
                 continue  # 单行解析失败不中断流式处理
+        
+        # 流结束后兜底清理
+        full_text = _strip_thinking(full_text)
         
         # 流结束后，发送缓冲区中剩余的文本片段
         if buffer and callback:
@@ -1158,6 +1199,7 @@ class MiniMaxLLM(LLMEngine):
         
         full_text = ""
         buffer = ""
+        in_thinking = False  # Qwen3 thinking 标签跟踪
         
         for line in response.iter_lines():
             if not line:
@@ -1180,8 +1222,19 @@ class MiniMaxLLM(LLMEngine):
                     
                     # text_delta 类型表示这是文本内容增量
                     if delta_type == "text_delta":
-                        content = delta.get("text", "")
+                        content = delta.get("text") or ""
                         if content:
+                            # Qwen3 thinking 模式：跳过 <think >...</think > 内容
+                            if "<think" in content and ">" in content:
+                                in_thinking = True
+                            if in_thinking and "</think" in content and ">" in content:
+                                in_thinking = False
+                                content = re.sub(r"</think\s*>", "", content)
+                                if not content.strip():
+                                    continue
+                            if in_thinking:
+                                continue
+                            
                             full_text += content
                             buffer += content
                             
@@ -1194,6 +1247,9 @@ class MiniMaxLLM(LLMEngine):
                     break
             except:
                 continue
+        
+        # 流结束后兜底清理
+        full_text = _strip_thinking(full_text)
         
         # 发送缓冲区剩余内容
         if buffer and callback:
@@ -1255,8 +1311,12 @@ class OpenAILLM(LLMEngine):
         self.config = config
         self.api_key = config.get("api_key", "")
         self.base_url = config.get("base_url", "https://api.openai.com/v1")
+        # v1.9.38: 去掉 base_url 尾部斜杠，避免双斜杠
+        self.base_url = self.base_url.rstrip("/")
         self.model = config.get("model", "gpt-3.5-turbo")
         self.max_tokens = config.get("max_tokens", 2048)
+        # v1.9.38: 检测是否为 Ollama 端点
+        self._is_ollama = "localhost:11434" in self.base_url or "127.0.0.1:11434" in self.base_url
         
         # 创建带认证头的 HTTP Session
         import requests
@@ -1271,7 +1331,7 @@ class OpenAILLM(LLMEngine):
         self._cache_ttl = 300
         self._cache_lock = threading.Lock()  # v1.8: 缓存线程安全
         
-        print(f"  OpenAI LLM v2.0 初始化: max_tokens={self.max_tokens}")
+        print(f"  OpenAI LLM v2.0 初始化: max_tokens={self.max_tokens}, ollama={self._is_ollama}")
 
     def chat(self, message: str, history: List[Dict] = None,
              memory_system = None) -> Dict[str, Any]:
@@ -1291,6 +1351,10 @@ class OpenAILLM(LLMEngine):
         2. 构建 OpenAI 格式消息（/chat/completions）
         3. 解析回复，写入缓存，返回结果
         """
+        # v1.9.38: Ollama 端点走原生 API（支持 think:false 关闭 Qwen3 思考模式）
+        if self._is_ollama:
+            return self._ollama_chat(message, history, memory_system)
+
         if not self.api_key:
             return {"text": "请配置 OpenAI API Key", "action": None}
 
@@ -1323,7 +1387,10 @@ class OpenAILLM(LLMEngine):
             
             result = response.json()
             # OpenAI Chat Completions 格式：choices[0].message.content
-            text = result["choices"][0]["message"]["content"]
+            msg = result["choices"][0].get("message", {})
+            text = msg.get("content") or ""  # Qwen3 thinking 模式下 content 可能为 None
+            # 兜底清理：<think >...</think > 标签（部分 Qwen3 版本会输出到 content 中）
+            text = _strip_thinking(text)
             action_str = _parse_action(text)
             
             ret = {"text": text, "action": action_str}
@@ -1334,6 +1401,107 @@ class OpenAILLM(LLMEngine):
             return ret
         except Exception as e:
             return {"text": f"对话错误: {str(e)}", "action": None}
+
+    def _ollama_chat(self, message: str, history: List[Dict] = None,
+                     memory_system = None) -> Dict[str, Any]:
+        """v1.9.38: Ollama 原生 API 对话（支持 think:false 关闭思考模式）"""
+        if not self._rate_limiter.acquire(timeout=30):
+            return {"text": "请求过于频繁，请稍后再试", "action": None}
+
+        cache_key = f"ollama:{message}:{len(history or [])}"
+        with self._cache_lock:
+            if cache_key in self._cache:
+                cached, ts = self._cache[cache_key]
+                if time.time() - ts < self._cache_ttl:
+                    return cached
+
+        try:
+            messages = build_messages(message, history, None, memory_system)
+            # Ollama 原生 API 端点: /api/chat
+            data = {
+                "model": self.model,
+                "messages": messages,
+                "stream": False,
+                "think": False,  # 关闭 Qwen3 思考模式
+                "options": {
+                    "num_predict": self.max_tokens,
+                    "temperature": 0.7,
+                }
+            }
+            response = self._session.post(
+                "http://localhost:11434/api/chat",
+                json=data, timeout=120
+            )
+            response.raise_for_status()
+            result = response.json()
+            msg = result.get("message", {})
+            text = msg.get("content") or ""
+            text = _strip_thinking(text)
+            action_str = _parse_action(text)
+            ret = {"text": text, "action": action_str}
+            with self._cache_lock:
+                self._cache[cache_key] = (ret, time.time())
+            return ret
+        except Exception as e:
+            return {"text": f"Ollama 对话错误: {str(e)}", "action": None}
+
+    def _ollama_stream_chat(self, message: str, history: List[Dict] = None, callback=None,
+                            memory_system = None, chunk_size: int = 10) -> Dict[str, Any]:
+        """v1.9.38: Ollama 原生 API 流式对话（think:false 关闭思考模式）"""
+        if not self._rate_limiter.acquire(timeout=30):
+            return {"text": "请求过于频繁，请稍后再试", "action": None}
+
+        try:
+            messages = build_messages(message, history, None, memory_system)
+            data = {
+                "model": self.model,
+                "messages": messages,
+                "stream": True,
+                "think": False,  # 关闭 Qwen3 思考模式
+                "options": {
+                    "num_predict": self.max_tokens,
+                    "temperature": 0.7,
+                }
+            }
+            response = self._session.post(
+                "http://localhost:11434/api/chat",
+                json=data, timeout=120, stream=True
+            )
+            response.raise_for_status()
+
+            full_text = ""
+            buffer = ""
+
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                line = line.decode('utf-8')
+                try:
+                    chunk = json.loads(line)
+                    # Ollama 原生流式：每行一个完整 JSON 对象
+                    msg = chunk.get("message", {})
+                    content = msg.get("content", "")
+                    if content:
+                        full_text += content
+                        buffer += content
+                        if len(buffer) >= chunk_size and callback:
+                            callback(buffer)
+                            buffer = ""
+                    # 流结束标志
+                    if chunk.get("done", False):
+                        break
+                except:
+                    continue
+
+            full_text = _strip_thinking(full_text)
+            if buffer and callback:
+                callback(buffer)
+            action_str = _parse_action(full_text)
+            action = json.loads(action_str) if action_str else None
+            return {"text": full_text, "action": action}
+        except Exception as e:
+            print(f"[LLM] Ollama 流式错误: {e}")
+            return {"text": f"Ollama 流式错误: {str(e)}", "action": None}
 
     def stream_chat(self, message: str, history: List[Dict] = None, callback=None,
                     memory_system = None, chunk_size: int = 10) -> Dict[str, Any]:
@@ -1355,6 +1523,10 @@ class OpenAILLM(LLMEngine):
         v1.8 改为真正的 SSE stream，实时接收服务器推送的 token 片段，
         每累积 chunk_size 字符立即触发回调，首次出声延迟大幅降低。
         """
+        # v1.9.38: Ollama 端点走原生 API 流式（支持 think:false）
+        if self._is_ollama:
+            return self._ollama_stream_chat(message, history, callback, memory_system, chunk_size)
+
         if not self.api_key:
             return {"text": "请配置 OpenAI API Key", "action": None}
 
@@ -1379,6 +1551,7 @@ class OpenAILLM(LLMEngine):
             
             full_text = ""
             buffer = ""
+            in_thinking = False  # Qwen3 thinking 标签跟踪
             
             # 逐行处理 SSE 数据流
             for line in response.iter_lines():
@@ -1395,9 +1568,24 @@ class OpenAILLM(LLMEngine):
                     chunk = json.loads(data_str)
                     # OpenAI SSE：choices[0].delta.content 为增量文本
                     delta = chunk["choices"][0].get("delta", {})
-                    content = delta.get("content", "")
+                    content = delta.get("content") or ""  # content 可能为 None
                     
                     if content:
+                        # Qwen3 thinking 模式：跳过 <think >...</think > 内容
+                        # 检测 thinking 开始
+                        if "<think" in content and ">" in content:
+                            in_thinking = True
+                        # 检测 thinking 结束
+                        if in_thinking and "</think" in content and ">" in content:
+                            in_thinking = False
+                            # 移除 </think > 标签本身
+                            content = re.sub(r"</think\s*>", "", content)
+                            if not content.strip():
+                                continue
+                        # thinking 中的内容不回调和不累积到 buffer
+                        if in_thinking:
+                            continue
+                        
                         full_text += content
                         buffer += content
                         # 缓冲区达到阈值时触发 TTS 回调
@@ -1406,6 +1594,9 @@ class OpenAILLM(LLMEngine):
                             buffer = ""
                 except:
                     continue
+            
+            # 流结束后兜底清理 thinking 标签
+            full_text = _strip_thinking(full_text)
             
             # 发送剩余缓冲区内容
             if buffer and callback:

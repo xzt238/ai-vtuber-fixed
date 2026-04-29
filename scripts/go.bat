@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul 2>&1
 title GuguGaga AI VTuber
 
 REM 切换到项目根目录（bat 文件在 scripts/ 子目录下）
@@ -8,7 +7,7 @@ cd /d "%~dp0.."
 echo.
 echo ========================================
 echo    GuguGaga AI VTuber - Browser Mode
-echo    version: 1.9.30
+echo    version: 1.9.38
 echo ========================================
 echo.
 

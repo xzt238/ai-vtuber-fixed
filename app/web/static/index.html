@@ -983,7 +983,6 @@
         .train-file-name:hover {
             color: #4af;
         }
-        }
         .train-step {
             display: flex;
             align-items: center;
@@ -1137,6 +1136,485 @@
         #uploaded-img, #vision-img {
             background: rgba(0,0,0,0.3);
         }
+
+        /* ===== v1.9.31: Toast 通知系统 ===== */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 16px;
+            min-width: 280px;
+            max-width: 420px;
+            border-radius: 12px;
+            background: var(--glass-bg);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            color: #eee;
+            font-size: 13px;
+            line-height: 1.5;
+            animation: toast-in 0.3s ease-out;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .toast.removing {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        .toast-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+        .toast-body { flex: 1; }
+        .toast-title { font-weight: 600; margin-bottom: 2px; }
+        .toast-msg { color: rgba(255,255,255,0.8); font-size: 12px; }
+        .toast-action {
+            margin-top: 6px;
+            padding: 4px 10px;
+            background: rgba(102,126,234,0.4);
+            border: 1px solid rgba(102,126,234,0.6);
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.2s;
+        }
+        .toast-action:hover { background: rgba(102,126,234,0.7); }
+        .toast-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.4);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 2px;
+            flex-shrink: 0;
+        }
+        .toast-close:hover { color: rgba(255,255,255,0.8); }
+        .toast.toast-error { border-color: rgba(255,80,80,0.4); }
+        .toast.toast-error .toast-icon { color: #f55; }
+        .toast.toast-success { border-color: rgba(80,255,80,0.3); }
+        .toast.toast-success .toast-icon { color: #5f5; }
+        .toast.toast-warning { border-color: rgba(255,180,0,0.4); }
+        .toast.toast-warning .toast-icon { color: #fa0; }
+        .toast.toast-info { border-color: rgba(100,150,255,0.3); }
+        .toast.toast-info .toast-icon { color: #6af; }
+        body.light-theme .toast { background: rgba(255,255,255,0.95); color: #333; border-color: rgba(0,0,0,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+        body.light-theme .toast-msg { color: rgba(0,0,0,0.6); }
+        body.light-theme .toast-close { color: rgba(0,0,0,0.3); }
+        body.light-theme .toast-close:hover { color: rgba(0,0,0,0.7); }
+        @keyframes toast-in { from { opacity: 0; transform: translateX(60px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* ===== v1.9.31: 新手引导弹窗 ===== */
+        .onboarding-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(6px);
+            z-index: 99998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: onboarding-fade-in 0.4s ease-out;
+        }
+        @keyframes onboarding-fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .onboarding-card {
+            background: linear-gradient(135deg, #1e1e32 0%, #1a2744 100%);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 20px;
+            width: 480px;
+            max-width: 92vw;
+            max-height: 88vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: onboarding-card-in 0.4s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes onboarding-card-in { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .onboarding-header {
+            text-align: center;
+            padding: 28px 24px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .onboarding-header .emoji { font-size: 48px; margin-bottom: 8px; }
+        .onboarding-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #ff6b9d, #667eea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+        .onboarding-header p { font-size: 13px; color: rgba(255,255,255,0.5); }
+        .onboarding-body { padding: 20px 24px; }
+        .onboarding-step {
+            display: none;
+        }
+        .onboarding-step.active {
+            display: block;
+            animation: onboarding-step-in 0.3s ease-out;
+        }
+        @keyframes onboarding-step-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
+        .onboarding-step h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        .onboarding-step p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.65);
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .onboarding-step .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b9d, #667eea);
+            font-size: 12px;
+            font-weight: 700;
+            margin-right: 8px;
+        }
+        .onboarding-input-group {
+            margin: 12px 0;
+        }
+        .onboarding-input-group label {
+            display: block;
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 4px;
+        }
+        .onboarding-input-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: #eee;
+            font-size: 14px;
+            font-family: 'Noto Sans SC', monospace;
+        }
+        .onboarding-input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+        }
+        .onboarding-input-hint {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 4px;
+        }
+        .onboarding-input-status {
+            margin-top: 6px;
+            font-size: 12px;
+        }
+        .onboarding-footer {
+            padding: 16px 24px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .onboarding-dots {
+            display: flex;
+            gap: 6px;
+        }
+        .onboarding-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transition: all 0.3s;
+        }
+        .onboarding-dot.active {
+            background: #667eea;
+            width: 20px;
+            border-radius: 4px;
+        }
+        .onboarding-dot.done {
+            background: #4f4;
+        }
+        .onboarding-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .onboarding-btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .onboarding-btn-secondary {
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.6);
+        }
+        .onboarding-btn-secondary:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .onboarding-btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+        }
+        .onboarding-btn-primary:hover { filter: brightness(1.15); }
+        .onboarding-btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: none;
+        }
+        .onboarding-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 0;
+        }
+        .onboarding-feature-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .onboarding-feature-text h4 { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+        .onboarding-feature-text p { font-size: 12px; color: rgba(255,255,255,0.5); margin: 0; }
+
+        /* ===== v1.9.31: 思考指示器 ===== */
+        .thinking-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 0;
+        }
+        .thinking-indicator .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: thinking-bounce 1.4s ease-in-out infinite;
+        }
+        /* ===== v1.9.32: 消息气泡 + 入场动画 ===== */
+        .message {
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            border-bottom: none;
+            border-radius: 12px;
+            max-width: 88%;
+            animation: msg-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            line-height: 1.5;
+        }
+        .message:last-child { border-bottom: none; }
+        /* 用户消息 - 右侧对齐 */
+        .message:has(.msg-text) {
+            /* 通过 JS 添加 .msg-user / .msg-ai 类区分 */
+        }
+        .msg-user {
+            background: linear-gradient(135deg, rgba(102,126,234,0.3), rgba(118,75,162,0.3));
+            border: 1px solid rgba(102,126,234,0.2);
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .msg-ai {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        @keyframes msg-slide-in {
+            from { opacity: 0; transform: translateY(8px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ===== v1.9.32: 面板显示/隐藏动画 ===== */
+        .panel {
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.25s ease;
+        }
+        .panel.hiding {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+        .panel.panel-hidden {
+            display: none !important;
+        }
+
+        /* ===== v1.9.32: 面板折叠/展开动画 ===== */
+        .panel-content {
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding 0.35s ease;
+        }
+        .panel.collapsed .panel-content {
+            max-height: 0 !important;
+            opacity: 0;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        /* ===== v1.9.32: 输入框焦点发光 ===== */
+        textarea, input[type="text"] {
+            border: 1px solid transparent;
+            transition: background 0.2s, border-color 0.3s, box-shadow 0.3s;
+        }
+        textarea:focus, input[type="text"]:focus {
+            background: rgba(0,0,0,0.4);
+            border-color: rgba(102,126,234,0.5);
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15), inset 0 0 0 1px rgba(102,126,234,0.2);
+        }
+        .input-area input {
+            border: 1px solid transparent;
+        }
+        .input-area input:focus {
+            border-color: rgba(102,126,234,0.5);
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+
+        /* ===== v1.9.32: 按钮涟漪效果 ===== */
+        .debug-btn, .send-btn, .panel-btn, .onboarding-btn, .toast-action {
+            position: relative;
+            overflow: hidden;
+        }
+        .ripple-effect {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: scale(0);
+            animation: ripple-expand 0.6s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes ripple-expand {
+            to { transform: scale(4); opacity: 0; }
+        }
+
+        /* ===== v1.9.32: 发送按钮脉冲 ===== */
+        .send-btn.sending {
+            animation: send-pulse 0.4s ease-out;
+        }
+        @keyframes send-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(102,126,234,0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(102,126,234,0); }
+            100% { box-shadow: 0 0 0 0 rgba(102,126,234,0); }
+        }
+
+        /* ===== v1.9.32: Header 渐变呼吸 ===== */
+        .header h1 {
+            background-size: 200% 100%;
+            animation: header-gradient-shift 4s ease-in-out infinite;
+        }
+        @keyframes header-gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* ===== v1.9.32: 聊天区平滑滚动 ===== */
+        .chat-messages {
+            scroll-behavior: smooth;
+        }
+
+        /* ===== v1.9.32: 按钮增强 hover ===== */
+        .debug-btn:hover {
+            background: rgba(255,255,255,0.22);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .debug-btn.primary:hover {
+            box-shadow: 0 4px 15px rgba(102,126,234,0.35);
+        }
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+        }
+        .send-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* ===== v1.9.32: 面板 hover 微抬 ===== */
+        .panel:hover {
+            box-shadow: 0 14px 44px rgba(0,0,0,0.45);
+            border-color: rgba(255,255,255,0.12);
+        }
+
+        /* ===== v1.9.32: Canvas 容器增强 ===== */
+        #canvas-container {
+            transition: box-shadow 0.3s, border-color 0.3s;
+        }
+        #canvas-container:hover {
+            box-shadow: 0 0 40px rgba(102,126,234,0.35);
+            border-color: rgba(102,126,234,0.2);
+        }
+
+        /* ===== v1.9.32: 面板切换按钮动效 ===== */
+        #panel-toggle-btn {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #panel-toggle-btn:hover {
+            background: rgba(0,0,0,0.7);
+            transform: scale(1.04);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        #panel-toggle-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* ===== v1.9.32: 配置标签切换动效 ===== */
+        .config-tab {
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .config-tab:hover:not(.active) {
+            background: rgba(255,255,255,0.18);
+            transform: translateY(-1px);
+        }
+
+        /* ===== v1.9.32: 宏条目微交互 ===== */
+        .macro-item {
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .macro-item:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateX(3px);
+        }
+        .macro-item.playing {
+            background: rgba(102,126,234,0.3);
+            animation: macro-playing-pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes macro-playing-pulse {
+            0%, 100% { box-shadow: inset 0 0 0 0 rgba(102,126,234,0); }
+            50% { box-shadow: inset 0 0 12px 0 rgba(102,126,234,0.15); }
+        }
+
+        /* ===== v1.9.32: 模态框动画增强 ===== */
+        .modal-overlay {
+            animation: modal-overlay-in 0.25s ease-out;
+        }
+        @keyframes modal-overlay-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal-content {
+            animation: modal-content-in 0.3s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes modal-content-in {
+            from { opacity: 0; transform: scale(0.92) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* ===== v1.9.32: 面板按钮 tooltip ===== */
+        .panel-btn {
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .panel-btn:hover {
+            transform: scale(1.15);
+        }
+        .panel-btn:active {
+            transform: scale(0.9);
+        }
     </style>
 </head>
 <body>
@@ -1149,8 +1627,113 @@
         <div style="margin-top:12px;font-size:12px;color:rgba(255,255,255,0.5);">加载中...</div>
     </div>
     <style>@keyframes app-loading-bar{0%{margin-left:-30%}100%{margin-left:100%}}</style>
+
+    <!-- v1.9.31: Toast 通知容器 -->
+    <div id="toast-container"></div>
+
+    <!-- v1.9.31: 新手引导弹窗 -->
+    <div class="onboarding-overlay" id="onboarding-overlay" style="display:none;">
+        <div class="onboarding-card">
+            <div class="onboarding-header">
+                <div class="emoji">🐱</div>
+                <h2>欢迎来到咕咕嘎嘎</h2>
+                <p>AI 虚拟形象 · 声音克隆 · 智能对话</p>
+            </div>
+            <div class="onboarding-body">
+                <!-- Step 0: 欢迎 -->
+                <div class="onboarding-step active">
+                    <h3>👋 开始之前</h3>
+                    <p>只需 1 步配置，即可开始使用。我会帮你完成最关键的设置。</p>
+                    <div class="onboarding-feature">
+                        <span class="onboarding-feature-icon">🎤</span>
+                        <div class="onboarding-feature-text">
+                            <h4>语音对话</h4>
+                            <p>支持实时语音输入，AI 用语音回复</p>
+                        </div>
+                    </div>
+                    <div class="onboarding-feature">
+                        <span class="onboarding-feature-icon">🎵</span>
+                        <div class="onboarding-feature-text">
+                            <h4>声音克隆</h4>
+                            <p>训练你自己的专属音色</p>
+                        </div>
+                    </div>
+                    <div class="onboarding-feature">
+                        <span class="onboarding-feature-icon">🧠</span>
+                        <div class="onboarding-feature-text">
+                            <h4>三层记忆</h4>
+                            <p>短期工作记忆 + 情景记忆 + 语义知识</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Step 1: API Key -->
+                <div class="onboarding-step">
+                    <h3>🔑 配置 API Key</h3>
+                    <p>这是唯一必须的配置项。API Key 驱动 AI 对话和视觉理解。</p>
+                    <div class="onboarding-input-group">
+                        <label>Provider</label>
+                        <select id="onboarding-provider" onchange="onOnboardingProviderChange()" style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(0,0,0,0.3);color:#eee;font-size:13px;">
+                            <option value="minimax">MiniMax</option>
+                            <option value="openai">OpenAI / Ollama</option>
+                            <option value="anthropic">Anthropic</option>
+                        </select>
+                    </div>
+                    <div class="onboarding-input-group" id="onboarding-baseurl-group" style="display:none;">
+                        <label>Base URL（Ollama 用户填写）</label>
+                        <input type="text" id="onboarding-baseurl-input" placeholder="http://localhost:11434/v1" style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(0,0,0,0.3);color:#eee;font-size:13px;" />
+                    </div>
+                    <div class="onboarding-input-group">
+                        <label>API Key</label>
+                        <input type="password" id="onboarding-apikey-input" placeholder="粘贴你的 API Key..." />
+                        <div class="onboarding-input-hint" id="onboarding-provider-hint">在 <a href="https://platform.minimaxi.com/" target="_blank" style="color:#667eea;">MiniMax 开放平台</a> 获取，注册即送免费额度</div>
+                    </div>
+                    <div id="onboarding-apikey-status"></div>
+                    <p style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:8px;">💡 也可以之后在设置面板中配置</p>
+                </div>
+                <!-- Step 2: 完成 -->
+                <div class="onboarding-step">
+                    <h3>🎉 设置完成！</h3>
+                    <p>你现在可以：</p>
+                    <div class="onboarding-feature">
+                        <span class="onboarding-feature-icon">💬</span>
+                        <div class="onboarding-feature-text">
+                            <h4>文字聊天</h4>
+                            <p>在左下角输入框直接打字</p>
+                        </div>
+                    </div>
+                    <div class="onboarding-feature">
+                        <span class="onboarding-feature-icon">🎙️</span>
+                        <div class="onboarding-feature-text">
+                            <h4>语音对话</h4>
+                            <p>点击麦克风按钮开始实时语音</p>
+                        </div>
+                    </div>
+                    <div class="onboarding-feature">
+                        <span class="onboarding-feature-icon">⚙️</span>
+                        <div class="onboarding-feature-text">
+                            <h4>更多设置</h4>
+                            <p>右键面板标题栏 → 打开配置编辑器</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="onboarding-footer">
+                <div class="onboarding-dots">
+                    <div class="onboarding-dot active"></div>
+                    <div class="onboarding-dot"></div>
+                    <div class="onboarding-dot"></div>
+                </div>
+                <div class="onboarding-btns">
+                    <button class="onboarding-btn onboarding-btn-secondary" id="onboarding-skip" onclick="_onboardingSkip()">跳过</button>
+                    <button class="onboarding-btn onboarding-btn-secondary" id="onboarding-prev" onclick="_onboardingPrev()" style="display:none;">上一步</button>
+                    <button class="onboarding-btn onboarding-btn-primary" id="onboarding-next" onclick="_onboardingNext()">下一步</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="header">
-        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.30</span></span></h1>
+        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.38</span></span></h1>
     </div>
     
     <!-- 布局预设栏 -->
@@ -1523,16 +2106,30 @@
             </div>
         </div>
         <div class="panel-content">
-            <div id="memory-stats" style="color:rgba(255,255,255,0.5);font-size:11px;margin-bottom:8px;">工作:0 情景:0 语义:0 程序:0</div>
+            <div id="memory-stats" style="color:rgba(255,255,255,0.5);font-size:11px;margin-bottom:8px;">工作:0 情景:0 语义:0 事实:0</div>
+            <div style="display:flex;gap:4px;margin-bottom:6px;">
+                <button class="debug-btn mem-tab active" onclick="switchMemTab('all')" style="padding:3px 8px;font-size:10px;">全部</button>
+                <button class="debug-btn mem-tab" onclick="switchMemTab('working')" style="padding:3px 8px;font-size:10px;">工作</button>
+                <button class="debug-btn mem-tab" onclick="switchMemTab('episodic')" style="padding:3px 8px;font-size:10px;">情景</button>
+                <button class="debug-btn mem-tab" onclick="switchMemTab('fact')" style="padding:3px 8px;font-size:10px;">事实</button>
+            </div>
+            <div id="fact-source-filters" style="display:none;gap:3px;margin-bottom:4px;">
+                <button class="debug-btn" onclick="switchFactSource(null)" style="padding:2px 6px;font-size:9px;">全部</button>
+                <button class="debug-btn" onclick="switchFactSource('user_preference')" style="padding:2px 6px;font-size:9px;">偏好</button>
+                <button class="debug-btn" onclick="switchFactSource('user_info')" style="padding:2px 6px;font-size:9px;">信息</button>
+                <button class="debug-btn" onclick="switchFactSource('key_fact')" style="padding:2px 6px;font-size:9px;">事实</button>
+            </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;">
                 <input type="text" id="memory-search" placeholder="搜索..." style="flex:1;padding:6px 8px;" />
                 <button class="debug-btn" onclick="searchMemory()" style="padding:6px 8px;">🔍</button>
             </div>
-            <div id="memory-messages" style="height:180px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:8px;border-radius:8px;font-size:11px;white-space:pre-wrap;"></div>
+            <div id="memory-messages" style="height:200px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:8px;border-radius:8px;font-size:11px;white-space:pre-wrap;"></div>
             <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
                 <button class="debug-btn" onclick="exportMemory()" style="padding:6px 8px;font-size:11px;">📤 导出</button>
                 <button class="debug-btn" onclick="importMemory()" style="padding:6px 8px;font-size:11px;">📥 导入</button>
                 <button class="debug-btn" onclick="summaryMemory()" style="padding:6px 8px;font-size:11px;">📋 摘要</button>
+                <button class="debug-btn" onclick="consolidateMemory()" style="padding:6px 8px;font-size:11px;">🔄 重整</button>
+                <button class="debug-btn" onclick="showDecayPreview()" style="padding:6px 8px;font-size:11px;">📉 衰减</button>
                 <button class="debug-btn" onclick="clearAllMemory()" style="padding:6px 8px;font-size:11px;color:#f66;">🗑️ 清空</button>
             </div>
         </div>
@@ -1777,6 +2374,7 @@
                 <button class="debug-btn active" onclick="filterTimeline('all')">全部</button>
                 <button class="debug-btn" onclick="filterTimeline('user')">👤</button>
                 <button class="debug-btn" onclick="filterTimeline('ai')">🐱</button>
+                <button class="debug-btn" onclick="filterTimeline('fact')">📌</button>
             </div>
             <div id="memory-timeline" class="timeline-container">
                 <div class="timeline-empty">暂无记忆记录</div>
@@ -1874,8 +2472,11 @@
                 <button class="debug-btn primary" onclick="saveApiKey()" style="width:100%;">💾 保存并应用 API Key</button>
             </div>
             <div class="config-content" id="config-content-llm" style="display:none;">
-                <div class="form-group"><label>Provider</label><select id="cfg-llm-provider"><option value="minimax">MiniMax</option><option value="openai">OpenAI</option></select></div>
+                <div class="form-group"><label>Provider</label><select id="cfg-llm-provider" onchange="onLlmProviderChange()"><option value="minimax">MiniMax</option><option value="openai">OpenAI / Ollama</option><option value="anthropic">Anthropic</option></select></div>
                 <div class="form-group"><label>Model</label><input type="text" id="cfg-llm-model" placeholder="模型名称" /></div>
+                <div class="form-group" id="cfg-llm-base-url-group" style="display:none;"><label>Base URL</label><input type="text" id="cfg-llm-base-url" placeholder="http://localhost:11434/v1" /></div>
+                <div class="form-group" id="cfg-llm-api-key-group"><label>API Key</label><input type="password" id="cfg-llm-api-key-cfg" placeholder="sk-..." style="flex:1;" /></div>
+                <div style="font-size:10px;color:#888;margin-top:4px;" id="cfg-llm-hint">选择 OpenAI/Ollama 可连接本地模型，Base URL 填 Ollama 地址即可</div>
             </div>
             <div class="config-content" id="config-content-tts" style="display:none;">
                 <div class="form-group"><label>默认引擎</label><select id="cfg-tts-engine"><option value="gptsovits">GPT-SoVITS</option><option value="edge">Edge TTS</option></select></div>
@@ -1888,9 +2489,14 @@
                 <div class="form-group"><label>置信度阈值</label><input type="range" id="cfg-asr-threshold" min="0" max="1" step="0.1" value="0.5" /></div>
             </div>
             <div class="config-content" id="config-content-memory" style="display:none;">
-                <div class="form-group"><label>工作记忆上限</label><input type="number" id="cfg-mem-short" value="50" /></div>
-                <div class="form-group"><label>情景记忆上限</label><input type="number" id="cfg-mem-medium" value="200" /></div>
-                <div class="form-group"><label>记忆重要性阈值</label><input type="range" id="cfg-mem-threshold" min="1" max="5" value="3" /></div>
+                <div class="form-group"><label>工作记忆上限</label><input type="number" id="cfg-mem-short" value="30" /><span style="color:#888;font-size:10px;margin-left:4px;">条</span></div>
+                <div class="form-group"><label>摘要压缩阈值</label><input type="number" id="cfg-mem-summarize" value="20" /><span style="color:#888;font-size:10px;margin-left:4px;">条（超过后自动压缩）</span></div>
+                <div class="form-group"><label>遗忘阈值</label><input type="range" id="cfg-mem-threshold" min="0.05" max="0.5" step="0.05" value="0.15" /><span id="cfg-mem-threshold-val">0.15</span></div>
+                <div class="form-group"><label>衰减系数</label><input type="range" id="cfg-mem-decay" min="0.001" max="0.02" step="0.001" value="0.005" /><span id="cfg-mem-decay-val">0.005</span></div>
+                <div class="form-group"><label>新记忆保护期</label><input type="number" id="cfg-mem-grace" value="12" min="1" max="72" step="1" /><span style="color:#888;font-size:10px;margin-left:4px;">小时</span></div>
+                <div class="form-group"><label>向量去重阈值</label><input type="range" id="cfg-mem-dedup" min="0.8" max="1.0" step="0.01" value="0.95" /><span id="cfg-mem-dedup-val">0.95</span></div>
+                <div class="form-group"><label>自动存储</label><select id="cfg-mem-auto-store"><option value="true">开启</option><option value="false">关闭</option></select></div>
+                <div style="color:#888;font-size:10px;margin-top:4px;">v3.0: 衰减越小记忆存续越久，阈值越低遗忘越宽容</div>
             </div>
             <div class="debug-controls" style="margin-top:10px;">
                 <button class="debug-btn primary" onclick="saveConfigSettings()">💾 保存</button>
@@ -2636,7 +3242,13 @@
                     panelState.collapsedPanels.delete(id);
                 }
                 // 显式设置可见性
-                p.style.display = state.visible ? '' : 'none';
+                if (state.visible) {
+                    p.classList.remove('panel-hidden', 'hiding');
+                    p.style.display = '';
+                } else {
+                    p.classList.add('panel-hidden');
+                    p.style.display = '';
+                }
                 // 最大化
                 if (state.maximized) {
                     p.classList.add('maximized');
@@ -2652,25 +3264,57 @@
     function togglePanel(id) {
         const el = document.getElementById(id);
         if (!el) return;
-        const wasVisible = el.style.display !== 'none';
-        el.style.display = wasVisible ? 'none' : '';
-        // 面板可见性变化时自动启停刷新
-        if (id === 'panel-history') {
-            if (wasVisible) { stopHistoryAutoRefresh(); }
-            else { startHistoryAutoRefresh(); }
+        const wasVisible = el.style.display !== 'none' && !el.classList.contains('panel-hidden');
+        // v1.9.32: 带动画的显示/隐藏
+        if (wasVisible) {
+            // 隐藏：先播动画再设 display:none
+            el.classList.add('hiding');
+            setTimeout(() => {
+                el.classList.add('panel-hidden');
+                el.classList.remove('hiding');
+                // 面板可见性变化时自动启停刷新
+                if (id === 'panel-history') stopHistoryAutoRefresh();
+                if (id === 'panel-monitor') stopMonitorAutoRefresh();
+                pushHistory();
+                saveLayout();
+            }, 250);
+        } else {
+            // 显示：先设 display，再播动画
+            el.classList.remove('panel-hidden');
+            el.classList.add('hiding');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    el.classList.remove('hiding');
+                });
+            });
+            if (id === 'panel-history') startHistoryAutoRefresh();
+            if (id === 'panel-monitor') startMonitorAutoRefresh();
+            pushHistory();
+            saveLayout();
         }
-        if (id === 'panel-monitor') {
-            if (wasVisible) { stopMonitorAutoRefresh(); }
-            else { startMonitorAutoRefresh(); }
-        }
-        pushHistory();
-        saveLayout();
     }
     
     function collapsePanel(id) {
         const el = document.getElementById(id);
         if (!el) return;
+        const wasCollapsed = el.classList.contains('collapsed');
+        // v1.9.32: 折叠前测量内容高度，确保过渡动画生效
+        if (!wasCollapsed) {
+            const content = el.querySelector('.panel-content');
+            if (content) {
+                content.style.maxHeight = content.scrollHeight + 'px';
+                void content.offsetHeight;  // 强制 reflow
+            }
+        }
         el.classList.toggle('collapsed');
+        if (wasCollapsed) {
+            // 展开：设置 maxHeight 动画
+            const content = el.querySelector('.panel-content');
+            if (content) {
+                content.style.maxHeight = content.scrollHeight + 'px';
+                setTimeout(() => { content.style.maxHeight = ''; }, 350);
+            }
+        }
         if (panelState.collapsedPanels.has(id)) {
             panelState.collapsedPanels.delete(id);
         } else {
@@ -3980,6 +4624,10 @@
             wsAttempts = 0;
             log('已连接后端', 'ok');
             console.log('[WS] ✓ 连接成功');
+            // v1.9.31: 重连成功 Toast（仅重连时显示，首次连接不显示）
+            if (_wsOnOpenFired && document.querySelector('.toast.toast-warning')) {
+                showToast('success', '重新连接成功', '', { duration: 2000 });
+            }
             // v1.9.27: WS 连接成功后尝试移除 loading（需布局也已就绪）
             _tryRemoveLoadingOverlay();
             // 连接成功后立即获取 GPT-SoVITS 项目列表
@@ -4020,6 +4668,7 @@
                 // 如果有流式占位元素，直接用它；否则新建
                 if (streamingMsgEl) {
                     streamingMsgEl.textContent = data.text;
+                    _hideThinkingIndicator(streamingMsgEl);  // v1.9.31
                     streamingMsgEl = null;
                 } else {
                     addMessage(data.text, 'ai');
@@ -4031,6 +4680,8 @@
                 streamingText += data.text;
                 streamingMsgEl.textContent = streamingText;
                 streamingMsgEl.classList.add('typing');
+                // v1.9.31: 收到第一个 chunk 时移除思考指示器
+                _hideThinkingIndicator(streamingMsgEl);
                 // 自动滚动到底部
                 const chatEl = document.getElementById('chat-messages');
                 chatEl.scrollTop = chatEl.scrollHeight;
@@ -4041,14 +4692,17 @@
                 if (streamingMsgEl) {
                     streamingMsgEl.textContent = data.text;
                     streamingMsgEl.classList.remove('typing');
+                    _hideThinkingIndicator(streamingMsgEl);  // v1.9.31
                     streamingMsgEl = null;
                 }
                 streamingText = '';
-                // 聊天完成后自动刷新记忆和历史面板
+                // 聊天完成后自动刷新记忆和历史面板（如果已打开）
                 const memPanel = document.getElementById('panel-memory');
-                if (memPanel && memPanel.style.display !== 'none') { loadMemory(); }
+                if (memPanel && !memPanel.classList.contains('panel-hidden')) { loadMemory(); }
+                const tlPanel = document.getElementById('panel-memory-timeline');
+                if (tlPanel && !tlPanel.classList.contains('panel-hidden')) { loadMemoryTimeline(); }
                 const histPanel = document.getElementById('panel-history');
-                if (histPanel && histPanel.style.display !== 'none') { loadHistory(); }
+                if (histPanel && !histPanel.classList.contains('panel-hidden')) { loadHistory(); }
             }
             
             // 内容过滤后替换
@@ -4073,6 +4727,18 @@
                     if (inputCfg) inputCfg.value = '';
                     const inputSettings = document.getElementById('cfg-minimax-api-key-settings');
                     if (inputSettings) inputSettings.value = '';
+                    // v1.9.31: Toast 通知
+                    showToast('success', 'API Key 已生效', `LLM ${data.llm_updated ? '✅' : '❌'} · 视觉 ${data.vision_updated ? '✅' : '❌'}`);
+                    // v1.9.31: 新手引导中的 API Key 保存成功
+                    const onboardingStatus = document.getElementById('onboarding-apikey-status');
+                    if (onboardingStatus) {
+                        onboardingStatus.innerHTML = '<span style="color:#4f4;">✅ 验证成功！</span>';
+                        // 短暂延迟后自动进入下一步
+                        setTimeout(() => {
+                            _onboardingStep = 2;
+                            _updateOnboardingStep();
+                        }, 600);
+                    }
                 } else {
                     const errorHtml = `<span style="color:#f44;">❌ ${data.error}</span>`;
                     const statusEl = document.getElementById('apikey-status');
@@ -4080,18 +4746,34 @@
                     const statusElSettings = document.getElementById('apikey-status-settings');
                     if (statusElSettings) statusElSettings.innerHTML = errorHtml;
                     log('API Key 保存失败: ' + data.error, 'err');
+                    // v1.9.31: Toast 通知
+                    showToast('error', 'API Key 保存失败', data.error);
+                    // v1.9.31: 新手引导中也显示错误
+                    const onboardingStatus = document.getElementById('onboarding-apikey-status');
+                    if (onboardingStatus) {
+                        onboardingStatus.innerHTML = `<span style="color:#f44;">❌ ${data.error}</span>`;
+                    }
                 }
             }
             
             // API Key 状态查询结果
             if (data.type === 'api_key_status') {
+                _apiKeyStatus = data;  // v1.9.31: 缓存状态
+                const providerLabel = data.provider === 'openai' ? 'OpenAI'
+                    : data.provider === 'anthropic' ? 'Anthropic'
+                    : data.provider === 'ollama' ? 'Ollama(本地)'
+                    : 'MiniMax';
                 const statusHtml = data.configured
-                    ? `<span style="color:#4f4;">✅ 已配置 (${data.key_preview})</span>`
-                    : '<span style="color:#fa0;">⚠️ 未配置 — 请输入你的 MiniMax API Key</span>';
+                    ? `<span style="color:#4f4;">✅ 已配置 (${providerLabel}: ${data.key_preview})</span>`
+                    : `<span style="color:#fa0;">⚠️ ${providerLabel} API Key 未配置 — 请输入你的 API Key</span>`;
                 const statusEl = document.getElementById('apikey-status');
                 if (statusEl) statusEl.innerHTML = statusHtml;
                 const statusElSettings = document.getElementById('apikey-status-settings');
                 if (statusElSettings) statusElSettings.innerHTML = statusHtml;
+                // v1.9.31: API Key 未配置时弹出新手引导（如果还没完成过引导）
+                if (!data.configured && _shouldShowOnboarding()) {
+                    setTimeout(_startOnboarding, 800);
+                }
             }
             
             if (data.type === 'stt_result') {
@@ -4230,31 +4912,124 @@
             }
             
             if (data.type === 'memory') {
+                const subType = data.sub_type || '';
                 const panel = document.getElementById('memory-messages');
-                if (data.data?.length && panel) {
-                    panel.innerHTML = data.data.map(m => {
-                        const layerTag = m.layer ? `<span style="color:#888;font-size:9px;background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px;margin-right:4px;">${m.layer}</span>` : '';
-                        const content = m.content || '';
-                        const isLong = content.length > 500;
-                        const display = isLong ? content.substring(0, 500) + '...' : content;
-                        const expandBtn = isLong ? ` <span style="color:var(--accent);cursor:pointer;font-size:10px;" onclick="this.parentElement.querySelector('.full-text').style.display=this.parentElement.querySelector('.full-text').style.display==='none'?'':'none';this.style.display='none';">展开</span><div class="full-text" style="display:none;">${content.replace(/</g,'&lt;')}</div>` : '';
-                        return `<div style="margin:4px 0;border-bottom:1px solid #333;padding:4px;">${layerTag}${m.role === 'user' ? '👤' : '🐱'} <span style="white-space:pre-wrap;word-break:break-word;">${display.replace(/</g,'&lt;')}</span>${expandBtn}</div>`;
-                    }).join('');
-                } else if (data.data?.length === 0 && panel) {
-                    panel.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无记忆数据</div>';
-                } else if (data.success) { log('✅ 记忆已清空', 'ok'); }
-                else if (data.error) {
+                const statsEl = document.getElementById('memory-stats');
+
+                if (subType === 'stats') {
+                    if (statsEl && data.data) {
+                        const s = data.data;
+                        statsEl.textContent = `工作:${s.working_count||0} 情景:${s.episodic_count||0} 语义:${s.vector_count||s.semantic_memory||0} 事实:${s.facts_count||0}`;
+                    }
+                } else if (subType === 'summary') {
+                    if (panel && data.data?.length) {
+                        const summary = data.data[0]?.summary || '';
+                        panel.innerHTML = `<div style="color:#ccc;white-space:pre-wrap;font-size:11px;padding:4px;">${summary.replace(/</g,'&lt;')}</div>`;
+                    }
+                } else if (subType === 'search') {
+                    if (panel && data.data?.length) {
+                        panel.innerHTML = data.data.map(m => {
+                            const layerTag = m.layer ? `<span style="color:#888;font-size:9px;background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px;margin-right:4px;">${m.layer}</span>` : '';
+                            const scoreTag = m.score ? `<span style="color:#6c6;font-size:9px;margin-right:4px;">${(m.score*100).toFixed(0)}%</span>` : '';
+                            const content = m.text || m.content || '';
+                            return `<div style="margin:4px 0;border-bottom:1px solid #333;padding:4px;">${layerTag}${scoreTag}${m.role === 'user' ? '👤' : m.role === 'fact' ? '📌' : '🐱'} <span style="white-space:pre-wrap;word-break:break-word;">${content.substring(0,200).replace(/</g,'&lt;')}</span></div>`;
+                        }).join('');
+                    } else if (panel) {
+                        panel.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">未找到相关记忆</div>';
+                    }
+                } else if (subType === 'facts') {
+                    // 事实库列表
+                    if (panel && data.data?.length) {
+                        panel.innerHTML = data.data.map((f, i) => {
+                            const srcTag = `<span style="color:#fc0;font-size:9px;background:rgba(255,200,0,0.15);padding:1px 4px;border-radius:3px;margin-right:4px;">${f.source === 'user_preference' ? '偏好' : f.source === 'user_info' ? '信息' : '事实'}</span>`;
+                            return `<div style="margin:4px 0;border-bottom:1px solid #333;padding:4px;">📌${srcTag}<span style="white-space:pre-wrap;word-break:break-word;">${(f.content||'').replace(/</g,'&lt;')}</span> <span style="color:#f66;cursor:pointer;font-size:10px;" onclick="deleteFact(${i})">✕</span></div>`;
+                        }).join('');
+                    } else if (panel) {
+                        panel.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无事实记录</div>';
+                    }
+                } else if (subType === 'consolidate') {
+                    const r = data.data || {};
+                    log(`🔄 记忆重整完成: 合并${r.merged||0} 提升${r.promoted||0} 清理${r.cleaned||0}`, 'ok');
+                    loadMemory();
+                } else if (subType === 'decay_preview') {
+                    // v3.0: 衰减预览可视化
+                    const d = data.data || {};
+                    const panel = document.getElementById('memory-messages');
+                    if (panel && d.now) {
+                        const row = (label, obj) => {
+                            const scores = obj || {};
+                            return `<tr><td style="padding:2px 6px;color:#888;">${label}</td><td style="padding:2px 6px;color:#6c6;">${((scores.score_at_importance_5||0)*100).toFixed(1)}%</td><td style="padding:2px 6px;color:#cc6;">${((scores.score_at_importance_3||0)*100).toFixed(1)}%</td><td style="padding:2px 6px;color:#c66;">${((scores.score_at_importance_1||0)*100).toFixed(1)}%</td></tr>`;
+                        };
+                        panel.innerHTML = `<div style="color:#aaa;font-size:11px;">
+                            <div style="margin-bottom:6px;font-weight:bold;">📉 记忆衰减预览（保留分数%）</div>
+                            <table style="width:100%;border-collapse:collapse;font-size:10px;">
+                                <tr style="border-bottom:1px solid #444;"><td></td><td style="padding:2px 6px;color:#fc0;">⭐⭐⭐⭐⭐</td><td style="padding:2px 6px;color:#fc0;">⭐⭐⭐</td><td style="padding:2px 6px;color:#fc0;">⭐</td></tr>
+                                ${row('现在', d.now)}${row('1天后', d['1day'])}${row('7天后', d['7days'])}${row('30天后', d['30days'])}
+                            </table>
+                            <div style="margin-top:6px;color:#666;font-size:9px;">保护期: ${d.grace_period_hours||12}小时内新记忆不参与遗忘<br>重要性>=3的记忆衰减减半（存续更久）</div>
+                        </div>`;
+                    }
+                } else if (subType === 'search_by_time') {
+                    // v3.0: 按时间搜索结果
+                    const panel = document.getElementById('memory-messages');
+                    if (panel) {
+                        const results = data.data || [];
+                        if (results.length) {
+                            panel.innerHTML = results.map(r => `<div style="margin:4px 0;border-bottom:1px solid #333;padding:4px;"><span style="color:#888;font-size:9px;">${r.date}</span><br>${(r.matches||[]).map(l=>`<div style="font-size:10px;color:#aaa;">${l.replace(/</g,'&lt;')}</div>`).join('')}</div>`).join('');
+                        } else {
+                            panel.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">该时间范围内无记录</div>';
+                        }
+                    }
+                } else if (subType === 'delete' || subType === 'edit' || subType === 'set_importance' || subType === 'delete_fact') {
+                    if (data.success) {
+                        log('✅ 记忆操作成功', 'ok');
+                        loadMemory();
+                    } else {
+                        log('❌ 记忆操作失败', 'err');
+                    }
+                } else if (subType === 'list' || (!subType && data.data?.length && data.data[0]?.content !== undefined)) {
+                    // 记忆列表（增强版渲染 + 管理操作）
+                    if (panel && data.data?.length) {
+                        const currentTab = window._memTab || 'all';
+                        const filtered = currentTab === 'all' ? data.data : data.data.filter(m => {
+                            if (currentTab === 'working') return m.layer === '工作记忆';
+                            if (currentTab === 'episodic') return m.layer === '情景记忆';
+                            if (currentTab === 'fact') return m.layer === '事实库' || m.role === 'fact';
+                            return true;
+                        });
+                        panel.innerHTML = filtered.map((m, idx) => {
+                            const layerTag = m.layer ? `<span style="color:#888;font-size:9px;background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px;margin-right:4px;">${m.layer}</span>` : '';
+                            const impStar = m.importance >= 4 ? '⭐' : (m.importance >= 2 ? '✨' : '');
+                            const summaryTag = m.is_summary ? '<span style="color:#fc0;font-size:9px;background:rgba(255,200,0,0.15);padding:1px 4px;border-radius:3px;margin-right:4px;">摘要</span>' : '';
+                            const factTag = (m.layer === '事实库' || m.role === 'fact') ? '<span style="color:#0cf;font-size:9px;background:rgba(0,200,255,0.15);padding:1px 4px;border-radius:3px;margin-right:4px;">📌</span>' : '';
+                            const tagsStr = m.tags?.length ? `<span style="color:#888;font-size:8px;margin-left:2px;">[${m.tags.join(',')}]</span>` : '';
+                            const timeStr = m.timestamp ? new Date(m.timestamp * 1000).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) : '';
+                            const timeTag = timeStr ? `<span style="color:#666;font-size:9px;margin-right:4px;">${timeStr}</span>` : '';
+                            const content = m.content || '';
+                            const isLong = content.length > 300;
+                            const display = isLong ? content.substring(0, 300) + '...' : content;
+                            const expandBtn = isLong ? ` <span style="color:var(--accent);cursor:pointer;font-size:10px;" onclick="this.parentElement.querySelector('.full-text').style.display=this.parentElement.querySelector('.full-text').style.display==='none'?'':'none';this.style.display='none';">展开</span><div class="full-text" style="display:none;">${content.replace(/</g,'&lt;')}</div>` : '';
+                            const layerKey = m.layer === '工作记忆' ? 'working' : m.layer === '情景记忆' ? 'episodic' : 'fact';
+                            const roleIcon = m.role === 'user' ? '👤' : m.role === 'fact' ? '📌' : '🐱';
+                            // v3.0: 遗忘详情（hover 显示）
+                            const retentionInfo = m.retention_score !== undefined ? `保留:${(m.retention_score*100).toFixed(0)}% 访问:${m.access_count||1}` : '';
+                            const retentionBar = m.retention_score !== undefined ? `<div style="height:2px;background:#333;margin-top:2px;"><div style="height:2px;width:${Math.min(m.retention_score*100,100)}%;background:${m.retention_score>0.5?'#6c6':m.retention_score>0.2?'#cc6':'#c66'};"></div></div>` : '';
+                            const forgottenTag = m.is_forgotten ? '<span style="color:#c66;font-size:9px;background:rgba(200,50,50,0.15);padding:1px 4px;border-radius:3px;margin-right:4px;">已遗忘</span>' : '';
+                            // v3.0: 操作按钮 — 编辑 + 重要性选择 + 删除
+                            const actions = `<span style="float:right;opacity:0.5;font-size:9px;"><span style="cursor:pointer;margin-left:4px;" onclick="editMemItem(${idx},'${layerKey}')" title="编辑">✎</span><select style="font-size:9px;background:rgba(255,255,255,0.1);color:#fff;border:1px solid #555;border-radius:3px;padding:0 2px;margin-left:2px;" onchange="setMemImportance(${idx},'${layerKey}',parseInt(this.value))" title="重要性">${[0,1,2,3,4,5].map(v=>`<option value="${v}"${v===(m.importance||0)?' selected':''}>${'⭐'.repeat(v)||'-'}</option>`).join('')}</select><span style="cursor:pointer;margin-left:4px;" onclick="deleteMemItem(${idx},'${layerKey}')" title="删除">✕</span></span>`;
+                            return `<div style="margin:4px 0;border-bottom:1px solid #333;padding:4px;" title="${retentionInfo}">${timeTag}${layerTag}${summaryTag}${forgottenTag}${factTag}${impStar}${roleIcon} <span style="white-space:pre-wrap;word-break:break-word;">${display.replace(/</g,'&lt;')}</span>${tagsStr}${expandBtn}${retentionBar}${actions}</div>`;
+                        }).join('') || '<div style="color:#888;text-align:center;padding:20px;">当前标签页无数据</div>';
+                    } else if (panel) {
+                        panel.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无记忆数据</div>';
+                    }
+                } else if (data.success) {
+                    log('✅ 记忆操作成功', 'ok');
+                    loadMemory();
+                } else if (data.error) {
                     log('❌ ' + data.error, 'err');
-                    // 在记忆面板中显示错误提示（不再只是日志，让用户看到）
                     if (panel) {
                         panel.innerHTML = `<div style="color:#f66;text-align:center;padding:20px;font-size:12px;">⚠️ ${data.error}<br><button onclick="loadMemory()" style="margin-top:8px;padding:4px 12px;font-size:11px;">重试</button></div>`;
                     }
-                }
-                // 更新统计
-                const statsEl = document.getElementById('memory-stats');
-                if (data.data?.length && data.data[0]?.total_docs !== undefined) {
-                    const s = data.data[0];
-                    statsEl.textContent = `工作:${s.working_count||0} 情景:${s.episodic_count||0} 语义:${s.vector_count||s.total_docs||0} 程序:${s.program_count||0}`;
                 }
             }
             
@@ -4279,11 +5054,16 @@
         ws.onerror = (err) => { 
             console.error('[WS] 连接错误:', err);
             log("后端连接错误", "warn"); 
+            showToast('error', '连接错误', '无法连接后端服务，请检查程序是否正在运行', { duration: 5000 });
         };
         ws.onclose = (ev) => {
             wsAttempts++;
             console.warn('[WS] 连接关闭: code=' + ev.code + ' reason=' + ev.reason);
             log('WS关闭', 'warn');
+            // v1.9.31: 首次断开时 Toast 通知（不重复通知）
+            if (wsAttempts <= 1) {
+                showToast('warning', '连接断开', '正在尝试重新连接...', { duration: 4000 });
+            }
             // 3秒后自动重连
             setTimeout(() => {
                 if (wsAttempts <= 10) {
@@ -4309,10 +5089,30 @@
     function sendMessage() {
         const text = document.getElementById('user-input').value.trim();
         if (!text) return;
+        // v1.9.31→1.9.38: 检查 API Key 是否配置（本地模型如 Ollama 不阻止）
+        if (_apiKeyStatus && !_apiKeyStatus.configured) {
+            const provider = document.getElementById('cfg-llm-provider')?.value
+                || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
+                || 'minimax';
+            const baseUrl = document.getElementById('cfg-llm-base-url')?.value
+                || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.base_url
+                || '';
+            // 本地模型（Ollama/llama.cpp 等 localhost 端点）不需要 API Key，跳过检查
+            const isLocalProvider = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') || provider === 'ollama';
+            if (!isLocalProvider) {
+                showToast('warning', 'API Key 未配置', `请先配置 ${provider === 'openai' ? 'OpenAI' : provider === 'anthropic' ? 'Anthropic' : 'MiniMax'} API Key 才能对话`, {
+                    duration: 6000,
+                    action: function() { if (!_apiKeyStatus?.configured) _startOnboarding(); },
+                    actionText: '去配置'
+                });
+                return;
+            }
+        }
         addMessage(text, 'user');
         // 清理上一次未完成的流式消息
         if (streamingMsgEl) {
             streamingMsgEl.classList.remove('typing');
+            _hideThinkingIndicator(streamingMsgEl);
             streamingMsgEl = null;
             streamingText = '';
         }
@@ -4320,10 +5120,20 @@
         streamingMsgEl = addMessage('', 'ai', true);
         streamingMsgEl.classList.add('typing');
         streamingText = '';
+        // v1.9.31: 显示思考指示器
+        _showThinkingIndicator(streamingMsgEl);
         if (ws?.readyState === WebSocket.OPEN) {
             const engine = document.getElementById('tts-engine').value;
             const voice = document.getElementById('tts-voice').value;
             ws.send(JSON.stringify({type: 'text', text, engine, voice}));
+            // v1.9.32: 发送按钮脉冲反馈
+            const sendBtn = document.getElementById('send-btn');
+            if (sendBtn) {
+                sendBtn.classList.remove('sending');
+                void sendBtn.offsetWidth;  // 强制 reflow 重启动画
+                sendBtn.classList.add('sending');
+                setTimeout(() => sendBtn.classList.remove('sending'), 500);
+            }
         }
         document.getElementById('user-input').value = '';
     }
@@ -4331,7 +5141,7 @@
     function addMessage(text, role, returnEl) {
         const el = document.getElementById('chat-messages');
         const div = document.createElement('div');
-        div.className = 'message';
+        div.className = `message ${role === 'user' ? 'msg-user' : 'msg-ai'}`;
         div.innerHTML = `${role === 'user' ? '👤' : '🐱'} <span class="msg-text"></span>`;
         div.querySelector('.msg-text').textContent = text;
         el.appendChild(div);
@@ -5865,9 +6675,31 @@ R - 复位`);
         const panel = document.getElementById('panel-memory');
         if (panel) {
             panel.style.display = '';
+            panel.classList.remove('panel-hidden');
             loadMemory();
             saveLayout();
         }
+    }
+    
+    window._memTab = 'all';
+    window._factSource = null;
+    function switchMemTab(tab) {
+        window._memTab = tab;
+        document.querySelectorAll('.mem-tab').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        // v3.0: 事实来源过滤子行
+        const factFilters = document.getElementById('fact-source-filters');
+        if (factFilters) factFilters.style.display = tab === 'fact' ? 'flex' : 'none';
+        if (tab === 'fact') {
+            ws?.send(JSON.stringify({type: 'memory', action: 'facts', source: window._factSource}));
+        } else {
+            loadMemory();
+        }
+    }
+    
+    function switchFactSource(source) {
+        window._factSource = source;
+        ws?.send(JSON.stringify({type: 'memory', action: 'facts', source: source}));
     }
     
     function loadMemory() {
@@ -5888,10 +6720,47 @@ R - 复位`);
     }
 
     function summaryMemory() { ws?.send(JSON.stringify({type: 'memory', action: 'summary'})); }
+    
+    function consolidateMemory() { ws?.send(JSON.stringify({type: 'memory', action: 'consolidate'})); }
 
     function clearAllMemory() {
         if (confirm('确定清空所有记忆？此操作不可恢复！')) {
             ws?.send(JSON.stringify({type: 'memory', action: 'clear'}));
+        }
+    }
+    
+    function deleteMemItem(index, layer) {
+        if (confirm('删除这条记忆？')) {
+            ws?.send(JSON.stringify({type: 'memory', action: 'delete', index, layer}));
+        }
+    }
+    
+    function editMemItem(index, layer) {
+        const panel = document.getElementById('memory-messages');
+        if (!panel) return;
+        const items = panel.querySelectorAll(':scope > div');
+        if (index >= items.length) return;
+        const item = items[index];
+        const contentEl = item.querySelector('.full-text') || item.querySelector('span[style*="white-space"]');
+        if (!contentEl) return;
+        const oldContent = contentEl.textContent || contentEl.innerText;
+        const newContent = prompt('编辑记忆内容：', oldContent);
+        if (newContent !== null && newContent !== oldContent) {
+            ws?.send(JSON.stringify({type: 'memory', action: 'edit', index, layer, content: newContent}));
+        }
+    }
+    
+    function setMemImportance(index, layer, importance) {
+        ws?.send(JSON.stringify({type: 'memory', action: 'set_importance', index, layer, importance}));
+    }
+    
+    function showDecayPreview() {
+        ws?.send(JSON.stringify({type: 'memory', action: 'decay_preview'}));
+    }
+    
+    function deleteFact(index) {
+        if (confirm('删除这条事实？')) {
+            ws?.send(JSON.stringify({type: 'memory', action: 'delete_fact', index}));
         }
     }
     
@@ -5910,20 +6779,33 @@ R - 复位`);
     function toggleAllPanels() {
         panelsVisible = !panelsVisible;
         if (panelsVisible) {
-            // 恢复：从 backup 中恢复每个面板的原始可见性
-            document.querySelectorAll('.panel').forEach(p => {
+            // v1.9.32: 带动画恢复面板
+            document.querySelectorAll('.panel').forEach((p, i) => {
                 if (_panelVisibilityBackup.has(p.id)) {
-                    p.style.display = _panelVisibilityBackup.get(p.id) ? '' : 'none';
+                    const shouldShow = _panelVisibilityBackup.get(p.id);
+                    if (shouldShow) {
+                        p.classList.remove('panel-hidden');
+                        p.classList.add('hiding');
+                        setTimeout(() => {
+                            p.classList.remove('hiding');
+                        }, 30 + i * 30);  // 逐个面板依次出现
+                    }
                 }
-                // 没有 backup 的面板保持当前状态
             });
             _panelVisibilityBackup.clear();
         } else {
-            // 隐藏：先备份当前可见性，再全部隐藏
-            document.querySelectorAll('.panel').forEach(p => {
-                _panelVisibilityBackup.set(p.id, p.style.display !== 'none');
-                p.style.display = 'none';
+            // v1.9.32: 带动画隐藏面板
+            const panels = document.querySelectorAll('.panel');
+            panels.forEach(p => {
+                _panelVisibilityBackup.set(p.id, !p.classList.contains('panel-hidden') && p.style.display !== 'none');
+                p.classList.add('hiding');
             });
+            setTimeout(() => {
+                panels.forEach(p => {
+                    p.classList.add('panel-hidden');
+                    p.classList.remove('hiding');
+                });
+            }, 250);
         }
         const btn = document.getElementById('panel-toggle-btn');
         if (btn) btn.innerHTML = panelsVisible ? '👁️ 隐藏面板' : '👁️ 显示面板';
@@ -6267,7 +7149,7 @@ R - 复位`);
         const checks = [];
         // 版本检查
         const versionBadge = document.getElementById('layout-version-badge');
-        checks.push({name: '版本', ok: versionBadge && versionBadge.textContent.includes('1.9.23'), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
+        checks.push({name: '版本', ok: versionBadge && versionBadge.textContent.includes('1.9.38'), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
         // WS 连接
         checks.push({name: 'WebSocket', ok: ws?.readyState === WebSocket.OPEN, detail: `state=${ws?.readyState} onOpen=${_wsOnOpenFired} msgs=${_wsMsgCount}`});
         // TTS 音色列表
@@ -7025,7 +7907,8 @@ R - 复位`);
     function filterTimeline(filter) {
         timelineFilter = filter;
         document.querySelectorAll('.timeline-filters .debug-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.textContent.includes(filter === 'all' ? '全部' : filter === 'user' ? '👤' : '🐱'));
+            const map = {'all':'全部','user':'👤','ai':'🐱','fact':'📌'};
+            btn.classList.toggle('active', btn.textContent.includes(map[filter] || ''));
         });
         // 重新渲染
         if (window._timelineData) renderTimeline(window._timelineData);
@@ -7038,23 +7921,28 @@ R - 复位`);
 
         const filtered = timelineFilter === 'all'
             ? memoryData
-            : memoryData.filter(m => m.role === (timelineFilter === 'user' ? 'user' : 'assistant'));
+            : memoryData.filter(m => m.role === (timelineFilter === 'user' ? 'user' : (timelineFilter === 'ai' ? 'assistant' : (timelineFilter === 'fact' ? 'fact' : m.role))));
 
         if (filtered.length === 0) {
             container.innerHTML = '<div class="timeline-empty">暂无记忆记录</div>';
             return;
         }
 
-        container.innerHTML = filtered.slice(-20).reverse().map(m => `
+        container.innerHTML = filtered.slice(0, 50).map(m => {
+            const layerTag = m.layer ? `<span style="color:#888;font-size:8px;background:rgba(255,255,255,0.08);padding:0 3px;border-radius:2px;">${m.layer === '工作记忆' ? '工' : m.layer === '情景记忆' ? '情' : m.layer === '事实库' ? '📌' : '?'}</span>` : '';
+            const summaryBadge = m.is_summary ? '<span style="color:#fc0;font-size:8px;margin-left:2px;">📋</span>' : '';
+            const factBadge = m.role === 'fact' ? '<span style="color:#0cf;font-size:8px;margin-left:2px;">📌</span>' : '';
+            const avatar = m.role === 'user' ? '👤' : m.role === 'fact' ? '📌' : '🐱';
+            return `
             <div class="timeline-item ${m.importance >= 3 ? 'important' : ''}">
-                <span class="timeline-avatar">${m.role === 'user' ? '👤' : '🐱'}</span>
+                <span class="timeline-avatar">${avatar}</span>
                 <div class="timeline-content">
-                    <div class="timeline-text">${escapeHtml(m.content || '').substring(0, 60)}...</div>
+                    <div class="timeline-text">${layerTag}${summaryBadge}${factBadge} ${escapeHtml(m.content || '').substring(0, 80)}${m.content && m.content.length > 80 ? '...' : ''}</div>
                     <div class="timeline-time">${formatTime(m.timestamp)}</div>
                 </div>
                 ${m.importance >= 3 ? '<span class="timeline-importance">⭐</span>' : ''}
             </div>
-        `).join('');
+        `}).join('');
     }
 
     function escapeHtml(text) {
@@ -7269,23 +8157,50 @@ R - 复位`);
                 // 应用到表单
                 document.getElementById('cfg-llm-provider').value = cfg.llm?.provider || 'minimax';
                 document.getElementById('cfg-llm-model').value = cfg.llm?.model || '';
+                // v1.9.38: 加载 base_url 和 api_key
+                const llmProvider = cfg.llm?.provider || 'minimax';
+                const llmSubCfg = cfg.llm?.[llmProvider] || {};
+                const baseUrlEl = document.getElementById('cfg-llm-base-url');
+                const apiKeyCfgEl = document.getElementById('cfg-llm-api-key-cfg');
+                if (baseUrlEl) baseUrlEl.value = llmSubCfg.base_url || '';
+                if (apiKeyCfgEl) apiKeyCfgEl.value = '';  // 安全：不回显 api_key
+                onLlmProviderChange();  // 触发字段显隐
                 document.getElementById('cfg-tts-engine').value = cfg.tts?.engine || 'edge';
                 document.getElementById('cfg-tts-nosplit').value = cfg.tts?.no_split === undefined ? 'false' : String(cfg.tts?.no_split);
                 document.getElementById('cfg-tts-speed').value = cfg.tts?.speed || 1;
                 document.getElementById('cfg-tts-volume').value = cfg.tts?.volume || 100;
                 document.getElementById('cfg-asr-lang').value = cfg.asr?.lang || 'zh-CN';
-                document.getElementById('cfg-mem-short').value = cfg.memory?.short_limit || 50;
-                document.getElementById('cfg-mem-medium').value = cfg.memory?.medium_limit || 200;
+                document.getElementById('cfg-mem-short').value = cfg.memory?.working_memory_limit || 30;
+                document.getElementById('cfg-mem-summarize').value = cfg.memory?.summarize_threshold || 20;
+                document.getElementById('cfg-mem-threshold').value = cfg.memory?.forgetting_threshold || 0.15;
+                document.getElementById('cfg-mem-decay').value = cfg.memory?.decay_lambda || 0.005;
+                document.getElementById('cfg-mem-grace').value = cfg.memory?.grace_period_hours || 12;
+                document.getElementById('cfg-mem-dedup').value = cfg.memory?.dedup_threshold || 0.95;
+                document.getElementById('cfg-mem-auto-store').value = String(cfg.memory?.auto_store ?? true);
             } catch (e) {}
         }
     }
 
     function saveConfigSettings() {
+        const provider = document.getElementById('cfg-llm-provider').value;
+        const llmConfig = {
+            provider: provider,
+            model: document.getElementById('cfg-llm-model').value
+        };
+        // v1.9.38: 保存 base_url 和 api_key 到对应 provider 子配置
+        const baseUrl = document.getElementById('cfg-llm-base-url')?.value?.trim() || '';
+        const apiKey = document.getElementById('cfg-llm-api-key-cfg')?.value?.trim() || '';
+        if (baseUrl) {
+            llmConfig[provider] = llmConfig[provider] || {};
+            llmConfig[provider].base_url = baseUrl;
+        }
+        if (apiKey) {
+            llmConfig[provider] = llmConfig[provider] || {};
+            llmConfig[provider].api_key = apiKey;
+        }
+
         const config = {
-            llm: {
-                provider: document.getElementById('cfg-llm-provider').value,
-                model: document.getElementById('cfg-llm-model').value
-            },
+            llm: llmConfig,
             tts: {
                 engine: document.getElementById('cfg-tts-engine').value,
                 no_split: document.getElementById('cfg-tts-nosplit').value === 'true',
@@ -7297,9 +8212,13 @@ R - 复位`);
                 threshold: parseFloat(document.getElementById('cfg-asr-threshold')?.value || 0.5)
             },
             memory: {
-                short_limit: parseInt(document.getElementById('cfg-mem-short').value),
-                medium_limit: parseInt(document.getElementById('cfg-mem-medium').value),
-                importance_threshold: parseInt(document.getElementById('cfg-mem-threshold')?.value || 3)
+                working_memory_limit: parseInt(document.getElementById('cfg-mem-short').value),
+                summarize_threshold: parseInt(document.getElementById('cfg-mem-summarize')?.value || 20),
+                forgetting_threshold: parseFloat(document.getElementById('cfg-mem-threshold')?.value || 0.15),
+                decay_lambda: parseFloat(document.getElementById('cfg-mem-decay')?.value || 0.005),
+                grace_period_hours: parseFloat(document.getElementById('cfg-mem-grace')?.value || 12),
+                dedup_threshold: parseFloat(document.getElementById('cfg-mem-dedup')?.value || 0.95),
+                auto_store: document.getElementById('cfg-mem-auto-store')?.value !== 'false'
             }
         };
 
@@ -7308,6 +8227,8 @@ R - 复位`);
         // 发送到后端
         if (ws?.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'config', action: 'update', config }));
+            // v1.9.38: 保存后刷新 API Key 状态（provider 可能变了）
+            setTimeout(checkApiKeyStatus, 500);
         }
 
         log('配置已保存', 'ok');
@@ -7327,10 +8248,45 @@ R - 复位`);
     document.getElementById('cfg-tts-volume')?.addEventListener('input', (e) => {
         document.getElementById('cfg-tts-volume-val').textContent = e.target.value + '%';
     });
+    document.getElementById('cfg-mem-threshold')?.addEventListener('input', (e) => {
+        document.getElementById('cfg-mem-threshold-val').textContent = e.target.value;
+    });
+    document.getElementById('cfg-mem-decay')?.addEventListener('input', (e) => {
+        document.getElementById('cfg-mem-decay-val').textContent = e.target.value;
+    });
+    document.getElementById('cfg-mem-dedup')?.addEventListener('input', (e) => {
+        document.getElementById('cfg-mem-dedup-val').textContent = e.target.value;
+    });
+    // 记忆搜索框回车触发搜索
+    document.getElementById('memory-search')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') searchMemory();
+    });
 
     // 加载配置
     loadConfigSettings();
     
+    // ========== v1.9.38: LLM Provider 联动 ==========
+    function onLlmProviderChange() {
+        const provider = document.getElementById('cfg-llm-provider')?.value || 'minimax';
+        const baseUrlGroup = document.getElementById('cfg-llm-base-url-group');
+        const apiKeyGroup = document.getElementById('cfg-llm-api-key-group');
+        const hintEl = document.getElementById('cfg-llm-hint');
+        // OpenAI/Ollama: 显示 base_url + api_key
+        // Anthropic: 隐藏 base_url，显示 api_key
+        // MiniMax: 隐藏 base_url，显示 api_key
+        if (baseUrlGroup) baseUrlGroup.style.display = (provider === 'openai') ? '' : 'none';
+        if (apiKeyGroup) apiKeyGroup.style.display = '';
+        if (hintEl) {
+            if (provider === 'openai') {
+                hintEl.textContent = 'Ollama 用户：Base URL 填 http://localhost:11434/v1，API Key 填 ollama';
+            } else if (provider === 'anthropic') {
+                hintEl.textContent = 'Anthropic Claude 模型，需要 API Key';
+            } else {
+                hintEl.textContent = 'MiniMax 是默认提供商，需要 API Key';
+            }
+        }
+    }
+
     // ========== API Key 管理 ==========
     function saveApiKey() {
         const apiKey = document.getElementById('cfg-minimax-api-key').value.trim();
@@ -7338,9 +8294,13 @@ R - 复位`);
             document.getElementById('apikey-status').innerHTML = '<span style="color:#f44;">❌ API Key 不能为空</span>';
             return;
         }
+        // v1.9.38: 发送当前活跃 provider，而非硬编码 minimax
+        const provider = document.getElementById('cfg-llm-provider')?.value
+            || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
+            || 'minimax';
         if (ws?.readyState === WebSocket.OPEN) {
             document.getElementById('apikey-status').innerHTML = '<span style="color:#fa0;">⏳ 正在保存...</span>';
-            ws.send(JSON.stringify({type: 'set_api_key', provider: 'minimax', api_key: apiKey}));
+            ws.send(JSON.stringify({type: 'set_api_key', provider: provider, api_key: apiKey}));
         } else {
             document.getElementById('apikey-status').innerHTML = '<span style="color:#f44;">❌ 未连接后端，请稍后重试</span>';
         }
@@ -7353,9 +8313,13 @@ R - 复位`);
             document.getElementById('apikey-status-settings').innerHTML = '<span style="color:#f44;">❌ API Key 不能为空</span>';
             return;
         }
+        // v1.9.38: 发送当前活跃 provider
+        const provider = document.getElementById('cfg-llm-provider')?.value
+            || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
+            || 'minimax';
         if (ws?.readyState === WebSocket.OPEN) {
             document.getElementById('apikey-status-settings').innerHTML = '<span style="color:#fa0;">⏳ 正在保存...</span>';
-            ws.send(JSON.stringify({type: 'set_api_key', provider: 'minimax', api_key: apiKey}));
+            ws.send(JSON.stringify({type: 'set_api_key', provider: provider, api_key: apiKey}));
         } else {
             document.getElementById('apikey-status-settings').innerHTML = '<span style="color:#f44;">❌ 未连接后端，请稍后重试</span>';
         }
@@ -7363,7 +8327,11 @@ R - 复位`);
     
     function checkApiKeyStatus() {
         if (ws?.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({type: 'get_api_key_status', provider: 'minimax'}));
+            // v1.9.38: 查询当前活跃 provider 的 key 状态，而非硬编码 minimax
+            const provider = document.getElementById('cfg-llm-provider')?.value
+                || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
+                || 'minimax';
+            ws.send(JSON.stringify({type: 'get_api_key_status', provider: provider}));
         }
     }
     
@@ -8877,6 +9845,246 @@ IS_DESKTOP: ${IS_DESKTOP}
     }
 
     log('增强功能已加载', 'ok');
+
+    // ===== v1.9.31: Toast 通知系统 =====
+    const _toastContainer = document.getElementById('toast-container');
+    function showToast(type, title, msg, options = {}) {
+        // type: 'error' | 'success' | 'warning' | 'info'
+        // options: { duration, action, actionText, onClose }
+        const icons = { error: '❌', success: '✅', warning: '⚠️', info: 'ℹ️' };
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        let actionHtml = '';
+        if (options.action) {
+            actionHtml = `<button class="toast-action" onclick="(${options.action.toString()})()">${options.actionText || '查看'}</button>`;
+        }
+        el.innerHTML = `
+            <span class="toast-icon">${icons[type] || icons.info}</span>
+            <div class="toast-body">
+                <div class="toast-title">${title}</div>
+                ${msg ? `<div class="toast-msg">${msg}</div>` : ''}
+                ${actionHtml}
+            </div>
+            <button class="toast-close" onclick="this.closest('.toast').remove()">✕</button>
+        `;
+        _toastContainer.appendChild(el);
+        const duration = options.duration !== undefined ? options.duration : (type === 'error' ? 8000 : type === 'warning' ? 6000 : 4000);
+        if (duration > 0) {
+            setTimeout(() => _dismissToast(el), duration);
+        }
+        return el;
+    }
+    function _dismissToast(el) {
+        if (!el || !el.parentNode) return;
+        el.classList.add('removing');
+        setTimeout(() => el.remove(), 300);
+    }
+
+    // ===== v1.9.31: 新手引导系统 =====
+    let _onboardingStep = 0;
+    let _apiKeyStatus = null;  // 缓存 API Key 状态
+
+    function _shouldShowOnboarding() {
+        // 如果用户已完成引导，不再显示
+        if (localStorage.getItem('gugugaga_onboarding_done')) return false;
+        return true;
+    }
+
+    function _startOnboarding() {
+        if (!_shouldShowOnboarding()) return;
+        const overlay = document.getElementById('onboarding-overlay');
+        if (!overlay) return;
+        overlay.style.display = 'flex';
+        _onboardingStep = 0;
+        _updateOnboardingStep();
+    }
+
+    // v1.9.38: 新手引导中 Provider 切换
+    function onOnboardingProviderChange() {
+        const provider = document.getElementById('onboarding-provider')?.value || 'minimax';
+        const baseUrlGroup = document.getElementById('onboarding-baseurl-group');
+        const hintEl = document.getElementById('onboarding-provider-hint');
+        if (baseUrlGroup) baseUrlGroup.style.display = (provider === 'openai') ? '' : 'none';
+        if (hintEl) {
+            if (provider === 'openai') {
+                hintEl.innerHTML = 'Ollama 用户：Base URL 填 <code style="color:#667eea;">http://localhost:11434/v1</code>，API Key 填 <code style="color:#667eea;">ollama</code>';
+            } else if (provider === 'anthropic') {
+                hintEl.innerHTML = '在 <a href="https://console.anthropic.com/" target="_blank" style="color:#667eea;">Anthropic Console</a> 获取 API Key';
+            } else {
+                hintEl.innerHTML = '在 <a href="https://platform.minimaxi.com/" target="_blank" style="color:#667eea;">MiniMax 开放平台</a> 获取，注册即送免费额度';
+            }
+        }
+    }
+
+    function _updateOnboardingStep() {
+        const steps = document.querySelectorAll('.onboarding-step');
+        steps.forEach((s, i) => {
+            s.classList.toggle('active', i === _onboardingStep);
+        });
+        // 更新 dots
+        const dots = document.querySelectorAll('.onboarding-dot');
+        dots.forEach((d, i) => {
+            d.classList.remove('active', 'done');
+            if (i === _onboardingStep) d.classList.add('active');
+            else if (i < _onboardingStep) d.classList.add('done');
+        });
+        // 更新按钮文字
+        const nextBtn = document.getElementById('onboarding-next');
+        const skipBtn = document.getElementById('onboarding-skip');
+        const prevBtn = document.getElementById('onboarding-prev');
+        const totalSteps = steps.length;
+        if (_onboardingStep === 0) {
+            prevBtn.style.display = 'none';
+        } else {
+            prevBtn.style.display = '';
+        }
+        if (_onboardingStep === totalSteps - 1) {
+            nextBtn.textContent = '完成 ✨';
+        } else {
+            nextBtn.textContent = '下一步';
+        }
+    }
+
+    function _onboardingNext() {
+        const steps = document.querySelectorAll('.onboarding-step');
+        // 如果在 API Key 步骤，尝试保存
+        if (_onboardingStep === 1) {
+            const input = document.getElementById('onboarding-apikey-input');
+            const key = input?.value.trim();
+            // v1.9.38: 读取 onboarding 中选择的 provider 和 base_url
+            const provider = document.getElementById('onboarding-provider')?.value || 'minimax';
+            const baseUrl = document.getElementById('onboarding-baseurl-input')?.value.trim() || '';
+            if (key && ws?.readyState === WebSocket.OPEN) {
+                // 先保存 provider + base_url 到配置
+                const config = JSON.parse(localStorage.getItem('gugu-config') || '{}');
+                if (!config.llm) config.llm = {};
+                config.llm.provider = provider;
+                if (baseUrl) {
+                    config.llm[provider] = config.llm[provider] || {};
+                    config.llm[provider].base_url = baseUrl;
+                }
+                localStorage.setItem('gugu-config', JSON.stringify(config));
+                ws.send(JSON.stringify({type: 'config', action: 'update', config}));
+                // 再保存 api_key
+                ws.send(JSON.stringify({type: 'set_api_key', provider: provider, api_key: key}));
+                const statusEl = document.getElementById('onboarding-apikey-status');
+                if (statusEl) statusEl.innerHTML = '<span style="color:#fa0;">⏳ 正在验证...</span>';
+                // 等待结果再继续（api_key_result 消息会处理）
+                return;
+            } else if (!key) {
+                // 没有 key 但可能是本地模型（Ollama），检查 base_url
+                const isLocalProvider = provider === 'openai' && (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1'));
+                if (isLocalProvider) {
+                    // 保存配置并跳过 API Key
+                    const config = JSON.parse(localStorage.getItem('gugu-config') || '{}');
+                    if (!config.llm) config.llm = {};
+                    config.llm.provider = provider;
+                    if (baseUrl) {
+                        config.llm[provider] = config.llm[provider] || {};
+                        config.llm[provider].base_url = baseUrl;
+                        config.llm[provider].api_key = 'ollama';
+                    }
+                    localStorage.setItem('gugu-config', JSON.stringify(config));
+                    ws.send(JSON.stringify({type: 'config', action: 'update', config}));
+                    const statusEl = document.getElementById('onboarding-apikey-status');
+                    if (statusEl) statusEl.innerHTML = '<span style="color:#4f4;">✅ 已配置本地模型</span>';
+                    setTimeout(() => { _onboardingStep = 2; _updateOnboardingStep(); }, 600);
+                    return;
+                }
+                // 非 local provider，必须输入 API Key
+                const statusEl = document.getElementById('onboarding-apikey-status');
+                if (statusEl) statusEl.innerHTML = '<span style="color:#f44;">❌ 请输入 API Key</span>';
+                return;
+            }
+        }
+        if (_onboardingStep < steps.length - 1) {
+            _onboardingStep++;
+            _updateOnboardingStep();
+        } else {
+            _finishOnboarding();
+        }
+    }
+
+    function _onboardingPrev() {
+        if (_onboardingStep > 0) {
+            _onboardingStep--;
+            _updateOnboardingStep();
+        }
+    }
+
+    function _onboardingSkip() {
+        _finishOnboarding();
+    }
+
+    function _finishOnboarding() {
+        localStorage.setItem('gugugaga_onboarding_done', '1');
+        const overlay = document.getElementById('onboarding-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.3s';
+            setTimeout(() => { overlay.style.display = 'none'; overlay.style.opacity = ''; }, 300);
+        }
+        showToast('success', '准备就绪！', '开始和咕咕嘎嘎聊天吧 🎉');
+    }
+
+    // ===== v1.9.31: 替换所有 alert() 为 Toast =====
+    // 保留一个引用，以防其他代码直接调用 alert
+    const _originalAlert = window.alert;
+    window.alert = function(msg) {
+        // 自动判断类型
+        if (typeof msg !== 'string') msg = String(msg);
+        let type = 'info';
+        let title = '提示';
+        if (msg.includes('❌') || msg.includes('错误') || msg.includes('失败') || msg.includes('无法')) {
+            type = 'error'; title = '错误';
+        } else if (msg.includes('⚠️') || msg.includes('警告') || msg.includes('注意')) {
+            type = 'warning'; title = '注意';
+        } else if (msg.includes('✅') || msg.includes('成功') || msg.includes('完成')) {
+            type = 'success'; title = '成功';
+        }
+        showToast(type, title, msg, { duration: 6000 });
+    };
+
+    // ===== v1.9.32: 全局涟漪效果 =====
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.debug-btn, .send-btn, .panel-btn, .onboarding-btn, .toast-action, .config-tab');
+        if (!btn) return;
+        const rect = btn.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height) * 2;
+        const x = e.clientX - rect.left - size / 2;
+        const y = e.clientY - rect.top - size / 2;
+        const ripple = document.createElement('span');
+        ripple.className = 'ripple-effect';
+        ripple.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px;`;
+        btn.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+    });
+
+    // ===== v1.9.32: 键盘快捷键增强 =====
+    // Ctrl+Enter 发送消息
+    document.getElementById('user-input')?.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // ===== v1.9.31: 思考指示器 =====
+    function _showThinkingIndicator(msgEl) {
+        if (!msgEl) return;
+        // 移除已有的思考指示器
+        const existing = msgEl.querySelector('.thinking-indicator');
+        if (existing) return;
+        const indicator = document.createElement('span');
+        indicator.className = 'thinking-indicator';
+        indicator.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+        msgEl.appendChild(indicator);
+    }
+    function _hideThinkingIndicator(msgEl) {
+        if (!msgEl) return;
+        const indicator = msgEl.querySelector('.thinking-indicator');
+        if (indicator) indicator.remove();
+    }
     </script>
 </body>
 </html>

@@ -5,10 +5,10 @@
 **GPT-SoVITS 声音克隆 · Live2D 虚拟形象 · 三层记忆 · 视觉理解**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-v1.9.30-green.svg)](docs/VERSION.md)
+[![Version](https://img.shields.io/badge/version-v1.9.38-green.svg)](docs/VERSION.md)
 [![Python](https://img.shields.io/badge/python-3.11-yellow.svg)](https://www.python.org/downloads/release/python-3119/)
 
-[功能特性](#-功能特性) · [快速开始](#-快速开始) · [配置说明](#-配置说明) · [架构](#-项目架构) · [常见问题](#-常见问题)
+[功能特性](#-功能特性) · [快速开始](#-快速开始) · [配置说明](#-配置说明) · [架构](#-项目架构) · [常见问题](#-常见问题) · [更新日志](#-版本更新日志)
 
 </div>
 
@@ -30,7 +30,7 @@
 | 模块 | 功能 | 说明 |
 |------|------|------|
 | **ASR 语音识别** | FunASR / faster-whisper | 实时语音输入，VAD 智能断句 |
-| **LLM 大语言模型** | MiniMax / OpenAI / Anthropic | 多后端支持，RAG 记忆注入 |
+| **LLM 大语言模型** | MiniMax / OpenAI / Anthropic / Ollama | 多后端支持，RAG 记忆注入，支持本地模型 |
 | **TTS 语音合成** | GPT-SoVITS（音色克隆）+ Edge TTS（保底） | 主引擎失败自动切换备用 |
 | **声音训练** | GPT-SoVITS v3 + LoRA | WebUI 一键训练，无需命令行 |
 | **视觉理解** | MiniMax VL / MiniCPM-V2 / RapidOCR | 图片理解 + 文字识别 + 屏幕感知 |
@@ -97,9 +97,11 @@ scripts\desktop.bat     # 桌面模式（原生窗口）
 启动后在 WebUI 中：
 
 1. 打开 **API Key 面板**（左下角齿轮图标）— 输入你的 LLM API Key
-2. 选择 **LLM 模型** — 默认 MiniMax-M2.7
+2. 选择 **LLM Provider + 模型** — MiniMax / OpenAI / Anthropic / Ollama
 3. 选择 **TTS 引擎** — Edge TTS 无需配置即可使用；GPT-SoVITS 需先下载底模
 4. 开始聊天 🎉
+
+> **使用 Ollama 本地模型**：先安装 [Ollama](https://ollama.com/) 并拉取模型（`ollama pull qwen3:8b`），然后在 WebUI 设置中选择 Provider 为 **OpenAI/Ollama**，Base URL 填 `http://localhost:11434/v1`，API Key 填 `ollama`。无需联网即可对话！
 
 ### 脚本说明
 
@@ -127,9 +129,13 @@ tts:
 
 # 大语言模型
 llm:
-  provider: "minimax"         # minimax / openai / anthropic
+  provider: "openai"          # minimax / openai / anthropic（Ollama 走 openai）
   max_tokens: 2048
   enable_rag_injection: true  # 注入记忆到上下文
+  openai:                     # OpenAI / Ollama 共用此配置段
+    api_key: "ollama"         # Ollama 填 "ollama" 即可；OpenAI 填真实 key
+    base_url: "http://localhost:11434/v1"  # Ollama 端点；OpenAI 留空用默认
+    model: "qwen3:8b"         # Ollama 模型名；OpenAI 用 gpt-4o 等
 
 # 视觉理解
 vision:
@@ -214,6 +220,18 @@ ai-vtuber-fixed/
 
 ## 🔧 核心管线
 
+### 技术栈
+
+| 层 | 技术 | 说明 |
+|------|------|------|
+| **后端** | Python 3.11 + aiohttp | 异步 HTTP + WebSocket 服务 |
+| **前端** | 原生 HTML/CSS/JS（单文件） | 面板系统 + Live2D + VAD + 实时语音 |
+| **通信** | WebSocket（实时） + HTTP（API） | 前后端实时双向通信 |
+| **桌面端** | pywebview（WebView2） | 原生窗口 + 系统托盘 |
+| **打包** | PyInstaller + NSIS | 单 EXE 启动器 + 安装程序 |
+
+
+
 ```
 用户语音 → [ASR 语音识别] → 文字
                               ↓
@@ -289,6 +307,21 @@ ai-vtuber-fixed/
 ### Q: 如何使用向量记忆
 将 `config.yaml` 中 `memory.provider` 改为 `"vector"`，首次启动会自动下载 embedding 模型。
 
+### Q: 如何使用 Ollama 本地模型（无需 API Key）
+1. 安装 [Ollama](https://ollama.com/) 并启动
+2. 拉取模型：`ollama pull qwen3:8b`（推荐 8B Q4_K_M，~5GB 内存）
+3. 在 WebUI 设置中：Provider 选 **OpenAI/Ollama**，Base URL 填 `http://localhost:11434/v1`，API Key 填 `ollama`
+4. 或直接改 `config.yaml`：
+```yaml
+llm:
+  provider: "openai"
+  openai:
+    api_key: "ollama"
+    base_url: "http://localhost:11434/v1"
+    model: "qwen3:8b"
+```
+> 💡 系统会自动检测 Ollama 端点并切换到原生 API（关闭 Qwen3 思考模式），无需额外配置。
+
 ### Q: 我的 API Key 会泄露吗？
 不会。API Key 保存在本地 `app/cache/api_keys.json`，该文件已被 `.gitignore` 排除，不会上传到 Git。聊天记录同样不会被上传。
 
@@ -297,6 +330,108 @@ ai-vtuber-fixed/
 本项目基于 [GNU General Public License v3.0](LICENSE) 开源。衍生作品必须同样开源。
 
 GPT-SoVITS 子模块遵循其自身的开源许可证（`GPT-SoVITS/LICENSE`）。
+
+## 📋 版本更新日志
+
+> 完整版本记录详见 [docs/VERSION.md](docs/VERSION.md)
+
+### v1.9.38 (2026-04-29) — 前端 LLM 多 Provider 适配 + Ollama 原生 API
+
+**修复** Ollama 用户被 API Key 检查误拦的问题；**新增** Ollama 原生 API 支持
+
+- 🔧 `checkApiKeyStatus()` / `sendMessage()`: 查询当前活跃 provider，本地模型跳过 API Key 拦截
+- ✨ LLM 配置面板：新增 Anthropic 选项 + Base URL + API Key 输入框，Provider 切换联动字段显隐
+- ✨ 新手引导：Provider 选择 + Base URL 输入，Ollama 用户可跳过 API Key
+- ✨ **Ollama 原生 API**：自动检测 Ollama 端点，走 `/api/chat` 而非 `/v1/chat/completions`，传 `think:false` 关闭 Qwen3 思考模式
+
+### v1.9.37 (2026-04-29) — 本地 LLM 适配
+
+- ✨ Ollama + Qwen3-8B Q4_K_M 零代码改动接入
+- ✨ Qwen3 thinking 模式三层防护（system prompt `/no_think` + content None 防护 + `_strip_thinking()` 兜底）
+
+### v1.9.36 (2026-04-29) — 记忆前端功能补全
+
+- ✨ 记忆编辑、重要性精确设置（0-5 下拉）、事实来源过滤、衰减预览可视化
+- ✨ 后端新增 `decay_preview` 和 `search_by_time` WS action
+
+### v1.9.35 (2026-04-28) — 记忆系统 v3.0 全面重构
+
+- ✨ 多维梯度评分（6 维度 0-5 连续梯度）、LLM 语义摘要、事实提取系统
+- ✨ 向量库去重、记忆去重合并、自动标签系统、记忆重整 `consolidate()`
+- ✨ 前端标签页切换（全部/工作/情景/事实）、操作按钮、衰减系数滑块
+
+### v1.9.34 (2026-04-28) — 记忆路径漂移修复
+
+- 🔧 `os.chdir()` 导致 `memory/` 路径漂移，所有存储路径 init 时立即 `resolve()` 为绝对路径
+
+### v1.9.33 (2026-04-28) — 记忆面板全面修复
+
+- 🔧 后端 list/timeline 增强字段、WS sub_type 判别、配置实时应用
+- 🔧 前端记忆渲染增强（时间标签、层级标签、摘要徽章、重要性星标）
+
+### v1.9.32 (2026-04-28) — 交互动画全面升级
+
+- 🎨 消息气泡化、入场动画、面板折叠/展开动画、按钮涟漪效果、Header 渐变呼吸
+
+### v1.9.31 (2026-04-28) — 用户体验重大改进 + GitHub 发布准备
+
+- ✨ 新手引导系统、API Key 强制拦截、统一 Toast 通知、思考指示器、错误信息改进
+- ✨ 新增 LICENSE (GPL-3.0)、README.md、完善 .gitignore、新增 download_models.bat
+
+### v1.9.29 (2026-04-27) — 嵌入式 Python 可移植性修复
+
+- 🔧 补全 python.exe + DLL、安装 pip、重装 PyTorch CUDA cu124、启动脚本支持嵌入式优先检测
+
+### v1.9.28 (2026-04-27) — TTS 进度反馈 + 启动性能优化
+
+- ✨ TTS 进度消息链（`tts_start`/`tts_progress`/`tts_error`）+ 前端状态指示器
+- ⚡ 全链路启动性能优化：模块后台预加载、健康检查加速、Live2D 即时加载
+
+### v1.9.26 (2026-04-27) — 记忆系统初始化修复
+
+- 🔧 `hasattr` 静默吞掉异常导致记忆从未初始化，改用 `getattr` + 错误日志
+
+### v1.9.24 (2026-04-26) — GuguGaga.exe 后端冻死修复
+
+- 🔧 evaluate_js 死锁 → stdout 管道满 → 后端冻死，用 `_splash_done` 标志 + 非阻塞 evaluate_js 修复
+
+### v1.9.23 (2026-04-26) — GuguGaga.exe 前端功能全面失效修复
+
+- 🔧 WS 重连后消息丢失（增强器未重新绑定）、TTS 音色下拉框初始为空
+
+### v1.9.22 (2026-04-25) — 实时语音误打断 + TTS 缓存 + 诊断工具
+
+- 🔧 VAD 误打断：800ms 延迟打断机制；TTS 缓存自动清理（上限 120 文件）；ASR 录音 60s
+
+### v1.9.20–21 (2026-04-25) — TTS 修复
+
+- 🔧 TTS 英文被错误正则删除（`\u1F300` 只解析 4 位）、横杠"先全替换再恢复"策略
+
+### v1.9.18–19 (2026-04-25) — GPT-SoVITS 依赖补全 + API Key 面板
+
+- 🔧 补全 44 个 GPT-SoVITS 依赖；✨ 设置面板内置 API Key 输入
+
+### v1.9.15–17 (2026-04-25) — 生产就绪 + 启动脚本修复
+
+- 🔐 生产就绪审计（GPU 显存释放、子进程管理、原子写入等）
+- 🔧 启动脚本 CWD 修复、前端 WS 消息分发补全
+
+### v1.9.16 (2026-04-25) — 生产打包
+
+- 📦 嵌入式 Python 3.11.2 + GuguGaga.exe (PyInstaller) + NSIS 安装器
+
+<details>
+<summary>📖 更早版本</summary>
+
+### v1.9.14 (2026-04-25) — TTS 预热优化 + 系统监控自动刷新
+
+### v1.9.13 (2026-04-25) — UI/UX 改进 + 游戏风格控制台
+
+### v1.9.12 (2026-04-25) — 桌面模式布局加载完全重构
+
+### v1.9.7–11 — 布局持久化系列修复
+
+</details>
 
 ## 🙏 致谢
 

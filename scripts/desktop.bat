@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul 2>&1
 title GuguGaga Desktop
 
 REM 切换到项目根目录（bat 文件在 scripts/ 子目录下）

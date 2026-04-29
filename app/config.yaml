@@ -36,7 +36,7 @@ tts:
 
 # ==================== 大语言模型 (LLM) ====================
 llm:
-  provider: "minimax"
+  provider: "openai"            # minimax / openai / anthropic（openai 可接入本地 Ollama）
   # v2.0: 新增配置
   max_tokens: 2048              # 单次回复最大 token 数（从 512 提升到 2048）
   enable_rag_injection: true    # 启用 RAG 记忆注入
@@ -46,6 +46,12 @@ llm:
     base_url: "https://api.minimaxi.com/anthropic"
     model: "MiniMax-M2.7"
     max_tokens: 2048            # 与全局保持一致
+
+  openai:
+    api_key: "ollama"               # Ollama 不校验 API Key，随便填
+    base_url: "http://localhost:11434/v1"  # Ollama OpenAI 兼容端点
+    model: "qwen3:8b"               # Qwen3-8B Q4_K_M (~5.2GB, CPU推理)
+    max_tokens: 2048                # 与全局保持一致
 
 # ==================== 视觉理解 (Vision) ====================
 vision:
@@ -89,11 +95,8 @@ vad:
   # 思考模式额外延长时间（ms）—— 检测到思考时额外给用户的时间
   thinking_extend_ms: 2000
 
-# ==================== 记忆系统 ====================
+# ==================== 记忆系统 v3.0 ====================
 memory:
-  provider: "simple"   # simple (默认) / vector (使用 embedding 向量检索)
-  max_short_memory: 10  # 短期记忆条数（已废弃，改用 sliding window）
-  max_long_memory: 100  # 长期记忆条数（已废弃，改用遗忘机制）
   auto_store: true     # 自动存储
 
   # ===== Embedding 配置 (1GB显存推荐用 cpu 模式) =====
@@ -107,22 +110,26 @@ memory:
   #   nomic-ai/nomic-embed-text-v1.5          ~500MB  8192长上下文，768维
   embedding_model: "BAAI/bge-base-zh-v1.5"
 
-  # ===== v2.1 新增配置 =====
+  # ===== v3.0 记忆参数 =====
   # 工作记忆上限（超出触发摘要压缩）
-  working_memory_limit: 20
+  working_memory_limit: 30
   # 摘要触发阈值
-  summarize_threshold: 15
+  summarize_threshold: 20
   # 每次压缩条数
   summarize_batch: 5
   # 遗忘阈值（保留分数低于此值会被软删除）
-  forgetting_threshold: 0.3
-  # 时效衰减系数（每天衰减百分比）
-  decay_lambda: 0.01
-  # 混合检索权重
+  forgetting_threshold: 0.15
+  # 时效衰减系数（v3.0: 0.005 更慢衰减，记忆存续更久）
+  decay_lambda: 0.005
+  # 新记忆保护期（小时）— 保护期内不参与遗忘扫描
+  grace_period_hours: 12.0
+  # 向量去重阈值（cosine > 此值视为重复）
+  dedup_threshold: 0.95
+  # 混合检索权重（v3.0: 向量权重降低，关键词权重提高）
   retrieval_weights:
-    vector: 0.7      # 向量相似度权重
-    keyword: 0.2     # 关键词匹配权重
-    recency: 0.1     # 时间衰减权重
+    vector: 0.5       # 向量相似度权重
+    keyword: 0.3      # 关键词匹配权重
+    recency: 0.2      # 时间衰减权重
 
 # ==================== 子Agent (参考 Claude Code) ====================
 subagent:

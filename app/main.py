@@ -891,7 +891,10 @@ class AIVTuber:
                 memory_config = self.config.config.get("memory", {})
                 self._memory = MemorySystem(memory_config)
                 self._memory_initialized = True
-                game_ok("记忆系统", "三层架构已就绪 (工作/情景/语义)")
+                # v3.0: 设置 LLM 回调（延迟绑定，避免循环依赖）
+                # 使用 lambda 延迟访问 self.llm，确保 LLM 已初始化
+                self._memory.set_llm_callback(lambda message: self.llm.chat(message=message) if getattr(self, '_llm', None) else None)
+                game_ok("记忆系统", "v3.0 四层架构已就绪 (工作/情景/语义/事实)")
             except Exception as e:
                 # 关键修复：记忆系统初始化失败时记录错误，不阻塞整个应用
                 self._memory = None
@@ -1184,7 +1187,21 @@ class AIVTuber:
             return {"text": friendly_error(e), "action": None}
         except Exception as e:
             self.logger.exception(f"处理消息错误: {e}")
-            return {"text": "抱歉，处理消息时出错了喵~", "action": None}
+            # v1.9.31: 更具体的错误消息 + 操作建议
+            err_name = type(e).__name__
+            err_msg = str(e)
+            # 常见错误的针对性提示
+            if 'api_key' in err_msg.lower() or 'apikey' in err_msg.lower() or 'unauthorized' in err_msg.lower():
+                user_msg = "API Key 无效或已过期，请在设置中重新配置"
+            elif 'rate_limit' in err_msg.lower() or 'too many' in err_msg.lower():
+                user_msg = "请求太频繁了，请稍等片刻再试"
+            elif 'connection' in err_msg.lower() or 'timeout' in err_msg.lower():
+                user_msg = "网络连接异常，请检查网络后重试"
+            elif 'memory' in err_msg.lower() or 'cuda' in err_msg.lower() or 'out of memory' in err_msg.lower():
+                user_msg = "显存不足，请尝试重启或减少其他GPU程序"
+            else:
+                user_msg = f"处理消息时出错（{err_name}），请查看日志获取详情"
+            return {"text": user_msg, "action": None}
 
     def process_audio(self, audio_path: str) -> Dict[str, Any]:
         """
@@ -1775,7 +1792,7 @@ def main():
 
         args = parser.parse_args()
 
-        game_header("咕咕嘎嘎 AI-VTuber v1.9.30")
+        game_header("咕咕嘎嘎 AI-VTuber v1.9.38")
         game_info("系统启动中", f"{_timestamp()} | Python {sys.version_info.major}.{sys.version_info.minor}")
 
         # 使用上下文管理器创建 AIVTuber 实例（确保退出时清理资源）
