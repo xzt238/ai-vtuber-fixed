@@ -36,22 +36,73 @@ tts:
 
 # ==================== 大语言模型 (LLM) ====================
 llm:
-  provider: "openai"            # minimax / openai / anthropic（openai 可接入本地 Ollama）
+  provider: "ollama"            # v1.9.43: deepseek/kimi/glm/qwen/minimax/doubao/mimo/openai/anthropic/ollama
   # v2.0: 新增配置
   max_tokens: 2048              # 单次回复最大 token 数（从 512 提升到 2048）
   enable_rag_injection: true    # 启用 RAG 记忆注入
   
-  minimax:
-    api_key: ""                     # 首次使用请在前端"API Key"面板中输入，或在此填入你的 MiniMax API Key
-    base_url: "https://api.minimaxi.com/anthropic"
-    model: "MiniMax-M2.7"
-    max_tokens: 2048            # 与全局保持一致
+  # ===== 国内模型 =====
+  deepseek:
+    api_key: ""                     # 在 platform.deepseek.com 获取
+    base_url: "https://api.deepseek.com/v1"
+    model: "deepseek-chat"          # deepseek-chat(V3) / deepseek-reasoner(R1) / deepseek-v4-pro / deepseek-v4-flash
+    max_tokens: 2048
 
+  kimi:
+    api_key: ""                     # 在 platform.moonshot.cn 获取
+    base_url: "https://api.moonshot.cn/v1"
+    model: "kimi-k2.6"              # kimi-k2.6 / kimi-k2.5 / moonshot-v1-128k
+    max_tokens: 2048
+
+  glm:
+    api_key: ""                     # 在 open.bigmodel.cn 获取
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    model: "glm-4-flash"            # glm-4-plus / glm-4-flash / glm-4-air / glm-4-long
+    max_tokens: 2048
+
+  qwen:
+    api_key: ""                     # 在 dashscope.console.aliyun.com 获取
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    model: "qwen-plus"              # qwen3.6-plus / qwen-max / qwen-plus / qwen-turbo
+    max_tokens: 2048
+
+  minimax:
+    api_key: ""                     # 在 minimaxi.com 获取
+    base_url: "https://api.minimaxi.com/anthropic"  # Anthropic 格式（推荐），OpenAI 格式用 /v1
+    model: "MiniMax-M2.7"           # M2.7 / M2.7-highspeed / M2.5 / M2.5-highspeed / M2.1 / M2.1-highspeed / M2
+    max_tokens: 2048
+
+  doubao:
+    api_key: ""                     # 在 console.volcengine.com/ark 获取
+    base_url: "https://ark.cn-beijing.volces.com/api/v3"
+    model: "doubao-1.5-pro"         # doubao-seed-2-0-pro / doubao-1.5-pro
+    max_tokens: 2048
+
+  mimo:
+    api_key: ""                     # 在 xiaomimimo.com 获取
+    base_url: "https://api.xiaomimimo.com/v1"
+    model: "mimo-v2.5"              # mimo-v2.5-pro / mimo-v2.5
+    max_tokens: 2048
+
+  # ===== 国际模型 =====
   openai:
+    api_key: ""                     # 在 platform.openai.com 获取
+    base_url: "https://api.openai.com/v1"
+    model: "gpt-4o-mini"            # gpt-4o / gpt-4o-mini / gpt-4-turbo
+    max_tokens: 2048
+
+  anthropic:
+    api_key: ""                     # 在 console.anthropic.com 获取
+    base_url: "https://api.anthropic.com"
+    model: "claude-3-5-sonnet-20241022"  # claude-3.5-sonnet / claude-3-haiku / claude-3-opus
+    max_tokens: 2048
+
+  # ===== 本地模型 =====
+  ollama:
     api_key: "ollama"               # Ollama 不校验 API Key，随便填
     base_url: "http://localhost:11434/v1"  # Ollama OpenAI 兼容端点
-    model: "qwen3:8b"               # Qwen3-8B Q4_K_M (~5.2GB, CPU推理)
-    max_tokens: 2048                # 与全局保持一致
+    model: ""                        # 根据 ollama list 输出填写，如 qwen3:8b
+    max_tokens: 2048
 
 # ==================== 视觉理解 (Vision) ====================
 vision:

@@ -1655,12 +1655,15 @@ class AnthropicLLM(LLMEngine):
         【参数说明】
             config (Dict[str, Any]): 配置字典，来自 config.yaml 的 llm.anthropic 节
                 - api_key (str): Anthropic API Key
+                - base_url (str): API 基础 URL，默认官方地址
                 - model (str): 模型名称，默认 "claude-3-sonnet-20240229"
                 - max_tokens (int): 最大生成 token 数，默认 2048
                 - rate_limit (int): 每分钟最大请求数，默认 50（Anthropic 默认限制更严格）
         """
         self.config = config
         self.api_key = config.get("api_key", "")
+        # v1.9.44: 支持自定义 base_url（代理/中转）
+        self.base_url = config.get("base_url", "https://api.anthropic.com").rstrip("/")
         self.model = config.get("model", "claude-3-sonnet-20240229")
         self.max_tokens = config.get("max_tokens", 2048)
         
@@ -1716,9 +1719,17 @@ class AnthropicLLM(LLMEngine):
         try:
             # 使用 build_messages 构建消息列表（含记忆注入）
             messages = build_messages(message, history, None, memory_system)
-            # 将 messages 转换为纯 role/content 格式（Anthropic 接受这种简化格式）
-            # 注意：system 消息会被保留，但 Anthropic 官方建议通过 system 字段传递
-            claude_messages = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
+            # v1.9.44: 正确处理 Anthropic 格式 — system 消息通过顶层字段传递
+            system_prompt = ""
+            claude_messages = []
+            for msg in messages:
+                role = msg["role"]
+                content = msg["content"]
+                if role == "system":
+                    # Anthropic 要求 system 通过顶层 "system" 字段传递
+                    system_prompt = content
+                else:
+                    claude_messages.append({"role": role, "content": content})
             
             data = {
                 "model": self.model,
@@ -1726,9 +1737,12 @@ class AnthropicLLM(LLMEngine):
                 "temperature": 0.7,
                 "max_tokens": self.max_tokens,
             }
+            # Anthropic API 要求 system 通过顶层字段传递（非 messages 数组）
+            if system_prompt:
+                data["system"] = system_prompt
             
             response = self._session.post(
-                "https://api.anthropic.com/v1/messages",  # Anthropic 官方端点（硬编码）
+                f"{self.base_url}/v1/messages",
                 json=data, timeout=60
             )
             response.raise_for_status()
@@ -1779,7 +1793,16 @@ class AnthropicLLM(LLMEngine):
 
         try:
             messages = build_messages(message, history, None, memory_system)
-            claude_messages = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
+            # v1.9.44: 正确处理 Anthropic 格式 — system 消息通过顶层字段传递
+            system_prompt = ""
+            claude_messages = []
+            for msg in messages:
+                role = msg["role"]
+                content = msg["content"]
+                if role == "system":
+                    system_prompt = content
+                else:
+                    claude_messages.append({"role": role, "content": content})
             
             data = {
                 "model": self.model,
@@ -1788,9 +1811,11 @@ class AnthropicLLM(LLMEngine):
                 "max_tokens": self.max_tokens,
                 "stream": True,
             }
+            if system_prompt:
+                data["system"] = system_prompt
             
             response = self._session.post(
-                "https://api.anthropic.com/v1/messages",
+                f"{self.base_url}/v1/messages",
                 json=data, timeout=120, stream=True
             )
             response.raise_for_status()
@@ -1871,13 +1896,18 @@ class LLMFactory:
     工厂模式（Factory Pattern）：将对象创建逻辑集中在工厂中，
     调用方只需传入配置，无需知道具体要实例化哪个类。
     
-    新增 LLM 提供商时只需：
-    1. 新建引擎类（继承 LLMEngine）
-    2. 在 LLMFactory.create() 中添加一个 elif 分支
+    v1.9.43: 支持 10 个 provider（7 国内 + 2 国际 + 1 本地）
+    - minimax: MiniMaxLLM（支持 OpenAI/Anthropic 双格式自动判断）
+    - anthropic: AnthropicLLM（原生 Anthropic API）
+    - deepseek/kimi/glm/qwen/doubao/mimo/openai: OpenAILLM（OpenAI 兼容格式）
+    - ollama: OpenAILLM（_is_ollama 自动检测）
 
     【使用示例】
-    engine = LLMFactory.create({"provider": "openai", "openai": {"api_key": "..."}})
+    engine = LLMFactory.create({"provider": "deepseek", "deepseek": {"api_key": "..."}})
     """
+    
+    # v1.9.43: 使用 OpenAI 兼容格式的 provider 集合
+    _OPENAI_COMPAT_PROVIDERS = {'deepseek', 'kimi', 'glm', 'qwen', 'doubao', 'mimo', 'openai'}
     
     @staticmethod
     def create(config: Dict[str, Any]) -> LLMEngine:
@@ -1886,33 +1916,32 @@ class LLMFactory:
 
         【参数说明】
             config (Dict[str, Any]): 包含 provider 字段的配置字典
-                - provider (str): 提供商标识（"minimax" / "openai" / "anthropic"）
-                - minimax (Dict): MiniMax 引擎配置（当 provider=="minimax" 时使用）
-                - openai (Dict): OpenAI 引擎配置（当 provider=="openai" 时使用）
-                - anthropic (Dict): Anthropic 引擎配置（当 provider=="anthropic" 时使用）
+                - provider (str): 提供商标识
+                - <provider> (Dict): 对应 provider 的子配置
 
         【返回值】
             LLMEngine: 对应提供商的引擎实例
 
         【异常】
             ValueError: 当 provider 值不在支持范围内时抛出
-
-        【设计意图】
-        config.get("minimax", {}) 而非 config.get("minimax")：
-        确保子配置不存在时传入空字典，引擎类内部用 .get() 获取各字段时使用默认值，
-        避免 NoneType 错误
         """
-        # 从配置中获取提供商类型，默认使用 minimax
         provider = config.get("provider", "minimax")
         
         if provider == "minimax":
-            # 传入 minimax 子配置（包含 api_key、model 等）
             return MiniMaxLLM(config.get("minimax", {}))
-        elif provider == "openai":
-            # 传入 openai 子配置
-            return OpenAILLM(config.get("openai", {}))
         elif provider == "anthropic":
-            # 传入 anthropic 子配置
             return AnthropicLLM(config.get("anthropic", {}))
+        elif provider == "ollama":
+            # Ollama 复用 OpenAILLM，自动检测 _is_ollama
+            return OpenAILLM(config.get("ollama", {}))
+        elif provider in LLMFactory._OPENAI_COMPAT_PROVIDERS:
+            # v1.9.43: 所有 OpenAI 兼容的云端 provider 统一走 OpenAILLM
+            sub_cfg = config.get(provider, {})
+            return OpenAILLM(sub_cfg)
         else:
+            # 未知 provider 也尝试走 OpenAI 格式（兼容第三方代理）
+            sub_cfg = config.get(provider, {})
+            if sub_cfg.get("base_url"):
+                print(f"[LLM] 未知 provider '{provider}'，尝试 OpenAI 兼容格式")
+                return OpenAILLM(sub_cfg)
             raise ValueError(f"未知 LLM 提供商: {provider}")

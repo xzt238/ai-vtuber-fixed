@@ -38,6 +38,112 @@
 
 ================================================================================
 
+## 🟢 v1.9.44 (2026-04-30) ✅ STABLE
+
+**LLM 多厂商适配** — 从 3 个 provider 扩展到 10 个，覆盖国内主流云端模型，全部使用官方 URL + 官方模型列表
+
+### ✨ 新增
+- **10 个 LLM Provider**：DeepSeek / Kimi / 智谱GLM / 通义千问 / MiniMax / 豆包 / 小米MiMo / OpenAI / Anthropic / Ollama
+- **Provider 分组下拉**：国内模型(7) / 国际模型(2) / 本地模型(1)，optgroup 分组展示
+- **统一 Provider 配置数据结构**：`_providerConfig` 对象集中管理 label/baseUrl/models/defaultModel/hint/keyPlaceholder/color
+- **官方 URL 自动填充**：每个 provider 对应官方 API base URL，切换时自动填充并锁定
+- **官方模型下拉选择**：每个 provider 的 datalist 预置官方模型列表（如 DeepSeek: deepseek-v4-pro/flash/chat/reasoner）
+- **API Key placeholder 提示**：切换 provider 时 API Key 输入框自动显示获取地址
+- **LLMFactory 10 provider 支持**：deepseek/kimi/glm/qwen/doubao/mimo 统一走 OpenAILLM 引擎
+- **后端配置深度合并扩展**：`_handle_config()` 支持 10 个 provider 子配置的深度合并
+
+### 🔧 修复
+- **MiniMax M2.8 不存在**：删除不存在的 MiniMax-M2.8（仅语音模型有 2.8 版本）
+- **MiniMax 模型列表补全**：补充 M2.7-highspeed / M2.5-highspeed / M2.1-highspeed / M2 等官方模型
+- **MiniMax base_url 修正**：Anthropic 格式 `api.minimaxi.com/anthropic`，OpenAI 格式 `api.minimaxi.com/v1`（hint 提示）
+- **新手引导适配10 provider**：onboarding 下拉从3项(minimax/openai/anthropic)更新为10项+optgroup，修复本地模型检测逻辑(provider==='ollama'而非旧的openai+localhost)
+- **快速切换 tooltip 修正**：tooltip 从"MiniMax↔Ollama"更正为"DeepSeek↔Ollama"（代码实际行为）
+- **API Key 状态标签通用化**：api_key_status handler 使用 `_pc()` 动态获取 provider label，不再硬编码
+- **清理遗留逻辑**：移除 `updateProviderIndicator` 中的 openai+localhost→Ollama 旧判断（ollama 已独立为 provider）
+- **`_pc()` 防御性增强**：未知 provider 传入时输出 console.warn
+- **AnthropicLLM 缺少 base_url 属性**：添加 `self.base_url`，支持自定义代理/中转地址
+- **AnthropicLLM system 消息格式错误**：Anthropic API 要求 system 通过顶层字段传递，修复 chat() 和 stream_chat()
+- **前端切换覆盖自定义 URL**：`onLlmProviderChange()` 优先使用子配置中保存的 base_url，不再每次用官方默认覆盖
+
+### 📁 修改文件
+- `app/web/static/index.html` — Provider 下拉+JS 全面改造
+- `app/llm/__init__.py` — LLMFactory 支持 10 个 provider
+- `app/web/__init__.py` — 配置深度合并 + current_config 扩展
+- `app/config.yaml` — 添加 10 个 provider 默认配置模板
+- 版本号同步: v1.9.44 (9处)
+
+================================================================================
+
+## 🟢 v1.9.42 (2026-04-30) ✅ STABLE
+
+**配置编辑器改造** — MiniMax模型下拉选择、URL自动填充、删除API Key标签页、LLM子配置持久化、新增视觉配置标签页
+
+### ✨ 新增
+- **MiniMax 模型下拉选择**：Model 字段改为 `<datalist>` 组合框，MiniMax 预置 M2.1/M2.5/M2.7/M2.8，OpenAI/Anthropic 也有推荐列表，同时支持自定义输入
+- **Base URL 自动填充+只读锁定**：切换 Provider 自动填入官方 URL 并锁定，点击"自定义"按钮解锁编辑
+- **视觉配置标签页**：新增 Vision 配置标签，支持 MiniMax VL/RapidOCR/MiniCPM 三个 provider 的配置
+- **LLM 子配置持久化**：各 provider 的 model/base_url 独立存储到 `gugu-llm-subconfigs`，切换 provider 不丢失配置
+- **后端 Vision 配置处理**：`_handle_config()` 支持深度合并 vision 配置，`_handle_get_current_config()` 返回 vision 配置
+
+### 🔧 优化
+- **删除 API Key 标签页**：冗余标签页移除，API Key 输入统一到 LLM 标签页
+- **旧数据迁移**：自动将 `gugu-config` 中的 LLM 子配置迁移到独立存储
+
+### 📁 修改文件
+- `app/web/static/index.html` — 配置编辑器HTML+JS全面改造
+- `app/web/__init__.py` — Vision 配置处理 + current_config 返回 vision
+- 版本号同步: v1.9.42 (9处)
+
+================================================================================
+
+## 🟢 v1.9.41 (2026-04-30) ✅ STABLE
+
+**MiniMax 配置丢失修复 + 对话历史连续性修复** — 解决切换 Provider 后 MiniMax base_url 丢失导致请求发错地址，以及每次对话从零开始不复用历史记录的问题
+
+### 🔧 修复
+- **MiniMax 切换后无法使用（核心 bug）**：`_handle_config` 的 `update()` 浅层合并会覆盖整个 provider 子配置，导致 MiniMax 的 `base_url: "https://api.minimaxi.com/anthropic"` 丢失，回退到默认的 `http://120.24.86.32:3000`，且 `_is_anthropic=False` 走错 API 格式
+  - 修复：改为深度合并，对 `minimax`/`openai`/`anthropic` 子配置只合并不覆盖
+- **每次对话从零开始（核心 bug）**：`_handle_text` 中 `llm.stream_chat()` 和 `llm.chat()` 调用时没传 `history` 参数，导致 LLM 每次都无上下文
+  - 修复：传入 `list(self.app.history)` 和 `memory_system`
+- **Provider 变更后对话历史未清空**：`self.app.session` 不存在，`reset_history()` 未执行，旧 provider 的上下文会喂给新 provider
+  - 修复：直接清空 `self.app.history`
+
+### ✨ 新增
+- 前端配置编辑器中 MiniMax/Anthropic 也能看到 Base URL 输入框（之前只有 OpenAI 显示）
+- 切换 Provider 时自动填入对应默认 base_url
+
+### 📁 修改文件
+- `app/web/__init__.py` — 深度合并、history 传递、history 清空
+- `app/web/static/index.html` — Base URL 输入框显示逻辑、默认值填充
+- 版本号同步: v1.9.41 (9处)
+
+================================================================================
+
+## 🟢 v1.9.39 (2026-04-30) ✅ STABLE
+
+**前端 LLM Provider 自动选择 + 后端引擎热重建** — 切换 Provider 时自动填入默认模型，后端自动重建 LLM 引擎
+
+### ✨ 新增
+- `onLlmProviderChange()`: 切换 Provider 时自动填入对应默认模型名称
+  - MiniMax → `MiniMax-M2.7`
+  - OpenAI/Ollama → `qwen3:8b`
+  - Anthropic → `claude-3-sonnet-20240229`
+- `getDefaultModel(provider)`: 统一获取默认模型名称的工具函数
+- 新手引导：Provider 切换时提示文字中显示默认模型名
+- 新手引导保存配置时自动写入默认模型名
+
+### 🔧 修复
+- 后端 `_handle_config()`: LLM provider 变更时重建 LLM 引擎（弹出旧 `_lazy_modules['llm']`，下次访问时自动以新配置创建）
+- LLM 引擎重建时自动清理旧引擎资源并重置 API Key
+- 切换 Provider 后会话历史自动重置
+
+### 📁 修改文件
+- `app/web/static/index.html`
+- `app/web/__init__.py`
+- 版本号同步: v1.9.39 (9处)
+
+================================================================================
+
 ## 🟢 v1.9.38 (2026-04-29) ✅ STABLE
 
 **前端 LLM 多 Provider 适配 + Ollama 原生 API** — 修复 Ollama 用户被 API Key 检查误拦的问题，新增 Ollama 原生 API 支持

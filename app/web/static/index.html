@@ -1673,19 +1673,32 @@
                     <div class="onboarding-input-group">
                         <label>Provider</label>
                         <select id="onboarding-provider" onchange="onOnboardingProviderChange()" style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(0,0,0,0.3);color:#eee;font-size:13px;">
-                            <option value="minimax">MiniMax</option>
-                            <option value="openai">OpenAI / Ollama</option>
-                            <option value="anthropic">Anthropic</option>
+                            <optgroup label="国内模型">
+                                <option value="deepseek">DeepSeek</option>
+                                <option value="kimi">Kimi (月之暗面)</option>
+                                <option value="glm">GLM (智谱)</option>
+                                <option value="qwen">Qwen (通义千问)</option>
+                                <option value="minimax">MiniMax</option>
+                                <option value="doubao">豆包 (字节)</option>
+                                <option value="mimo">MiMo (小米)</option>
+                            </optgroup>
+                            <optgroup label="国际模型">
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                            </optgroup>
+                            <optgroup label="本地模型">
+                                <option value="ollama">Ollama (本地)</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="onboarding-input-group" id="onboarding-baseurl-group" style="display:none;">
-                        <label>Base URL（Ollama 用户填写）</label>
+                        <label>Base URL（本地模型用户填写）</label>
                         <input type="text" id="onboarding-baseurl-input" placeholder="http://localhost:11434/v1" style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(0,0,0,0.3);color:#eee;font-size:13px;" />
                     </div>
                     <div class="onboarding-input-group">
                         <label>API Key</label>
                         <input type="password" id="onboarding-apikey-input" placeholder="粘贴你的 API Key..." />
-                        <div class="onboarding-input-hint" id="onboarding-provider-hint">在 <a href="https://platform.minimaxi.com/" target="_blank" style="color:#667eea;">MiniMax 开放平台</a> 获取，注册即送免费额度</div>
+                        <div class="onboarding-input-hint" id="onboarding-provider-hint">在 <a href="https://platform.deepseek.com/" target="_blank" style="color:#667eea;">DeepSeek 开放平台</a> 获取 API Key，默认模型 <code style="color:#667eea;">deepseek-chat</code></div>
                     </div>
                     <div id="onboarding-apikey-status"></div>
                     <p style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:8px;">💡 也可以之后在设置面板中配置</p>
@@ -1733,7 +1746,7 @@
     </div>
 
     <div class="header">
-        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.38</span></span></h1>
+        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.44</span></span></h1>
     </div>
     
     <!-- 布局预设栏 -->
@@ -1765,7 +1778,7 @@
     <!-- 对话面板 -->
     <div class="panel" id="panel-chat" data-group="main">
         <div class="panel-header">
-            <h3>💬 对话</h3>
+            <h3>💬 对话 <span id="provider-indicator" style="font-size:0.7em;padding:1px 6px;border-radius:8px;background:rgba(102,126,234,0.3);color:#a8b5ff;vertical-align:middle;cursor:pointer;user-select:none;" onclick="openConfigEditorPanel();switchConfigTab('llm');" ondblclick="event.stopPropagation();quickSwitchProvider();" title="点击→配置编辑器 | 双击→快速切换 DeepSeek↔Ollama">MiniMax</span></h3>
             <div class="panel-controls">
                 <button class="panel-btn collapse" title="折叠" onclick="collapsePanel('panel-chat')">−</button>
                 <button class="panel-btn maximize" title="最大化" onclick="maximizePanel('panel-chat')">□</button>
@@ -2451,32 +2464,32 @@
         </div>
         <div class="panel-content">
             <div class="config-tabs">
-                <button class="config-tab active" onclick="switchConfigTab('apikey')">🔑 API Key</button>
-                <button class="config-tab" onclick="switchConfigTab('llm')">LLM</button>
+                <button class="config-tab active" onclick="switchConfigTab('llm')">LLM</button>
+                <button class="config-tab" onclick="switchConfigTab('vision')">👁 视觉</button>
                 <button class="config-tab" onclick="switchConfigTab('tts')">TTS</button>
                 <button class="config-tab" onclick="switchConfigTab('asr')">ASR</button>
                 <button class="config-tab" onclick="switchConfigTab('memory')">记忆</button>
             </div>
-            <div class="config-content" id="config-content-apikey">
-                <div style="margin-bottom:12px;color:#aaa;font-size:12px;">
-                    🔑 输入 MiniMax API Key 后，将自动应用到 LLM 和视觉理解模块，无需重启。
-                </div>
-                <div class="form-group">
-                    <label>MiniMax API Key</label>
-                    <div style="display:flex;gap:6px;">
-                        <input type="password" id="cfg-minimax-api-key" placeholder="sk-..." style="flex:1;" />
-                        <button class="debug-btn" onclick="toggleApiKeyVisibility()" id="apikey-toggle-btn" style="min-width:40px;">👁</button>
-                    </div>
-                </div>
-                <div id="apikey-status" style="margin:8px 0;font-size:12px;color:#888;"></div>
-                <button class="debug-btn primary" onclick="saveApiKey()" style="width:100%;">💾 保存并应用 API Key</button>
-            </div>
-            <div class="config-content" id="config-content-llm" style="display:none;">
-                <div class="form-group"><label>Provider</label><select id="cfg-llm-provider" onchange="onLlmProviderChange()"><option value="minimax">MiniMax</option><option value="openai">OpenAI / Ollama</option><option value="anthropic">Anthropic</option></select></div>
-                <div class="form-group"><label>Model</label><input type="text" id="cfg-llm-model" placeholder="模型名称" /></div>
-                <div class="form-group" id="cfg-llm-base-url-group" style="display:none;"><label>Base URL</label><input type="text" id="cfg-llm-base-url" placeholder="http://localhost:11434/v1" /></div>
+            <div class="config-content" id="config-content-llm">
+                <div class="form-group"><label>Provider</label><select id="cfg-llm-provider" onchange="onLlmProviderChange()"><optgroup label="国内模型"><option value="deepseek">DeepSeek</option><option value="kimi">Kimi / 月之暗面</option><option value="glm">智谱 GLM</option><option value="qwen">通义千问</option><option value="minimax">MiniMax</option><option value="doubao">豆包</option><option value="mimo">小米 MiMo</option></optgroup><optgroup label="国际模型"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></optgroup><optgroup label="本地模型"><option value="ollama">Ollama (本地)</option></optgroup></select></div>
+                <div class="form-group"><label>Model</label><input type="text" id="cfg-llm-model" list="cfg-llm-model-list" placeholder="选择或输入模型名称" /><datalist id="cfg-llm-model-list"></datalist></div>
+                <div class="form-group" id="cfg-llm-base-url-group"><label>Base URL <span style="font-size:9px;color:#888;">(自动填充，可修改)</span></label><input type="text" id="cfg-llm-base-url" placeholder="自动填充" readonly style="opacity:0.7;cursor:default;" /><button class="debug-btn" onclick="enableBaseUrlEdit()" id="cfg-llm-base-url-edit-btn" style="font-size:10px;padding:2px 6px;margin-top:2px;">✏️ 自定义</button></div>
                 <div class="form-group" id="cfg-llm-api-key-group"><label>API Key</label><input type="password" id="cfg-llm-api-key-cfg" placeholder="sk-..." style="flex:1;" /></div>
                 <div style="font-size:10px;color:#888;margin-top:4px;" id="cfg-llm-hint">选择 OpenAI/Ollama 可连接本地模型，Base URL 填 Ollama 地址即可</div>
+            </div>
+            <div class="config-content" id="config-content-vision" style="display:none;">
+                <div class="form-group"><label>默认 Provider</label><select id="cfg-vision-provider" onchange="onVisionProviderChange()"><option value="minimax_vl">MiniMax VL (API)</option><option value="rapidocr">RapidOCR (本地)</option><option value="minicpm">MiniCPM (本地)</option></select></div>
+                <div id="cfg-vision-minimax-vl-group">
+                    <div class="form-group"><label>API Key</label><input type="password" id="cfg-vision-minimax-api-key" placeholder="自动使用 LLM MiniMax Key" /><div style="font-size:9px;color:#888;margin-top:2px;">留空则自动使用 LLM 的 MiniMax API Key</div></div>
+                    <div class="form-group"><label>API Host</label><input type="text" id="cfg-vision-minimax-api-host" value="https://api.minimaxi.com" readonly style="opacity:0.7;" /></div>
+                    <div class="form-group"><label>模型</label><select id="cfg-vision-minimax-model"><option value="MiniMax-VL-01">MiniMax-VL-01</option></select></div>
+                </div>
+                <div id="cfg-vision-rapidocr-group" style="display:none;"><div style="padding:8px;color:#888;font-size:11px;">RapidOCR: 本地 OCR 引擎，无需 API Key。仅支持文字识别，不支持图像理解。</div></div>
+                <div id="cfg-vision-minicpm-group" style="display:none;">
+                    <div class="form-group"><label>Model ID</label><input type="text" id="cfg-vision-minicpm-model-id" value="OpenBMB/MiniCPM-V-2" /></div>
+                    <div class="form-group"><label>本地模型路径 <span style="font-size:9px;color:#888;">(可选)</span></label><input type="text" id="cfg-vision-minicpm-model-path" placeholder="留空则自动下载" /></div>
+                    <div class="form-group"><label>INT4 量化</label><select id="cfg-vision-minicpm-use-int4"><option value="false">关闭 (BF16)</option><option value="true">开启 (INT4)</option></select></div>
+                </div>
             </div>
             <div class="config-content" id="config-content-tts" style="display:none;">
                 <div class="form-group"><label>默认引擎</label><select id="cfg-tts-engine"><option value="gptsovits">GPT-SoVITS</option><option value="edge">Edge TTS</option></select></div>
@@ -4648,6 +4661,10 @@
             if (ws?.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({type: 'diag'}));
             }
+            // v1.9.41: 请求后端当前配置，同步 LLM provider
+            if (ws?.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type: 'get_current_config'}));
+            }
         };
         
         ws.onmessage = e => {
@@ -4759,10 +4776,8 @@
             // API Key 状态查询结果
             if (data.type === 'api_key_status') {
                 _apiKeyStatus = data;  // v1.9.31: 缓存状态
-                const providerLabel = data.provider === 'openai' ? 'OpenAI'
-                    : data.provider === 'anthropic' ? 'Anthropic'
-                    : data.provider === 'ollama' ? 'Ollama(本地)'
-                    : 'MiniMax';
+                // v1.9.44: 使用 _pc() 统一获取 provider 标签
+                const providerLabel = typeof _pc === 'function' ? (_pc(data.provider).label || data.provider) : data.provider;
                 const statusHtml = data.configured
                     ? `<span style="color:#4f4;">✅ 已配置 (${providerLabel}: ${data.key_preview})</span>`
                     : `<span style="color:#fa0;">⚠️ ${providerLabel} API Key 未配置 — 请输入你的 API Key</span>`;
@@ -4773,6 +4788,94 @@
                 // v1.9.31: API Key 未配置时弹出新手引导（如果还没完成过引导）
                 if (!data.configured && _shouldShowOnboarding()) {
                     setTimeout(_startOnboarding, 800);
+                }
+            }
+            
+            // v1.9.41: 后端配置同步（前端 localStorage 与后端 config.yaml 对齐）
+            if (data.type === 'current_config' && !data.error) {
+                try {
+                    const serverLlm = data.config?.llm || {};
+                    const serverProvider = serverLlm.provider;
+                    const serverModel = serverLlm.model;
+                    const serverBaseUrl = serverLlm[serverProvider]?.base_url || '';
+                    
+                    // 从 localStorage 读取当前配置
+                    let localCfg = {};
+                    try { localCfg = JSON.parse(localStorage.getItem('gugu-config') || '{}'); } catch(e) {}
+                    const localProvider = localCfg.llm?.provider;
+                    
+                    // 如果后端 provider 与前端不同步，以后端为准
+                    if (serverProvider && serverProvider !== localProvider) {
+                        console.log(`[CONFIG-SYNC] Provider 不同步: 前端=${localProvider || '(空)'}, 后端=${serverProvider}，以后端为准`);
+                        // 更新 localStorage
+                        if (!localCfg.llm) localCfg.llm = {};
+                        localCfg.llm.provider = serverProvider;
+                        localCfg.llm.model = serverModel || localCfg.llm.model;
+                        if (serverBaseUrl) {
+                            localCfg.llm[serverProvider] = localCfg.llm[serverProvider] || {};
+                            localCfg.llm[serverProvider].base_url = serverBaseUrl;
+                        }
+                        localStorage.setItem('gugu-config', JSON.stringify(localCfg));
+                        // 更新 UI
+                        const providerSelect = document.getElementById('cfg-llm-provider');
+                        if (providerSelect) providerSelect.value = serverProvider;
+                        const modelInput = document.getElementById('cfg-llm-model');
+                        if (modelInput && serverModel) modelInput.value = serverModel;
+                        const baseUrlInput = document.getElementById('cfg-llm-base-url');
+                        if (baseUrlInput && serverBaseUrl) baseUrlInput.value = serverBaseUrl;
+                        if (typeof onLlmProviderChange === 'function') onLlmProviderChange();
+                        log(`配置已同步: Provider → ${serverProvider}${serverModel ? ', Model → ' + serverModel : ''}`, 'ok');
+                    } else if (serverModel && serverProvider) {
+                        // Provider 一致但 model 可能不同，也同步
+                        const localModel = localCfg.llm?.model;
+                        if (serverModel !== localModel) {
+                            if (!localCfg.llm) localCfg.llm = {};
+                            localCfg.llm.model = serverModel;
+                            localStorage.setItem('gugu-config', JSON.stringify(localCfg));
+                            const modelInput = document.getElementById('cfg-llm-model');
+                            if (modelInput) modelInput.value = serverModel;
+                        }
+                        // 同步 base_url
+                        if (serverBaseUrl) {
+                            if (!localCfg.llm) localCfg.llm = {};
+                            if (!localCfg.llm[serverProvider]) localCfg.llm[serverProvider] = {};
+                            localCfg.llm[serverProvider].base_url = serverBaseUrl;
+                            localStorage.setItem('gugu-config', JSON.stringify(localCfg));
+                            const baseUrlInput = document.getElementById('cfg-llm-base-url');
+                            if (baseUrlInput) baseUrlInput.value = serverBaseUrl;
+                        }
+                    }
+                    // v1.9.44: 同步 Vision 配置
+                    if (data.config?.vision) {
+                        const vision = data.config.vision;
+                        if (vision.default_provider) {
+                            const vpEl = document.getElementById('cfg-vision-provider');
+                            if (vpEl) vpEl.value = vision.default_provider;
+                        }
+                        if (vision.minimax_vl) {
+                            if (vision.minimax_vl.api_host) {
+                                const el = document.getElementById('cfg-vision-minimax-api-host');
+                                if (el) el.value = vision.minimax_vl.api_host;
+                            }
+                            if (vision.minimax_vl.model) {
+                                const el = document.getElementById('cfg-vision-minimax-model');
+                                if (el) el.value = vision.minimax_vl.model;
+                            }
+                        }
+                        if (vision.minicpm) {
+                            if (vision.minicpm.model_id) {
+                                const el = document.getElementById('cfg-vision-minicpm-model-id');
+                                if (el) el.value = vision.minicpm.model_id;
+                            }
+                            if (vision.minicpm.use_int4 !== undefined) {
+                                const el = document.getElementById('cfg-vision-minicpm-use-int4');
+                                if (el) el.value = String(vision.minicpm.use_int4);
+                            }
+                        }
+                        if (typeof onVisionProviderChange === 'function') onVisionProviderChange();
+                    }
+                } catch (syncErr) {
+                    console.warn('[CONFIG-SYNC] 同步失败:', syncErr);
                 }
             }
             
@@ -5100,7 +5203,8 @@
             // 本地模型（Ollama/llama.cpp 等 localhost 端点）不需要 API Key，跳过检查
             const isLocalProvider = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') || provider === 'ollama';
             if (!isLocalProvider) {
-                showToast('warning', 'API Key 未配置', `请先配置 ${provider === 'openai' ? 'OpenAI' : provider === 'anthropic' ? 'Anthropic' : 'MiniMax'} API Key 才能对话`, {
+                const pc = _pc(provider);
+                showToast('warning', 'API Key 未配置', `请先配置 ${pc.label} API Key 才能对话`, {
                     duration: 6000,
                     action: function() { if (!_apiKeyStatus?.configured) _startOnboarding(); },
                     actionText: '去配置'
@@ -7149,7 +7253,7 @@ R - 复位`);
         const checks = [];
         // 版本检查
         const versionBadge = document.getElementById('layout-version-badge');
-        checks.push({name: '版本', ok: versionBadge && versionBadge.textContent.includes('1.9.38'), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
+        checks.push({name: '版本', ok: versionBadge && versionBadge.textContent.includes('1.9.44'), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
         // WS 连接
         checks.push({name: 'WebSocket', ok: ws?.readyState === WebSocket.OPEN, detail: `state=${ws?.readyState} onOpen=${_wsOnOpenFired} msgs=${_wsMsgCount}`});
         // TTS 音色列表
@@ -8149,27 +8253,63 @@ R - 复位`);
     }
 
     function loadConfigSettings() {
+        // v1.9.44: 先迁移旧数据
+        _migrateLlmSubConfigs();
+
         // 从 localStorage 加载配置
         const saved = localStorage.getItem('gugu-config');
         if (saved) {
             try {
                 const cfg = JSON.parse(saved);
-                // 应用到表单
-                document.getElementById('cfg-llm-provider').value = cfg.llm?.provider || 'minimax';
-                document.getElementById('cfg-llm-model').value = cfg.llm?.model || '';
-                // v1.9.38: 加载 base_url 和 api_key
-                const llmProvider = cfg.llm?.provider || 'minimax';
-                const llmSubCfg = cfg.llm?.[llmProvider] || {};
-                const baseUrlEl = document.getElementById('cfg-llm-base-url');
+                let provider = cfg.llm?.provider || 'minimax';
+
+                // v1.9.44 兼容：旧的 openai+localhost 组合迁移到 ollama
+                if (provider === 'openai') {
+                    const oldBaseUrl = cfg.llm?.openai?.base_url || '';
+                    if (oldBaseUrl.includes('localhost') || oldBaseUrl.includes('127.0.0.1')) {
+                        provider = 'ollama';
+                        // 把旧 openai 子配置复制到 ollama
+                        const oldSub = cfg.llm?.openai || {};
+                        const ollamaSub = loadLlmSubConfig('ollama') || {};
+                        if (oldSub.model && !ollamaSub.model) ollamaSub.model = oldSub.model;
+                        if (oldSub.base_url && !ollamaSub.base_url) ollamaSub.base_url = oldSub.base_url;
+                        saveLlmSubConfig('ollama', ollamaSub);
+                    }
+                }
+
+                document.getElementById('cfg-llm-provider').value = provider;
+
+                // v1.9.44: 从独立子配置存储恢复 model 和 base_url
+                const subCfg = loadLlmSubConfig(provider);
+                const modelInput = document.getElementById('cfg-llm-model');
+                const baseUrlInput = document.getElementById('cfg-llm-base-url');
                 const apiKeyCfgEl = document.getElementById('cfg-llm-api-key-cfg');
-                if (baseUrlEl) baseUrlEl.value = llmSubCfg.base_url || '';
+
+                if (subCfg?.model) {
+                    modelInput.value = subCfg.model;
+                } else if (cfg.llm?.model) {
+                    modelInput.value = cfg.llm.model;
+                }
+                if (subCfg?.base_url) {
+                    baseUrlInput.value = subCfg.base_url;
+                } else {
+                    const llmSubCfg = cfg.llm?.[provider] || {};
+                    baseUrlInput.value = llmSubCfg.base_url || '';
+                }
                 if (apiKeyCfgEl) apiKeyCfgEl.value = '';  // 安全：不回显 api_key
-                onLlmProviderChange();  // 触发字段显隐
+
+                _lastLlmProvider = provider;
+                updateModelDatalist(provider);
+                onLlmProviderChange();  // 触发字段显隐 + URL自动填充
+
+                // TTS
                 document.getElementById('cfg-tts-engine').value = cfg.tts?.engine || 'edge';
                 document.getElementById('cfg-tts-nosplit').value = cfg.tts?.no_split === undefined ? 'false' : String(cfg.tts?.no_split);
                 document.getElementById('cfg-tts-speed').value = cfg.tts?.speed || 1;
                 document.getElementById('cfg-tts-volume').value = cfg.tts?.volume || 100;
+                // ASR
                 document.getElementById('cfg-asr-lang').value = cfg.asr?.lang || 'zh-CN';
+                // Memory
                 document.getElementById('cfg-mem-short').value = cfg.memory?.working_memory_limit || 30;
                 document.getElementById('cfg-mem-summarize').value = cfg.memory?.summarize_threshold || 20;
                 document.getElementById('cfg-mem-threshold').value = cfg.memory?.forgetting_threshold || 0.15;
@@ -8177,30 +8317,78 @@ R - 复位`);
                 document.getElementById('cfg-mem-grace').value = cfg.memory?.grace_period_hours || 12;
                 document.getElementById('cfg-mem-dedup').value = cfg.memory?.dedup_threshold || 0.95;
                 document.getElementById('cfg-mem-auto-store').value = String(cfg.memory?.auto_store ?? true);
+
+                // v1.9.44: Vision 配置
+                if (cfg.vision) {
+                    const vp = cfg.vision.default_provider || 'minimax_vl';
+                    document.getElementById('cfg-vision-provider').value = vp;
+                    if (cfg.vision.minimax_vl) {
+                        if (cfg.vision.minimax_vl.api_host) document.getElementById('cfg-vision-minimax-api-host').value = cfg.vision.minimax_vl.api_host;
+                        if (cfg.vision.minimax_vl.model) document.getElementById('cfg-vision-minimax-model').value = cfg.vision.minimax_vl.model;
+                    }
+                    if (cfg.vision.minicpm) {
+                        if (cfg.vision.minicpm.model_id) document.getElementById('cfg-vision-minicpm-model-id').value = cfg.vision.minicpm.model_id;
+                        if (cfg.vision.minicpm.model_path) document.getElementById('cfg-vision-minicpm-model-path').value = cfg.vision.minicpm.model_path;
+                        if (cfg.vision.minicpm.use_int4 !== undefined) document.getElementById('cfg-vision-minicpm-use-int4').value = String(cfg.vision.minicpm.use_int4);
+                    }
+                    onVisionProviderChange();
+                }
             } catch (e) {}
         }
     }
 
     function saveConfigSettings() {
         const provider = document.getElementById('cfg-llm-provider').value;
-        const llmConfig = {
-            provider: provider,
-            model: document.getElementById('cfg-llm-model').value
-        };
-        // v1.9.38: 保存 base_url 和 api_key 到对应 provider 子配置
+        const model = document.getElementById('cfg-llm-model').value;
         const baseUrl = document.getElementById('cfg-llm-base-url')?.value?.trim() || '';
         const apiKey = document.getElementById('cfg-llm-api-key-cfg')?.value?.trim() || '';
-        if (baseUrl) {
-            llmConfig[provider] = llmConfig[provider] || {};
-            llmConfig[provider].base_url = baseUrl;
+
+        // v1.9.44: 保存当前 provider 的子配置到独立存储
+        const currentSubCfg = loadLlmSubConfig(provider) || {};
+        if (model) currentSubCfg.model = model;
+        if (baseUrl) currentSubCfg.base_url = baseUrl;
+        saveLlmSubConfig(provider, currentSubCfg);
+
+        // 构建 LLM config，包含所有 provider 子配置
+        const llmConfig = { provider, model };
+        const allSubConfigs = getLlmSubConfigs();
+        for (const [prov, subCfg] of Object.entries(allSubConfigs)) {
+            llmConfig[prov] = { ...subCfg };
         }
-        if (apiKey) {
-            llmConfig[provider] = llmConfig[provider] || {};
-            llmConfig[provider].api_key = apiKey;
+        // 确保当前 provider 的值用表单值覆盖
+        llmConfig[provider] = llmConfig[provider] || {};
+        if (baseUrl) llmConfig[provider].base_url = baseUrl;
+        if (model) llmConfig[provider].model = model;
+
+        // API Key: 如果提供了则发送
+        if (apiKey && ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({type: 'set_api_key', provider: provider, api_key: apiKey}));
+        }
+
+        // v1.9.44: Vision 配置
+        const visionConfig = {
+            default_provider: document.getElementById('cfg-vision-provider')?.value || 'minimax_vl'
+        };
+        const visionApiKey = document.getElementById('cfg-vision-minimax-api-key')?.value?.trim() || '';
+        const visionApiHost = document.getElementById('cfg-vision-minimax-api-host')?.value?.trim() || '';
+        const visionModel = document.getElementById('cfg-vision-minimax-model')?.value || '';
+        if (visionApiKey || visionApiHost || visionModel) {
+            visionConfig.minimax_vl = {};
+            if (visionApiKey) visionConfig.minimax_vl.api_key = visionApiKey;
+            if (visionApiHost) visionConfig.minimax_vl.api_host = visionApiHost;
+            if (visionModel) visionConfig.minimax_vl.model = visionModel;
+        }
+        if (document.getElementById('cfg-vision-provider')?.value === 'minicpm') {
+            visionConfig.minicpm = {
+                model_id: document.getElementById('cfg-vision-minicpm-model-id')?.value || '',
+                model_path: document.getElementById('cfg-vision-minicpm-model-path')?.value || '',
+                use_int4: document.getElementById('cfg-vision-minicpm-use-int4')?.value === 'true'
+            };
         }
 
         const config = {
             llm: llmConfig,
+            vision: visionConfig,
             tts: {
                 engine: document.getElementById('cfg-tts-engine').value,
                 no_split: document.getElementById('cfg-tts-nosplit').value === 'true',
@@ -8227,16 +8415,22 @@ R - 复位`);
         // 发送到后端
         if (ws?.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'config', action: 'update', config }));
-            // v1.9.38: 保存后刷新 API Key 状态（provider 可能变了）
             setTimeout(checkApiKeyStatus, 500);
         }
 
+        updateProviderIndicator(provider);
+
         log('配置已保存', 'ok');
+        const providerLabel = _pc(provider).label;
+        const modelLabel = model || '';
+        showToast('success', '配置已保存', `LLM: ${providerLabel}${modelLabel ? ' · ' + modelLabel : ''}`);
     }
 
     function resetConfigSettings() {
         if (confirm('确定重置所有配置？')) {
             localStorage.removeItem('gugu-config');
+            localStorage.removeItem('gugu-llm-subconfigs');
+            localStorage.removeItem('gugu-llm-subconfigs-migrated');
             location.reload();
         }
     }
@@ -8264,49 +8458,323 @@ R - 复位`);
 
     // 加载配置
     loadConfigSettings();
+
+    // v1.9.41: 初始化 Provider 状态指示器
+    updateProviderIndicator();
     
-    // ========== v1.9.38: LLM Provider 联动 ==========
+    // ========== v1.9.44: LLM Provider 联动 + 子配置持久化（10 个 provider） ==========
+    // 跟踪上一个 provider，用于切换时保存子配置
+    let _lastLlmProvider = 'minimax';
+
+    // v1.9.44: 统一 Provider 配置数据（替代散落的 getModelOptions/_defaultUrls/getDefaultModel）
+    const _providerConfig = {
+        minimax: {
+            label: 'MiniMax',
+            baseUrl: 'https://api.minimaxi.com/anthropic',
+            models: ['MiniMax-M2.7', 'MiniMax-M2.7-highspeed', 'MiniMax-M2.5', 'MiniMax-M2.5-highspeed', 'MiniMax-M2.1', 'MiniMax-M2.1-highspeed', 'MiniMax-M2'],
+            defaultModel: 'MiniMax-M2.7',
+            hint: '推荐 Anthropic 格式（默认），也可切换到 OpenAI 格式 api.minimaxi.com/v1',
+            keyPlaceholder: '在 minimaxi.com 获取',
+            color: { bg: 'rgba(102,126,234,0.3)', fg: '#a8b5ff' }
+        },
+        deepseek: {
+            label: 'DeepSeek',
+            baseUrl: 'https://api.deepseek.com/v1',
+            models: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'],
+            defaultModel: 'deepseek-chat',
+            hint: 'DeepSeek V4 Pro/Flash + V3 Chat + R1 推理',
+            keyPlaceholder: '在 platform.deepseek.com 获取',
+            color: { bg: 'rgba(76,175,80,0.25)', fg: '#81c784' }
+        },
+        kimi: {
+            label: 'Kimi',
+            baseUrl: 'https://api.moonshot.cn/v1',
+            models: ['kimi-k2.6', 'kimi-k2.5', 'moonshot-v1-128k', 'moonshot-v1-32k', 'moonshot-v1-8k'],
+            defaultModel: 'kimi-k2.6',
+            hint: 'Kimi K2.6 最新多模态模型，256K 长上下文',
+            keyPlaceholder: '在 platform.moonshot.cn 获取',
+            color: { bg: 'rgba(156,39,176,0.25)', fg: '#ce93d8' }
+        },
+        glm: {
+            label: '智谱 GLM',
+            baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+            models: ['glm-4-plus', 'glm-4-flash', 'glm-4-air', 'glm-4-long', 'glm-4v-plus'],
+            defaultModel: 'glm-4-flash',
+            hint: 'GLM-4 系列，glm-4-flash 性价比最高',
+            keyPlaceholder: '在 open.bigmodel.cn 获取',
+            color: { bg: 'rgba(33,150,243,0.25)', fg: '#64b5f6' }
+        },
+        qwen: {
+            label: '通义千问',
+            baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+            models: ['qwen3.6-plus', 'qwen-max', 'qwen-plus', 'qwen-turbo'],
+            defaultModel: 'qwen-plus',
+            hint: '阿里云百炼平台，兼容 OpenAI 格式',
+            keyPlaceholder: '在 dashscope.console.aliyun.com 获取',
+            color: { bg: 'rgba(255,152,0,0.25)', fg: '#ffb74d' }
+        },
+        doubao: {
+            label: '豆包',
+            baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+            models: ['doubao-seed-2-0-pro', 'doubao-1.5-pro'],
+            defaultModel: 'doubao-1.5-pro',
+            hint: '字节跳动火山方舟平台，兼容 OpenAI 格式',
+            keyPlaceholder: '在 console.volcengine.com/ark 获取',
+            color: { bg: 'rgba(0,188,212,0.25)', fg: '#4dd0e1' }
+        },
+        mimo: {
+            label: '小米 MiMo',
+            baseUrl: 'https://api.xiaomimimo.com/v1',
+            models: ['mimo-v2.5-pro', 'mimo-v2.5'],
+            defaultModel: 'mimo-v2.5',
+            hint: '小米大模型，兼容 OpenAI 格式',
+            keyPlaceholder: '在 xiaomimimo.com 获取',
+            color: { bg: 'rgba(255,87,34,0.25)', fg: '#ff8a65' }
+        },
+        openai: {
+            label: 'OpenAI',
+            baseUrl: 'https://api.openai.com/v1',
+            models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+            defaultModel: 'gpt-4o-mini',
+            hint: 'OpenAI 官方 API，也可接入兼容代理',
+            keyPlaceholder: '在 platform.openai.com 获取',
+            color: { bg: 'rgba(102,126,234,0.3)', fg: '#a8b5ff' }
+        },
+        anthropic: {
+            label: 'Anthropic',
+            baseUrl: 'https://api.anthropic.com',
+            models: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'claude-3-opus-20240229'],
+            defaultModel: 'claude-3-5-sonnet-20241022',
+            hint: 'Claude 系列模型',
+            keyPlaceholder: '在 console.anthropic.com 获取',
+            color: { bg: 'rgba(204,120,50,0.25)', fg: '#e8a65d' }
+        },
+        ollama: {
+            label: 'Ollama (本地)',
+            baseUrl: 'http://localhost:11434/v1',
+            models: [],
+            defaultModel: '',
+            hint: '本地模型，API Key 填 ollama，模型名根据 ollama list 输出',
+            keyPlaceholder: 'ollama',
+            color: { bg: 'rgba(76,175,80,0.25)', fg: '#81c784' }
+        }
+    };
+
+    // v1.9.44: 辅助函数 — 读取 provider 配置
+    function _pc(provider) {
+        const cfg = _providerConfig[provider];
+        if (!cfg) console.warn('[LLM] Unknown provider:', provider, '— falling back to openai');
+        return cfg || _providerConfig.openai;
+    }
+    function getDefaultModel(provider) { return _pc(provider).defaultModel; }
+    function getModelOptions(provider) { return _pc(provider).models || []; }
+
+    // v1.9.44: 更新模型 datalist
+    function updateModelDatalist(provider) {
+        const datalist = document.getElementById('cfg-llm-model-list');
+        if (!datalist) return;
+        datalist.innerHTML = '';
+        getModelOptions(provider).forEach(val => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            datalist.appendChild(opt);
+        });
+    }
+
+    // v1.9.44: LLM 子配置持久化辅助函数
+    function getLlmSubConfigs() {
+        try { return JSON.parse(localStorage.getItem('gugu-llm-subconfigs') || '{}'); } catch(e) { return {}; }
+    }
+    function saveLlmSubConfig(provider, subCfg) {
+        const all = getLlmSubConfigs();
+        all[provider] = subCfg;
+        localStorage.setItem('gugu-llm-subconfigs', JSON.stringify(all));
+    }
+    function loadLlmSubConfig(provider) {
+        return getLlmSubConfigs()[provider] || null;
+    }
+
+    // v1.9.44: 迁移旧 localStorage 中的 LLM 子配置
+    function _migrateLlmSubConfigs() {
+        if (localStorage.getItem('gugu-llm-subconfigs-migrated')) return;
+        try {
+            const cfg = JSON.parse(localStorage.getItem('gugu-config') || '{}');
+            const llm = cfg.llm || {};
+            const subConfigs = {};
+            for (const provider of Object.keys(_providerConfig)) {
+                if (llm[provider]) {
+                    subConfigs[provider] = { ...llm[provider] };
+                    delete subConfigs[provider].api_key; // 安全：不存 api_key 到 localStorage
+                }
+            }
+            if (Object.keys(subConfigs).length > 0) {
+                localStorage.setItem('gugu-llm-subconfigs', JSON.stringify(subConfigs));
+            }
+            localStorage.setItem('gugu-llm-subconfigs-migrated', '2');  // v2: 10 providers
+        } catch(e) {}
+    }
+
+    // v1.9.44: 保存当前 provider 的表单值到子配置
+    function _saveCurrentProviderSubConfig(excludeProvider) {
+        const currentProvider = _lastLlmProvider || 'minimax';
+        if (currentProvider === excludeProvider) return;
+        const model = document.getElementById('cfg-llm-model')?.value || '';
+        const baseUrl = document.getElementById('cfg-llm-base-url')?.value || '';
+        const subCfg = loadLlmSubConfig(currentProvider) || {};
+        if (model) subCfg.model = model;
+        if (baseUrl) subCfg.base_url = baseUrl;
+        saveLlmSubConfig(currentProvider, subCfg);
+    }
+
+    // v1.9.44: 加载目标 provider 的子配置到表单
+    function _loadProviderSubConfig(provider) {
+        const subCfg = loadLlmSubConfig(provider);
+        const modelInput = document.getElementById('cfg-llm-model');
+        const baseUrlInput = document.getElementById('cfg-llm-base-url');
+        if (subCfg) {
+            if (modelInput && subCfg.model) modelInput.value = subCfg.model;
+            if (baseUrlInput && subCfg.base_url) baseUrlInput.value = subCfg.base_url;
+        }
+        _lastLlmProvider = provider;
+    }
+
+    // v1.9.44: Base URL 默认值从 _providerConfig 读取（不再单独维护 _defaultUrls）
+    function _getDefaultUrl(provider) { return _pc(provider).baseUrl; }
+
+    // v1.9.44: 解锁 Base URL 编辑
+    function enableBaseUrlEdit() {
+        const input = document.getElementById('cfg-llm-base-url');
+        const btn = document.getElementById('cfg-llm-base-url-edit-btn');
+        if (input) { input.removeAttribute('readonly'); input.style.opacity = '1'; input.style.cursor = 'text'; input.focus(); }
+        if (btn) btn.style.display = 'none';
+    }
+
     function onLlmProviderChange() {
         const provider = document.getElementById('cfg-llm-provider')?.value || 'minimax';
-        const baseUrlGroup = document.getElementById('cfg-llm-base-url-group');
+        const pc = _pc(provider);
         const apiKeyGroup = document.getElementById('cfg-llm-api-key-group');
         const hintEl = document.getElementById('cfg-llm-hint');
-        // OpenAI/Ollama: 显示 base_url + api_key
-        // Anthropic: 隐藏 base_url，显示 api_key
-        // MiniMax: 隐藏 base_url，显示 api_key
-        if (baseUrlGroup) baseUrlGroup.style.display = (provider === 'openai') ? '' : 'none';
-        if (apiKeyGroup) apiKeyGroup.style.display = '';
-        if (hintEl) {
-            if (provider === 'openai') {
-                hintEl.textContent = 'Ollama 用户：Base URL 填 http://localhost:11434/v1，API Key 填 ollama';
-            } else if (provider === 'anthropic') {
-                hintEl.textContent = 'Anthropic Claude 模型，需要 API Key';
-            } else {
-                hintEl.textContent = 'MiniMax 是默认提供商，需要 API Key';
-            }
+        const modelInput = document.getElementById('cfg-llm-model');
+        const apiKeyInput = document.getElementById('cfg-llm-api-key-cfg');
+
+        // v1.9.44: 保存当前 provider 子配置，加载新 provider 子配置
+        _saveCurrentProviderSubConfig(provider);
+        _loadProviderSubConfig(provider);
+
+        // API Key placeholder 随 provider 变化
+        if (apiKeyInput) {
+            apiKeyInput.placeholder = pc.keyPlaceholder || 'sk-...';
         }
+
+        // Ollama 自动填 api_key
+        if (provider === 'ollama' && apiKeyInput && !apiKeyInput.value.trim()) {
+            apiKeyInput.value = 'ollama';
+        }
+
+        // 提示文字
+        if (hintEl) {
+            hintEl.textContent = pc.hint || '';
+        }
+
+        // v1.9.44: Base URL 自动填充 + 只读锁定
+        // 优先使用子配置中保存的 base_url（用户可能自定义了代理），无记录时用官方默认
+        const baseUrlInput = document.getElementById('cfg-llm-base-url');
+        if (baseUrlInput) {
+            const savedBaseUrl = baseUrlInput.value;  // 已由 _loadProviderSubConfig 加载
+            if (!savedBaseUrl) {
+                baseUrlInput.value = pc.baseUrl || '';
+            }
+            baseUrlInput.setAttribute('readonly', '');
+            baseUrlInput.style.opacity = '0.7';
+            baseUrlInput.style.cursor = 'default';
+            const editBtn = document.getElementById('cfg-llm-base-url-edit-btn');
+            if (editBtn) editBtn.style.display = '';
+        }
+
+        // v1.9.44: 更新模型下拉列表
+        updateModelDatalist(provider);
+
+        // 自动填入默认模型（如果子配置没有 model 且表单值为空）
+        if (modelInput && !modelInput.value.trim()) {
+            const defaultModel = pc.defaultModel;
+            if (defaultModel) modelInput.value = defaultModel;
+        }
+
+        // 实时更新 Provider 状态指示器
+        updateProviderIndicator(provider);
+    }
+
+    // v1.9.44: 视觉 Provider 联动
+    function onVisionProviderChange() {
+        const provider = document.getElementById('cfg-vision-provider')?.value || 'minimax_vl';
+        const minimaxGroup = document.getElementById('cfg-vision-minimax-vl-group');
+        const rapidocrGroup = document.getElementById('cfg-vision-rapidocr-group');
+        const minicpmGroup = document.getElementById('cfg-vision-minicpm-group');
+        if (minimaxGroup) minimaxGroup.style.display = (provider === 'minimax_vl') ? '' : 'none';
+        if (rapidocrGroup) rapidocrGroup.style.display = (provider === 'rapidocr') ? '' : 'none';
+        if (minicpmGroup) minicpmGroup.style.display = (provider === 'minicpm') ? '' : 'none';
+    }
+
+    // v1.9.44: 更新聊天面板的 Provider 状态指示器（10 个 provider）
+    function updateProviderIndicator(provider) {
+        const indicator = document.getElementById('provider-indicator');
+        if (!indicator) return;
+        provider = provider || document.getElementById('cfg-llm-provider')?.value
+            || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
+            || 'minimax';
+        const model = document.getElementById('cfg-llm-model')?.value
+            || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.model
+            || '';
+        const pc = _pc(provider);
+        let label = pc.label + (model ? '/' + model : '');
+        indicator.textContent = label;
+        indicator.style.background = pc.color.bg;
+        indicator.style.color = pc.color.fg;
+        indicator.title = `当前 LLM: ${label}\n点击→配置编辑器 | 双击→快速切换`;
+    }
+
+    // v1.9.44: 快速切换 Provider（在最近使用的两个 provider 间切换）
+    function quickSwitchProvider() {
+        const currentProvider = document.getElementById('cfg-llm-provider')?.value
+            || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
+            || 'minimax';
+        // 切换目标：当前 provider ↔ ollama（本地优先切换）
+        const newProvider = currentProvider === 'ollama' ? 'deepseek' : 'ollama';
+
+        // v1.9.44: 先保存当前 provider 的子配置
+        _saveCurrentProviderSubConfig(newProvider);
+
+        // 更新 UI 表单
+        const providerSelect = document.getElementById('cfg-llm-provider');
+        if (providerSelect) providerSelect.value = newProvider;
+
+        // 触发 provider 变更回调（会自动加载子配置、更新模型列表、填充URL）
+        if (typeof onLlmProviderChange === 'function') onLlmProviderChange();
+
+        // 如果模型仍为空（子配置无记录），用默认值
+        const modelInput = document.getElementById('cfg-llm-model');
+        if (modelInput && !modelInput.value.trim()) {
+            modelInput.value = getDefaultModel(newProvider);
+        }
+
+        // Ollama 自动填 api_key
+        const apiKeyInput = document.getElementById('cfg-llm-api-key-cfg');
+        if (newProvider === 'ollama' && apiKeyInput && !apiKeyInput.value.trim()) {
+            apiKeyInput.value = 'ollama';
+        }
+
+        // 自动保存并发送到后端
+        if (typeof saveConfigSettings === 'function') saveConfigSettings();
+
+        const modelLabel = modelInput?.value || getDefaultModel(newProvider);
+        const pc = _pc(newProvider);
+        log(`快速切换 LLM → ${pc.label}/${modelLabel}`, 'ok');
     }
 
     // ========== API Key 管理 ==========
-    function saveApiKey() {
-        const apiKey = document.getElementById('cfg-minimax-api-key').value.trim();
-        if (!apiKey) {
-            document.getElementById('apikey-status').innerHTML = '<span style="color:#f44;">❌ API Key 不能为空</span>';
-            return;
-        }
-        // v1.9.38: 发送当前活跃 provider，而非硬编码 minimax
-        const provider = document.getElementById('cfg-llm-provider')?.value
-            || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
-            || 'minimax';
-        if (ws?.readyState === WebSocket.OPEN) {
-            document.getElementById('apikey-status').innerHTML = '<span style="color:#fa0;">⏳ 正在保存...</span>';
-            ws.send(JSON.stringify({type: 'set_api_key', provider: provider, api_key: apiKey}));
-        } else {
-            document.getElementById('apikey-status').innerHTML = '<span style="color:#f44;">❌ 未连接后端，请稍后重试</span>';
-        }
-    }
-    
-    // 设置面板中的 API Key 保存（与配置编辑器共享同一逻辑）
+    // v1.9.44: saveApiKey() 已删除（API Key 标签页移除），API Key 通过 LLM 标签页或设置面板保存
+
+    // 设置面板中的 API Key 保存
     function saveApiKeyFromSettings() {
         const apiKey = document.getElementById('cfg-minimax-api-key-settings').value.trim();
         if (!apiKey) {
@@ -8335,17 +8803,7 @@ R - 复位`);
         }
     }
     
-    function toggleApiKeyVisibility() {
-        const input = document.getElementById('cfg-minimax-api-key');
-        const btn = document.getElementById('apikey-toggle-btn');
-        if (input.type === 'password') {
-            input.type = 'text';
-            btn.textContent = '🔒';
-        } else {
-            input.type = 'password';
-            btn.textContent = '👁';
-        }
-    }
+    // v1.9.44: toggleApiKeyVisibility() 已删除（API Key 标签页移除）
     
     function toggleApiKeyVisibilitySettings() {
         const input = document.getElementById('cfg-minimax-api-key-settings');
@@ -9899,19 +10357,20 @@ IS_DESKTOP: ${IS_DESKTOP}
         _updateOnboardingStep();
     }
 
-    // v1.9.38: 新手引导中 Provider 切换
+    // v1.9.44: 新手引导中 Provider 切换（支持10个provider）
     function onOnboardingProviderChange() {
-        const provider = document.getElementById('onboarding-provider')?.value || 'minimax';
+        const provider = document.getElementById('onboarding-provider')?.value || 'deepseek';
         const baseUrlGroup = document.getElementById('onboarding-baseurl-group');
         const hintEl = document.getElementById('onboarding-provider-hint');
-        if (baseUrlGroup) baseUrlGroup.style.display = (provider === 'openai') ? '' : 'none';
+        const pc = _pc(provider);
+        // 本地模型显示 Base URL 输入框
+        if (baseUrlGroup) baseUrlGroup.style.display = (provider === 'ollama') ? '' : 'none';
         if (hintEl) {
-            if (provider === 'openai') {
-                hintEl.innerHTML = 'Ollama 用户：Base URL 填 <code style="color:#667eea;">http://localhost:11434/v1</code>，API Key 填 <code style="color:#667eea;">ollama</code>';
-            } else if (provider === 'anthropic') {
-                hintEl.innerHTML = '在 <a href="https://console.anthropic.com/" target="_blank" style="color:#667eea;">Anthropic Console</a> 获取 API Key';
+            if (provider === 'ollama') {
+                hintEl.innerHTML = '本地模型：Base URL 填 <code style="color:#667eea;">http://localhost:11434/v1</code>，API Key 填 <code style="color:#667eea;">ollama</code>，模型名根据 <code style="color:#667eea;">ollama list</code> 输出';
             } else {
-                hintEl.innerHTML = '在 <a href="https://platform.minimaxi.com/" target="_blank" style="color:#667eea;">MiniMax 开放平台</a> 获取，注册即送免费额度';
+                const defModel = pc.defaultModel || '';
+                hintEl.innerHTML = `在 <a href="${pc.hint.match(/https?:\/\/[^\s)"]+/)?.[0] || '#'}" target="_blank" style="color:#667eea;">${pc.label} 官网</a> 获取 API Key${defModel ? '，默认模型 <code style="color:#667eea;">' + defModel + '</code>' : ''}`;
             }
         }
     }
@@ -9951,18 +10410,23 @@ IS_DESKTOP: ${IS_DESKTOP}
         if (_onboardingStep === 1) {
             const input = document.getElementById('onboarding-apikey-input');
             const key = input?.value.trim();
-            // v1.9.38: 读取 onboarding 中选择的 provider 和 base_url
-            const provider = document.getElementById('onboarding-provider')?.value || 'minimax';
+            // v1.9.44: 读取 onboarding 中选择的 provider 和 base_url
+            const provider = document.getElementById('onboarding-provider')?.value || 'deepseek';
             const baseUrl = document.getElementById('onboarding-baseurl-input')?.value.trim() || '';
             if (key && ws?.readyState === WebSocket.OPEN) {
-                // 先保存 provider + base_url 到配置
+                // 先保存 provider + base_url + model 到配置
                 const config = JSON.parse(localStorage.getItem('gugu-config') || '{}');
                 if (!config.llm) config.llm = {};
                 config.llm.provider = provider;
-                if (baseUrl) {
-                    config.llm[provider] = config.llm[provider] || {};
-                    config.llm[provider].base_url = baseUrl;
-                }
+                // v1.9.44: 自动填入默认模型
+                const defaultModel = getDefaultModel(provider);
+                config.llm.model = defaultModel;
+                // 保存子配置（base_url + model）
+                config.llm[provider] = config.llm[provider] || {};
+                const pc = _pc(provider);
+                if (!config.llm[provider].base_url) config.llm[provider].base_url = pc.baseUrl;
+                if (baseUrl) config.llm[provider].base_url = baseUrl;
+                if (!config.llm[provider].model) config.llm[provider].model = defaultModel;
                 localStorage.setItem('gugu-config', JSON.stringify(config));
                 ws.send(JSON.stringify({type: 'config', action: 'update', config}));
                 // 再保存 api_key
@@ -9972,18 +10436,17 @@ IS_DESKTOP: ${IS_DESKTOP}
                 // 等待结果再继续（api_key_result 消息会处理）
                 return;
             } else if (!key) {
-                // 没有 key 但可能是本地模型（Ollama），检查 base_url
-                const isLocalProvider = provider === 'openai' && (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1'));
+                // 没有 key 但可能是本地模型（Ollama），跳过 API Key
+                const isLocalProvider = provider === 'ollama';
                 if (isLocalProvider) {
                     // 保存配置并跳过 API Key
                     const config = JSON.parse(localStorage.getItem('gugu-config') || '{}');
                     if (!config.llm) config.llm = {};
-                    config.llm.provider = provider;
-                    if (baseUrl) {
-                        config.llm[provider] = config.llm[provider] || {};
-                        config.llm[provider].base_url = baseUrl;
-                        config.llm[provider].api_key = 'ollama';
-                    }
+                    config.llm.provider = 'ollama';
+                    config.llm.model = '';
+                    config.llm.ollama = config.llm.ollama || {};
+                    config.llm.ollama.base_url = baseUrl || 'http://localhost:11434/v1';
+                    config.llm.ollama.api_key = 'ollama';
                     localStorage.setItem('gugu-config', JSON.stringify(config));
                     ws.send(JSON.stringify({type: 'config', action: 'update', config}));
                     const statusEl = document.getElementById('onboarding-apikey-status');

@@ -1792,7 +1792,7 @@ def main():
 
         args = parser.parse_args()
 
-        game_header("咕咕嘎嘎 AI-VTuber v1.9.38")
+        game_header("咕咕嘎嘎 AI-VTuber v1.9.44")
         game_info("系统启动中", f"{_timestamp()} | Python {sys.version_info.major}.{sys.version_info.minor}")
 
         # 使用上下文管理器创建 AIVTuber 实例（确保退出时清理资源）

@@ -290,7 +290,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
         
         # L2修复: 健康检查端点，用于部署监控和启动器检测后端就绪
         if self.path == "/api/health":
-            self.send_json({"status": "ok", "version": "1.9.38"})
+            self.send_json({"status": "ok", "version": "1.9.44"})
             return
 
         # 其他请求返回 405 Method Not Allowed
@@ -1217,6 +1217,11 @@ class WebSocketServer:
                     self._handle_get_providers(client)
                     return
 
+                # ---------- 获取后端当前配置（前端同步用） ----------
+                elif msg_type == "get_current_config":
+                    self._handle_get_current_config(client)
+                    return
+
             def on_left(client, server):
                 """
                 【功能说明】WebSocket客户端断开连接回调,打印日志并清理客户端状态
@@ -1458,6 +1463,55 @@ class WebSocketServer:
                 "error": str(e)
             }))
 
+    def _handle_get_current_config(self, client):
+        """
+        v1.9.44: 返回后端 config.yaml 中的关键配置，供前端同步。
+        主要解决：前端 localStorage 与后端 config.yaml 的 provider 不一致问题。
+        """
+        try:
+            llm_cfg = self.app.config.config.get('llm', {}) if (self.app and hasattr(self.app, 'config')) else {}
+            provider = llm_cfg.get('provider', 'minimax')
+            sub_cfg = llm_cfg.get(provider, {})
+            vision_cfg = self.app.config.config.get('vision', {}) if (self.app and hasattr(self.app, 'config')) else {}
+
+            # v1.9.44: 返回当前 provider 的完整子配置（base_url + model）
+            provider_sub = {}
+            if sub_cfg:
+                if sub_cfg.get('base_url'):
+                    provider_sub['base_url'] = sub_cfg['base_url']
+                if sub_cfg.get('model'):
+                    provider_sub['model'] = sub_cfg['model']
+
+            response = {
+                "type": "current_config",
+                "config": {
+                    "llm": {
+                        "provider": provider,
+                        "model": llm_cfg.get('model') or sub_cfg.get('model', ''),
+                        "max_tokens": llm_cfg.get('max_tokens', 2048),
+                        provider: provider_sub
+                    },
+                    "vision": {
+                        "default_provider": vision_cfg.get('default_provider', 'minimax_vl'),
+                        "minimax_vl": {
+                            "api_host": vision_cfg.get('minimax_vl', {}).get('api_host', ''),
+                            "model": vision_cfg.get('minimax_vl', {}).get('model', ''),
+                        },
+                        "minicpm": {
+                            "model_id": vision_cfg.get('minicpm', {}).get('model_id', ''),
+                            "use_int4": vision_cfg.get('minicpm', {}).get('use_int4', False),
+                        }
+                    }
+                }
+            }
+            self.server.send_message(client, json.dumps(response))
+        except Exception as e:
+            print(f"[CONFIG] 获取当前配置失败: {e}")
+            self.server.send_message(client, json.dumps({
+                "type": "current_config",
+                "error": str(e)
+            }))
+
     def _handle_tts(self, client, data):
         """
         处理 TTS(文本转语音)请求.
@@ -1688,7 +1742,13 @@ class WebSocketServer:
             return
 
         text = data.get("text", "")
-        print(f"[WS] 处理: {text[:30]}")
+        # v1.9.41: 显示当前 LLM 引擎信息
+        llm = self.app.llm
+        llm_name = getattr(llm, 'name', type(llm).__name__)
+        llm_model = getattr(llm, 'model', '?')
+        is_ollama = getattr(llm, '_is_ollama', False)
+        llm_tag = f"Ollama/{llm_model}" if is_ollama else f"{llm_name}/{llm_model}"
+        print(f"[WS] 处理: {text[:30]} [LLM: {llm_tag}]")
 
         # 获取客户端选择的 TTS 引擎、声音和模式
         client_id = client['id']
@@ -1762,8 +1822,9 @@ class WebSocketServer:
                     except Exception:
                         pass
 
-                # v2.0: 传递 memory_system 支持 RAG 注入
-                result = llm.stream_chat(text, callback=on_chunk, chunk_size=5, memory_system=memory)
+                # v1.9.41: 传递 history 和 memory_system，确保 LLM 能看到上下文
+                history = list(self.app.history) if hasattr(self.app, 'history') else None
+                result = llm.stream_chat(text, history=history, callback=on_chunk, chunk_size=5, memory_system=memory)
                 reply = result.get("text", full_text)
                 reply = _filter_reply(reply)
 
@@ -1789,7 +1850,9 @@ class WebSocketServer:
                     pass
             else:
                 # ========== 非流式回退 ==========
-                result = llm.chat(text)
+                # v1.9.41: 传递 history 和 memory_system
+                history = list(self.app.history) if hasattr(self.app, 'history') else None
+                result = llm.chat(text, history=history, memory_system=memory)
                 reply = result.get("text", "")
                 reply = _filter_reply(reply)
 
@@ -3325,12 +3388,47 @@ class WebSocketServer:
         if action == "update":
             # 保存配置到文件或内存
             try:
+                llm_provider_changed = False
                 if self.app and hasattr(self.app, 'config'):
+                    # v1.9.39: 记录旧的 LLM provider，用于判断是否需重建引擎
+                    old_llm_provider = self.app.config.config.get('llm', {}).get('provider')
+                    
                     # 更新内存配置
                     if 'tts' in config:
                         self.app.config.config.setdefault('tts', {}).update(config['tts'])
                     if 'llm' in config:
-                        self.app.config.config.setdefault('llm', {}).update(config['llm'])
+                        # v1.9.41: 深度合并 LLM 配置（浅层 update 会覆盖整个子配置，丢失 base_url 等）
+                        llm_updates = config['llm']
+                        existing_llm = self.app.config.config.setdefault('llm', {})
+                        # v1.9.44: 所有已知 provider 子配置都走深度合并
+                        _LLM_SUBCONFIG_KEYS = ('minimax', 'openai', 'anthropic', 'deepseek', 'kimi', 'glm', 'qwen', 'doubao', 'mimo', 'ollama')
+                        # 顶层字段（provider, model, max_tokens 等）直接覆盖
+                        for k, v in llm_updates.items():
+                            if isinstance(v, dict) and k in _LLM_SUBCONFIG_KEYS:
+                                # 子配置深度合并：保留原有字段（如 base_url），只更新前端传来的字段
+                                existing_sub = existing_llm.setdefault(k, {})
+                                existing_sub.update(v)
+                            else:
+                                existing_llm[k] = v
+                        # v1.9.39: 检查 provider 是否变化
+                        new_llm_provider = config['llm'].get('provider')
+                        if old_llm_provider and new_llm_provider and old_llm_provider != new_llm_provider:
+                            llm_provider_changed = True
+                            print(f"[CONFIG] LLM provider 变更: {old_llm_provider} → {new_llm_provider}")
+                        # v1.9.41: 将顶层 model 同步到子配置，确保 LLMFactory 传给引擎时能读到
+                        llm_cfg = self.app.config.config.get('llm', {})
+                        top_model = llm_cfg.get('model')
+                        active_provider = llm_cfg.get('provider', 'minimax')
+                        if top_model and active_provider:
+                            sub_cfg = llm_cfg.setdefault(active_provider, {})
+                            if sub_cfg.get('model') != top_model:
+                                sub_cfg['model'] = top_model
+                                print(f"[CONFIG] model 同步到 {active_provider}.model: {top_model}")
+                        # v1.9.41: 同步 max_tokens 到子配置
+                        top_max_tokens = llm_cfg.get('max_tokens')
+                        if top_max_tokens and active_provider:
+                            sub_cfg = llm_cfg.setdefault(active_provider, {})
+                            sub_cfg['max_tokens'] = top_max_tokens
                     if 'asr' in config:
                         self.app.config.config.setdefault('asr', {}).update(config['asr'])
                     if 'memory' in config:
@@ -3353,6 +3451,93 @@ class WebSocketServer:
                                 RetentionScorer.GRACE_PERIOD_HOURS = float(mem_cfg['grace_period_hours'])
                             if 'auto_store' in mem_cfg:
                                 mem.auto_store = bool(mem_cfg['auto_store'])
+
+                    # v1.9.42: Vision 配置更新（深度合并）
+                    if 'vision' in config:
+                        vision_updates = config['vision']
+                        existing_vision = self.app.config.config.setdefault('vision', {})
+                        for k, v in vision_updates.items():
+                            if isinstance(v, dict) and k in ('minimax_vl', 'rapidocr', 'minicpm'):
+                                existing_sub = existing_vision.setdefault(k, {})
+                                existing_sub.update(v)
+                            else:
+                                existing_vision[k] = v
+                        # 如果 minimax_vl 有新 api_key，保存到 api_keys.json
+                        if 'minimax_vl' in vision_updates and 'api_key' in vision_updates.get('minimax_vl', {}):
+                            new_vision_key = vision_updates['minimax_vl']['api_key']
+                            if new_vision_key:
+                                try:
+                                    cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cache")
+                                    keys_file = os.path.join(cache_dir, "api_keys.json")
+                                    existing_keys = {}
+                                    if os.path.exists(keys_file):
+                                        try:
+                                            with open(keys_file, "r", encoding="utf-8") as f:
+                                                existing_keys = json.load(f)
+                                        except Exception:
+                                            pass
+                                    existing_keys['minimax_vl'] = new_vision_key
+                                    import tempfile
+                                    fd, tmp_path = tempfile.mkstemp(dir=cache_dir, suffix=".tmp")
+                                    try:
+                                        with os.fdopen(fd, "w", encoding="utf-8") as f:
+                                            json.dump(existing_keys, f, ensure_ascii=False)
+                                        os.replace(tmp_path, keys_file)
+                                    except Exception:
+                                        try: os.unlink(tmp_path)
+                                        except OSError: pass
+                                except Exception as e:
+                                    print(f"[CONFIG] Vision API Key 保存失败: {e}")
+                        # 动态更新 Vision 模块
+                        if self.app and hasattr(self.app, '_lazy_modules'):
+                            vision = self.app._lazy_modules.get('vision')
+                            if vision and hasattr(vision, '_providers'):
+                                for ptype, vp in vision._providers.items():
+                                    if hasattr(vp, 'api_key') and 'minimax' in str(ptype).lower():
+                                        new_key = existing_vision.get('minimax_vl', {}).get('api_key', '')
+                                        if new_key:
+                                            vp.api_key = new_key
+                                new_default = vision_updates.get('default_provider')
+                                if new_default and hasattr(vision, 'set_provider'):
+                                    try:
+                                        vision.set_provider(new_default)
+                                        print(f"[CONFIG] Vision provider 切换到: {new_default}")
+                                    except Exception as e:
+                                        print(f"[CONFIG] Vision provider 切换失败: {e}")
+
+
+                    # v1.9.39: LLM provider 变更时重建引擎
+                    if llm_provider_changed and self.app:
+                        module_removed = False
+                        if hasattr(self.app, '_lazy_modules') and 'llm' in self.app._lazy_modules:
+                            old_llm = self.app._lazy_modules.pop('llm', None)
+                            # 清理旧引擎资源
+                            if hasattr(old_llm, 'cleanup') and callable(old_llm.cleanup):
+                                try:
+                                    old_llm.cleanup()
+                                except Exception:
+                                    pass
+                            module_removed = True
+                            print(f"[CONFIG] LLM 引擎已重建（旧引擎已清理）")
+                        # v1.9.41: 清空对话历史（provider 切换后旧上下文不适用）
+                        if hasattr(self.app, 'history') and isinstance(self.app.history, list):
+                            self.app.history.clear()
+                            print(f"[CONFIG] 对话历史已清空（provider 变更）")
+                        if hasattr(self.app, 'session'):
+                            try:
+                                self.app.session.reset_history()
+                                print(f"[CONFIG] 会话历史已重置")
+                            except Exception:
+                                pass
+                        # 强制刷新 API Key 状态（provider 变了 key 也变了）
+                        if hasattr(self.app, 'get_api_key'):
+                            new_provider = self.app.config.config.get('llm', {}).get('provider', '')
+                            api_key = self.app.get_api_key(new_provider) if callable(self.app.get_api_key) else ''
+                            if api_key:
+                                llm = getattr(self.app, 'llm', None)
+                                if llm and hasattr(llm, 'api_key'):
+                                    llm.api_key = api_key
+                                    print(f"[CONFIG] API Key 已同步到新 LLM 引擎")
 
                 self.server.send_message(client, json.dumps({
                     "type": "config_result",
@@ -3522,6 +3707,30 @@ class WebSocketServer:
         # 如果前端传的 provider 与活跃 provider 不一致，用活跃 provider
         if provider != active_provider:
             provider = active_provider
+        
+        # v1.9.44: 本地模型(ollama)不需要 API Key，直接标记已配置
+        if provider == 'ollama':
+            self.server.send_message(client, json.dumps({
+                "type": "api_key_status",
+                "provider": provider,
+                "configured": True,
+                "key_preview": "ollama (local)"
+            }))
+            return
+        
+        # 本地 provider（base_url 含 localhost）也跳过检查
+        if self.app and hasattr(self.app, 'config'):
+            llm_cfg = self.app.config.config.get('llm', {})
+            sub_cfg = llm_cfg.get(provider, {})
+            base_url = sub_cfg.get('base_url', '')
+            if base_url and ('localhost' in base_url or '127.0.0.1' in base_url):
+                self.server.send_message(client, json.dumps({
+                    "type": "api_key_status",
+                    "provider": provider,
+                    "configured": True,
+                    "key_preview": "local"
+                }))
+                return
         
         # 检查LLM模块（通过 _lazy_modules 字典访问）
         if self.app and hasattr(self.app, '_lazy_modules'):

@@ -19,7 +19,7 @@
 ; ============================================================
 
 !define PRODUCT_NAME "GuguGaga AI-VTuber"
-!define PRODUCT_VERSION "1.9.38"
+!define PRODUCT_VERSION "1.9.44"
 !define PRODUCT_PUBLISHER "咕咕嘎嘎"
 !define PRODUCT_WEB_SITE "https://github.com/gugugaga/ai-vtuber"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\GuguGaga.exe"
