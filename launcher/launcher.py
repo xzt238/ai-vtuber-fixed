@@ -609,7 +609,7 @@ class LauncherAPI:
                     for part in line.split():
                         if part.startswith("v") and any(c.isdigit() for c in part):
                             return part
-        return "1.9.44"
+        return "1.9.45"
 
     def isDesktop(self) -> bool:
         return True

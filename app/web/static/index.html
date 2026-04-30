@@ -1746,7 +1746,7 @@
     </div>
 
     <div class="header">
-        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.44</span></span></h1>
+        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.45</span></span></h1>
     </div>
     
     <!-- 布局预设栏 -->
@@ -4776,7 +4776,7 @@
             // API Key 状态查询结果
             if (data.type === 'api_key_status') {
                 _apiKeyStatus = data;  // v1.9.31: 缓存状态
-                // v1.9.44: 使用 _pc() 统一获取 provider 标签
+                // v1.9.45: 使用 _pc() 统一获取 provider 标签
                 const providerLabel = typeof _pc === 'function' ? (_pc(data.provider).label || data.provider) : data.provider;
                 const statusHtml = data.configured
                     ? `<span style="color:#4f4;">✅ 已配置 (${providerLabel}: ${data.key_preview})</span>`
@@ -4845,7 +4845,7 @@
                             if (baseUrlInput) baseUrlInput.value = serverBaseUrl;
                         }
                     }
-                    // v1.9.44: 同步 Vision 配置
+                    // v1.9.45: 同步 Vision 配置
                     if (data.config?.vision) {
                         const vision = data.config.vision;
                         if (vision.default_provider) {
@@ -7253,7 +7253,7 @@ R - 复位`);
         const checks = [];
         // 版本检查
         const versionBadge = document.getElementById('layout-version-badge');
-        checks.push({name: '版本', ok: versionBadge && versionBadge.textContent.includes('1.9.44'), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
+        checks.push({name: '版本', ok: versionBadge && versionBadge.textContent.includes('1.9.45'), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
         // WS 连接
         checks.push({name: 'WebSocket', ok: ws?.readyState === WebSocket.OPEN, detail: `state=${ws?.readyState} onOpen=${_wsOnOpenFired} msgs=${_wsMsgCount}`});
         // TTS 音色列表
@@ -8253,7 +8253,7 @@ R - 复位`);
     }
 
     function loadConfigSettings() {
-        // v1.9.44: 先迁移旧数据
+        // v1.9.45: 先迁移旧数据
         _migrateLlmSubConfigs();
 
         // 从 localStorage 加载配置
@@ -8263,7 +8263,7 @@ R - 复位`);
                 const cfg = JSON.parse(saved);
                 let provider = cfg.llm?.provider || 'minimax';
 
-                // v1.9.44 兼容：旧的 openai+localhost 组合迁移到 ollama
+                // v1.9.45 兼容：旧的 openai+localhost 组合迁移到 ollama
                 if (provider === 'openai') {
                     const oldBaseUrl = cfg.llm?.openai?.base_url || '';
                     if (oldBaseUrl.includes('localhost') || oldBaseUrl.includes('127.0.0.1')) {
@@ -8279,7 +8279,7 @@ R - 复位`);
 
                 document.getElementById('cfg-llm-provider').value = provider;
 
-                // v1.9.44: 从独立子配置存储恢复 model 和 base_url
+                // v1.9.45: 从独立子配置存储恢复 model 和 base_url
                 const subCfg = loadLlmSubConfig(provider);
                 const modelInput = document.getElementById('cfg-llm-model');
                 const baseUrlInput = document.getElementById('cfg-llm-base-url');
@@ -8318,7 +8318,7 @@ R - 复位`);
                 document.getElementById('cfg-mem-dedup').value = cfg.memory?.dedup_threshold || 0.95;
                 document.getElementById('cfg-mem-auto-store').value = String(cfg.memory?.auto_store ?? true);
 
-                // v1.9.44: Vision 配置
+                // v1.9.45: Vision 配置
                 if (cfg.vision) {
                     const vp = cfg.vision.default_provider || 'minimax_vl';
                     document.getElementById('cfg-vision-provider').value = vp;
@@ -8343,7 +8343,7 @@ R - 复位`);
         const baseUrl = document.getElementById('cfg-llm-base-url')?.value?.trim() || '';
         const apiKey = document.getElementById('cfg-llm-api-key-cfg')?.value?.trim() || '';
 
-        // v1.9.44: 保存当前 provider 的子配置到独立存储
+        // v1.9.45: 保存当前 provider 的子配置到独立存储
         const currentSubCfg = loadLlmSubConfig(provider) || {};
         if (model) currentSubCfg.model = model;
         if (baseUrl) currentSubCfg.base_url = baseUrl;
@@ -8365,7 +8365,7 @@ R - 复位`);
             ws.send(JSON.stringify({type: 'set_api_key', provider: provider, api_key: apiKey}));
         }
 
-        // v1.9.44: Vision 配置
+        // v1.9.45: Vision 配置
         const visionConfig = {
             default_provider: document.getElementById('cfg-vision-provider')?.value || 'minimax_vl'
         };
@@ -8462,12 +8462,48 @@ R - 复位`);
     // v1.9.41: 初始化 Provider 状态指示器
     updateProviderIndicator();
     
-    // ========== v1.9.44: LLM Provider 联动 + 子配置持久化（10 个 provider） ==========
+    // ========== v1.9.45: LLM Provider 联动 + 子配置持久化（10 个 provider） ==========
     // 跟踪上一个 provider，用于切换时保存子配置
     let _lastLlmProvider = 'minimax';
 
-    // v1.9.44: 统一 Provider 配置数据（替代散落的 getModelOptions/_defaultUrls/getDefaultModel）
+    // v1.9.45: 统一 Provider 配置数据（URL 和模型名已根据 2026-04 官方文档校验）
     const _providerConfig = {
+        deepseek: {
+            label: 'DeepSeek',
+            baseUrl: 'https://api.deepseek.com',
+            models: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'],
+            defaultModel: 'deepseek-chat',
+            hint: '官方 base_url 不带 /v1（API 自动兼容）。chat/reasoner 将于 2026/07 弃用，建议用 v4-flash',
+            keyPlaceholder: '在 platform.deepseek.com 获取',
+            color: { bg: 'rgba(76,175,80,0.25)', fg: '#81c784' }
+        },
+        kimi: {
+            label: 'Kimi',
+            baseUrl: 'https://api.moonshot.cn/v1',
+            models: ['kimi-k2.6', 'kimi-k2.5', 'kimi-k2-thinking', 'kimi-k2-thinking-turbo', 'kimi-k2-0905-preview', 'moonshot-v1-128k', 'moonshot-v1-32k', 'moonshot-v1-8k'],
+            defaultModel: 'kimi-k2.6',
+            hint: 'Kimi K2.6 最新模型，256K 长上下文，支持 thinking 模式',
+            keyPlaceholder: '在 platform.kimi.com 获取',
+            color: { bg: 'rgba(156,39,176,0.25)', fg: '#ce93d8' }
+        },
+        glm: {
+            label: '智谱 GLM',
+            baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+            models: ['GLM-5.1', 'GLM-5', 'GLM-5-Turbo', 'GLM-4.7', 'GLM-4.7-FlashX', 'GLM-4.6', 'GLM-4.5-Air', 'GLM-4-Long', 'GLM-4.7-Flash'],
+            defaultModel: 'GLM-4.7-FlashX',
+            hint: 'GLM-5.1 最新旗舰，GLM-4.7-FlashX 性价比最高（免费）',
+            keyPlaceholder: '在 open.bigmodel.cn 获取',
+            color: { bg: 'rgba(33,150,243,0.25)', fg: '#64b5f6' }
+        },
+        qwen: {
+            label: '通义千问',
+            baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+            models: ['qwen3.6-max-preview', 'qwen3.6-plus', 'qwen3.6-flash', 'qwen-max', 'qwen-plus', 'qwen-turbo'],
+            defaultModel: 'qwen3.6-plus',
+            hint: '阿里云百炼平台，qwen3.6 系列最新，兼容 OpenAI 格式',
+            keyPlaceholder: '在 dashscope.console.aliyun.com 获取',
+            color: { bg: 'rgba(255,152,0,0.25)', fg: '#ffb74d' }
+        },
         minimax: {
             label: 'MiniMax',
             baseUrl: 'https://api.minimaxi.com/anthropic',
@@ -8477,75 +8513,39 @@ R - 复位`);
             keyPlaceholder: '在 minimaxi.com 获取',
             color: { bg: 'rgba(102,126,234,0.3)', fg: '#a8b5ff' }
         },
-        deepseek: {
-            label: 'DeepSeek',
-            baseUrl: 'https://api.deepseek.com/v1',
-            models: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'],
-            defaultModel: 'deepseek-chat',
-            hint: 'DeepSeek V4 Pro/Flash + V3 Chat + R1 推理',
-            keyPlaceholder: '在 platform.deepseek.com 获取',
-            color: { bg: 'rgba(76,175,80,0.25)', fg: '#81c784' }
-        },
-        kimi: {
-            label: 'Kimi',
-            baseUrl: 'https://api.moonshot.cn/v1',
-            models: ['kimi-k2.6', 'kimi-k2.5', 'moonshot-v1-128k', 'moonshot-v1-32k', 'moonshot-v1-8k'],
-            defaultModel: 'kimi-k2.6',
-            hint: 'Kimi K2.6 最新多模态模型，256K 长上下文',
-            keyPlaceholder: '在 platform.moonshot.cn 获取',
-            color: { bg: 'rgba(156,39,176,0.25)', fg: '#ce93d8' }
-        },
-        glm: {
-            label: '智谱 GLM',
-            baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-            models: ['glm-4-plus', 'glm-4-flash', 'glm-4-air', 'glm-4-long', 'glm-4v-plus'],
-            defaultModel: 'glm-4-flash',
-            hint: 'GLM-4 系列，glm-4-flash 性价比最高',
-            keyPlaceholder: '在 open.bigmodel.cn 获取',
-            color: { bg: 'rgba(33,150,243,0.25)', fg: '#64b5f6' }
-        },
-        qwen: {
-            label: '通义千问',
-            baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-            models: ['qwen3.6-plus', 'qwen-max', 'qwen-plus', 'qwen-turbo'],
-            defaultModel: 'qwen-plus',
-            hint: '阿里云百炼平台，兼容 OpenAI 格式',
-            keyPlaceholder: '在 dashscope.console.aliyun.com 获取',
-            color: { bg: 'rgba(255,152,0,0.25)', fg: '#ffb74d' }
-        },
         doubao: {
             label: '豆包',
             baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
-            models: ['doubao-seed-2-0-pro', 'doubao-1.5-pro'],
-            defaultModel: 'doubao-1.5-pro',
-            hint: '字节跳动火山方舟平台，兼容 OpenAI 格式',
+            models: ['doubao-seed-1-8-250415', 'doubao-seed-1-6-251015', 'doubao-seed-1-6-flash-250415', 'doubao-1.5-pro-32k', 'doubao-1.5-pro-256k', 'doubao-1.5-lite-32k'],
+            defaultModel: 'doubao-1.5-pro-32k',
+            hint: '火山方舟平台，doubao-seed 系列最新旗舰，兼容 OpenAI 格式',
             keyPlaceholder: '在 console.volcengine.com/ark 获取',
             color: { bg: 'rgba(0,188,212,0.25)', fg: '#4dd0e1' }
         },
         mimo: {
             label: '小米 MiMo',
             baseUrl: 'https://api.xiaomimimo.com/v1',
-            models: ['mimo-v2.5-pro', 'mimo-v2.5'],
+            models: ['mimo-v2.5-pro', 'mimo-v2.5', 'mimo-v2.5-flash'],
             defaultModel: 'mimo-v2.5',
-            hint: '小米大模型，兼容 OpenAI 格式',
-            keyPlaceholder: '在 xiaomimimo.com 获取',
+            hint: '小米 MiMo V2.5，1M 长上下文，兼容 OpenAI 格式',
+            keyPlaceholder: '在 platform.xiaomimimo.com 获取',
             color: { bg: 'rgba(255,87,34,0.25)', fg: '#ff8a65' }
         },
         openai: {
             label: 'OpenAI',
             baseUrl: 'https://api.openai.com/v1',
-            models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+            models: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o4-mini'],
             defaultModel: 'gpt-4o-mini',
-            hint: 'OpenAI 官方 API，也可接入兼容代理',
+            hint: 'OpenAI 官方 API，gpt-4.1 系列最新，也可接入兼容代理',
             keyPlaceholder: '在 platform.openai.com 获取',
             color: { bg: 'rgba(102,126,234,0.3)', fg: '#a8b5ff' }
         },
         anthropic: {
             label: 'Anthropic',
             baseUrl: 'https://api.anthropic.com',
-            models: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'claude-3-opus-20240229'],
-            defaultModel: 'claude-3-5-sonnet-20241022',
-            hint: 'Claude 系列模型',
+            models: ['claude-sonnet-4-6-20260219', 'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251015', 'claude-opus-4-20250514'],
+            defaultModel: 'claude-sonnet-4-5-20250929',
+            hint: 'Claude 4.6 Sonnet 最新旗舰，4.5 Sonnet 性价比最高',
             keyPlaceholder: '在 console.anthropic.com 获取',
             color: { bg: 'rgba(204,120,50,0.25)', fg: '#e8a65d' }
         },
@@ -8560,7 +8560,7 @@ R - 复位`);
         }
     };
 
-    // v1.9.44: 辅助函数 — 读取 provider 配置
+    // v1.9.45: 辅助函数 — 读取 provider 配置
     function _pc(provider) {
         const cfg = _providerConfig[provider];
         if (!cfg) console.warn('[LLM] Unknown provider:', provider, '— falling back to openai');
@@ -8569,7 +8569,7 @@ R - 复位`);
     function getDefaultModel(provider) { return _pc(provider).defaultModel; }
     function getModelOptions(provider) { return _pc(provider).models || []; }
 
-    // v1.9.44: 更新模型 datalist
+    // v1.9.45: 更新模型 datalist
     function updateModelDatalist(provider) {
         const datalist = document.getElementById('cfg-llm-model-list');
         if (!datalist) return;
@@ -8581,7 +8581,7 @@ R - 复位`);
         });
     }
 
-    // v1.9.44: LLM 子配置持久化辅助函数
+    // v1.9.45: LLM 子配置持久化辅助函数
     function getLlmSubConfigs() {
         try { return JSON.parse(localStorage.getItem('gugu-llm-subconfigs') || '{}'); } catch(e) { return {}; }
     }
@@ -8594,7 +8594,7 @@ R - 复位`);
         return getLlmSubConfigs()[provider] || null;
     }
 
-    // v1.9.44: 迁移旧 localStorage 中的 LLM 子配置
+    // v1.9.45: 迁移旧 localStorage 中的 LLM 子配置
     function _migrateLlmSubConfigs() {
         if (localStorage.getItem('gugu-llm-subconfigs-migrated')) return;
         try {
@@ -8614,7 +8614,7 @@ R - 复位`);
         } catch(e) {}
     }
 
-    // v1.9.44: 保存当前 provider 的表单值到子配置
+    // v1.9.45: 保存当前 provider 的表单值到子配置
     function _saveCurrentProviderSubConfig(excludeProvider) {
         const currentProvider = _lastLlmProvider || 'minimax';
         if (currentProvider === excludeProvider) return;
@@ -8626,7 +8626,7 @@ R - 复位`);
         saveLlmSubConfig(currentProvider, subCfg);
     }
 
-    // v1.9.44: 加载目标 provider 的子配置到表单
+    // v1.9.45: 加载目标 provider 的子配置到表单
     function _loadProviderSubConfig(provider) {
         const subCfg = loadLlmSubConfig(provider);
         const modelInput = document.getElementById('cfg-llm-model');
@@ -8638,10 +8638,10 @@ R - 复位`);
         _lastLlmProvider = provider;
     }
 
-    // v1.9.44: Base URL 默认值从 _providerConfig 读取（不再单独维护 _defaultUrls）
+    // v1.9.45: Base URL 默认值从 _providerConfig 读取（不再单独维护 _defaultUrls）
     function _getDefaultUrl(provider) { return _pc(provider).baseUrl; }
 
-    // v1.9.44: 解锁 Base URL 编辑
+    // v1.9.45: 解锁 Base URL 编辑
     function enableBaseUrlEdit() {
         const input = document.getElementById('cfg-llm-base-url');
         const btn = document.getElementById('cfg-llm-base-url-edit-btn');
@@ -8657,7 +8657,7 @@ R - 复位`);
         const modelInput = document.getElementById('cfg-llm-model');
         const apiKeyInput = document.getElementById('cfg-llm-api-key-cfg');
 
-        // v1.9.44: 保存当前 provider 子配置，加载新 provider 子配置
+        // v1.9.45: 保存当前 provider 子配置，加载新 provider 子配置
         _saveCurrentProviderSubConfig(provider);
         _loadProviderSubConfig(provider);
 
@@ -8676,7 +8676,7 @@ R - 复位`);
             hintEl.textContent = pc.hint || '';
         }
 
-        // v1.9.44: Base URL 自动填充 + 只读锁定
+        // v1.9.45: Base URL 自动填充 + 只读锁定
         // 优先使用子配置中保存的 base_url（用户可能自定义了代理），无记录时用官方默认
         const baseUrlInput = document.getElementById('cfg-llm-base-url');
         if (baseUrlInput) {
@@ -8691,7 +8691,7 @@ R - 复位`);
             if (editBtn) editBtn.style.display = '';
         }
 
-        // v1.9.44: 更新模型下拉列表
+        // v1.9.45: 更新模型下拉列表
         updateModelDatalist(provider);
 
         // 自动填入默认模型（如果子配置没有 model 且表单值为空）
@@ -8704,7 +8704,7 @@ R - 复位`);
         updateProviderIndicator(provider);
     }
 
-    // v1.9.44: 视觉 Provider 联动
+    // v1.9.45: 视觉 Provider 联动
     function onVisionProviderChange() {
         const provider = document.getElementById('cfg-vision-provider')?.value || 'minimax_vl';
         const minimaxGroup = document.getElementById('cfg-vision-minimax-vl-group');
@@ -8715,7 +8715,7 @@ R - 复位`);
         if (minicpmGroup) minicpmGroup.style.display = (provider === 'minicpm') ? '' : 'none';
     }
 
-    // v1.9.44: 更新聊天面板的 Provider 状态指示器（10 个 provider）
+    // v1.9.45: 更新聊天面板的 Provider 状态指示器（10 个 provider）
     function updateProviderIndicator(provider) {
         const indicator = document.getElementById('provider-indicator');
         if (!indicator) return;
@@ -8733,7 +8733,7 @@ R - 复位`);
         indicator.title = `当前 LLM: ${label}\n点击→配置编辑器 | 双击→快速切换`;
     }
 
-    // v1.9.44: 快速切换 Provider（在最近使用的两个 provider 间切换）
+    // v1.9.45: 快速切换 Provider（在最近使用的两个 provider 间切换）
     function quickSwitchProvider() {
         const currentProvider = document.getElementById('cfg-llm-provider')?.value
             || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
@@ -8741,7 +8741,7 @@ R - 复位`);
         // 切换目标：当前 provider ↔ ollama（本地优先切换）
         const newProvider = currentProvider === 'ollama' ? 'deepseek' : 'ollama';
 
-        // v1.9.44: 先保存当前 provider 的子配置
+        // v1.9.45: 先保存当前 provider 的子配置
         _saveCurrentProviderSubConfig(newProvider);
 
         // 更新 UI 表单
@@ -8772,7 +8772,7 @@ R - 复位`);
     }
 
     // ========== API Key 管理 ==========
-    // v1.9.44: saveApiKey() 已删除（API Key 标签页移除），API Key 通过 LLM 标签页或设置面板保存
+    // v1.9.45: saveApiKey() 已删除（API Key 标签页移除），API Key 通过 LLM 标签页或设置面板保存
 
     // 设置面板中的 API Key 保存
     function saveApiKeyFromSettings() {
@@ -8803,7 +8803,7 @@ R - 复位`);
         }
     }
     
-    // v1.9.44: toggleApiKeyVisibility() 已删除（API Key 标签页移除）
+    // v1.9.45: toggleApiKeyVisibility() 已删除（API Key 标签页移除）
     
     function toggleApiKeyVisibilitySettings() {
         const input = document.getElementById('cfg-minimax-api-key-settings');
@@ -10357,7 +10357,7 @@ IS_DESKTOP: ${IS_DESKTOP}
         _updateOnboardingStep();
     }
 
-    // v1.9.44: 新手引导中 Provider 切换（支持10个provider）
+    // v1.9.45: 新手引导中 Provider 切换（支持10个provider）
     function onOnboardingProviderChange() {
         const provider = document.getElementById('onboarding-provider')?.value || 'deepseek';
         const baseUrlGroup = document.getElementById('onboarding-baseurl-group');
@@ -10410,7 +10410,7 @@ IS_DESKTOP: ${IS_DESKTOP}
         if (_onboardingStep === 1) {
             const input = document.getElementById('onboarding-apikey-input');
             const key = input?.value.trim();
-            // v1.9.44: 读取 onboarding 中选择的 provider 和 base_url
+            // v1.9.45: 读取 onboarding 中选择的 provider 和 base_url
             const provider = document.getElementById('onboarding-provider')?.value || 'deepseek';
             const baseUrl = document.getElementById('onboarding-baseurl-input')?.value.trim() || '';
             if (key && ws?.readyState === WebSocket.OPEN) {
@@ -10418,7 +10418,7 @@ IS_DESKTOP: ${IS_DESKTOP}
                 const config = JSON.parse(localStorage.getItem('gugu-config') || '{}');
                 if (!config.llm) config.llm = {};
                 config.llm.provider = provider;
-                // v1.9.44: 自动填入默认模型
+                // v1.9.45: 自动填入默认模型
                 const defaultModel = getDefaultModel(provider);
                 config.llm.model = defaultModel;
                 // 保存子配置（base_url + model）

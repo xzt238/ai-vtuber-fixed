@@ -290,7 +290,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
         
         # L2修复: 健康检查端点，用于部署监控和启动器检测后端就绪
         if self.path == "/api/health":
-            self.send_json({"status": "ok", "version": "1.9.44"})
+            self.send_json({"status": "ok", "version": "1.9.45"})
             return
 
         # 其他请求返回 405 Method Not Allowed
@@ -1465,7 +1465,7 @@ class WebSocketServer:
 
     def _handle_get_current_config(self, client):
         """
-        v1.9.44: 返回后端 config.yaml 中的关键配置，供前端同步。
+        v1.9.45: 返回后端 config.yaml 中的关键配置，供前端同步。
         主要解决：前端 localStorage 与后端 config.yaml 的 provider 不一致问题。
         """
         try:
@@ -1474,7 +1474,7 @@ class WebSocketServer:
             sub_cfg = llm_cfg.get(provider, {})
             vision_cfg = self.app.config.config.get('vision', {}) if (self.app and hasattr(self.app, 'config')) else {}
 
-            # v1.9.44: 返回当前 provider 的完整子配置（base_url + model）
+            # v1.9.45: 返回当前 provider 的完整子配置（base_url + model）
             provider_sub = {}
             if sub_cfg:
                 if sub_cfg.get('base_url'):
@@ -3400,7 +3400,7 @@ class WebSocketServer:
                         # v1.9.41: 深度合并 LLM 配置（浅层 update 会覆盖整个子配置，丢失 base_url 等）
                         llm_updates = config['llm']
                         existing_llm = self.app.config.config.setdefault('llm', {})
-                        # v1.9.44: 所有已知 provider 子配置都走深度合并
+                        # v1.9.45: 所有已知 provider 子配置都走深度合并
                         _LLM_SUBCONFIG_KEYS = ('minimax', 'openai', 'anthropic', 'deepseek', 'kimi', 'glm', 'qwen', 'doubao', 'mimo', 'ollama')
                         # 顶层字段（provider, model, max_tokens 等）直接覆盖
                         for k, v in llm_updates.items():
@@ -3708,7 +3708,7 @@ class WebSocketServer:
         if provider != active_provider:
             provider = active_provider
         
-        # v1.9.44: 本地模型(ollama)不需要 API Key，直接标记已配置
+        # v1.9.45: 本地模型(ollama)不需要 API Key，直接标记已配置
         if provider == 'ollama':
             self.server.send_message(client, json.dumps({
                 "type": "api_key_status",

@@ -5,7 +5,7 @@
 **GPT-SoVITS 声音克隆 · Live2D 虚拟形象 · 三层记忆 · 视觉理解**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-v1.9.44-green.svg)](docs/VERSION.md)
+[![Version](https://img.shields.io/badge/version-v1.9.45-green.svg)](docs/VERSION.md)
 [![Python](https://img.shields.io/badge/python-3.11-yellow.svg)](https://www.python.org/downloads/release/python-3119/)
 
 [功能特性](#-功能特性) · [快速开始](#-快速开始) · [配置说明](#-配置说明) · [架构](#-项目架构) · [常见问题](#-常见问题) · [更新日志](#-版本更新日志)
