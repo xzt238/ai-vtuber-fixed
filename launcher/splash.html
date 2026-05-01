@@ -50,29 +50,13 @@
       margin-bottom: 32px;
     }
     .logo-ring {
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-spin {
       width: 120px; height: 120px;
       border-radius: 50%;
-      border: 3px solid transparent;
-      border-top-color: #667eea;
-      border-right-color: #764ba2;
       animation: spin 1.5s linear infinite;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .logo-inner {
-      width: 100px; height: 100px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 32px; font-weight: 800;
-      letter-spacing: 2px;
-      box-shadow: 0 0 40px rgba(102, 126, 234, 0.4);
-      overflow: hidden;
-    }
-    .logo-inner img {
-      width: 90px;
-      height: 90px;
-      object-fit: cover;
-      border-radius: 50%;
+      box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
     }
     @keyframes spin { 100% { transform: rotate(360deg); } }
 
@@ -254,10 +238,8 @@
 
   <!-- Logo -->
   <div class="logo-container">
-    <div class="logo-ring" id="logoRing">
-      <div class="logo-inner" id="logoInner">
-        <img src="../assets/gugugaga_logo.png" alt="咕咕嘎嘎">
-      </div>
+    <div id="logoRing" class="logo-ring">
+      <img src="../assets/gugugaga_logo.png" alt="咕咕嘎嘎" id="logoInner" class="logo-spin">
     </div>
   </div>
 
