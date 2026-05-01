@@ -66,6 +66,13 @@
       font-size: 32px; font-weight: 800;
       letter-spacing: 2px;
       box-shadow: 0 0 40px rgba(102, 126, 234, 0.4);
+      overflow: hidden;
+    }
+    .logo-inner img {
+      width: 90px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 50%;
     }
     @keyframes spin { 100% { transform: rotate(360deg); } }
 
@@ -248,7 +255,9 @@
   <!-- Logo -->
   <div class="logo-container">
     <div class="logo-ring" id="logoRing">
-      <div class="logo-inner" id="logoInner">GG</div>
+      <div class="logo-inner" id="logoInner">
+        <img src="../assets/gugugaga_logo.png" alt="咕咕嘎嘎">
+      </div>
     </div>
   </div>
 
@@ -271,7 +280,7 @@
   <button class="retry-btn" id="retryBtn" onclick="retryLaunch()">重新启动</button>
 
   <!-- 版本号 -->
-  <div class="version" id="versionText">v1.9.54</div>
+  <div class="version" id="versionText">v1.9.57</div>
 
   <script>
     // ===== 生成背景粒子 =====
