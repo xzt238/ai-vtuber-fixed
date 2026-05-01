@@ -1428,8 +1428,10 @@ class OpenAILLM(LLMEngine):
                     "temperature": 0.7,
                 }
             }
+            # Ollama 原生端点是 /api/chat，去掉 base_url 中的 /v1 后缀避免 /v1/api/chat 404
+            ollama_base = self.base_url.replace("/v1", "").rstrip("/")
             response = self._session.post(
-                "http://localhost:11434/api/chat",
+                f"{ollama_base}/api/chat",
                 json=data, timeout=120
             )
             response.raise_for_status()
@@ -1463,8 +1465,10 @@ class OpenAILLM(LLMEngine):
                     "temperature": 0.7,
                 }
             }
+            # Ollama 原生端点是 /api/chat，去掉 base_url 中的 /v1 后缀避免 /v1/api/chat 404
+            ollama_base = self.base_url.replace("/v1", "").rstrip("/")
             response = self._session.post(
-                "http://localhost:11434/api/chat",
+                f"{ollama_base}/api/chat",
                 json=data, timeout=120, stream=True
             )
             response.raise_for_status()

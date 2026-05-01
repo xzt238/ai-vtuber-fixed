@@ -290,7 +290,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
         
         # L2修复: 健康检查端点，用于部署监控和启动器检测后端就绪
         if self.path == "/api/health":
-            self.send_json({"status": "ok", "version": "1.9.45"})
+            self.send_json({"status": "ok", "version": "1.9.54"})
             return
 
         # 其他请求返回 405 Method Not Allowed
@@ -834,6 +834,14 @@ class WebSocketServer:
         # 视觉监控状态(每个客户端一个)
         self._vision_monitors = {}  # client_id -> {running, thread, interval, provider, callback}
 
+        # v1.9.51: 文本模式打断支持
+        self._text_gen_running = {}    # client_id -> bool (当前是否有文本生成在进行)
+        self._text_gen_cancel = {}     # client_id -> threading.Event (文本生成取消信号)
+        self._text_gen_id = {}         # client_id -> str (当前文本生成的 Generation ID)
+
+        # v1.9.52: 工具调用可视化历史
+        self._tool_call_history = []   # 最近50条工具调用记录
+
     def _start_audio_cleanup(self):
         """启动音频文件自动清理线程(每5分钟清理一次超过10分钟的音频文件)"""
         # H4修复: 启动时立即清理一次堆积的旧音频文件（上次崩溃可能遗留）
@@ -1145,6 +1153,11 @@ class WebSocketServer:
                     self._handle_get_api_key_status(client, data)
                     return
 
+                # ---------- Ollama 已安装模型列表 ----------
+                elif msg_type == "ollama_models":
+                    self._handle_ollama_models(client, data)
+                    return
+
                 # ---------- 工具执行 ----------
                 elif msg_type == "tool":
                     self._handle_tool(client, data)
@@ -1172,6 +1185,21 @@ class WebSocketServer:
                     # [全双工增强]快速打断:用户开始说话时立即通知后端
                     # 比普通打断更激进:立即取消 LLM 调用,不等 pipeline 完
                     self._handle_realtime_interrupt_fast(client, data)
+                    return
+
+                elif msg_type == "text_interrupt":
+                    # v1.9.51: 文本模式打断（用户点击停止按钮）
+                    self._handle_text_interrupt(client, data)
+                    return
+
+                # ---------- v1.9.52: MCP 工具管理 ----------
+                elif msg_type == "mcp":
+                    self._handle_mcp(client, data)
+                    return
+
+                # ---------- v1.9.52: 工具调用可视化 ----------
+                elif msg_type == "tool_viz":
+                    self._handle_tool_viz(client, data)
                     return
 
                 elif msg_type == "stream":
@@ -1742,6 +1770,13 @@ class WebSocketServer:
             return
 
         text = data.get("text", "")
+        # v1.9.51: 通知主动说话管理器用户有活动
+        try:
+            proactive = getattr(self.app, 'proactive', None)
+            if proactive:
+                proactive.notify_user_activity()
+        except Exception:
+            pass
         # v1.9.41: 显示当前 LLM 引擎信息
         llm = self.app.llm
         llm_name = getattr(llm, 'name', type(llm).__name__)
@@ -1749,6 +1784,19 @@ class WebSocketServer:
         is_ollama = getattr(llm, '_is_ollama', False)
         llm_tag = f"Ollama/{llm_model}" if is_ollama else f"{llm_name}/{llm_model}"
         print(f"[WS] 处理: {text[:30]} [LLM: {llm_tag}]")
+
+        # v1.9.46: LLM 不可用时立即返回明确错误（避免静默失败）
+        llm_available = llm.is_available() if hasattr(llm, 'is_available') else True
+        if not llm_available:
+            err_msg = f"LLM {llm_name} 不可用 — 请配置 API Key"
+            print(f"[WS] {err_msg}")
+            try:
+                self.server.send_message(client, json.dumps({
+                    "type": "text_done", "text": f"⚠️ {err_msg}"
+                }))
+            except Exception:
+                pass
+            return
 
         # 获取客户端选择的 TTS 引擎、声音和模式
         client_id = client['id']
@@ -1760,6 +1808,19 @@ class WebSocketServer:
         self._client_tts_engine[client_id] = client_engine
         self._client_tts_voice[client_id] = client_voice
 
+        # v1.9.51: 文本模式打断 - 分配 Generation ID + 设置运行状态
+        text_gen_id = str(uuid.uuid4())[:8]
+        self._text_gen_id[client_id] = text_gen_id
+        self._text_gen_running[client_id] = True
+        cancel_event = threading.Event()
+        self._text_gen_cancel[client_id] = cancel_event
+
+        # 通知前端开始生成（让前端显示停止按钮）
+        self._safe_send(client, {
+            "type": "text_gen_start",
+            "gen_id": text_gen_id
+        })
+
         # 在后台线程中处理 LLM + TTS,避免阻塞 WebSocket 事件循环
         def text_worker():
             """
@@ -1768,30 +1829,24 @@ class WebSocketServer:
             【参数说明】无参数(闭包捕获text/client/engine/voice)
 
             【返回值】无返回值,流式输出text_chunk,完成后发送text_done消息
+
+            v1.9.51: 增加文本模式打断支持（Generation ID + cancel_event）
             """
+            # v1.9.51: 辅助函数 - 检查当前生成是否已被取消
+            def is_current_gen():
+                return self._text_gen_id.get(client_id) == text_gen_id
+
             def _filter_reply(reply):
-                """过滤内部提示词泄露和工具调用格式"""
-                if "non-text content:" in reply:
-                    reply = reply.split("non-text content:")[0]
-                if "[non-text" in reply:
-                    reply = reply.split("[non-text")[0]
-                if "toolCall" in reply:
-                    reply = reply.split("toolCall")[0]
-                if "tool_result" in reply:
-                    reply = reply.split("tool_result")[0]
-                # v1.5.4 修复:过滤工具调用格式(TOOL:/ARG:/代码块),防止被 TTS 念出来
-                import re as _re
-                # 过滤 ``` 代码块(包含 TOOL: ARG: 等格式)
-                reply = _re.sub(r'```[\s\S]*?```', '', reply)
-                # 过滤行内 TOOL:/ARG: 整行
-                lines_filtered = []
-                for line in reply.split('\n'):
-                    stripped = line.strip()
-                    if stripped.startswith('TOOL:') or stripped.startswith('ARG:') or stripped.startswith('<tool') or stripped.startswith('{') or stripped.startswith('</tool'):
-                        continue
-                    lines_filtered.append(line)
-                reply = '\n'.join(lines_filtered)
-                # 过滤思考链等
+                """v1.9.55: 过滤内部提示词泄露和工具调用格式（统一使用 _strip_tool_calls）"""
+                if not reply:
+                    return reply
+                # 1. 截断内部格式泄露
+                for marker in ["non-text content:", "[non-text", "toolCall", "tool_result"]:
+                    if marker in reply:
+                        reply = reply.split(marker)[0]
+                # 2. 剥离工具调用格式（复用公共方法）
+                reply = WebSocketServer._strip_tool_calls(reply)
+                # 3. 过滤思考链泄露
                 lines = [l for l in reply.split('\n') if not any(kw in l for kw in ['我应该', '符合我的人设', '用户只是', '应该用', '简单地', '活泼可爱', '方式回应'])]
                 return '\n'.join(lines).strip()
 
@@ -1812,8 +1867,13 @@ class WebSocketServer:
                         chunk_text (str): LLM流式返回的文本片段
 
                     【返回值】无返回值
+
+                    v1.9.51: 增加取消检查，如果被中断则抛出 StopIteration 停止 LLM 流式
                     """
                     nonlocal full_text
+                    # v1.9.51: 检查是否已被用户中断
+                    if cancel_event.is_set() or not is_current_gen():
+                        raise StopIteration("text_interrupted")
                     full_text += chunk_text
                     try:
                         self.server.send_message(client, json.dumps({
@@ -1824,7 +1884,20 @@ class WebSocketServer:
 
                 # v1.9.41: 传递 history 和 memory_system，确保 LLM 能看到上下文
                 history = list(self.app.history) if hasattr(self.app, 'history') else None
-                result = llm.stream_chat(text, history=history, callback=on_chunk, chunk_size=5, memory_system=memory)
+                # v1.9.51: stream_chat 可能因打断抛出 StopIteration
+                try:
+                    result = llm.stream_chat(text, history=history, callback=on_chunk, chunk_size=5, memory_system=memory)
+                except StopIteration:
+                    # 用户打断了生成
+                    print(f"[TEXT] client {client_id}: 生成被用户中断")
+                    self._safe_send(client, {
+                        "type": "text_interrupted",
+                        "text": full_text or "（已中断）"
+                    })
+                    # 清理状态
+                    self._text_gen_running[client_id] = False
+                    self._text_gen_id[client_id] = None
+                    return
                 reply = result.get("text", full_text)
                 reply = _filter_reply(reply)
 
@@ -1863,32 +1936,12 @@ class WebSocketServer:
                 except Exception:
                     pass
 
-            # ========== 记忆写入（独立于 TTS，确保不因 TTS 异常丢失） ==========
+            # ========== 记忆+历史写入（v1.9.55: 统一调用 record_interaction） ==========
             if reply:
                 try:
-                    mem = getattr(self.app, 'memory', None)
-                    if mem is not None:
-                        mem.add_interaction("user", text)
-                        mem.add_interaction("assistant", reply)
-                    else:
-                        # 记忆系统不可用时，仅在首次打印警告
-                        if not getattr(self, '_memory_warned', False):
-                            print("[WS] ⚠️ 记忆系统不可用，对话将不会被记忆（查看启动日志排查原因）")
-                            self._memory_warned = True
+                    self.app.record_interaction(text, reply)
                 except Exception as mem_err:
-                    print(f"[WS] 记忆写入错误: {mem_err}")
-
-            # ========== 历史记录更新（确保历史面板能看到完整对话） ==========
-            if reply and hasattr(self.app, 'history'):
-                try:
-                    self.app.history.append({"role": "user", "content": text})
-                    self.app.history.append({"role": "assistant", "content": reply})
-                    # 限制历史长度
-                    max_history = getattr(self.app, 'MAX_HISTORY', 50)
-                    if len(self.app.history) > max_history * 2:
-                        self.app.history = self.app.history[-(max_history * 2):]
-                except Exception as hist_err:
-                    print(f"[WS] 历史更新错误: {hist_err}")
+                    print(f"[WS] 记忆/历史写入错误: {mem_err}")
 
             # ========== TTS 合成（独立 try，失败不影响记忆） ==========
             try:
@@ -1959,6 +2012,10 @@ class WebSocketServer:
                                 text_sentences = [reply_clean]
                             total_sents = len(text_sentences)
                             for s_idx, sentence in enumerate(text_sentences):
+                                # v1.9.51: 检查是否已被用户中断
+                                if cancel_event.is_set() or not is_current_gen():
+                                    print(f"[TTS text] client {client_id}: TTS 被用户中断 (句子 {s_idx+1}/{total_sents})")
+                                    break
                                 try:
                                     # v1.9.28: 发送每句的合成进度
                                     self._safe_send(client, {
@@ -2025,6 +2082,15 @@ class WebSocketServer:
                     "type": "tts_error",
                     "error": str(e)[:100],
                 })
+
+            # v1.9.51: 文本生成完成，清理状态
+            self._text_gen_running[client_id] = False
+            self._text_gen_id[client_id] = None
+            # 通知前端生成结束（隐藏停止按钮）
+            self._safe_send(client, {
+                "type": "text_gen_end",
+                "gen_id": text_gen_id
+            })
 
         threading.Thread(target=text_worker, daemon=True).start()
 
@@ -2467,8 +2533,8 @@ class WebSocketServer:
         try:
             if action == "list":
                 history_list = []
-                
-                # 优先从 app.history 获取完整对话历史（包含所有轮次的 user + assistant）
+
+                # v1.9.50: 优先从 app.history 获取完整对话历史
                 app_history = getattr(self.app, 'history', None)
                 if app_history and len(app_history) > 0:
                     for item in app_history[-40:]:  # 最近20轮对话（每轮2条）
@@ -2477,7 +2543,7 @@ class WebSocketServer:
                             "content": item.get("content", str(item))
                         })
                 else:
-                    # 回退：从记忆系统获取
+                    # 回退：从记忆系统获取（仅当 app.history 为空时）
                     memory = getattr(self.app, 'memory', None)
                     if memory:
                         if hasattr(memory, 'working_memory'):
@@ -2501,6 +2567,9 @@ class WebSocketServer:
                 app_history = getattr(self.app, 'history', None)
                 if app_history is not None:
                     app_history.clear()
+                # v1.9.50: 清空磁盘上的历史文件
+                if hasattr(self.app, '_save_history'):
+                    self.app._save_history()
                 memory = getattr(self.app, 'memory', None)
                 if memory:
                     if hasattr(memory, 'working_memory'):
@@ -3507,7 +3576,26 @@ class WebSocketServer:
 
 
                     # v1.9.39: LLM provider 变更时重建引擎
-                    if llm_provider_changed and self.app:
+                    # v1.9.48: 增加引擎类型不匹配的防御性检查
+                    need_engine_rebuild = llm_provider_changed
+                    if not need_engine_rebuild and hasattr(self.app, '_lazy_modules'):
+                        # provider 没变但引擎类型可能不匹配（例如 set_api_key 已更新了 provider 但没重建引擎）
+                        llm = self.app._lazy_modules.get('llm')
+                        if llm is not None:
+                            llm_name = getattr(llm, 'name', '').lower()
+                            active_provider = self.app.config.config.get('llm', {}).get('provider', 'minimax')
+                            expected_names = {
+                                'minimax': 'minimax', 'anthropic': 'anthropic',
+                                'deepseek': 'openai', 'kimi': 'openai', 'glm': 'openai',
+                                'qwen': 'openai', 'doubao': 'openai', 'mimo': 'openai',
+                                'openai': 'openai', 'ollama': 'openai'
+                            }
+                            expected_name = expected_names.get(active_provider, '')
+                            if expected_name and llm_name != expected_name:
+                                need_engine_rebuild = True
+                                print(f"[CONFIG] LLM 引擎类型不匹配: 期望={expected_name}, 实际={llm_name}，将重建引擎")
+
+                    if need_engine_rebuild and self.app:
                         module_removed = False
                         if hasattr(self.app, '_lazy_modules') and 'llm' in self.app._lazy_modules:
                             old_llm = self.app._lazy_modules.pop('llm', None)
@@ -3519,10 +3607,8 @@ class WebSocketServer:
                                     pass
                             module_removed = True
                             print(f"[CONFIG] LLM 引擎已重建（旧引擎已清理）")
-                        # v1.9.41: 清空对话历史（provider 切换后旧上下文不适用）
-                        if hasattr(self.app, 'history') and isinstance(self.app.history, list):
-                            self.app.history.clear()
-                            print(f"[CONFIG] 对话历史已清空（provider 变更）")
+                        # v1.9.48: 不再自动清空对话历史（provider 切换后旧上下文仍有价值）
+                        # 只有用户主动点击"清空历史"才会清空
                         if hasattr(self.app, 'session'):
                             try:
                                 self.app.session.reset_history()
@@ -3613,45 +3699,95 @@ class WebSocketServer:
                 raise
 
             # 2. 先更新内存中的config对象（必须在懒加载之前！）
+            # v1.9.48: 先记录旧 provider，再更新 config，最后用旧值判断是否需重建
+            old_provider_in_config = ''
+            if self.app and hasattr(self.app, 'config') and hasattr(self.app.config, 'config'):
+                old_provider_in_config = self.app.config.config.get('llm', {}).get('provider', '')
+
             if self.app and hasattr(self.app, 'config'):
                 try:
                     if hasattr(self.app.config, 'config'):
                         llm_section = self.app.config.config.setdefault('llm', {})
                         provider_section = llm_section.setdefault(provider, {})
                         provider_section['api_key'] = api_key
+                        # v1.9.46: 同步更新 llm.provider 和 llm.model（确保 LLMFactory 读到正确值）
+                        llm_section['provider'] = provider
+                        # 同步 model：从子配置读取，或使用 _providerConfig 的默认值
+                        if not llm_section.get('model') and provider_section.get('model'):
+                            llm_section['model'] = provider_section['model']
                         # 同步更新vision的minimax_vl配置
                         vision_section = self.app.config.config.setdefault('vision', {})
                         minimax_vl = vision_section.setdefault('minimax_vl', {})
                         minimax_vl['api_key'] = api_key
-                        print(f"[API Key] 内存配置已更新")
+                        print(f"[API Key] 内存配置已更新 (provider={provider})")
                 except Exception as e:
                     print(f"[API Key] 更新内存配置失败: {e}")
 
-            # 3. 动态更新LLM模块的API Key
-            llm_updated = False
+            # 3. v1.9.48: 检查是否需要重建 LLM 引擎
+            # 关键修复：用 old_provider_in_config（更新前记录的旧值）判断，而非更新后的值
+            need_rebuild = False
             if self.app and hasattr(self.app, '_lazy_modules'):
                 llm = self.app._lazy_modules.get('llm')
-                if llm is None:
-                    # LLM 还没懒加载，通过 property 触发加载（此时 config 已更新，会用新 key）
+                # 用更新前记录的旧 provider 判断是否需要重建
+                if old_provider_in_config and old_provider_in_config != provider:
+                    need_rebuild = True
+                    print(f"[API Key] LLM provider 变更: {old_provider_in_config} → {provider}，将重建引擎")
+                elif llm is not None:
+                    # provider 没变但引擎类型可能不匹配（防御性检查）
+                    llm_name = getattr(llm, 'name', '').lower()
+                    # MiniMaxLLM.name="MiniMax", AnthropicLLM.name="Anthropic", OpenAILLM.name="OpenAI"
+                    expected_names = {
+                        'minimax': 'minimax', 'anthropic': 'anthropic',
+                        'deepseek': 'openai', 'kimi': 'openai', 'glm': 'openai',
+                        'qwen': 'openai', 'doubao': 'openai', 'mimo': 'openai',
+                        'openai': 'openai', 'ollama': 'openai'
+                    }
+                    expected_name = expected_names.get(provider, '')
+                    if expected_name and llm_name != expected_name:
+                        need_rebuild = True
+                        print(f"[API Key] LLM 引擎类型不匹配: 期望={expected_name}, 实际={llm_name}，将重建引擎")
+
+                if need_rebuild:
+                    # 重建引擎：pop 旧的，触发懒加载重建
+                    old_llm = self.app._lazy_modules.pop('llm', None)
+                    if old_llm and hasattr(old_llm, 'cleanup') and callable(old_llm.cleanup):
+                        try:
+                            old_llm.cleanup()
+                        except Exception:
+                            pass
+                    # v1.9.48: 不再自动清空对话历史（provider 切换后旧上下文仍有价值）
+                    # 只有用户主动点击"清空历史"才会清空
+                    # 触发懒加载，LLMFactory 会用新 config 创建新引擎
                     try:
                         llm = self.app.llm
+                        llm_updated = True
+                        print(f"[API Key] LLM 引擎已重建: {getattr(llm, 'name', '?')}")
                     except Exception as e:
-                        print(f"[API Key] 加载 LLM 失败: {e}")
+                        print(f"[API Key] LLM 重建失败: {e}")
                         llm = None
-                if llm is not None and hasattr(llm, 'api_key'):
-                    llm.api_key = api_key
-                    # 更新HTTP Session的认证头
-                    if hasattr(llm, '_session'):
-                        if hasattr(llm, '_is_anthropic') and llm._is_anthropic:
-                            llm._session.headers["x-api-key"] = api_key
-                        else:
-                            llm._session.headers["Authorization"] = f"Bearer {api_key}"
-                    llm_updated = True
-                    # 清除缓存（API Key 变更后旧缓存无效）
-                    if hasattr(llm, '_cache'):
-                        with llm._cache_lock:
-                            llm._cache.clear()
-                    print(f"[API Key] LLM [{llm.name}] 已更新")
+                else:
+                    # 不需要重建，直接更新 API Key
+                    if llm is None:
+                        # LLM 还没懒加载，通过 property 触发加载（此时 config 已更新，会用新 key）
+                        try:
+                            llm = self.app.llm
+                        except Exception as e:
+                            print(f"[API Key] 加载 LLM 失败: {e}")
+                            llm = None
+                    if llm is not None and hasattr(llm, 'api_key'):
+                        llm.api_key = api_key
+                        # 更新HTTP Session的认证头
+                        if hasattr(llm, '_session'):
+                            if hasattr(llm, '_is_anthropic') and llm._is_anthropic:
+                                llm._session.headers["x-api-key"] = api_key
+                            else:
+                                llm._session.headers["Authorization"] = f"Bearer {api_key}"
+                        llm_updated = True
+                        # 清除缓存（API Key 变更后旧缓存无效）
+                        if hasattr(llm, '_cache'):
+                            with llm._cache_lock:
+                                llm._cache.clear()
+                        print(f"[API Key] LLM [{llm.name}] API Key 已更新")
 
             # 4. 动态更新Vision模块的API Key
             vision_updated = False
@@ -3756,6 +3892,53 @@ class WebSocketServer:
             "key_preview": key_preview
         }))
 
+    def _handle_ollama_models(self, client, data):
+        """v1.9.49: 查询 Ollama 已安装模型列表，通过 /api/tags 端点获取"""
+        import requests as req
+        # 从请求或配置中获取 Ollama base_url
+        base_url = data.get("base_url", "")
+        if not base_url:
+            if self.app and hasattr(self.app, 'config'):
+                llm_cfg = self.app.config.config.get('llm', {})
+                ollama_cfg = llm_cfg.get('ollama', {})
+                base_url = ollama_cfg.get('base_url', 'http://localhost:11434/v1')
+        # 去掉 /v1 后缀，Ollama 原生端点是 /api/tags
+        base_url = base_url.rstrip("/")
+        if base_url.endswith("/v1"):
+            base_url = base_url[:-3]
+        tags_url = f"{base_url}/api/tags"
+
+        models = []
+        error = None
+        try:
+            resp = req.get(tags_url, timeout=5)
+            resp.raise_for_status()
+            result = resp.json()
+            for m in result.get("models", []):
+                models.append({
+                    "name": m.get("name", ""),
+                    "size": m.get("size", 0),
+                    "family": m.get("details", {}).get("family", ""),
+                    "parameter_size": m.get("details", {}).get("parameter_size", ""),
+                    "quantization": m.get("details", {}).get("quantization_level", ""),
+                })
+            print(f"[Ollama] 已安装模型: {[m['name'] for m in models]}")
+        except req.ConnectionError:
+            error = "Ollama 服务未运行，请先启动 Ollama"
+            print(f"[Ollama] 连接失败: {tags_url}")
+        except req.Timeout:
+            error = "Ollama 连接超时"
+            print(f"[Ollama] 连接超时: {tags_url}")
+        except Exception as e:
+            error = f"查询失败: {str(e)}"
+            print(f"[Ollama] 查询失败: {e}")
+
+        self.server.send_message(client, json.dumps({
+            "type": "ollama_models",
+            "models": models,
+            "error": error
+        }))
+
     def _handle_tool(self, client, data):
         """
         [功能说明]处理工具执行请求
@@ -3766,32 +3949,44 @@ class WebSocketServer:
 
         [返回值]
             无(通过 WebSocket 发送响应)
+
+        v1.9.52: 支持 MCP 工具路由（工具名以 MCP: 开头走 MCP 通道）
+        v1.9.52: 发送工具调用可视化事件（tool_call_start / tool_call_end）
         """
-        """处理工具执行请求"""
         tool = data.get("tool", "")
         args = data.get("args", {})
         tool_id = data.get("id", "")
+        call_id = data.get("call_id", str(uuid.uuid4())[:8])  # 可视化用调用ID
 
         print(f"[TOOL] 执行: {tool} | 参数: {args}")
 
+        # v1.9.52: 发送工具调用开始事件（可视化）
+        self._safe_send(client, {
+            "type": "tool_call_start",
+            "call_id": call_id,
+            "tool": tool,
+            "args": args,
+            "timestamp": time.time(),
+        })
+
         try:
-            # 导入工具系统
-            from app.tools import ToolFactory
+            result = None
 
-            # 检查工具是否存在
-            tool_instance = ToolFactory.create(tool)
-            if not tool_instance:
-                self.server.send_message(client, json.dumps({
-                    "type": "tool_result",
-                    "tool_id": tool_id,
-                    "tool": tool,
-                    "success": False,
-                    "error": f"未知工具: {tool}"
-                }))
-                return
-
-            # 执行工具
-            result = tool_instance.execute(**args)
+            # v1.9.52: MCP 工具路由
+            if tool.startswith("MCP:"):
+                mcp = getattr(self.app, 'mcp', None) if self.app else None
+                if mcp:
+                    result = mcp.execute(tool, args)
+                else:
+                    result = {"success": False, "error": "MCP 桥接器未启用"}
+            else:
+                # 本地工具
+                from tools import ToolFactory
+                tool_instance = ToolFactory.create(tool)
+                if not tool_instance:
+                    result = {"success": False, "error": f"未知工具: {tool}"}
+                else:
+                    result = tool_instance.execute(**args)
 
             # 发送结果
             self.server.send_message(client, json.dumps({
@@ -3801,6 +3996,26 @@ class WebSocketServer:
                 "success": result.get("success", False),
                 "result": result
             }))
+
+            # v1.9.52: 发送工具调用结束事件（可视化）+ 记录历史
+            self._safe_send(client, {
+                "type": "tool_call_end",
+                "call_id": call_id,
+                "tool": tool,
+                "success": result.get("success", False),
+                "result": result,
+                "timestamp": time.time(),
+            })
+            # 记录到工具调用历史
+            self._tool_call_history.append({
+                "call_id": call_id,
+                "tool": tool,
+                "success": result.get("success", False),
+                "result_keys": list(result.keys()) if isinstance(result, dict) else [],
+                "timestamp": time.time(),
+            })
+            if len(self._tool_call_history) > 100:
+                self._tool_call_history = self._tool_call_history[-50:]
 
             print(f"[TOOL] {tool} 执行完成: {result.get('success', False)}")
 
@@ -3813,6 +4028,197 @@ class WebSocketServer:
                 "success": False,
                 "error": str(e)
             }))
+            # v1.9.52: 工具调用错误事件
+            self._safe_send(client, {
+                "type": "tool_call_end",
+                "call_id": call_id,
+                "tool": tool,
+                "success": False,
+                "error": str(e),
+                "timestamp": time.time(),
+            })
+
+    def _handle_mcp(self, client, data):
+        """
+        v1.9.52: 处理 MCP 工具管理请求
+
+        支持操作:
+            - list_servers: 列出所有 MCP 服务器及状态
+            - list_tools: 列出 MCP 工具（可选 server 参数）
+            - add_server: 动态添加 MCP 服务器
+            - remove_server: 动态移除 MCP 服务器
+            - call_tool: 调用 MCP 工具
+        """
+        action = data.get("action", "list_servers")
+
+        mcp = getattr(self.app, 'mcp', None) if self.app else None
+        if not mcp:
+            self._safe_send(client, {
+                "type": "mcp_response",
+                "action": action,
+                "success": False,
+                "error": "MCP 桥接器未启用"
+            })
+            return
+
+        try:
+            if action == "list_servers":
+                servers = mcp.list_servers()
+                self._safe_send(client, {
+                    "type": "mcp_response",
+                    "action": "list_servers",
+                    "success": True,
+                    "servers": servers,
+                })
+
+            elif action == "list_tools":
+                server_name = data.get("server")
+                if server_name:
+                    tools = mcp.list_mcp_tools(server_name)
+                else:
+                    tools = mcp.list_all_tools()
+                self._safe_send(client, {
+                    "type": "mcp_response",
+                    "action": "list_tools",
+                    "success": True,
+                    "tools": tools,
+                })
+
+            elif action == "add_server":
+                name = data.get("name", "")
+                config = data.get("config", {})
+                if not name or not config.get("command"):
+                    self._safe_send(client, {
+                        "type": "mcp_response",
+                        "action": "add_server",
+                        "success": False,
+                        "error": "缺少 name 或 command"
+                    })
+                    return
+                result = mcp.add_server(name, config)
+                self._safe_send(client, {
+                    "type": "mcp_response",
+                    "action": "add_server",
+                    **result,
+                })
+
+            elif action == "remove_server":
+                name = data.get("name", "")
+                result = mcp.remove_server(name)
+                self._safe_send(client, {
+                    "type": "mcp_response",
+                    "action": "remove_server",
+                    **result,
+                })
+
+            elif action == "call_tool":
+                tool_name = data.get("tool", "")
+                arguments = data.get("args", {})
+                call_id = data.get("call_id", str(uuid.uuid4())[:8])
+
+                # 发送工具调用开始事件
+                self._safe_send(client, {
+                    "type": "tool_call_start",
+                    "call_id": call_id,
+                    "tool": tool_name,
+                    "args": arguments,
+                    "timestamp": time.time(),
+                })
+
+                result = mcp.execute(tool_name, arguments)
+
+                self._safe_send(client, {
+                    "type": "mcp_response",
+                    "action": "call_tool",
+                    "success": result.get("success", False),
+                    "result": result,
+                })
+
+                # 发送工具调用结束事件
+                self._safe_send(client, {
+                    "type": "tool_call_end",
+                    "call_id": call_id,
+                    "tool": tool_name,
+                    "success": result.get("success", False),
+                    "result": result,
+                    "timestamp": time.time(),
+                })
+
+            else:
+                self._safe_send(client, {
+                    "type": "mcp_response",
+                    "action": action,
+                    "success": False,
+                    "error": f"未知操作: {action}"
+                })
+
+        except Exception as e:
+            self._safe_send(client, {
+                "type": "mcp_response",
+                "action": action,
+                "success": False,
+                "error": str(e)
+            })
+
+    def _handle_tool_viz(self, client, data):
+        """
+        v1.9.52: 处理工具调用可视化请求
+
+        支持操作:
+            - list: 列出所有可用工具（含 MCP）
+            - history: 获取工具调用历史
+        """
+        action = data.get("action", "list")
+
+        try:
+            if action == "list":
+                # 列出所有可用工具
+                tools_list = []
+                # 本地工具
+                from tools import ToolFactory
+                for t in ToolFactory.list_tools():
+                    tools_list.append({
+                        "name": t["name"],
+                        "description": t["description"],
+                        "source": "local",
+                    })
+                # MCP 工具
+                mcp = getattr(self.app, 'mcp', None) if self.app else None
+                if mcp:
+                    tools_list.extend(mcp.list_mcp_tools())
+
+                self._safe_send(client, {
+                    "type": "tool_viz_response",
+                    "action": "list",
+                    "success": True,
+                    "tools": tools_list,
+                })
+
+            elif action == "history":
+                # 工具调用历史（从内存缓存获取）
+                history = getattr(self, '_tool_call_history', [])
+                self._safe_send(client, {
+                    "type": "tool_viz_response",
+                    "action": "history",
+                    "success": True,
+                    "history": history[-50:],  # 最近50条
+                })
+
+            else:
+                self._safe_send(client, {
+                    "type": "tool_viz_response",
+                    "action": action,
+                    "success": False,
+                    "error": f"未知操作: {action}"
+                })
+
+        except Exception as e:
+            self._safe_send(client, {
+                "type": "tool_viz_response",
+                "action": action,
+                "success": False,
+                "error": str(e)
+            })
 
     def stop(self):
         """停止 WebSocket 服务器"""
@@ -4336,6 +4742,14 @@ class WebSocketServer:
         if not state["active"]:
             return
 
+        # v1.9.51: 通知主动说话管理器用户有活动
+        try:
+            proactive = getattr(self.app, 'proactive', None)
+            if proactive:
+                proactive.notify_user_activity()
+        except Exception:
+            pass
+
         # v1.8: 分配新 Generation ID(原子赋值,Python GIL 保证)
         # 所有旧 pipeline 检查到 current_gen != 自己的 gen_id 时自动退出
         gen_id = str(uuid.uuid4())[:8]
@@ -4536,6 +4950,16 @@ class WebSocketServer:
                 
                 print(f"[REALTIME] LLM 检查: has_stream={has_stream}, llm.available={llm_available}")
 
+                # v1.9.46: LLM 不可用时通知前端，避免静默失败
+                if not llm_available:
+                    llm_name = getattr(llm, 'name', type(llm).__name__)
+                    print(f"[REALTIME] LLM 不可用: {llm_name}（API Key 未配置）")
+                    self._safe_send(client, {"type": "realtime_stt", "text": ""})
+                    self._safe_send(client, {"type": "realtime_audio_done", "error": f"LLM {llm_name} 不可用，请配置 API Key"})
+                    state["speaking"] = False
+                    state["running"] = False
+                    return
+
                 # no_split: 从客户端保存的偏好读取（随前端 toggleTtsStreaming 实时同步）
                 no_split = self._client_tts_no_split.get(client_id, False)
                 print(f"[REALTIME] no_split={no_split}")
@@ -4562,15 +4986,12 @@ class WebSocketServer:
                         self._realtime_tts_single(client, state, reply, client_voice, client_engine, gen_id=gen_id)
                     realtime_reply = reply
 
-                # 3. 记忆（独立 try，不影响 TTS/LLM）
+                # 3. 记忆+历史（v1.9.55: 统一调用 record_interaction）
                 if realtime_reply:
                     try:
-                        mem = getattr(self.app, 'memory', None)
-                        if mem is not None:
-                            mem.add_interaction("user", text)
-                            mem.add_interaction("assistant", realtime_reply)
+                        self.app.record_interaction(text, realtime_reply)
                     except Exception as mem_err:
-                        print(f"[REALTIME] 记忆写入错误: {mem_err}")
+                        print(f"[REALTIME] 记忆/历史写入错误: {mem_err}")
 
             except Exception as e:
                 print(f"[REALTIME] Pipeline 错误: {e}")
@@ -5605,6 +6026,53 @@ class WebSocketServer:
         # 立即响应前端,让前端知道打断已被处理
         self._safe_send(client, {
             "type": "realtime_interrupt_fast_ack",
+            "status": "ok"
+        })
+
+    def _handle_text_interrupt(self, client, data):
+        """
+        [v1.9.51] 文本模式打断处理
+
+        当用户在 AI 正在生成回复时点击停止按钮触发。
+        通过 Generation ID 机制使正在运行的 text_worker 自动退出。
+
+        [参数说明]
+            client: WebSocket 客户端对象
+            data (dict): 消息数据
+
+        [返回值] 无
+        """
+        client_id = client['id']
+
+        # 检查是否有文本生成正在运行
+        if not self._text_gen_running.get(client_id, False):
+            print(f"[TEXT-INTERRUPT] client {client_id}: 无正在进行的文本生成")
+            self._safe_send(client, {
+                "type": "text_interrupt_ack",
+                "status": "no_active_gen"
+            })
+            return
+
+        # 设置取消信号
+        cancel_event = self._text_gen_cancel.get(client_id)
+        if cancel_event:
+            cancel_event.set()
+
+        # 通过 Generation ID 使旧的 text_worker 自动退出
+        self._text_gen_id[client_id] = None
+        self._text_gen_running[client_id] = False
+
+        # 停止 TTS 播放
+        if self.app and hasattr(self.app, 'tts'):
+            try:
+                self.app.tts.stop()
+            except Exception:
+                pass
+
+        print(f"[TEXT-INTERRUPT] client {client_id}: 文本生成已取消")
+
+        self._safe_send(client, {
+            "type": "text_interrupt_ack",
             "status": "ok"
         })
 

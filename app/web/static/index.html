@@ -532,6 +532,37 @@
             transform: scale(1.05);
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
+        /* v1.9.51: 停止按钮样式 */
+        .stop-btn {
+            padding: 0.6em 1em;
+            border: none;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: #fff;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            animation: pulse-stop 1.5s ease-in-out infinite;
+        }
+        .stop-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+        @keyframes pulse-stop {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        /* v1.9.51: 主动说话消息样式 */
+        .proactive-msg {
+            border-left: 3px solid rgba(102, 126, 234, 0.5) !important;
+            opacity: 0.9;
+        }
+        .proactive-msg::before {
+            content: '💭';
+            margin-right: 2px;
+            font-size: 0.7em;
+        }
         
         /* 状态日志 */
         .status-log {
@@ -636,6 +667,9 @@
         #panel-config-editor { top: 500px; left: 420px; width: 300px; }
         #panel-tool-exec { top: 500px; left: 730px; width: 260px; }
         #panel-train { top: 85px; left: 1020px; width: 320px; }
+        #panel-mcp { top: 85px; left: 670px; width: 320px; }
+        #panel-tool-viz { top: 290px; left: 670px; width: 320px; }
+        #panel-desktop-pet { top: 85px; left: 1020px; width: 260px; }
         #panel-toggle-btn { position: fixed; top: 55px; right: 8px; z-index: 999; }
         
         /* 沙盒路径列表 */
@@ -1746,7 +1780,7 @@
     </div>
 
     <div class="header">
-        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.45</span></span></h1>
+        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.54</span></span></h1>
     </div>
     
     <!-- 布局预设栏 -->
@@ -1790,6 +1824,8 @@
             <div class="input-area">
                 <input type="text" id="user-input" placeholder="输入消息..." />
                 <button class="send-btn" id="send-btn">发送</button>
+                <!-- v1.9.51: 文本模式停止按钮（生成中显示） -->
+                <button class="stop-btn" id="stop-btn" style="display:none;" onclick="stopGeneration()">停止</button>
             </div>
         </div>
         <div class="resize-handle nw"></div><div class="resize-handle ne"></div><div class="resize-handle sw"></div><div class="resize-handle se"></div><div class="resize-handle n"></div><div class="resize-handle s"></div><div class="resize-handle w"></div><div class="resize-handle e"></div>
@@ -2082,6 +2118,11 @@
             </div>
             <div class="debug-controls">
                 <button class="debug-btn" onclick="openSettings()">⚙️ 配置</button>
+                <button class="debug-btn" onclick="showMCPPanel()">🔌 MCP</button>
+            </div>
+            <div class="debug-controls">
+                <button class="debug-btn" onclick="showToolVizPanel()">🔧 工具调用</button>
+                <button class="debug-btn" onclick="showDesktopPetPanel()">🐱 宠物</button>
             </div>
         </div>
         <div class="resize-handle nw"></div><div class="resize-handle ne"></div><div class="resize-handle sw"></div><div class="resize-handle se"></div><div class="resize-handle n"></div><div class="resize-handle s"></div><div class="resize-handle w"></div><div class="resize-handle e"></div>
@@ -2177,6 +2218,95 @@
     
     <!-- 面板切换按钮 -->
     <div id="panel-toggle-btn" onclick="toggleAllPanels()">👁️ 隐藏面板</div>
+
+    <!-- ========== v1.9.52: MCP 工具面板 ========== -->
+    <div class="panel" id="panel-mcp" data-group="data" style="display:none;">
+        <div class="panel-header">
+            <h3>🔌 MCP 工具</h3>
+            <div class="panel-controls">
+                <button class="panel-btn collapse" title="折叠" onclick="collapsePanel('panel-mcp')">−</button>
+                <button class="panel-btn maximize" title="最大化" onclick="maximizePanel('panel-mcp')">□</button>
+                <button class="panel-btn panel-close" title="关闭" onclick="togglePanel('panel-mcp')">✕</button>
+            </div>
+        </div>
+        <div class="panel-content">
+            <div id="mcp-status" style="color:rgba(255,255,255,0.5);font-size:11px;margin-bottom:8px;">未连接</div>
+            <div style="display:flex;gap:4px;margin-bottom:8px;">
+                <button class="debug-btn" onclick="mcpListServers()" style="padding:4px 8px;font-size:10px;">📡 服务器</button>
+                <button class="debug-btn" onclick="mcpListTools()" style="padding:4px 8px;font-size:10px;">🔧 工具</button>
+                <button class="debug-btn" onclick="mcpRefresh()" style="padding:4px 8px;font-size:10px;">🔄</button>
+            </div>
+            <div id="mcp-servers" style="margin-bottom:8px;"></div>
+            <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;margin-top:4px;">
+                <h4 style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;">添加 MCP 服务器</h4>
+                <div style="display:flex;gap:4px;margin-bottom:4px;">
+                    <input type="text" id="mcp-add-name" placeholder="名称" style="flex:1;padding:4px 8px;font-size:11px;" />
+                </div>
+                <div style="display:flex;gap:4px;margin-bottom:4px;">
+                    <input type="text" id="mcp-add-command" placeholder="命令 (如 npx)" style="flex:1;padding:4px 8px;font-size:11px;" />
+                </div>
+                <div style="display:flex;gap:4px;margin-bottom:4px;">
+                    <input type="text" id="mcp-add-args" placeholder="参数 (空格分隔)" style="flex:1;padding:4px 8px;font-size:11px;" />
+                </div>
+                <button class="debug-btn" onclick="mcpAddServer()" style="padding:4px 12px;font-size:10px;">➕ 添加</button>
+            </div>
+            <div id="mcp-tools" style="max-height:200px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:6px;border-radius:8px;font-size:11px;margin-top:8px;"></div>
+        </div>
+        <div class="resize-handle nw"></div><div class="resize-handle ne"></div><div class="resize-handle sw"></div><div class="resize-handle se"></div><div class="resize-handle n"></div><div class="resize-handle s"></div><div class="resize-handle w"></div><div class="resize-handle e"></div>
+    </div>
+
+    <!-- ========== v1.9.52: 工具调用可视化面板 ========== -->
+    <div class="panel" id="panel-tool-viz" data-group="data" style="display:none;">
+        <div class="panel-header">
+            <h3>🔧 工具调用</h3>
+            <div class="panel-controls">
+                <button class="panel-btn collapse" title="折叠" onclick="collapsePanel('panel-tool-viz')">−</button>
+                <button class="panel-btn maximize" title="最大化" onclick="maximizePanel('panel-tool-viz')">□</button>
+                <button class="panel-btn panel-close" title="关闭" onclick="togglePanel('panel-tool-viz')">✕</button>
+            </div>
+        </div>
+        <div class="panel-content">
+            <div style="display:flex;gap:4px;margin-bottom:8px;">
+                <button class="debug-btn" onclick="toolVizListAll()" style="padding:4px 8px;font-size:10px;">📋 所有工具</button>
+                <button class="debug-btn" onclick="toolVizHistory()" style="padding:4px 8px;font-size:10px;">📜 调用历史</button>
+                <button class="debug-btn" onclick="toolVizClear()" style="padding:4px 8px;font-size:10px;">🗑️</button>
+            </div>
+            <div id="tool-viz-list" style="max-height:120px;overflow-y:auto;background:rgba(0,0,0,0.2);padding:6px;border-radius:8px;font-size:11px;margin-bottom:8px;"></div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;">实时调用</div>
+            <div id="tool-viz-calls" style="max-height:250px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:6px;border-radius:8px;font-size:11px;"></div>
+        </div>
+        <div class="resize-handle nw"></div><div class="resize-handle ne"></div><div class="resize-handle sw"></div><div class="resize-handle se"></div><div class="resize-handle n"></div><div class="resize-handle s"></div><div class="resize-handle w"></div><div class="resize-handle e"></div>
+    </div>
+
+    <!-- ========== v1.9.52: 桌面宠物控制面板 ========== -->
+    <div class="panel" id="panel-desktop-pet" data-group="tool" style="display:none;">
+        <div class="panel-header">
+            <h3>🐱 桌面宠物</h3>
+            <div class="panel-controls">
+                <button class="panel-btn collapse" title="折叠" onclick="collapsePanel('panel-desktop-pet')">−</button>
+                <button class="panel-btn maximize" title="最大化" onclick="maximizePanel('panel-desktop-pet')">□</button>
+                <button class="panel-btn panel-close" title="关闭" onclick="togglePanel('panel-desktop-pet')">✕</button>
+            </div>
+        </div>
+        <div class="panel-content">
+            <div id="pet-status" style="color:rgba(255,255,255,0.5);font-size:11px;margin-bottom:8px;">状态: 未启用</div>
+            <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;">
+                <button class="debug-btn" onclick="toggleDesktopPet()" style="padding:6px 10px;font-size:11px;">🐾 启动/停止</button>
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">
+                在 config.yaml → desktop_pet.enabled 中启用<br>
+                桌面宠物将以透明窗口悬浮在桌面上<br>
+                支持拖拽、点击互动、右键菜单
+            </div>
+            <div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
+                <h4 style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;">Live2D 微动作</h4>
+                <div style="display:flex;gap:4px;">
+                    <button class="debug-btn" onclick="toggleIdleMotion()" style="padding:4px 8px;font-size:10px;" id="idle-motion-toggle">✅ 已启用</button>
+                </div>
+            </div>
+        </div>
+        <div class="resize-handle nw"></div><div class="resize-handle ne"></div><div class="resize-handle sw"></div><div class="resize-handle se"></div><div class="resize-handle n"></div><div class="resize-handle s"></div><div class="resize-handle w"></div><div class="resize-handle e"></div>
+    </div>
 
     <!-- ========== 新增增强面板 ========== -->
 
@@ -2472,7 +2602,7 @@
             </div>
             <div class="config-content" id="config-content-llm">
                 <div class="form-group"><label>Provider</label><select id="cfg-llm-provider" onchange="onLlmProviderChange()"><optgroup label="国内模型"><option value="deepseek">DeepSeek</option><option value="kimi">Kimi / 月之暗面</option><option value="glm">智谱 GLM</option><option value="qwen">通义千问</option><option value="minimax">MiniMax</option><option value="doubao">豆包</option><option value="mimo">小米 MiMo</option></optgroup><optgroup label="国际模型"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></optgroup><optgroup label="本地模型"><option value="ollama">Ollama (本地)</option></optgroup></select></div>
-                <div class="form-group"><label>Model</label><input type="text" id="cfg-llm-model" list="cfg-llm-model-list" placeholder="选择或输入模型名称" /><datalist id="cfg-llm-model-list"></datalist></div>
+                <div class="form-group"><label>Model</label><select id="cfg-llm-model" onchange="onModelSelect()"><option value="">-- 选择模型 --</option></select><input type="text" id="cfg-llm-model-custom" placeholder="自定义模型名" style="display:none;margin-top:4px;font-size:12px;" /><label style="font-size:10px;margin-top:2px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="cfg-llm-model-custom-toggle" onchange="toggleCustomModel()" style="width:auto;" />自定义输入</label></div>
                 <div class="form-group" id="cfg-llm-base-url-group"><label>Base URL <span style="font-size:9px;color:#888;">(自动填充，可修改)</span></label><input type="text" id="cfg-llm-base-url" placeholder="自动填充" readonly style="opacity:0.7;cursor:default;" /><button class="debug-btn" onclick="enableBaseUrlEdit()" id="cfg-llm-base-url-edit-btn" style="font-size:10px;padding:2px 6px;margin-top:2px;">✏️ 自定义</button></div>
                 <div class="form-group" id="cfg-llm-api-key-group"><label>API Key</label><input type="password" id="cfg-llm-api-key-cfg" placeholder="sk-..." style="flex:1;" /></div>
                 <div style="font-size:10px;color:#888;margin-top:4px;" id="cfg-llm-hint">选择 OpenAI/Ollama 可连接本地模型，Base URL 填 Ollama 地址即可</div>
@@ -3054,10 +3184,12 @@
 
     // ========== 存储键名 ==========
     const STORAGE_KEY = 'gugu-panel-layout-v2';
-    
+
     // ========== 面板系统配置 ==========
     const SNAP_THRESHOLD = 15;  // 吸附阈值
     const MIN_PANEL_SIZE = { width: 160, height: 60 };
+    // v1.9.50: 临时面板 — 这些面板关闭后重启不自动恢复显示（需要用户主动打开）
+    const EPHEMERAL_PANELS = new Set(['panel-train']);
     const LAYOUT_PRESETS = {
         default: {
             'canvas-container': { left: 20, top: 70, width: 380, height: 480 },
@@ -4242,7 +4374,8 @@
                 panelState.collapsedPanels.delete(p.id);
             }
             
-            if (state.visible) {
+            // v1.9.50: 临时面板（如训练面板）不恢复 visible 状态，重启后默认隐藏
+            if (state.visible && !EPHEMERAL_PANELS.has(p.id)) {
                 p.style.display = '';
             } else {
                 p.style.display = 'none';
@@ -4490,6 +4623,9 @@
                     if (loading) loading.style.display = 'none';
                     centerLive2DModel();
                     log('Live2D 加载完成', 'ok');
+
+                    // v1.9.52: 启动闲置微动作定时器
+                    startIdleMotionTimer();
                     
                     // 防止 oh-my-live2d 自动 stageSlideOut 导致模型消失
                     // 库内部用 transform: translateX(-100%) 将 stage 滑出容器隐藏
@@ -4509,6 +4645,63 @@
         } else {
             log('Live2D 库未加载', 'err');
         }
+    }
+
+    // ========== v1.9.52: Live2D 闲置微动作 ==========
+    // AI 空闲时随机播放微动作（眨眼、轻微摆动、呼吸感），让角色更生动
+    let _idleMotionTimer = null;
+    let _idleMotionEnabled = true;  // 默认启用
+    const _idleMotionConfig = {
+        intervalMin: 5000,   // 最小间隔 5 秒
+        intervalMax: 15000,  // 最大间隔 15 秒
+        motions: ['Idle', 'TapBody', 'Flick'],  // 可用微动作列表
+        breathAmplitude: 0.01,  // 呼吸动画幅度
+    };
+
+    function startIdleMotionTimer() {
+        stopIdleMotionTimer();
+        if (!_idleMotionEnabled || !live2dApi) return;
+
+        function doIdleMotion() {
+            if (!_idleMotionEnabled || !live2dApi) return;
+
+            try {
+                const motions = _idleMotionConfig.motions;
+                const motion = motions[Math.floor(Math.random() * motions.length)];
+                const indices = [0, 1, 2];
+                const idx = indices[Math.floor(Math.random() * indices.length)];
+
+                if (live2dApi.startMotion) {
+                    live2dApi.startMotion(motion, idx).catch(() => {});
+                }
+                console.log('[Live2D] 闲置微动作:', motion, '#' + idx);
+            } catch(e) {}
+
+            // 随机下一次间隔
+            const nextDelay = _idleMotionConfig.intervalMin +
+                Math.random() * (_idleMotionConfig.intervalMax - _idleMotionConfig.intervalMin);
+            _idleMotionTimer = setTimeout(doIdleMotion, nextDelay);
+        }
+
+        // 首次延迟 5 秒开始
+        _idleMotionTimer = setTimeout(doIdleMotion, 5000);
+    }
+
+    function stopIdleMotionTimer() {
+        if (_idleMotionTimer) {
+            clearTimeout(_idleMotionTimer);
+            _idleMotionTimer = null;
+        }
+    }
+
+    // 当 AI 开始说话时暂停闲置微动作
+    function pauseIdleMotion() {
+        stopIdleMotionTimer();
+    }
+
+    // 当 AI 停止说话时恢复闲置微动作
+    function resumeIdleMotion() {
+        startIdleMotionTimer();
     }
     
     log("正在加载 Live2D...", "info");
@@ -4615,6 +4808,7 @@
     let _wsMsgLog = [];       // v1.9.23: WS 消息日志（全局，跨重连共享）
     let _wsOnOpenFired = false; // v1.9.23: onopen 是否触发过
     let _wsMsgCount = 0;       // v1.9.23: 收到的消息计数
+    let _historyRestored = false; // v1.9.50: 是否已从后端恢复历史对话到聊天窗口
     
     function connectWS() {
         if (wsAttempts > 10) { log('连接已达上限', 'err'); return; }
@@ -4665,6 +4859,10 @@
             if (ws?.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({type: 'get_current_config'}));
             }
+            // v1.9.50: 首次连接时加载历史对话到聊天窗口
+            if (!_historyRestored) {
+                ws.send(JSON.stringify({type: 'history', action: 'list'}));
+            }
         };
         
         ws.onmessage = e => {
@@ -4680,15 +4878,19 @@
                 return;  // 无效消息格式，跳过
             }
             
-            // 非流式回复（回退模式）
+            // 非流式回复（回退模式）或主动说话
             if (data.type === 'text') {
+                // v1.9.51: 主动说话标记（添加视觉区分）
+                const isProactive = data.proactive === true;
                 // 如果有流式占位元素，直接用它；否则新建
                 if (streamingMsgEl) {
                     streamingMsgEl.textContent = data.text;
                     _hideThinkingIndicator(streamingMsgEl);  // v1.9.31
+                    if (isProactive) streamingMsgEl.closest('.message').classList.add('proactive-msg');
                     streamingMsgEl = null;
                 } else {
-                    addMessage(data.text, 'ai');
+                    const proMsgEl = addMessage(data.text, 'ai', true);
+                    if (isProactive && proMsgEl) proMsgEl.closest('.message').classList.add('proactive-msg');
                 }
             }
             
@@ -4707,12 +4909,22 @@
             // 流式结束
             if (data.type === 'text_done') {
                 if (streamingMsgEl) {
-                    streamingMsgEl.textContent = data.text;
+                    // v1.9.54: 保留流式累积的文本，不覆盖
+                    // 实时模式下 text_done.text 经过 _realtime_filter（剥Markdown/emoji），
+                    // 比流式累积的文本短很多，覆盖会导致长回复突然变短
+                    if (!streamingMsgEl.textContent.trim()) {
+                        // 只有占位消息没内容时才用 text_done 的文本
+                        streamingMsgEl.textContent = data.text;
+                    }
                     streamingMsgEl.classList.remove('typing');
                     _hideThinkingIndicator(streamingMsgEl);  // v1.9.31
                     streamingMsgEl = null;
                 }
                 streamingText = '';
+                // v1.9.51: 生成结束，恢复发送按钮
+                _isGenerating = false;
+                document.getElementById('send-btn').style.display = '';
+                document.getElementById('stop-btn').style.display = 'none';
                 // 聊天完成后自动刷新记忆和历史面板（如果已打开）
                 const memPanel = document.getElementById('panel-memory');
                 if (memPanel && !memPanel.classList.contains('panel-hidden')) { loadMemory(); }
@@ -4726,6 +4938,26 @@
             if (data.type === 'text_replace' && streamingMsgEl) {
                 streamingMsgEl.textContent = data.text;
                 streamingText = data.text;
+            }
+
+            // v1.9.51: 文本模式打断确认
+            if (data.type === 'text_interrupted') {
+                _isGenerating = false;
+                document.getElementById('send-btn').style.display = '';
+                document.getElementById('stop-btn').style.display = 'none';
+                if (streamingMsgEl) {
+                    streamingMsgEl.textContent = data.text || '（已中断）';
+                    streamingMsgEl.classList.remove('typing');
+                    streamingMsgEl = null;
+                    streamingText = '';
+                }
+            }
+
+            // v1.9.51: 文本生成结束（隐藏停止按钮）
+            if (data.type === 'text_gen_end') {
+                _isGenerating = false;
+                document.getElementById('send-btn').style.display = '';
+                document.getElementById('stop-btn').style.display = 'none';
             }
             
             // API Key 设置结果
@@ -4790,6 +5022,21 @@
                     setTimeout(_startOnboarding, 800);
                 }
             }
+
+            // v1.9.49: Ollama 已安装模型列表回调
+            if (data.type === 'ollama_models') {
+                if (data.error) {
+                    console.warn('[Ollama] 查询失败:', data.error);
+                    _ollamaInstalledModels = [];
+                } else {
+                    _ollamaInstalledModels = data.models || [];
+                }
+                // 调用回调（如果有）
+                if (typeof window._ollamaModelsCallback === 'function') {
+                    window._ollamaModelsCallback(_ollamaInstalledModels);
+                    window._ollamaModelsCallback = null;
+                }
+            }
             
             // v1.9.41: 后端配置同步（前端 localStorage 与后端 config.yaml 对齐）
             if (data.type === 'current_config' && !data.error) {
@@ -4816,33 +5063,41 @@
                             localCfg.llm[serverProvider].base_url = serverBaseUrl;
                         }
                         localStorage.setItem('gugu-config', JSON.stringify(localCfg));
-                        // 更新 UI
+                        // v1.9.47: 先把服务端的值保存到子配置，再触发 onLlmProviderChange
                         const providerSelect = document.getElementById('cfg-llm-provider');
                         if (providerSelect) providerSelect.value = serverProvider;
-                        const modelInput = document.getElementById('cfg-llm-model');
-                        if (modelInput && serverModel) modelInput.value = serverModel;
-                        const baseUrlInput = document.getElementById('cfg-llm-base-url');
-                        if (baseUrlInput && serverBaseUrl) baseUrlInput.value = serverBaseUrl;
-                        if (typeof onLlmProviderChange === 'function') onLlmProviderChange();
+                        // 保存服务端值到子配置
+                        const syncSubCfg = loadLlmSubConfig(serverProvider) || {};
+                        if (serverModel) syncSubCfg.model = serverModel;
+                        if (serverBaseUrl) syncSubCfg.base_url = serverBaseUrl;
+                        saveLlmSubConfig(serverProvider, syncSubCfg);
+                        // 统一入口设置所有表单值
+                        if (typeof onLlmProviderChange === 'function') onLlmProviderChange(true);  // skipSave: 子配置刚保存过
                         log(`配置已同步: Provider → ${serverProvider}${serverModel ? ', Model → ' + serverModel : ''}`, 'ok');
                     } else if (serverModel && serverProvider) {
-                        // Provider 一致但 model 可能不同，也同步
+                        // Provider 一致但 model/base_url 可能不同，也同步
                         const localModel = localCfg.llm?.model;
-                        if (serverModel !== localModel) {
+                        const needSync = (serverModel !== localModel) || serverBaseUrl;
+                        if (needSync) {
+                            // 更新 gugu-config
                             if (!localCfg.llm) localCfg.llm = {};
-                            localCfg.llm.model = serverModel;
+                            if (serverModel !== localModel) localCfg.llm.model = serverModel;
+                            if (serverBaseUrl) {
+                                if (!localCfg.llm[serverProvider]) localCfg.llm[serverProvider] = {};
+                                localCfg.llm[serverProvider].base_url = serverBaseUrl;
+                            }
                             localStorage.setItem('gugu-config', JSON.stringify(localCfg));
-                            const modelInput = document.getElementById('cfg-llm-model');
-                            if (modelInput) modelInput.value = serverModel;
-                        }
-                        // 同步 base_url
-                        if (serverBaseUrl) {
-                            if (!localCfg.llm) localCfg.llm = {};
-                            if (!localCfg.llm[serverProvider]) localCfg.llm[serverProvider] = {};
-                            localCfg.llm[serverProvider].base_url = serverBaseUrl;
-                            localStorage.setItem('gugu-config', JSON.stringify(localCfg));
-                            const baseUrlInput = document.getElementById('cfg-llm-base-url');
-                            if (baseUrlInput) baseUrlInput.value = serverBaseUrl;
+                            // 同步子配置
+                            const syncSubCfg = loadLlmSubConfig(serverProvider) || {};
+                            if (serverModel) syncSubCfg.model = serverModel;
+                            if (serverBaseUrl) syncSubCfg.base_url = serverBaseUrl;
+                            saveLlmSubConfig(serverProvider, syncSubCfg);
+                            // 更新 UI（不触发 onLlmProviderChange，因为 provider 没变）
+                            if (serverModel) setCurrentModelValue(serverModel);
+                            if (serverBaseUrl) {
+                                const baseUrlInput = document.getElementById('cfg-llm-base-url');
+                                if (baseUrlInput) baseUrlInput.value = serverBaseUrl;
+                            }
                         }
                     }
                     // v1.9.45: 同步 Vision 配置
@@ -4899,6 +5154,8 @@
                 // TTS 开始合成：在聊天区域显示状态
                 _showTtsStatus('🔊 语音合成中...');
                 log('TTS 开始合成', 'info');
+                // v1.9.52: 暂停闲置微动作
+                pauseIdleMotion();
             }
             if (data.type === 'tts_progress') {
                 // 每句开始合成前：更新进度
@@ -4937,6 +5194,8 @@
             if (data.type === 'tts_done' && data.streaming) {
                 _hideTtsStatus();
                 _resetTtsPlayBtn();  // 恢复 TTS 面板按钮
+                // v1.9.52: 恢复闲置微动作
+                resumeIdleMotion();
             }
             // v1.9.28: 整段合成完成也恢复按钮
             if (data.type === 'tts_done' && data.audio) {
@@ -5147,8 +5406,27 @@
                         const expandBtn = isLong ? ` <span style="color:var(--accent);cursor:pointer;font-size:10px;" onclick="this.parentElement.querySelector('.full-text').style.display=this.parentElement.querySelector('.full-text').style.display==='none'?'':'none';this.style.display='none';">展开全文</span><div class="full-text" style="display:none;">${content.replace(/</g,'&lt;')}</div>` : '';
                         return `<div style="margin:4px 0;border-bottom:1px solid #333;padding:4px;">${h.role === 'user' ? '👤' : '🐱'} <span style="white-space:pre-wrap;word-break:break-word;">${display.replace(/</g,'&lt;')}</span>${expandBtn}</div>`;
                     }).join('');
+                    // v1.9.50: 首次收到历史时恢复到聊天窗口
+                    if (!_historyRestored) {
+                        _historyRestored = true;
+                        const chatEl = document.getElementById('chat-messages');
+                        if (chatEl && data.history.length > 0) {
+                            // 仅恢复最近20轮（40条消息），避免聊天窗口太长
+                            const recentHistory = data.history.slice(-40);
+                            for (const h of recentHistory) {
+                                const div = document.createElement('div');
+                                div.className = `message ${h.role === 'user' ? 'msg-user' : 'msg-ai'}`;
+                                div.innerHTML = `${h.role === 'user' ? '👤' : '🐱'} <span class="msg-text"></span>`;
+                                div.querySelector('.msg-text').textContent = h.content || '';
+                                chatEl.appendChild(div);
+                            }
+                            chatEl.scrollTop = chatEl.scrollHeight;
+                        }
+                    }
                 } else if (data.history?.length === 0 && panel) {
                     panel.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无历史对话</div>';
+                    // v1.9.50: 空历史也标记为已恢复
+                    if (!_historyRestored) _historyRestored = true;
                 } else if (data.success) { log('✅ 历史已清空', 'ok'); }
                 else if (data.error) { log('❌ ' + data.error, 'err'); }
             }
@@ -5192,18 +5470,22 @@
     function sendMessage() {
         const text = document.getElementById('user-input').value.trim();
         if (!text) return;
-        // v1.9.31→1.9.38: 检查 API Key 是否配置（本地模型如 Ollama 不阻止）
-        if (_apiKeyStatus && !_apiKeyStatus.configured) {
-            const provider = document.getElementById('cfg-llm-provider')?.value
-                || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
-                || 'minimax';
-            const baseUrl = document.getElementById('cfg-llm-base-url')?.value
-                || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.base_url
-                || '';
-            // 本地模型（Ollama/llama.cpp 等 localhost 端点）不需要 API Key，跳过检查
-            const isLocalProvider = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') || provider === 'ollama';
-            if (!isLocalProvider) {
-                const pc = _pc(provider);
+        // v1.9.46: API Key 检查（本地模型如 Ollama 不阻止）
+        // 使用当前选择的 provider 检查，而非缓存的 _apiKeyStatus
+        const currentProvider = document.getElementById('cfg-llm-provider')?.value
+            || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
+            || 'minimax';
+        const currentBaseUrl = document.getElementById('cfg-llm-base-url')?.value
+            || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.base_url
+            || '';
+        const isLocalProvider = currentBaseUrl.includes('localhost') || currentBaseUrl.includes('127.0.0.1') || currentProvider === 'ollama';
+
+        if (!isLocalProvider && _apiKeyStatus && !_apiKeyStatus.configured) {
+            // v1.9.46: 检查 _apiKeyStatus 的 provider 是否与当前选择一致
+            const statusProvider = _apiKeyStatus.provider || 'minimax';
+            if (statusProvider === currentProvider) {
+                // 同一 provider 确实没配 key → 阻止
+                const pc = _pc(currentProvider);
                 showToast('warning', 'API Key 未配置', `请先配置 ${pc.label} API Key 才能对话`, {
                     duration: 6000,
                     action: function() { if (!_apiKeyStatus?.configured) _startOnboarding(); },
@@ -5211,6 +5493,8 @@
                 });
                 return;
             }
+            // provider 不一致 → 缓存过期，重新查询但允许发送（后端会做最终检查）
+            checkApiKeyStatus();
         }
         addMessage(text, 'user');
         // 清理上一次未完成的流式消息
@@ -5230,6 +5514,10 @@
             const engine = document.getElementById('tts-engine').value;
             const voice = document.getElementById('tts-voice').value;
             ws.send(JSON.stringify({type: 'text', text, engine, voice}));
+            // v1.9.51: 切换到生成中状态（显示停止按钮）
+            _isGenerating = true;
+            document.getElementById('send-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = '';
             // v1.9.32: 发送按钮脉冲反馈
             const sendBtn = document.getElementById('send-btn');
             if (sendBtn) {
@@ -5256,6 +5544,28 @@
     
     document.getElementById('send-btn').addEventListener('click', sendMessage);
     document.getElementById('user-input').addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+
+    // v1.9.51: 文本模式打断（停止生成）
+    let _isGenerating = false;  // 是否正在生成回复
+
+    function stopGeneration() {
+        if (!_isGenerating) return;
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'text_interrupt' }));
+        }
+        // 立即更新 UI
+        _isGenerating = false;
+        document.getElementById('send-btn').style.display = '';
+        document.getElementById('stop-btn').style.display = 'none';
+        if (streamingMsgEl) {
+            streamingMsgEl.classList.remove('typing');
+            if (!streamingMsgEl.textContent) {
+                streamingMsgEl.textContent = '（已中断）';
+            }
+            streamingMsgEl = null;
+            streamingText = '';
+        }
+    }
     
     // ========== TTS ==========
     const voiceOptions = {
@@ -5973,6 +6283,7 @@
 
         // 实时 STT 结果
         // v1.5.2 修复: text 为空时不设置"回复中"状态，避免识别失败后状态卡住
+        // v1.9.53: 与录音模式一致 — 创建流式AI消息占位+思考动画
         if (data.type === 'realtime_stt') {
             if (data.text) {
                 addMessage(data.text, 'user');
@@ -5980,6 +6291,18 @@
                 document.getElementById('user-input').value = data.text;
                 log('实时识别: ' + data.text, 'ok');
                 if (realtime.active) {
+                    // 清理上一次未完成的流式消息
+                    if (streamingMsgEl) {
+                        streamingMsgEl.classList.remove('typing');
+                        _hideThinkingIndicator(streamingMsgEl);
+                        streamingMsgEl = null;
+                        streamingText = '';
+                    }
+                    // 创建流式AI消息占位（与录音模式 sendMessage() 一致）
+                    streamingMsgEl = addMessage('', 'ai', true);
+                    streamingMsgEl.classList.add('typing');
+                    streamingText = '';
+                    _showThinkingIndicator(streamingMsgEl);
                     setRealtimeStatus('🟢 回复中...', '#4af');
                 }
             } else {
@@ -5991,9 +6314,12 @@
         }
 
         // 实时 TTS 音频片段
+        // v1.9.54: 音频到达说明TTS已完成，隐藏合成状态
         if (data.type === 'realtime_audio' && data.audio) {
             if (realtime.active) {
                 realtime.interrupted = false;  // 新音频到来，清除打断标志
+                // 音频已就绪，隐藏TTS合成状态（播放状态由 playNextRealtimeAudio 管理）
+                _hideTtsStatus();
                 realtime.audioQueue.push(data);
                 playNextRealtimeAudio();
             }
@@ -6002,9 +6328,16 @@
         // ===== v1.5: 流式 TTS chunk 实时解码播放 =====
         // 后端 GPT-SoVITS speak_streaming 每个 chunk 生成完立即发送
         // 前端用 Web Audio API decodeAudioData 实时解码并播放
+        // v1.9.54: 流式chunk到达时更新合成进度
         if (data.type === 'realtime_audio_chunk' && data.audio) {
             if (realtime.active) {
                 realtime.interrupted = false;
+                // 更新TTS合成状态
+                if (data.chunk_idx === 0) {
+                    _showTtsStatus('🔊 语音合成中...');
+                } else if (data.chunk_count) {
+                    _showTtsStatus(`🔊 合成中... (chunk ${data.chunk_count})`);
+                }
                 playStreamingChunk(data);
             } else if (data.is_panel) {
                 // v1.8.4: TTS 面板流式 chunk（GPT-SoVITS 逐 chunk 输出）
@@ -6013,9 +6346,12 @@
         }
 
         // 流式 chunk 播放完成确认
+        // v1.9.53: 完成时隐藏TTS合成状态
         if (data.type === 'realtime_audio_done') {
             if (realtime.active) {
                 console.log('[Realtime] 流式播放完成: ' + (data.chunk_total || 0) + ' chunks');
+                // 隐藏TTS合成状态
+                _hideTtsStatus();
                 if (data.text) {
                     autoDetectExpression(data.text);
                 }
@@ -6025,11 +6361,12 @@
             }
         }
 
-        // AI 回复完成：在对话框中新建 AI 气泡（role: 'ai'）
+        // AI 回复完成
+        // v1.9.53: 流式消息已由全局 text_done handler 完成（streamingMsgEl 机制）
+        // 此处只处理实时模式特有的逻辑：表情检测、Live2D动作、状态重置
         if (data.type === 'text_done' && realtime.active) {
             const replyText = data.text || '';
             if (replyText.trim()) {
-                addMessage(replyText, 'ai');
                 // 自动表情检测：根据回复内容触发表情
                 autoDetectExpression(replyText);
                 // 播放一个随机动作表示回应
@@ -6037,7 +6374,13 @@
                     triggerMotion('tap_body');
                 }
             }
-            setRealtimeStatus('🎤 聆听中...', '#4f4');
+            // 隐藏可能残留的TTS合成状态
+            _hideTtsStatus();
+            // v1.9.54: LLM回复完成，但音频可能还在播放，不急于回到"聆听中"
+            // 如果音频正在播放或队列有音频，保持当前状态，等播放完毕自然回到"聆听中"
+            if (!realtime.isPlayingAudio && realtime.audioQueue.length === 0 && !realtime.isStreamingPlaying) {
+                setRealtimeStatus('🎤 聆听中...', '#4f4');
+            }
         }
         
         // 实时 TTS 播放时也检测表情（根据句子内容）
@@ -6047,6 +6390,18 @@
 
         // ===== P0-2: 前端真正打断 =====
         if (data.type === 'realtime_interrupt' || data.type === 'realtime_interrupt_fast') {
+            // v1.9.53: 清理思考动画和流式消息占位
+            if (streamingMsgEl) {
+                streamingMsgEl.classList.remove('typing');
+                _hideThinkingIndicator(streamingMsgEl);
+                // 如果还没收到任何文字chunk，显示中断提示
+                if (!streamingMsgEl.textContent.trim()) {
+                    streamingMsgEl.textContent = '（已中断）';
+                }
+                streamingMsgEl = null;
+                streamingText = '';
+            }
+            _hideTtsStatus();
             // 1. 立即停止当前播放的音频
             if (realtime._currentAudioStop) {
                 try {
@@ -6772,7 +7127,13 @@ R - 复位`);
     }
     
     function clearHistory() {
-        if (confirm('确定清空历史记录？')) ws?.send(JSON.stringify({type: 'history', action: 'clear'}));
+        if (confirm('确定清空历史记录？')) {
+            ws?.send(JSON.stringify({type: 'history', action: 'clear'}));
+            // v1.9.50: 清空聊天窗口
+            const chatEl = document.getElementById('chat-messages');
+            if (chatEl) chatEl.innerHTML = '';
+            _historyRestored = true;  // 防止重新加载时重复恢复
+        }
     }
     
     function showMemory() {
@@ -6873,6 +7234,147 @@ R - 复位`);
         if (panel) {
             panel.style.display = '';
             saveLayout();
+        }
+    }
+
+    // ========== v1.9.52: MCP 工具面板 ==========
+    let _mcpTools = [];
+
+    function showMCPPanel() {
+        const panel = document.getElementById('panel-mcp');
+        if (panel) {
+            panel.style.display = '';
+            panel.classList.remove('panel-hidden');
+            mcpListServers();
+            saveLayout();
+        }
+    }
+
+    function mcpListServers() {
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({type: 'mcp', action: 'list_servers'}));
+        }
+    }
+
+    function mcpListTools(serverName) {
+        const msg = {type: 'mcp', action: 'list_tools'};
+        if (serverName) msg.server = serverName;
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(msg));
+        }
+    }
+
+    function mcpRefresh() {
+        mcpListServers();
+        mcpListTools();
+    }
+
+    function mcpAddServer() {
+        const name = document.getElementById('mcp-add-name')?.value?.trim();
+        const command = document.getElementById('mcp-add-command')?.value?.trim();
+        const argsStr = document.getElementById('mcp-add-args')?.value?.trim();
+        if (!name || !command) {
+            showToast('warning', '请填写名称和命令', '');
+            return;
+        }
+        const args = argsStr ? argsStr.split(/\s+/) : [];
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'mcp',
+                action: 'add_server',
+                name: name,
+                config: {command: command, args: args, enabled: true}
+            }));
+        }
+        // 清空输入
+        document.getElementById('mcp-add-name').value = '';
+        document.getElementById('mcp-add-command').value = '';
+        document.getElementById('mcp-add-args').value = '';
+    }
+
+    function mcpRemoveServer(name) {
+        if (!confirm(`确定移除 MCP 服务器 "${name}"？`)) return;
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({type: 'mcp', action: 'remove_server', name: name}));
+        }
+    }
+
+    // ========== v1.9.52: 工具调用可视化面板 ==========
+    let _toolVizCalls = [];  // 实时调用记录
+
+    function showToolVizPanel() {
+        const panel = document.getElementById('panel-tool-viz');
+        if (panel) {
+            panel.style.display = '';
+            panel.classList.remove('panel-hidden');
+            toolVizListAll();
+            saveLayout();
+        }
+    }
+
+    function toolVizListAll() {
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({type: 'tool_viz', action: 'list'}));
+        }
+    }
+
+    function toolVizHistory() {
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({type: 'tool_viz', action: 'history'}));
+        }
+    }
+
+    function toolVizClear() {
+        _toolVizCalls = [];
+        const el = document.getElementById('tool-viz-calls');
+        if (el) el.innerHTML = '<div style="color:rgba(255,255,255,0.3);text-align:center;padding:10px;">已清空</div>';
+    }
+
+    function _renderToolCallCard(call) {
+        const statusColor = call.success ? '#4caf50' : '#f44336';
+        const statusIcon = call.success ? '✅' : '❌';
+        const sourceTag = call.tool?.startsWith('MCP:') ? '<span style="background:#9c27b0;padding:1px 4px;border-radius:3px;font-size:9px;">MCP</span>' : '<span style="background:#2196f3;padding:1px 4px;border-radius:3px;font-size:9px;">本地</span>';
+        const duration = call.endTime ? ((call.endTime - call.startTime) * 1000).toFixed(0) + 'ms' : '...';
+
+        return `<div style="border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px;margin-bottom:4px;background:rgba(0,0,0,0.2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span>${statusIcon} <strong>${call.tool}</strong> ${sourceTag}</span>
+                <span style="color:rgba(255,255,255,0.4);font-size:10px;">${duration}</span>
+            </div>
+            ${call.args && Object.keys(call.args).length > 0 ? `<div style="color:rgba(255,255,255,0.5);font-size:10px;margin-top:2px;">参数: ${JSON.stringify(call.args).substring(0, 100)}</div>` : ''}
+            ${call.result ? `<div style="color:${statusColor};font-size:10px;margin-top:2px;max-height:40px;overflow:hidden;">结果: ${JSON.stringify(call.result).substring(0, 150)}</div>` : ''}
+        </div>`;
+    }
+
+    // ========== v1.9.52: 桌面宠物面板 ==========
+    function showDesktopPetPanel() {
+        const panel = document.getElementById('panel-desktop-pet');
+        if (panel) {
+            panel.style.display = '';
+            panel.classList.remove('panel-hidden');
+            saveLayout();
+        }
+    }
+
+    function toggleDesktopPet() {
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({type: 'config', action: 'update', config: {
+                desktop_pet: {enabled: true}
+            }}));
+            showToast('info', '桌面宠物需要重启后生效', '请在 config.yaml 中设置 desktop_pet.enabled: true');
+        }
+    }
+
+    function toggleIdleMotion() {
+        _idleMotionEnabled = !_idleMotionEnabled;
+        const btn = document.getElementById('idle-motion-toggle');
+        if (btn) {
+            btn.textContent = _idleMotionEnabled ? '✅ 已启用' : '⬜ 已禁用';
+        }
+        if (_idleMotionEnabled) {
+            startIdleMotionTimer();
+        } else {
+            stopIdleMotionTimer();
         }
     }
     
@@ -7253,7 +7755,7 @@ R - 复位`);
         const checks = [];
         // 版本检查
         const versionBadge = document.getElementById('layout-version-badge');
-        checks.push({name: '版本', ok: versionBadge && versionBadge.textContent.includes('1.9.45'), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
+        checks.push({name: '版本', ok: versionBadge && versionBadge.textContent.includes('1.9.54'), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
         // WS 连接
         checks.push({name: 'WebSocket', ok: ws?.readyState === WebSocket.OPEN, detail: `state=${ws?.readyState} onOpen=${_wsOnOpenFired} msgs=${_wsMsgCount}`});
         // TTS 音色列表
@@ -8279,28 +8781,13 @@ R - 复位`);
 
                 document.getElementById('cfg-llm-provider').value = provider;
 
-                // v1.9.45: 从独立子配置存储恢复 model 和 base_url
-                const subCfg = loadLlmSubConfig(provider);
-                const modelInput = document.getElementById('cfg-llm-model');
-                const baseUrlInput = document.getElementById('cfg-llm-base-url');
+                // v1.9.47: 不再手动设 model/baseUrl，全部委托给 onLlmProviderChange()
+                // onLlmProviderChange 会从子配置读取保存的值，或用官方默认值
                 const apiKeyCfgEl = document.getElementById('cfg-llm-api-key-cfg');
-
-                if (subCfg?.model) {
-                    modelInput.value = subCfg.model;
-                } else if (cfg.llm?.model) {
-                    modelInput.value = cfg.llm.model;
-                }
-                if (subCfg?.base_url) {
-                    baseUrlInput.value = subCfg.base_url;
-                } else {
-                    const llmSubCfg = cfg.llm?.[provider] || {};
-                    baseUrlInput.value = llmSubCfg.base_url || '';
-                }
                 if (apiKeyCfgEl) apiKeyCfgEl.value = '';  // 安全：不回显 api_key
 
                 _lastLlmProvider = provider;
-                updateModelDatalist(provider);
-                onLlmProviderChange();  // 触发字段显隐 + URL自动填充
+                onLlmProviderChange(true);  // v1.9.47: skipSave=true，避免保存空表单值
 
                 // TTS
                 document.getElementById('cfg-tts-engine').value = cfg.tts?.engine || 'edge';
@@ -8339,7 +8826,7 @@ R - 复位`);
 
     function saveConfigSettings() {
         const provider = document.getElementById('cfg-llm-provider').value;
-        const model = document.getElementById('cfg-llm-model').value;
+        const model = getCurrentModelValue();  // v1.9.47: 统一获取模型名
         const baseUrl = document.getElementById('cfg-llm-base-url')?.value?.trim() || '';
         const apiKey = document.getElementById('cfg-llm-api-key-cfg')?.value?.trim() || '';
 
@@ -8456,11 +8943,9 @@ R - 复位`);
         if (e.key === 'Enter') searchMemory();
     });
 
-    // 加载配置
-    loadConfigSettings();
-
-    // v1.9.41: 初始化 Provider 状态指示器
-    updateProviderIndicator();
+    // v1.9.47: loadConfigSettings() 和 updateProviderIndicator() 调用
+    // 移到 _providerConfig 和相关函数声明之后，避免 TDZ (Temporal Dead Zone) 错误
+    // 详见下方 LLM Provider 联动区域之后的调用
     
     // ========== v1.9.45: LLM Provider 联动 + 子配置持久化（10 个 provider） ==========
     // 跟踪上一个 provider，用于切换时保存子配置
@@ -8552,13 +9037,87 @@ R - 复位`);
         ollama: {
             label: 'Ollama (本地)',
             baseUrl: 'http://localhost:11434/v1',
-            models: [],
-            defaultModel: '',
-            hint: '本地模型，API Key 填 ollama，模型名根据 ollama list 输出',
+            models: [],  // v1.9.49: 运行时从 Ollama API 动态获取
+            defaultModel: 'qwen3:8b',
+            hint: '本地模型，API Key 填 ollama，模型列表自动从 Ollama 获取',
             keyPlaceholder: 'ollama',
             color: { bg: 'rgba(76,175,80,0.25)', fg: '#81c784' }
         }
     };
+
+    // v1.9.49: Ollama 已安装模型列表（运行时动态填充）
+    let _ollamaInstalledModels = [];  // [{name, size, family, parameter_size, quantization}]
+
+    // v1.9.49: 从后端查询 Ollama 已安装模型列表
+    function fetchOllamaModels(callback) {
+        if (ws?.readyState === WebSocket.OPEN) {
+            const baseUrl = document.getElementById('cfg-llm-base-url')?.value || 'http://localhost:11434/v1';
+            ws.send(JSON.stringify({type: 'ollama_models', base_url: baseUrl}));
+            // 回调在 WS onmessage 中 ollama_models 分支调用
+            if (callback) window._ollamaModelsCallback = callback;
+        } else {
+            // WS 未连接，显示自定义输入
+            if (callback) callback([]);
+        }
+    }
+
+    // v1.9.49: 用 Ollama 已安装模型列表填充下拉框
+    function fillOllamaModelSelect(savedModel) {
+        const select = document.getElementById('cfg-llm-model');
+        const customInput = document.getElementById('cfg-llm-model-custom');
+        const customToggle = document.getElementById('cfg-llm-model-custom-toggle');
+        if (!select) return;
+
+        select.innerHTML = '';
+        const modelNames = _ollamaInstalledModels.map(m => m.name);
+
+        if (modelNames.length === 0) {
+            // 没有已安装模型或查询失败：显示自定义输入
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '-- 未检测到模型，请手动输入 --';
+            select.appendChild(opt);
+            select.value = '';
+            if (customToggle) customToggle.checked = true;
+            if (customInput) { customInput.style.display = ''; customInput.value = savedModel || ''; }
+            select.style.display = 'none';
+            return;
+        }
+
+        // 有模型：显示下拉
+        select.style.display = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '-- 选择模型 --';
+        select.appendChild(placeholder);
+
+        let matched = false;
+        modelNames.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            // 显示模型名 + 参数量
+            const info = _ollamaInstalledModels.find(m => m.name === name);
+            const label = info && info.parameter_size ? `${name} (${info.parameter_size})` : name;
+            opt.textContent = label;
+            select.appendChild(opt);
+            if (name === savedModel) matched = true;
+        });
+
+        if (savedModel && matched) {
+            select.value = savedModel;
+            if (customToggle) customToggle.checked = false;
+            if (customInput) customInput.style.display = 'none';
+        } else if (savedModel && !matched) {
+            select.value = '';
+            if (customToggle) customToggle.checked = true;
+            if (customInput) { customInput.style.display = ''; customInput.value = savedModel; }
+        } else {
+            // 默认选第一个模型
+            if (modelNames.length > 0) select.value = modelNames[0];
+            if (customToggle) customToggle.checked = false;
+            if (customInput) customInput.style.display = 'none';
+        }
+    }
 
     // v1.9.45: 辅助函数 — 读取 provider 配置
     function _pc(provider) {
@@ -8569,16 +9128,146 @@ R - 复位`);
     function getDefaultModel(provider) { return _pc(provider).defaultModel; }
     function getModelOptions(provider) { return _pc(provider).models || []; }
 
-    // v1.9.45: 更新模型 datalist
-    function updateModelDatalist(provider) {
-        const datalist = document.getElementById('cfg-llm-model-list');
-        if (!datalist) return;
-        datalist.innerHTML = '';
-        getModelOptions(provider).forEach(val => {
+    // v1.9.47: 更新模型下拉列表（<select> 替代 <datalist>）
+    function updateModelSelect(provider, savedModel) {
+        const select = document.getElementById('cfg-llm-model');
+        const customInput = document.getElementById('cfg-llm-model-custom');
+        const customToggle = document.getElementById('cfg-llm-model-custom-toggle');
+        if (!select) return;
+
+        const models = getModelOptions(provider);
+        const pc = _pc(provider);
+
+        // 清空并重建选项
+        select.innerHTML = '';
+
+        // v1.9.49: Ollama 走动态查询路径
+        if (provider === 'ollama') {
+            // 先显示加载中
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '-- 正在查询 Ollama 模型... --';
+            select.appendChild(opt);
+            select.value = '';
+            // 发起异步查询
+            fetchOllamaModels(function(installedModels) {
+                _ollamaInstalledModels = installedModels || [];
+                fillOllamaModelSelect(savedModel);
+            });
+            return;
+        }
+
+        if (models.length === 0) {
+            // 其他无预设模型：只有自定义输入
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '-- 无预设模型，请自定义输入 --';
+            select.appendChild(opt);
+            select.value = '';
+            // 自动开启自定义模式
+            if (customToggle) customToggle.checked = true;
+            if (customInput) { customInput.style.display = ''; customInput.value = savedModel || ''; }
+            select.style.display = 'none';
+            return;
+        }
+
+        // 有预设模型：显示下拉
+        select.style.display = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '-- 选择模型 --';
+        select.appendChild(placeholder);
+
+        let matched = false;
+        models.forEach(val => {
             const opt = document.createElement('option');
             opt.value = val;
-            datalist.appendChild(opt);
+            opt.textContent = val;
+            select.appendChild(opt);
+            if (val === savedModel) matched = true;
         });
+
+        if (savedModel && matched) {
+            select.value = savedModel;
+            if (customToggle) customToggle.checked = false;
+            if (customInput) customInput.style.display = 'none';
+        } else if (savedModel && !matched) {
+            // 保存的模型不在列表中：选中"自定义"并填入
+            select.value = '';
+            if (customToggle) customToggle.checked = true;
+            if (customInput) { customInput.style.display = ''; customInput.value = savedModel; }
+        } else {
+            // 没有保存的模型：选中默认模型
+            select.value = pc.defaultModel || '';
+            if (customToggle) customToggle.checked = false;
+            if (customInput) customInput.style.display = 'none';
+        }
+    }
+
+    // v1.9.47: 模型下拉选中事件
+    function onModelSelect() {
+        const select = document.getElementById('cfg-llm-model');
+        const customInput = document.getElementById('cfg-llm-model-custom');
+        // 如果选了有效模型，关闭自定义输入
+        if (select && select.value && customInput) {
+            customInput.value = '';
+        }
+    }
+
+    // v1.9.47: 切换自定义模型输入
+    function toggleCustomModel() {
+        const customToggle = document.getElementById('cfg-llm-model-custom-toggle');
+        const customInput = document.getElementById('cfg-llm-model-custom');
+        const select = document.getElementById('cfg-llm-model');
+        if (!customToggle || !customInput) return;
+
+        if (customToggle.checked) {
+            customInput.style.display = '';
+            customInput.focus();
+            if (select) select.value = '';  // 取消 select 选中
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+            // 重新选中默认模型
+            const provider = document.getElementById('cfg-llm-provider')?.value || 'minimax';
+            const pc = _pc(provider);
+            if (select && pc.defaultModel) select.value = pc.defaultModel;
+        }
+    }
+
+    // v1.9.47: 获取当前模型名（优先 select，其次自定义输入）
+    function getCurrentModelValue() {
+        const select = document.getElementById('cfg-llm-model');
+        const customInput = document.getElementById('cfg-llm-model-custom');
+        const customToggle = document.getElementById('cfg-llm-model-custom-toggle');
+
+        if (customToggle && customToggle.checked && customInput) {
+            return customInput.value.trim();
+        }
+        return select?.value || '';
+    }
+
+    // v1.9.47: 设置当前模型名（自动判断放 select 还是 custom input）
+    function setCurrentModelValue(modelName) {
+        const select = document.getElementById('cfg-llm-model');
+        const customInput = document.getElementById('cfg-llm-model-custom');
+        const customToggle = document.getElementById('cfg-llm-model-custom-toggle');
+        if (!modelName) return;
+
+        // 尝试在 select 中找到匹配项
+        if (select) {
+            const options = Array.from(select.options).map(o => o.value);
+            if (options.includes(modelName)) {
+                select.value = modelName;
+                if (customToggle) customToggle.checked = false;
+                if (customInput) customInput.style.display = 'none';
+                return;
+            }
+        }
+        // 不在选项中：用自定义输入
+        if (customToggle) customToggle.checked = true;
+        if (customInput) { customInput.style.display = ''; customInput.value = modelName; }
+        if (select) select.value = '';
     }
 
     // v1.9.45: LLM 子配置持久化辅助函数
@@ -8614,11 +9303,11 @@ R - 复位`);
         } catch(e) {}
     }
 
-    // v1.9.45: 保存当前 provider 的表单值到子配置
+    // v1.9.47: 保存当前 provider 的表单值到子配置
     function _saveCurrentProviderSubConfig(excludeProvider) {
         const currentProvider = _lastLlmProvider || 'minimax';
         if (currentProvider === excludeProvider) return;
-        const model = document.getElementById('cfg-llm-model')?.value || '';
+        const model = getCurrentModelValue();  // v1.9.47: 统一获取模型名
         const baseUrl = document.getElementById('cfg-llm-base-url')?.value || '';
         const subCfg = loadLlmSubConfig(currentProvider) || {};
         if (model) subCfg.model = model;
@@ -8626,16 +9315,9 @@ R - 复位`);
         saveLlmSubConfig(currentProvider, subCfg);
     }
 
-    // v1.9.45: 加载目标 provider 的子配置到表单
+    // v1.9.47: 加载目标 provider 的子配置（纯数据，不操作 DOM）
     function _loadProviderSubConfig(provider) {
-        const subCfg = loadLlmSubConfig(provider);
-        const modelInput = document.getElementById('cfg-llm-model');
-        const baseUrlInput = document.getElementById('cfg-llm-base-url');
-        if (subCfg) {
-            if (modelInput && subCfg.model) modelInput.value = subCfg.model;
-            if (baseUrlInput && subCfg.base_url) baseUrlInput.value = subCfg.base_url;
-        }
-        _lastLlmProvider = provider;
+        return loadLlmSubConfig(provider);  // 返回 {model, base_url} 或 null
     }
 
     // v1.9.45: Base URL 默认值从 _providerConfig 读取（不再单独维护 _defaultUrls）
@@ -8649,41 +9331,30 @@ R - 复位`);
         if (btn) btn.style.display = 'none';
     }
 
-    function onLlmProviderChange() {
+    // v1.9.47: 彻底重构 Provider 切换逻辑 — 单一值设置入口
+    function onLlmProviderChange(skipSave) {
         const provider = document.getElementById('cfg-llm-provider')?.value || 'minimax';
         const pc = _pc(provider);
-        const apiKeyGroup = document.getElementById('cfg-llm-api-key-group');
-        const hintEl = document.getElementById('cfg-llm-hint');
-        const modelInput = document.getElementById('cfg-llm-model');
         const apiKeyInput = document.getElementById('cfg-llm-api-key-cfg');
-
-        // v1.9.45: 保存当前 provider 子配置，加载新 provider 子配置
-        _saveCurrentProviderSubConfig(provider);
-        _loadProviderSubConfig(provider);
-
-        // API Key placeholder 随 provider 变化
-        if (apiKeyInput) {
-            apiKeyInput.placeholder = pc.keyPlaceholder || 'sk-...';
-        }
-
-        // Ollama 自动填 api_key
-        if (provider === 'ollama' && apiKeyInput && !apiKeyInput.value.trim()) {
-            apiKeyInput.value = 'ollama';
-        }
-
-        // 提示文字
-        if (hintEl) {
-            hintEl.textContent = pc.hint || '';
-        }
-
-        // v1.9.45: Base URL 自动填充 + 只读锁定
-        // 优先使用子配置中保存的 base_url（用户可能自定义了代理），无记录时用官方默认
+        const hintEl = document.getElementById('cfg-llm-hint');
         const baseUrlInput = document.getElementById('cfg-llm-base-url');
+
+        // 1. 保存上一个 provider 的表单值到子配置（页面初始化时跳过，避免保存空值）
+        if (!skipSave) {
+            _saveCurrentProviderSubConfig(provider);
+        }
+
+        // 2. 读取新 provider 的子配置
+        const subCfg = _loadProviderSubConfig(provider);
+
+        // 3. 设置 Model（优先级：子配置保存的值 > 官方默认值）
+        const targetModel = (subCfg && subCfg.model) ? subCfg.model : (pc.defaultModel || '');
+        updateModelSelect(provider, targetModel);
+
+        // 4. 设置 Base URL（优先级：子配置保存的值 > 官方默认值）
         if (baseUrlInput) {
-            const savedBaseUrl = baseUrlInput.value;  // 已由 _loadProviderSubConfig 加载
-            if (!savedBaseUrl) {
-                baseUrlInput.value = pc.baseUrl || '';
-            }
+            baseUrlInput.value = (subCfg && subCfg.base_url) ? subCfg.base_url : (pc.baseUrl || '');
+            // 重新锁定为只读
             baseUrlInput.setAttribute('readonly', '');
             baseUrlInput.style.opacity = '0.7';
             baseUrlInput.style.cursor = 'default';
@@ -8691,17 +9362,30 @@ R - 复位`);
             if (editBtn) editBtn.style.display = '';
         }
 
-        // v1.9.45: 更新模型下拉列表
-        updateModelDatalist(provider);
-
-        // 自动填入默认模型（如果子配置没有 model 且表单值为空）
-        if (modelInput && !modelInput.value.trim()) {
-            const defaultModel = pc.defaultModel;
-            if (defaultModel) modelInput.value = defaultModel;
+        // 5. API Key placeholder + 清空
+        if (apiKeyInput) {
+            apiKeyInput.placeholder = pc.keyPlaceholder || 'sk-...';
+            apiKeyInput.value = '';  // 安全：不同 provider 的 key 不同，每次切换清空
         }
 
-        // 实时更新 Provider 状态指示器
+        // 6. Ollama 自动填 api_key
+        if (provider === 'ollama' && apiKeyInput && !apiKeyInput.value.trim()) {
+            apiKeyInput.value = 'ollama';
+        }
+
+        // 7. 提示文字
+        if (hintEl) {
+            hintEl.textContent = pc.hint || '';
+        }
+
+        // 8. 更新 Provider 状态指示器
         updateProviderIndicator(provider);
+
+        // 9. 查询新 provider 的 API Key 状态
+        checkApiKeyStatus();
+
+        // 10. 更新 _lastLlmProvider
+        _lastLlmProvider = provider;
     }
 
     // v1.9.45: 视觉 Provider 联动
@@ -8722,7 +9406,7 @@ R - 复位`);
         provider = provider || document.getElementById('cfg-llm-provider')?.value
             || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.provider
             || 'minimax';
-        const model = document.getElementById('cfg-llm-model')?.value
+        const model = getCurrentModelValue()  // v1.9.47
             || JSON.parse(localStorage.getItem('gugu-config') || '{}').llm?.model
             || '';
         const pc = _pc(provider);
@@ -8751,11 +9435,7 @@ R - 复位`);
         // 触发 provider 变更回调（会自动加载子配置、更新模型列表、填充URL）
         if (typeof onLlmProviderChange === 'function') onLlmProviderChange();
 
-        // 如果模型仍为空（子配置无记录），用默认值
-        const modelInput = document.getElementById('cfg-llm-model');
-        if (modelInput && !modelInput.value.trim()) {
-            modelInput.value = getDefaultModel(newProvider);
-        }
+        // v1.9.47: onLlmProviderChange 已自动设置默认模型，无需再手动处理
 
         // Ollama 自动填 api_key
         const apiKeyInput = document.getElementById('cfg-llm-api-key-cfg');
@@ -8766,7 +9446,7 @@ R - 复位`);
         // 自动保存并发送到后端
         if (typeof saveConfigSettings === 'function') saveConfigSettings();
 
-        const modelLabel = modelInput?.value || getDefaultModel(newProvider);
+        const modelLabel = getCurrentModelValue() || getDefaultModel(newProvider);  // v1.9.47
         const pc = _pc(newProvider);
         log(`快速切换 LLM → ${pc.label}/${modelLabel}`, 'ok');
     }
@@ -8819,6 +9499,11 @@ R - 复位`);
     
     // 处理API Key相关的WS消息
     // 在ws.onmessage中添加对应的处理分支
+
+    // v1.9.47: 配置加载和 Provider 状态初始化
+    // 必须在 _providerConfig 和所有联动函数声明之后调用
+    loadConfigSettings();
+    updateProviderIndicator();
 
     // ========== 工具执行队列 ==========
     const toolState = {
@@ -8953,7 +9638,7 @@ R - 复位`);
                     if (_visionCaptureDisplay === 'chat') {
                         // 分析模式：结果显示到对话区
                         log('📊 屏幕分析: ' + text.slice(0, 80), 'ok');
-                        addAIMessage(text, { type: 'ocr_analysis', provider: provider });
+                        addMessage(text, 'ai');  // v1.9.55: 修复 addAIMessage 未定义 bug
                     } else {
                         // 截图理解模式：结果显示到 Vision 面板
                         const result = document.getElementById('vision-result');
@@ -9029,7 +9714,7 @@ R - 复位`);
                     if (data.analysis) {
                         log('📊 屏幕分析: ' + data.analysis.slice(0, 100), 'ok');
                         // 在对话区域显示分析结果
-                        addAIMessage(data.analysis, { type: 'ocr_analysis' });
+                        addMessage(data.analysis, 'ai');  // v1.9.55: 修复 addAIMessage 未定义 bug
                     }
                 }
 
@@ -9119,6 +9804,130 @@ R - 复位`);
                 if (data.type === 'tool_result') {
                     if (data.tool_id) {
                         updateToolStatus(data.tool_id, data.success ? 'done' : 'error', data.result);
+                    }
+                }
+
+                // v1.9.52: MCP 响应处理
+                if (data.type === 'mcp_response') {
+                    const action = data.action;
+                    if (action === 'list_servers') {
+                        const statusEl = document.getElementById('mcp-status');
+                        const serversEl = document.getElementById('mcp-servers');
+                        if (data.success && data.servers) {
+                            const connected = data.servers.filter(s => s.connected).length;
+                            if (statusEl) statusEl.textContent = `${connected}/${data.servers.length} 个服务器已连接`;
+                            if (serversEl) {
+                                if (data.servers.length === 0) {
+                                    serversEl.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:11px;">暂无 MCP 服务器</div>';
+                                } else {
+                                    serversEl.innerHTML = data.servers.map(s =>
+                                        `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                                            <span>${s.connected ? '🟢' : '🔴'} <strong>${s.name}</strong> <span style="color:rgba(255,255,255,0.4);font-size:10px;">${s.tool_count}工具</span></span>
+                                            <span style="color:#f66;cursor:pointer;font-size:10px;" onclick="mcpRemoveServer('${s.name}')">✕</span>
+                                        </div>`
+                                    ).join('');
+                                }
+                            }
+                        }
+                    } else if (action === 'list_tools') {
+                        const toolsEl = document.getElementById('mcp-tools');
+                        if (data.success && data.tools && toolsEl) {
+                            _mcpTools = data.tools;
+                            if (data.tools.length === 0) {
+                                toolsEl.innerHTML = '<div style="color:rgba(255,255,255,0.4);text-align:center;padding:10px;">暂无工具</div>';
+                            } else {
+                                toolsEl.innerHTML = data.tools.map(t => {
+                                    const sourceTag = t.source === 'mcp' ?
+                                        '<span style="background:#9c27b0;padding:1px 4px;border-radius:3px;font-size:9px;">MCP</span>' :
+                                        '<span style="background:#2196f3;padding:1px 4px;border-radius:3px;font-size:9px;">本地</span>';
+                                    return `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        ${sourceTag} <strong>${t.name}</strong>
+                                        <div style="color:rgba(255,255,255,0.4);font-size:10px;">${(t.description||'').substring(0,60)}</div>
+                                    </div>`;
+                                }).join('');
+                            }
+                        }
+                    } else if (action === 'add_server') {
+                        if (data.success) {
+                            showToast('success', 'MCP 服务器已添加', data.message || '');
+                            mcpRefresh();
+                        } else {
+                            showToast('error', '添加失败', data.error || '');
+                        }
+                    } else if (action === 'remove_server') {
+                        if (data.success) {
+                            showToast('success', 'MCP 服务器已移除', '');
+                            mcpRefresh();
+                        }
+                    }
+                }
+
+                // v1.9.52: 工具调用可视化响应
+                if (data.type === 'tool_viz_response') {
+                    const action = data.action;
+                    if (action === 'list') {
+                        const el = document.getElementById('tool-viz-list');
+                        if (data.success && data.tools && el) {
+                            const local = data.tools.filter(t => t.source === 'local');
+                            const mcp = data.tools.filter(t => t.source === 'mcp');
+                            el.innerHTML = `<div style="color:rgba(255,255,255,0.5);margin-bottom:2px;">本地: ${local.length} | MCP: ${mcp.length}</div>`;
+                        }
+                    } else if (action === 'history') {
+                        const el = document.getElementById('tool-viz-calls');
+                        if (data.success && data.history && el) {
+                            if (data.history.length === 0) {
+                                el.innerHTML = '<div style="color:rgba(255,255,255,0.3);text-align:center;padding:10px;">暂无调用记录</div>';
+                            } else {
+                                el.innerHTML = data.history.reverse().map(h => _renderToolCallCard({
+                                    tool: h.tool,
+                                    success: h.success,
+                                    args: null,
+                                    result: null,
+                                    startTime: h.timestamp,
+                                    endTime: h.timestamp,
+                                })).join('');
+                            }
+                        }
+                    }
+                }
+
+                // v1.9.52: 工具调用实时事件（可视化）
+                if (data.type === 'tool_call_start') {
+                    const callsEl = document.getElementById('tool-viz-calls');
+                    if (callsEl) {
+                        const card = _renderToolCallCard({
+                            tool: data.tool,
+                            success: null,
+                            args: data.args,
+                            result: null,
+                            startTime: data.timestamp,
+                            endTime: null,
+                        });
+                        callsEl.insertAdjacentHTML('afterbegin', card);
+                    }
+                    // 添加到调用记录
+                    _toolVizCalls.push({
+                        call_id: data.call_id,
+                        tool: data.tool,
+                        args: data.args,
+                        startTime: data.timestamp,
+                    });
+                }
+
+                if (data.type === 'tool_call_end') {
+                    // 更新调用记录
+                    const call = _toolVizCalls.find(c => c.call_id === data.call_id);
+                    if (call) {
+                        call.success = data.success;
+                        call.result = data.result || data.error;
+                        call.endTime = data.timestamp;
+                    }
+                    // 刷新可视化面板（简单方式：重新渲染所有卡片）
+                    const callsEl = document.getElementById('tool-viz-calls');
+                    if (callsEl && _toolVizCalls.length > 0) {
+                        callsEl.innerHTML = _toolVizCalls.slice().reverse().slice(0, 20).map(c =>
+                            _renderToolCallCard(c)
+                        ).join('');
                     }
                 }
 

@@ -18,7 +18,7 @@
 
 与其他模块的关系:
     - Config → 读取 app/config.yaml，所有子模块共享同一配置
-    - AIVTuber → 组合调用 asr/tts/llm/memory/vision/openclaw/tools/subagent/web
+    - AIVTuber → 组合调用 asr/tts/llm/memory/vision/tools/web
     - ToolExecutor → 独立的命令执行沙箱，被 AIVTuber.process_message() 调用
 
 输入:
@@ -359,8 +359,7 @@ class Config:
                 "voice": {"enabled": True},
                 "dialogue": {"max_history": 10},
                 "execution": {"enabled": True, "allowed_commands": ["ls", "pwd", "date", "echo", "whoami"]},
-                "web": {"port": 12393, "ws_port": 12394},
-                "openclaw": {"enabled": True}
+                "web": {"port": 12393, "ws_port": 12394}
             }
         except Exception as e:
             game_fail("配置加载", str(e))
@@ -608,8 +607,7 @@ class AIVTuber:
         ASR（语音识别）、TTS（语音合成）、LLM（大语言模型）、
         Vision（视觉理解）、Memory（记忆系统）、Live2D（虚拟形象）、
         Voice（语音输入）、Web/WebSocket（网络服务）、
-        OpenClaw（外部工具）、Tools（本地工具）、SubAgent（子代理）。
-
+        Tools（本地工具）。
         核心设计: 懒加载(Lazy Loading)
         - __init__ 只初始化轻量级对象（Config、TTSCache、Logger）
         - 所有重量级模块通过 @property 延迟到首次访问时才加载
@@ -684,6 +682,11 @@ class AIVTuber:
         # 历史记录限制: 最多保留 MAX_HISTORY 轮对话（每轮 = user + assistant 两条）
         self.MAX_HISTORY = 100
         self.history: List[Dict] = []
+        self._history_needs_restore = False  # v1.9.50: 延迟从记忆系统恢复标记
+        # v1.9.50: 对话历史持久化文件路径
+        self._history_file = Path("./memory/state/chat_history.json").resolve()
+        self._history_file.parent.mkdir(parents=True, exist_ok=True)
+        self._load_history()
 
         # 懒加载模块注册表: 存储已加载的模块实例
         # key = 模块名, value = 模块实例
@@ -891,6 +894,10 @@ class AIVTuber:
                 memory_config = self.config.config.get("memory", {})
                 self._memory = MemorySystem(memory_config)
                 self._memory_initialized = True
+                # v1.9.50: 如果历史还没恢复，尝试从记忆系统恢复
+                if getattr(self, '_history_needs_restore', False) and not self.history:
+                    self._load_history()
+                    self._history_needs_restore = False
                 # v3.0: 设置 LLM 回调（延迟绑定，避免循环依赖）
                 # 使用 lambda 延迟访问 self.llm，确保 LLM 已初始化
                 self._memory.set_llm_callback(lambda message: self.llm.chat(message=message) if getattr(self, '_llm', None) else None)
@@ -906,34 +913,6 @@ class AIVTuber:
                 import traceback
                 traceback.print_exc()
         return self._memory
-
-    @property
-    def openclaw(self):
-        """
-        OpenClaw 外部工具集成 - 懒加载
-
-        延迟导入: from openclaw import OpenClawToolExecutor
-        配置来源: config["openclaw"]
-
-        功能: 与 OpenClaw CLI 工具交互，提供额外的 LLM 工具能力
-
-        返回值:
-            OpenClawToolExecutor 实例（支持 execute() 和 is_available()）
-        """
-        if 'openclaw' not in self._lazy_modules:
-            try:
-                from openclaw import OpenClawToolExecutor
-            except ImportError:
-                game_skip("OpenClaw 集成", "模块未安装")
-                self._lazy_modules['openclaw'] = None
-                return self._lazy_modules['openclaw']
-            openclaw_config = self.config.config.get("openclaw", {})
-            self._lazy_modules['openclaw'] = OpenClawToolExecutor(openclaw_config)
-            if self._lazy_modules['openclaw'].is_available():
-                game_ok("OpenClaw", "外部工具已连接")
-            else:
-                game_skip("OpenClaw", "服务不可用")
-        return self._lazy_modules['openclaw']
 
     @property
     def tools(self):
@@ -980,37 +959,98 @@ class AIVTuber:
         return self._lazy_modules['vision']
 
     @property
-    def subagent(self):
+    def proactive(self):
         """
-        子 Agent 模块 - 懒加载
+        AI 主动说话管理器 - 懒加载
 
-        延迟导入: from subagent import SubAgent
-        配置来源: config["subagent"]
+        延迟导入: from proactive import ProactiveSpeechManager
+        配置来源: config["proactive_speech"]
 
-        功能: 独立的子代理，可以执行复杂的多步骤任务
-        通过 LLM 回复中的 "AGENT: tool_name ARG: args" 指令触发
+        功能: 当用户长时间不说话时，AI 根据记忆和上下文主动开口
+        - 空闲检测: 追踪 last_user_activity_time
+        - 上下文感知: 利用记忆系统检索话题
+        - 频率控制: 最小间隔 + 每日上限
 
         返回值:
-            SubAgent 实例 或 None（未启用时）
+            ProactiveSpeechManager 实例
         """
-        if 'subagent' not in self._lazy_modules:
+        if 'proactive' not in self._lazy_modules:
             try:
-                from subagent import SubAgent
-            except ImportError:
-                game_skip("子Agent", "模块未安装")
-                self._lazy_modules['subagent'] = None
-                return self._lazy_modules['subagent']
-            agent_config = self.config.config.get("subagent", {})
-            if agent_config.get("enabled", False):
-                self._lazy_modules['subagent'] = SubAgent(agent_config)
-                if self._lazy_modules['subagent'].is_available():
-                    game_ok("子Agent", "多步骤任务代理已激活")
+                from proactive import ProactiveSpeechManager
+                self._lazy_modules['proactive'] = ProactiveSpeechManager(self)
+                if self._lazy_modules['proactive'].enabled:
+                    game_ok("主动说话", f"空闲 {self._lazy_modules['proactive'].idle_timeout}s 后触发")
                 else:
-                    game_skip("子Agent", "需配置API")
-            else:
-                self._lazy_modules['subagent'] = None
-                game_skip("子Agent", "未启用")
-        return self._lazy_modules['subagent']
+                    game_skip("主动说话", "未启用 (config.yaml → proactive_speech.enabled)")
+            except Exception as e:
+                self._lazy_modules['proactive'] = None
+                game_fail("主动说话", f"初始化失败: {e}")
+        return self._lazy_modules['proactive']
+
+    @property
+    def mcp(self):
+        """
+        MCP 工具桥接器 - 懒加载
+
+        延迟导入: from mcp import MCPToolBridge
+        配置来源: config["mcp"]
+
+        功能: 将 MCP (Model Context Protocol) 工具集成到本地工具系统
+        - 管理多个 MCP 服务器连接
+        - 工具名路由: "MCP:server:tool" → MCP 通道，其他 → 本地工具
+        - 动态添加/移除 MCP 服务器
+
+        返回值:
+            MCPToolBridge 实例 或 None（未启用时）
+        """
+        if 'mcp' not in self._lazy_modules:
+            try:
+                from mcp import MCPToolBridge
+                mcp_config = self.config.config.get("mcp", {})
+                if mcp_config.get("enabled", False):
+                    self._lazy_modules['mcp'] = MCPToolBridge(self)
+                    self._lazy_modules['mcp'].start()
+                    server_count = self._lazy_modules['mcp'].server_count
+                    connected = self._lazy_modules['mcp'].connected_count
+                    game_ok("MCP工具桥接", f"{connected}/{server_count} 个服务器已连接")
+                else:
+                    self._lazy_modules['mcp'] = None
+                    game_skip("MCP工具桥接", "未启用 (config.yaml → mcp.enabled)")
+            except Exception as e:
+                self._lazy_modules['mcp'] = None
+                game_fail("MCP工具桥接", f"初始化失败: {e}")
+        return self._lazy_modules['mcp']
+
+    @property
+    def desktop_pet(self):
+        """
+        桌面宠物管理器 - 懒加载
+
+        延迟导入: from desktop_pet import DesktopPetManager
+        配置来源: config["desktop_pet"]
+
+        功能: 将 Live2D 角色以桌面宠物的形式悬浮在桌面上
+        - 无边框透明窗口，始终置顶
+        - 可拖拽移动，点击交互
+        - 右键菜单：打开主界面/打招呼/随机动作/退出
+
+        返回值:
+            DesktopPetManager 实例 或 None（未启用时）
+        """
+        if 'desktop_pet' not in self._lazy_modules:
+            try:
+                from desktop_pet import DesktopPetManager
+                pet_config = self.config.config.get("desktop_pet", {})
+                if pet_config.get("enabled", False):
+                    self._lazy_modules['desktop_pet'] = DesktopPetManager(self)
+                    game_ok("桌面宠物", "已就绪")
+                else:
+                    self._lazy_modules['desktop_pet'] = None
+                    game_skip("桌面宠物", "未启用 (config.yaml → desktop_pet.enabled)")
+            except Exception as e:
+                self._lazy_modules['desktop_pet'] = None
+                game_fail("桌面宠物", f"初始化失败: {e}")
+        return self._lazy_modules['desktop_pet']
 
     @property
     def web_server(self):
@@ -1076,7 +1116,7 @@ class AIVTuber:
         处理文字消息 - 核心对话流程
 
         这是整个系统最核心的方法，串联了:
-        记忆检索 → LLM 推理 → 工具执行(命令/OpenClaw/本地工具/子Agent) → 记忆存储
+        记忆检索 → LLM 推理 → 工具执行(命令/本地工具) → 记忆存储
 
         参数说明:
             text: 用户输入的文字消息
@@ -1093,9 +1133,7 @@ class AIVTuber:
             4. LLM 推理: 调用 self.llm.chat()（传入 history 副本，防止 LLM 内部修改）
             5. 工具执行链:
                a. execute 命令: 如果 action.type == "execute" → ToolExecutor.execute()
-               b. OpenClaw 工具: 如果回复包含 "TOOL:" → _handle_openclaw_tool()
-               c. 本地工具: 如果回复包含 "BASH:/READ:/WRITE:/EDIT:" → _handle_local_tool()
-               d. 子Agent: 如果回复包含 "AGENT:" → _handle_subagent()
+               b. 本地工具: 如果回复包含 "BASH:/READ:/WRITE:/EDIT:" → _handle_local_tool()
             6. 短期记忆: 记录助手回复
             7. 长期记忆: 自动存储重要对话（如果 auto_store 开启）
             8. 历史记录: 追加到 self.history 并限制最大长度
@@ -1107,10 +1145,7 @@ class AIVTuber:
         try:
             self.logger.info(f"处理消息: {text[:50]}...")
 
-            # 步骤1: 短期记忆 - 记录用户消息（写入 working memory）
-            self.memory.add_interaction("user", text)
-
-            # 步骤2: 从长期记忆检索与当前输入语义相关的历史记忆
+            # 步骤1: 从长期记忆检索与当前输入语义相关的历史记忆
             relevant_memories = self.memory.search(text, top_k=3)
             context = ""
             if relevant_memories:
@@ -1140,39 +1175,15 @@ class AIVTuber:
                 else:
                     reply = f"命令执行失败: {exec_result.get('error', '未知错误')}"
 
-            # 步骤5b: 处理 OpenClaw 工具调用
-            # LLM 回复中包含 "TOOL: tool_name ARG: arguments" 格式时触发
-            if self.openclaw.is_available() and "TOOL:" in reply:
-                tool_result = self._handle_openclaw_tool(reply)
-                if tool_result:
-                    reply = f"{reply}\n\n OpenClaw 工具执行结果:\n{tool_result}"
-
-            # 步骤5c: 处理本地工具调用（参考 Claude Code 的工具调用格式）
+            # 步骤5b: 处理本地工具调用（参考 Claude Code 的工具调用格式）
             # 支持 BASH/READ/WRITE/EDIT 四种指令
             if "BASH:" in reply or "READ:" in reply or "WRITE:" in reply or "EDIT:" in reply:
                 tool_result = self._handle_local_tool(reply)
                 if tool_result:
                     reply = f"{reply}\n\n 本地工具结果:\n{tool_result}"
 
-            # 步骤5d: 处理子 Agent 调用（参考 Claude Code 的 AGENT 指令）
-            if self.subagent and "AGENT:" in reply:
-                agent_result = self._handle_subagent(reply)
-                if agent_result:
-                    reply = f"{reply}\n\n 子Agent 执行结果:\n{agent_result}"
-
-            # 步骤6: 短期记忆 - 记录助手回复
-            # add_interaction 内部会自动评分,importance>=4 时自动存入向量库
-            self.memory.add_interaction("assistant", reply)
-
-            # 步骤7: 追加到历史记录（供后续 LLM 调用作为上下文）
-            self.history.append({"role": "user", "content": text})
-            self.history.append({"role": "assistant", "content": reply})
-
-            # 限制历史记录长度，防止无限增长导致 LLM 上下文溢出
-            # MAX_HISTORY * 2: 每轮对话包含 user + assistant 两条
-            if len(self.history) > self.MAX_HISTORY * 2:
-                self.history = self.history[-(self.MAX_HISTORY * 2):]
-                self.logger.debug(f"历史记录已截断到 {len(self.history)} 条")
+            # 步骤6+7: 统一记录交互（v1.9.55: 替换重复的 mem + history + save 逻辑）
+            self.record_interaction(text, reply)
 
             return {"text": reply, "action": action}
 
@@ -1428,6 +1439,22 @@ class AIVTuber:
             5. 打印服务地址信息
             6. 主线程 sleep 等待，直到 Ctrl+C 触发停止
         """
+        # v1.9.55: 启动时清理旧 TTS 缓存文件（超过24小时的 .wav）
+        try:
+            cache_dir = Path('app/cache')
+            if cache_dir.is_dir():
+                import time as _time
+                now = _time.time()
+                cleaned = 0
+                for f in cache_dir.glob('*.wav'):
+                    if f.is_file() and (now - f.stat().st_mtime) > 86400:
+                        f.unlink(missing_ok=True)
+                        cleaned += 1
+                if cleaned:
+                    self.logger.info(f"已清理 {cleaned} 个过期 TTS 缓存文件")
+        except Exception as e:
+            self.logger.debug(f"清理 TTS 缓存时出错（可忽略）: {e}")
+
         game_section("启动 Web 服务")
         
         # 如果启用了 Live2D，打印其独立 HTTP 服务地址
@@ -1473,6 +1500,29 @@ class AIVTuber:
         import threading
         threading.Thread(target=_background_preload, daemon=True, name="background-preload").start()
 
+        # v1.9.51: 启动主动说话管理器（如果已启用）
+        try:
+            proactive = self.proactive
+            if proactive and proactive.enabled:
+                proactive.start()
+        except Exception as e:
+            game_warn("主动说话", str(e))
+
+        # v1.9.52: 启动 MCP 工具桥接器（如果已启用）
+        try:
+            mcp = self.mcp
+            # MCP 已在懒加载属性中自动启动
+        except Exception as e:
+            game_warn("MCP工具桥接", str(e))
+
+        # v1.9.52: 启动桌面宠物模式（如果已启用）
+        try:
+            pet = self.desktop_pet
+            if pet and pet.enabled:
+                pet.start()
+        except Exception as e:
+            game_warn("桌面宠物", str(e))
+
         port = self.config.config.get('web.port', 12393)
         live2d_port = self.live2d.port if self.live2d.enabled else 'N/A'
         
@@ -1503,8 +1553,86 @@ class AIVTuber:
             print("\n 服务已停止")
             self.stop()
 
+    def _load_history(self):
+        """v1.9.50: 从磁盘恢复对话历史，若无则从记忆系统恢复"""
+        try:
+            if self._history_file.exists():
+                with open(self._history_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    self.history = data[-(self.MAX_HISTORY * 2):]
+                    print(f"  [历史] 恢复对话历史: {len(self.history)}条")
+                    return
+        except Exception as e:
+            print(f"  [历史] 恢复对话历史失败: {e}")
+
+        # 持久化文件不存在或为空，尝试从记忆系统的工作记忆恢复
+        try:
+            memory = getattr(self, '_memory', None)
+            if memory is None:
+                # 记忆系统可能还没初始化，延迟恢复
+                self._history_needs_restore = True
+                self.history = []
+                return
+            working = getattr(memory, 'working_memory', None)
+            if working and len(working) > 0:
+                for item in working[-(self.MAX_HISTORY * 2):]:
+                    role = getattr(item, 'role', None)
+                    content = getattr(item, 'content', None)
+                    if role and content:
+                        self.history.append({"role": role, "content": content})
+                print(f"  [历史] 从工作记忆恢复对话历史: {len(self.history)}条")
+                # 首次恢复后保存到磁盘
+                self._save_history()
+                return
+        except Exception as e:
+            print(f"  [历史] 从工作记忆恢复失败: {e}")
+        self.history = []
+
+    def _save_history(self):
+        """v1.9.50: 保存对话历史到磁盘"""
+        try:
+            data = self.history[-(self.MAX_HISTORY * 2):]
+            tmp_file = self._history_file.with_suffix('.tmp')
+            with open(tmp_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_file, self._history_file)
+        except Exception as e:
+            print(f"  [历史] 保存对话历史失败: {e}")
+
+    def record_interaction(self, user_text: str, assistant_text: str):
+        """
+        v1.9.55: 统一记录对话交互（记忆 + 历史 + 持久化）
+        消除 main.py / web/__init__.py 三处重复的 mem.add_interaction + history.append + _save_history 逻辑。
+        """
+        if not user_text or not assistant_text:
+            return
+        # 1. 记忆系统
+        try:
+            mem = getattr(self, '_memory', None)
+            if mem is not None:
+                mem.add_interaction("user", user_text)
+                mem.add_interaction("assistant", assistant_text)
+        except Exception as e:
+            self.logger.debug(f"记忆写入错误（可忽略）: {e}")
+        # 2. 历史记录 + 截断 + 持久化
+        try:
+            self.history.append({"role": "user", "content": user_text})
+            self.history.append({"role": "assistant", "content": assistant_text})
+            if len(self.history) > self.MAX_HISTORY * 2:
+                self.history = self.history[-(self.MAX_HISTORY * 2):]
+            self._save_history()
+        except Exception as e:
+            self.logger.debug(f"历史更新错误（可忽略）: {e}")
+
     def _atexit_flush(self):
-        """atexit 回调：确保异常退出时也能 flush 记忆系统"""
+        """atexit 回调：确保异常退出时也能 flush 记忆系统和对话历史"""
+        # v1.9.50: 保存对话历史
+        if self.history:
+            try:
+                self._save_history()
+            except Exception:
+                pass  # atexit 中不能抛异常
         if self._memory_initialized and self._memory:
             try:
                 self._memory.flush()
@@ -1535,6 +1663,30 @@ class AIVTuber:
         """
         self.logger.info("正在停止服务...")
 
+        # v1.9.51: 停止主动说话管理器
+        if 'proactive' in self._lazy_modules and self._lazy_modules.get('proactive'):
+            try:
+                self._lazy_modules['proactive'].stop()
+                self.logger.info("主动说话管理器已停止")
+            except Exception as e:
+                self.logger.error(f"主动说话管理器停止失败: {e}")
+
+        # v1.9.52: 停止 MCP 工具桥接器
+        if 'mcp' in self._lazy_modules and self._lazy_modules.get('mcp'):
+            try:
+                self._lazy_modules['mcp'].stop()
+                self.logger.info("MCP工具桥接器已停止")
+            except Exception as e:
+                self.logger.error(f"MCP工具桥接器停止失败: {e}")
+
+        # v1.9.52: 停止桌面宠物
+        if 'desktop_pet' in self._lazy_modules and self._lazy_modules.get('desktop_pet'):
+            try:
+                self._lazy_modules['desktop_pet'].stop()
+                self.logger.info("桌面宠物已停止")
+            except Exception as e:
+                self.logger.error(f"桌面宠物停止失败: {e}")
+
         # 停止 Web HTTP 服务（检查是否已懒加载）
         web_svr = getattr(self, 'web_server', None) if 'web_server' in self._lazy_modules else None
         if web_svr:
@@ -1561,14 +1713,6 @@ class AIVTuber:
             except Exception as e:
                 self.logger.error(f"执行器关闭失败: {e}")
 
-        # 关闭子 Agent（如果已加载）
-        if 'subagent' in self._lazy_modules and self._lazy_modules.get('subagent'):
-            try:
-                self._lazy_modules['subagent'].shutdown()
-                self.logger.info("子Agent已关闭")
-            except Exception as e:
-                self.logger.error(f"子Agent关闭失败: {e}")
-
         # 刷新记忆系统（确保所有未持久化的记忆数据写入磁盘）
         # v2.2: 使用 MemorySystem.flush() 一次性 flush 工作/情景/语义记忆
         # 注意: 访问 _memory 而非 memory property，避免触发懒加载
@@ -1578,6 +1722,14 @@ class AIVTuber:
                 self.logger.info("记忆系统已刷新")
             except Exception as e:
                 self.logger.error(f"记忆刷新失败: {e}")
+
+        # v1.9.50: 保存对话历史到磁盘
+        if self.history:
+            try:
+                self._save_history()
+                self.logger.info(f"对话历史已保存 ({len(self.history)}条)")
+            except Exception as e:
+                self.logger.error(f"对话历史保存失败: {e}")
 
         # C2修复: 清理GPU资源（TTS模型等）
         if 'tts' in self._lazy_modules and self._lazy_modules.get('tts'):
@@ -1636,77 +1788,6 @@ class AIVTuber:
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
             print(f"️ 播放失败: {e}")
-
-    def _handle_openclaw_tool(self, text: str) -> Optional[str]:
-        """
-        处理 OpenClaw 工具调用
-
-        设计意图:
-            解析 LLM 回复中的 "TOOL: tool_name ARG: arguments" 格式指令，
-            调用 OpenClaw 外部工具执行后返回结果。
-
-        参数说明:
-            text: LLM 回复的完整文本
-
-        返回值:
-            str: 工具执行结果文本，或 None（无匹配时）
-
-        指令格式:
-            TOOL: openclaw_agent ARG: 帮我查看天气
-        """
-        import re
-
-        # 正则匹配 "TOOL: 工具名 ARG: 参数" 格式
-        match = re.search(r"TOOL:\s*(\w+)\s*ARG:\s*(.+?)(?:\n|$)", text, re.DOTALL)
-        if match:
-            tool_name = match.group(1).strip()
-            args = match.group(2).strip()
-
-            # 构造工具调用请求并执行
-            tool_call = {"name": tool_name, "arguments": {"message": args}}
-            result = self.openclaw.execute(tool_call)
-
-            if result.get("success"):
-                return result.get("text", "执行完成")
-            else:
-                return f"执行失败: {result.get('error', '未知错误')}"
-
-        return None
-
-    def _handle_subagent(self, text: str) -> Optional[str]:
-        """
-        处理子 Agent 调用（参考 Claude Code 的 Agent 调用格式）
-
-        设计意图:
-            解析 LLM 回复中的 "AGENT: tool_name ARG: arguments" 格式指令，
-            委派给独立的子 Agent 执行复杂的多步骤任务。
-
-        参数说明:
-            text: LLM 回复的完整文本
-
-        返回值:
-            str: 子 Agent 执行结果，或 None（无匹配时）
-
-        指令格式:
-            AGENT: search ARG: 查找项目中所有的配置文件
-        """
-        import re
-
-        # 正则匹配 "AGENT: 工具名 ARG: 参数" 格式
-        match = re.search(r"AGENT:\s*(\w+)\s*ARG:\s*(.+?)(?:\n|$)", text, re.DOTALL)
-        if match:
-            tool_name = match.group(1).strip()
-            args = match.group(2).strip()
-
-            # 调用子 Agent 的工具执行方法
-            result = self.subagent.execute_tool(tool_name, command=args)
-
-            if result.success:
-                return result.output
-            else:
-                return f"执行失败: {result.error}"
-
-        return None
 
     def _handle_local_tool(self, text: str) -> Optional[str]:
         """
@@ -1792,7 +1873,7 @@ def main():
 
         args = parser.parse_args()
 
-        game_header("咕咕嘎嘎 AI-VTuber v1.9.45")
+        game_header("咕咕嘎嘎 AI-VTuber v1.9.55")
         game_info("系统启动中", f"{_timestamp()} | Python {sys.version_info.major}.{sys.version_info.minor}")
 
         # 使用上下文管理器创建 AIVTuber 实例（确保退出时清理资源）

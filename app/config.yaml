@@ -101,7 +101,7 @@ llm:
   ollama:
     api_key: "ollama"               # Ollama 不校验 API Key，随便填
     base_url: "http://localhost:11434/v1"  # Ollama OpenAI 兼容端点
-    model: ""                        # 根据 ollama list 输出填写，如 qwen3:8b
+    model: "qwen3:8b"               # 根据 ollama list 输出填写，常用: qwen3:8b, llama3:8b, mistral:7b
     max_tokens: 2048
 
 # ==================== 视觉理解 (Vision) ====================
@@ -185,8 +185,65 @@ memory:
 # ==================== 子Agent (参考 Claude Code) ====================
 subagent:
   enabled: true  # 设为 true 启用
+
+# ==================== AI 主动说话 (v1.9.51) ====================
+proactive_speech:
+  enabled: true            # v1.9.52: 已启用主动说话
+  idle_timeout: 120        # 用户空闲多少秒后触发（默认2分钟）
+  min_interval: 300        # 两次主动说话最小间隔秒数（默认5分钟）
+  max_daily_count: 15      # 每日主动说话上限
+  check_interval: 30       # 检查间隔秒数（不宜太短，默认30秒）
+  randomize_range: 30      # 随机延迟范围秒数（避免机械式触发）
   # Claude Code Opus 4.6 配置
   api_key: "${SUBAGENT_API_KEY}"  # 从环境变量读取
   base_url: "https://ccvibe.cc/v1"
   model: "ccvibe/claude-opus-4-6"
   max_concurrent: 3  # 最大并发数
+
+# ==================== MCP 工具协议 (v1.9.52) ====================
+mcp:
+  enabled: true  # 启用 MCP 工具桥接
+  servers: {}
+    # 示例：文件系统 MCP 服务器
+    # filesystem:
+    #   command: "npx"
+    #   args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"]
+    #   description: "本地文件系统访问"
+    #   enabled: true
+    #
+    # 示例：GitHub MCP 服务器
+    # github:
+    #   command: "npx"
+    #   args: ["-y", "@modelcontextprotocol/server-github"]
+    #   env:
+    #     GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+    #   description: "GitHub API 访问"
+    #   enabled: true
+
+# ==================== 工具调用可视化 (v1.9.52) ====================
+tool_viz:
+  enabled: true  # 启用工具调用可视化
+  show_input: true     # 显示工具输入参数
+  show_output: true    # 显示工具输出结果
+  auto_expand: false   # 自动展开工具调用卡片
+
+# ==================== 桌面宠物模式 (v1.9.52) ====================
+desktop_pet:
+  enabled: false        # 启用桌面宠物模式
+  width: 400            # 宠物窗口宽度
+  height: 500           # 宠物窗口高度
+  always_on_top: true   # 窗口置顶
+  transparent: true     # 透明背景
+  draggable: true       # 可拖拽
+  click_action: "greet" # 点击行为: greet(打招呼) / random(随机动作)
+
+# ==================== Live2D 微动作 (v1.9.52) ====================
+live2d_idle_motion:
+  enabled: true         # 启用闲置微动作
+  interval_min: 5       # 最小间隔秒数
+  interval_max: 15      # 最大间隔秒数
+  motions:              # 可用微动作列表
+    - "Idle"
+    - "TapBody"
+    - "Flick"
+  breath_amplitude: 0.01  # 呼吸动画幅度

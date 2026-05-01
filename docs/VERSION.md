@@ -38,6 +38,225 @@
 
 ================================================================================
 
+## 🟢 v1.9.55 (2026-05-01) ✅ STABLE
+
+**代码清理：移除死代码 + 释放重复模型文件 (~836MB) + 清理过时文档**
+
+### 🔄 重构
+- **移除 OpenClaw 死代码**：删除 `openclaw` property、`_handle_openclaw_tool()` 方法、备用配置中的 `openclaw` 项、以及 process_message 中的 TOOL: 处理分支（openclaw 模块从未存在，一直 ImportError 被吞掉）
+- **移除 SubAgent 死代码**：删除 `subagent` property、`_handle_subagent()` 方法、process_message 中的 AGENT: 处理分支、以及 stop() 中的 subagent 关闭逻辑（subagent 模块从未存在）
+- **清理相关文档注释**：更新类文档字符串和 process_message 流程说明，移除 OpenClaw/SubAgent 引用
+- **清理过时文档**：删除 11 个已过时的文档（ARCHITECTURE/CODE_AUDIT/DESKTOP_PACKAGING/DEV_GUIDE/OCR_DEPLOYMENT/OPTIMIZATION*/THREADING/gap_analysis/feasibility_*），保留 BUILD/QUICKSTART/README/VERSION；更新 README.md 索引和统计信息
+
+### ⚡ 性能
+- **删除重复 G2PWModel**（608MB）：`GPT_SoVITS/G2PWModel/` 是 `text/G2PWModel/` 的完全副本，代码只引用后者
+- **删除重复训练权重**（213MB）：`data/web_projects/hongkong/ckpt/` 和 `s2_ckpt/` 与推理目录 `GPT_weights_v3/` + `SoVITS_weights_v3/` 内容完全一致（MD5 确认）
+- **清理 web_hongkong 旧训练中间数据**（15MB）：`data/web_hongkong/` 为废弃的训练中间产物
+- **删除 _tmp_oml2d 空目录**
+
+================================================================================
+
+## 🟢 v1.9.54 (2026-05-01) ✅ STABLE
+
+**实时语音模式深度修复：文本突变 + 历史记录 + 状态时序**
+
+### 🐛 修复
+- **实时语音回复文本突变**：修复 LLM 回复完成后文本从长变短的 bug
+  - 根因：后端 `text_done` 发送 `_realtime_filter(full_text)`（剥Markdown/emoji），而 `text_chunk` 只做 `_strip_tool_calls`
+  - 修复：全局 `text_done` handler 不再用 `data.text` 覆盖已有流式文本，保留用户看到的完整内容
+- **实时语音对话不计入历史**：修复历史面板看不到实时语音对话记录
+  - 根因：`_handle_realtime_audio` 只写了 `mem.add_interaction()`（记忆系统），没有更新 `self.app.history`
+  - 修复：与录音模式 `_handle_text` 一致，追加 `app.history` + `_save_history()`
+- **实时语音 text_done 过早回到"聆听中"**：LLM 输出完成时音频可能还在播放，不应立即切换状态
+  - 修复：`text_done` 时检查音频播放状态，正在播放则保持"播放中"，播完自然回到"聆听中"
+- **TTS合成状态时机优化**：`realtime_audio` 到达时隐藏合成状态（音频已就绪），而非显示
+
+================================================================================
+
+## v1.9.53 (2026-05-01)
+
+**实时语音模式 UI 对齐：思考动画 + TTS合成状态 + 流式消息**
+
+### 🐛 修复
+- **实时语音思考动画**：ASR 识别完成后，与录音模式一样创建流式 AI 消息占位 + 思考指示器（跳动点），LLM 开始回复后自动消失
+- **实时语音 TTS 合成状态**：音频片段到达时显示"🔊 语音合成中..."提示，合成完成后自动隐藏
+- **实时语音 text_done 重复消息**：修复 AI 回复完成时在聊天区创建两条重复消息的问题
+- **实时语音打断清理**：打断时正确清理思考动画和流式消息占位，空消息显示"（已中断）"
+
+================================================================================
+
+## v1.9.52 (2026-05-01)
+
+**MCP 工具协议 + 工具调用可视化 + 桌面宠物 + Live2D 微动作 + 记忆增强**
+
+### ✨ 新增
+- **MCP 工具协议集成**：将 Anthropic MCP (Model Context Protocol) 集成到工具系统
+  - `app/mcp/__init__.py` — MCPToolBridge + MCPTransport + MCPServerConfig
+  - stdio 传输层：通过子进程 stdin/stdout 与 MCP 服务器 JSON-RPC 通信
+  - 工具名路由：`MCP:server:tool` 走 MCP 通道，其他走本地 ToolFactory
+  - 前端 MCP 面板：服务器状态、工具列表、动态添加/移除服务器
+  - 配置：`config.yaml → mcp.servers`
+- **工具调用可视化**：AI 调用工具时实时展示调用过程和结果
+  - 后端：`tool_call_start` / `tool_call_end` WS 事件，调用历史缓存
+  - 前端工具调用面板：实时卡片、调用历史、本地/MCP 标签
+  - 工具调用记录持久化（最近100条）
+- **桌面宠物模式**：Live2D 角色悬浮在桌面上
+  - `app/desktop_pet/__init__.py` — DesktopPetManager + PetAPI
+  - 无边框透明窗口（pywebview），始终置顶，可拖拽
+  - 点击互动、右键菜单、气泡消息
+  - 前端桌面宠物控制面板
+  - 配置：`config.yaml → desktop_pet`
+- **Live2D 闲置微动作**：AI 空闲时随机播放微动作
+  - 前端 JS 定时器：5-15秒随机间隔，Idle/TapBody/Flick 动作
+  - AI 说话时暂停微动作，说完后恢复
+  - 可通过面板按钮开关
+- **AI 主动说话已启用**：`proactive_speech.enabled: true`
+
+### 🔧 优化
+- **记忆面板**：已有完整可视化（工作/情景/事实标签+搜索+时间线），v1.9.52 增强面板入口
+- **工具系统**：`_handle_tool` 支持 MCP 路由，统一可视化事件推送
+- **WS 消息**：新增 `mcp` 和 `tool_viz` 消息类型
+
+### 📁 修改文件
+- `app/mcp/__init__.py` — 新增 MCP 工具桥接模块 (全文)
+- `app/desktop_pet/__init__.py` — 新增桌面宠物模块 (全文)
+- `app/main.py` — 新增 `mcp`/`desktop_pet` 懒加载属性，启动/停止逻辑
+- `app/web/__init__.py` — MCP/工具可视化 WS 处理器，工具调用事件推送
+- `app/web/static/index.html` — MCP 面板、工具可视化面板、桌面宠物面板、Live2D 微动作
+- `app/config.yaml` — 新增 mcp/tool_viz/desktop_pet/live2d_idle_motion 配置节
+- 版本号同步: v1.9.52 (9处)
+
+================================================================================
+
+## 🟢 v1.9.51 (2026-05-01) ✅ STABLE
+
+**语音打断 + AI 主动说话** — 实现文本模式打断功能，新增 AI 主动说话模块
+
+### ✨ 新增
+- **文本模式打断**：AI 生成回复时显示"停止"按钮，点击立即中断 LLM 流式输出和 TTS 合成
+  - 后端: Generation ID + cancel_event 机制，`text_interrupt` 消息类型
+  - 前端: 红色停止按钮替代发送按钮，中断后恢复已生成文本
+- **AI 主动说话**：用户长时间不说话时，AI 根据记忆和上下文主动开口
+  - `app/proactive.py` — ProactiveSpeechManager 类
+  - 空闲检测 + 时间感知 + 记忆检索 + 频率控制
+  - 配置: `config.yaml → proactive_speech` 节
+  - 主动说话消息有 `proactive: true` 标记，前端特殊样式展示
+
+### 🔧 优化
+- **文本生成状态追踪**: `_text_gen_running`/`_text_gen_cancel`/`_text_gen_id` 每客户端状态
+- **主动说话与实时语音协调**: 用户说话时通知主动说话管理器重置空闲计时
+- **TTS 合成中断**: 逐句合成循环中检查 cancel_event，及时停止
+
+### 📁 修改文件
+- `app/proactive.py` — 新增 ProactiveSpeechManager (全文)
+- `app/main.py` — 新增 `proactive` 懒加载属性，run_web 中启动，stop 中停止
+- `app/web/__init__.py` — 文本模式打断支持，主动说话活动通知
+- `app/web/static/index.html` — 停止按钮 UI，打断消息处理，主动说话样式
+- `app/config.yaml` — 新增 `proactive_speech` 配置节
+- 版本号同步: v1.9.51 (9处)
+
+================================================================================
+
+## 🟢 v1.9.50 (2026-05-01) ✅ STABLE
+
+**Ollama 流式 URL 修复 + 对话历史持久化** — 修复 Ollama 流式请求 404 错误，实现对话历史磁盘持久化与启动恢复
+
+### 🐛 修复
+- **Ollama 流式 404**：`base_url` 为 `http://localhost:11434/v1`（OpenAI 格式默认带 `/v1`），拼接 `/api/chat` 后变成 `/v1/api/chat` 导致 404。现在自动去掉 `/v1` 再拼接
+- **对话历史不持久化**：`self.history` 是纯内存列表，重启后丢失。现在每轮对话自动保存到 `memory/state/chat_history.json`，启动时恢复
+- **新对话"重新起"历史**：重启后 `app.history` 为空，历史面板从记忆系统显示旧记录；但新对话追加到空的 `app.history` 后，面板切换到只显示新记录，旧记录消失。现在首次启动时从记忆系统的工作记忆恢复旧历史到 `app.history`，确保新对话追加在旧历史后面
+
+### ✨ 新增
+- **对话历史持久化**：每轮对话后自动保存，程序退出/崩溃时 atexit 保存，清空历史时同步删除磁盘文件
+- **聊天窗口历史恢复**：WS 连接成功后自动从后端加载历史对话，恢复到聊天窗口（最近20轮）
+- **记忆系统回填**：首次启动时若 `chat_history.json` 不存在，自动从记忆系统的工作记忆恢复历史到 `app.history`，记忆系统懒加载后延迟恢复
+
+### 📁 修改文件
+- `app/llm/__init__.py` — `_ollama_chat`/`_ollama_stream_chat` URL 去掉 `/v1` 后缀
+- `app/main.py` — 新增 `_load_history()`/`_save_history()`，atexit/stop 时保存，启动时恢复
+- `app/web/__init__.py` — WS 对话后调用 `_save_history()`，清空时也清磁盘
+- `app/web/static/index.html` — WS 连接时请求历史，首次收到恢复到聊天窗口
+- 版本号同步: v1.9.50 (9处)
+
+================================================================================
+
+## 🟢 v1.9.49 (2026-05-01) ✅ STABLE
+
+**Ollama 本地模型自动检测** — 选择 Ollama 时自动查询已安装模型列表并填充下拉框，无需手动输入模型名
+
+### ✨ 新增
+- **Ollama 模型列表自动查询**：选择 Ollama Provider 时，前端通过 WS 请求后端 `/api/tags` 端点，获取已安装模型列表动态填充下拉框
+- **模型信息展示**：下拉框中显示模型名 + 参数量（如 `qwen3:8b (8.2B)`）
+- **后端 `ollama_models` WS action**：新增消息类型，支持前端查询 Ollama 已安装模型
+
+### 🐛 修复
+- **Ollama 硬编码 URL**：`_ollama_chat` / `_ollama_stream_chat` 中硬编码 `http://localhost:11434/api/chat`，改为使用 `self.base_url` 拼接，支持自定义端口
+- **config.yaml 默认模型为空**：`ollama.model` 从空字符串改为 `qwen3:8b`，避免请求时 model 为空
+
+### 📁 修改文件
+- `app/web/__init__.py` — 新增 `_handle_ollama_models()` WS action
+- `app/llm/__init__.py` — `_ollama_chat`/`_ollama_stream_chat` URL 改用 `self.base_url`
+- `app/web/static/index.html` — Ollama 模型动态查询 + 下拉填充 + WS 消息处理
+- `app/config.yaml` — `ollama.model` 默认值改为 `qwen3:8b`
+- 版本号同步: v1.9.49 (9处)
+
+================================================================================
+
+## 🟢 v1.9.48 (2026-04-30) ✅ STABLE
+
+**LLM Provider 切换引擎重建修复** — 解决切换 Provider 后 LLM 引擎类型不匹配、对话历史被错误清空等问题
+
+### 🐛 修复
+- **引擎类型不匹配**：切换 Provider 后旧引擎实例未重建，导致请求发到错误引擎。增加防御性检查，发现类型不匹配时自动重建
+- **对话历史错误清空**：Provider 切换后不再自动清空对话历史，旧上下文仍有价值
+- **Provider 变更检测优化**：先记录旧 provider，再更新 config，最后用旧值判断是否需重建引擎，避免误判
+
+### 📁 修改文件
+- `app/web/__init__.py` — `_handle_set_api_key` 防御性引擎类型检查 + Provider 变更重建逻辑优化
+- 版本号同步: v1.9.48 (9处)
+
+================================================================================
+
+## 🟢 v1.9.47 (2026-04-30) ✅ STABLE
+
+**LLM Provider 联动逻辑重构** — 彻底重构前端 Provider 切换逻辑，解决 URL/Model 不自动更新、datalist 下拉体验差等根本性问题
+
+### 🔄 重构
+- **`<datalist>` → `<select>` + 自定义输入**：模型选择从模糊的 datalist 自动补全改为真正的下拉选择框 + 勾选"自定义输入"后可输入任意模型名
+- **`onLlmProviderChange()` 单一入口重构**：删除 `_loadProviderSubConfig` 的 DOM 操作，所有表单值设置统一在 `onLlmProviderChange()` 中完成
+- **`loadConfigSettings()` 简化**：不再手动设置 model/baseUrl，全部委托给 `onLlmProviderChange()`
+- **值来源优先级明确**：子配置保存的值 > 官方默认值，不再有双路径互相覆盖
+- **新增辅助函数**：`getCurrentModelValue()` / `setCurrentModelValue()` / `updateModelSelect()` / `onModelSelect()` / `toggleCustomModel()`
+
+### 🐛 修复
+- **URL 不自动更新**：根因是 `loadConfigSettings` 和 `onLlmProviderChange` 双路径设值互相覆盖
+- **模型名不能下拉选择**：datalist 只有自动补全，改为 `<select>` 后可直接点击选择
+- **Ollama 无预设模型时无法输入**：自动切换到自定义输入模式
+
+### 📁 修改文件
+- `app/web/static/index.html` — Provider 联动逻辑重构、模型选择 UI 重构
+- 版本号同步: v1.9.47 (9处)
+
+================================================================================
+
+## 🟢 v1.9.46 (2026-04-30) ✅ STABLE
+
+**LLM Provider 切换修复 + ASR→LLM 管道修复** — 解决切换 Provider 后 URL/模型不更新、API Key 状态缓存导致消息被拦截、ASR 识别后不发给 LLM 等问题
+
+### 🐛 修复
+- **Provider 切换 URL/Model 不更新**：`_loadProviderSubConfig` 无子配置时不清空表单 → 切换 provider 后始终用官方默认 URL 和模型填充
+- **API Key 状态缓存过期**：`sendMessage()` 用缓存的 `_apiKeyStatus` 拦截消息，但切换 provider 后缓存未更新 → 改为检查 provider 一致性，不一致时重新查询
+- **ASR→LLM 静默失败**：后端 `_handle_text` 和 `_handle_realtime_audio` 中 LLM 不可用时无反馈 → 添加明确错误消息推送前端
+- **set_api_key 不触发引擎重建**：切换 provider 后设 API Key 只更新旧引擎的 key → 检测 provider 变化并重建 LLM 引擎
+- **模型下拉体验差**：Model 输入框 focus 时自动选中文本，方便查看下拉建议
+
+### 📁 修改文件
+- `app/web/static/index.html` — Provider 切换逻辑、sendMessage API Key 检查、模型下拉优化
+- `app/web/__init__.py` — LLM 不可用错误反馈、set_api_key 引擎重建
+- 版本号同步: v1.9.46 (9处)
+
+================================================================================
+
 ## 🟢 v1.9.45 (2026-04-30) ✅ STABLE
 
 **LLM 多厂商适配** — 从 3 个 provider 扩展到 10 个，覆盖国内主流云端模型，全部使用官方 URL + 官方模型列表
