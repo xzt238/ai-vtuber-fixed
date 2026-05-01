@@ -50,7 +50,7 @@
   - 支持字段：provider, model, max_tokens, 各 provider 的 base_url
 
 ### 🔧 修复
-- **修复 LLM provider 每次重启后恢复默认的问题**
+- **修复 LLM 配置持久化保存路径不一致导致功能失效**：`_save_llm_preferences()` 保存到 `app/web/cache/` 而 `Config._load()` 从 `app/cache/` 读取，导致重启后无法恢复上次的 LLM 配置，现已统一为 `app/cache/`
 
 ================================================================================
 

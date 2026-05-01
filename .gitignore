@@ -72,6 +72,8 @@ desktop.ini
 # ---------- 临时文件 ----------
 *.tmp
 *.bak
+*.backup
+*.icon_backup
 python-embed.zip
 get-pip.py
 install_report.txt

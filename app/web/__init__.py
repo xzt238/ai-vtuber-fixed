@@ -3448,9 +3448,9 @@ class WebSocketServer:
             bool: 保存是否成功
         """
         try:
-            # 获取 cache 目录路径
-            web_module_dir = os.path.dirname(os.path.abspath(__file__))
-            cache_dir = os.path.join(web_module_dir, "cache")
+            # 获取 cache 目录路径 — 必须和 Config._load() 中的路径一致（app/cache/）
+            app_module_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            cache_dir = os.path.join(app_module_dir, "cache")
             os.makedirs(cache_dir, exist_ok=True)
             prefs_file = os.path.join(cache_dir, "llm_preferences.json")
 

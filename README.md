@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🐔 咕咕嘎嘎 AI VTuber
+![咕咕嘎嘎 Logo](assets/gugugaga_logo.png)
+
+# 🐧 咕咕嘎嘎 AI VTuber
 
 **GPT-SoVITS 声音克隆 · Live2D 虚拟形象 · 三层记忆 · 视觉理解**
 
