@@ -64,6 +64,9 @@ else:
     PROJECT_ROOT = Path(__file__).parent.parent.resolve()    # ai-vtuber-fixed/
     SPLASH_PATH = LAUNCHER_DIR / "splash.html"               # 启动画面就在 launcher/ 里
 
+# Logo 图片路径（用于嵌入到 splash.html）
+LOGO_PATH = PROJECT_ROOT / "assets" / "gugugaga_logo.png"
+
 APP_DIR = PROJECT_ROOT / "app"
 
 # 确保模块搜索路径包含 app/
@@ -392,6 +395,27 @@ class DesktopApp:
         self._should_quit = False
         self._splash_done = False  # splash 关闭后不再调用 evaluate_js（防止死锁）
 
+    def _load_splash_html(self) -> str:
+        """加载 splash.html 并嵌入 Logo Base64，返回修改后的 HTML 内容"""
+        import base64
+
+        # 读取 splash.html 内容
+        splash_content = SPLASH_PATH.read_text(encoding="utf-8")
+
+        # 读取 Logo 图片并转为 Base64
+        if LOGO_PATH.exists():
+            with open(LOGO_PATH, "rb") as f:
+                logo_base64 = base64.b64encode(f.read()).decode("utf-8")
+            logo_data_url = f"data:image/png;base64,{logo_base64}"
+            # 替换 HTML 中的图片 URL
+            splash_content = splash_content.replace(
+                'src="../assets/gugugaga_logo.png"',
+                f'src="{logo_data_url}"'
+            )
+            print(f"[启动器] Logo 已嵌入 (Base64, {len(logo_base64)} bytes)")
+
+        return splash_content
+
     def run(self):
         """主入口 — 启动应用"""
         try:
@@ -410,11 +434,22 @@ class DesktopApp:
         if not self.backend.start():
             self._show_error_and_exit("无法启动后端")
 
-        # 创建 pywebview 窗口 — 先显示启动画面
+        # 创建 pywebview 窗口 — 先显示启动画面（嵌入 Logo）
         api = LauncherAPI(self)
+
+        # 获取嵌入 Logo 的 HTML 内容
+        splash_html = self._load_splash_html()
+
+        # pywebview 需要文件路径，使用临时文件
+        import tempfile
+        import os
+        temp_html = os.path.join(tempfile.gettempdir(), "gugugaga_splash.html")
+        with open(temp_html, "w", encoding="utf-8") as f:
+            f.write(splash_html)
+
         self.window = webview.create_window(
             title=WINDOW_TITLE,
-            url=str(SPLASH_PATH),
+            url=temp_html,
             width=WINDOW_WIDTH,
             height=WINDOW_HEIGHT,
             min_size=(WINDOW_MIN_W, WINDOW_MIN_H),
