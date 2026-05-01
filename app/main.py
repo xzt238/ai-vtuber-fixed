@@ -346,7 +346,38 @@ class Config:
                     print(f"[Config] 从 api_keys.json 加载了 {len(saved_keys)} 个API Key")
             except Exception as e:
                 print(f"[Config] 加载 api_keys.json 失败(不影响使用): {e}")
-            
+
+            # LLM 偏好持久化: 从 app/cache/llm_preferences.json 加载用户上次选择的 LLM 配置
+            # 优先级: llm_preferences.json > config.yaml
+            # 这样用户切换 LLM provider 后，重启应用仍保持上次的配置
+            try:
+                prefs_file = cache_dir / "llm_preferences.json"
+                if prefs_file.exists():
+                    with open(prefs_file, "r", encoding="utf-8") as pf:
+                        llm_prefs = json.load(pf)
+                    llm_cfg = config.setdefault("llm", {})
+                    # 恢复 provider
+                    if "provider" in llm_prefs:
+                        llm_cfg["provider"] = llm_prefs["provider"]
+                        print(f"[Config] 恢复 LLM provider: {llm_prefs['provider']}")
+                    # 恢复 model（如果有）
+                    if "model" in llm_prefs:
+                        llm_cfg["model"] = llm_prefs["model"]
+                    # 恢复 max_tokens（如果有）
+                    if "max_tokens" in llm_prefs:
+                        llm_cfg["max_tokens"] = llm_prefs["max_tokens"]
+                    # 恢复各 provider 的 base_url（Ollama 等自定义 URL）
+                    if "provider_configs" in llm_prefs:
+                        for pname, pcfg in llm_prefs["provider_configs"].items():
+                            existing_sub = llm_cfg.setdefault(pname, {})
+                            if "base_url" in pcfg:
+                                existing_sub["base_url"] = pcfg["base_url"]
+                            if "model" in pcfg:
+                                existing_sub["model"] = pcfg["model"]
+                    print(f"[Config] 从 llm_preferences.json 恢复了 LLM 配置")
+            except Exception as e:
+                print(f"[Config] 加载 llm_preferences.json 失败(不影响使用): {e}")
+
             return config
         except ImportError:
             # pyyaml 未安装，返回一个包含常用默认值的硬编码备用配置
@@ -1873,7 +1904,7 @@ def main():
 
         args = parser.parse_args()
 
-        game_header("咕咕嘎嘎 AI-VTuber v1.9.55")
+        game_header("咕咕嘎嘎 AI-VTuber v1.9.56")
         game_info("系统启动中", f"{_timestamp()} | Python {sys.version_info.major}.{sys.version_info.minor}")
 
         # 使用上下文管理器创建 AIVTuber 实例（确保退出时清理资源）

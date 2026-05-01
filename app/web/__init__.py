@@ -3437,6 +3437,62 @@ class WebSocketServer:
             except Exception:
                 pass
 
+    def _save_llm_preferences(self, llm_config):
+        """
+        [功能说明]保存 LLM 用户偏好配置到 llm_preferences.json
+
+        [参数说明]
+            llm_config (dict): llm 配置字典，包含 provider, model, max_tokens 等
+
+        [返回值]
+            bool: 保存是否成功
+        """
+        try:
+            # 获取 cache 目录路径
+            web_module_dir = os.path.dirname(os.path.abspath(__file__))
+            cache_dir = os.path.join(web_module_dir, "cache")
+            os.makedirs(cache_dir, exist_ok=True)
+            prefs_file = os.path.join(cache_dir, "llm_preferences.json")
+
+            # 构建偏好配置
+            prefs = {
+                "provider": llm_config.get("provider", "minimax"),
+                "model": llm_config.get("model", ""),
+                "max_tokens": llm_config.get("max_tokens", 2048),
+                "provider_configs": {}
+            }
+
+            # 保存各 provider 的 base_url（用于 Ollama 等自定义 URL）
+            _LLM_PROVIDER_KEYS = ('minimax', 'openai', 'anthropic', 'deepseek', 'kimi', 'glm', 'qwen', 'doubao', 'mimo', 'ollama')
+            for pname in _LLM_PROVIDER_KEYS:
+                pcfg = llm_config.get(pname, {})
+                if pcfg:
+                    pcfg_save = {}
+                    if "base_url" in pcfg:
+                        pcfg_save["base_url"] = pcfg["base_url"]
+                    if "model" in pcfg:
+                        pcfg_save["model"] = pcfg["model"]
+                    if pcfg_save:
+                        prefs["provider_configs"][pname] = pcfg_save
+
+            # 原子写入（先写临时文件再替换）
+            fd, tmp_path = tempfile.mkstemp(dir=cache_dir, suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(prefs, f, ensure_ascii=False, indent=2)
+                os.replace(tmp_path, prefs_file)
+                print(f"[CONFIG] LLM 偏好已保存: provider={prefs['provider']}, model={prefs['model']}")
+                return True
+            except Exception:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+                raise
+        except Exception as e:
+            print(f"[CONFIG] 保存 LLM 偏好失败: {e}")
+            return False
+
     def _handle_config(self, client, data):
         """
         [功能说明]处理配置更新请求
@@ -3498,6 +3554,10 @@ class WebSocketServer:
                         if top_max_tokens and active_provider:
                             sub_cfg = llm_cfg.setdefault(active_provider, {})
                             sub_cfg['max_tokens'] = top_max_tokens
+
+                        # v1.9.56: LLM 配置变更时持久化到 llm_preferences.json
+                        if 'llm' in config:
+                            self._save_llm_preferences(llm_cfg)
                     if 'asr' in config:
                         self.app.config.config.setdefault('asr', {}).update(config['asr'])
                     if 'memory' in config:
