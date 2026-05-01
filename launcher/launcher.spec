@@ -85,5 +85,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,              # TODO: 添加图标 icon='assets/icon.ico'
+    icon=str(PROJECT_ROOT / 'assets' / 'gugugaga_logo.ico'),
+
 )
