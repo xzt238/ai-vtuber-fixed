@@ -497,6 +497,24 @@ class TTS:
     def init_vits_weights(self, weights_path: str):
         self.configs.vits_weights_path = weights_path
         version, model_version, if_lora_v3 = get_sovits_version_from_path_fast(weights_path)
+
+        # v1.9.62 修复：ZIP 格式的 LoRA 模型（前2字节=b"PK"）会被 get_sovits_version_from_path_fast
+        # 按文件大小误判为 v1（LoRA 只保存适配器参数，50-70MB < 81MB 阈值）。
+        # 修正：ZIP 头的模型一定是 v3/v4 LoRA，需要修正 version/model_version/if_lora_v3
+        with open(weights_path, "rb") as _f:
+            _header = _f.read(2)
+        if _header == b"PK" and version in ("v1", "v2") and not if_lora_v3:
+            # ZIP 格式但被判为 v1/v2 → 这是 LoRA 模型被误判
+            _fname = os.path.basename(weights_path).lower()
+            if "_l16" in _fname:
+                model_version = "v4"
+                version = "v4"
+            else:
+                model_version = "v3"
+                version = "v3"
+            if_lora_v3 = True
+            print(f"[FIX] ZIP LoRA 版本修正: {weights_path} → {model_version}, LoRA=True")
+
         if "Pro" in model_version:
             self.init_sv_model()
         # 使用绝对路径，兼容 Windows 当前工作目录与 TTS.py 所在目录不同的情况
@@ -601,7 +619,7 @@ class TTS:
             print(
                 f"Loading VITS pretrained weights from {weights_path}. {vits_model.load_state_dict(load_sovits_new(path_sovits)['weight'], strict=False)}"
             )
-            lora_rank = dict_s2["lora_rank"]
+            lora_rank = dict_s2.get("lora_rank", 16)  # 默认 rank=16（LoRA 训练常见默认值）
             lora_config = LoraConfig(
                 target_modules=["to_k", "to_q", "to_v", "to_out.0"],
                 r=lora_rank,

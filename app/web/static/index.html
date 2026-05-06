@@ -1780,7 +1780,7 @@
     </div>
 
     <div class="header">
-        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.54</span></span></h1>
+        <h1>🐱 咕咕嘎嘎 AI虚拟形象 <span style="font-size:0.7em;opacity:0.6;background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Created by XZT <span id="layout-version-badge" style="background:linear-gradient(90deg, #ff6b9d, #c44569, #667eea);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:0.85em;cursor:default;" title="点击查看布局存储状态" onclick="debugLayoutStorage()">v1.9.82</span></span></h1>
     </div>
     
     <!-- 布局预设栏 -->
@@ -4598,53 +4598,65 @@
         const container = document.getElementById('canvas-container');
         const loader = window.loadOml2d || window.OML2D?.loadOml2d;
         
-        if (typeof loader === 'function') {
-            try {
-                container.innerHTML = '<div id="loading-placeholder"><p>🐱</p><div class="spinner"></div><p style="font-size:14px;">正在加载...</p></div><div class="resize-handle nw"></div><div class="resize-handle ne"></div><div class="resize-handle sw"></div><div class="resize-handle se"></div><div class="resize-handle n"></div><div class="resize-handle s"></div><div class="resize-handle w"></div><div class="resize-handle e"></div>';
-                if (live2dApi) live2dApi = null;
-                
-                // 用 parentElement 让 oh-my-live2d 挂载到我们的容器内
-                live2dApi = loader({
-                    parentElement: container,
-                    models: [{
-                        path: './assets/model/hiyori/Hiyori.model3.json',
-                        scale: 0.16,
-                        position: [0, 60],
-                        stageStyle: {
-                            height: 480
-                        }
-                    }],
-                    dockedPosition: 'left'
-                });
-                
-                // Live2D 加载后动态居中模型
-                setTimeout(() => {
-                    const loading = document.getElementById('loading-placeholder');
-                    if (loading) loading.style.display = 'none';
-                    centerLive2DModel();
-                    log('Live2D 加载完成', 'ok');
-
-                    // v1.9.52: 启动闲置微动作定时器
-                    startIdleMotionTimer();
-                    
-                    // 防止 oh-my-live2d 自动 stageSlideOut 导致模型消失
-                    // 库内部用 transform: translateX(-100%) 将 stage 滑出容器隐藏
-                    setInterval(() => {
-                        const st = document.getElementById('oml2d-stage');
-                        if (st) {
-                            const tx = getComputedStyle(st).transform;
-                            if (tx && tx !== 'none' && tx.includes('-1')) {
-                                st.style.transform = 'none';
-                                st.style.transition = 'none';
-                                log('Live2D stage 被拉回（检测到滑出）', 'info');
-                            }
-                        }
-                    }, 2000);
-                }, 2500);
-            } catch(e) { log('Live2D 错误: ' + e.message, 'err'); }
-        } else {
-            log('Live2D 库未加载', 'err');
+        if (typeof loader !== 'function') {
+            // v1.9.64: defer 脚本可能还没执行完，等待重试
+            // 最多重试 20 次（每次 300ms，共 6 秒），等待 pixi.js + oh-my-live2d 加载
+            if (!loadLive2D._retryCount) loadLive2D._retryCount = 0;
+            loadLive2D._retryCount++;
+            if (loadLive2D._retryCount <= 20) {
+                if (loadLive2D._retryCount === 1) {
+                    log('Live2D 库尚未就绪，等待加载...', 'info');
+                }
+                setTimeout(loadLive2D, 300);
+                return;
+            }
+            log('Live2D 库加载超时（6秒），请检查 libs/ 目录下 pixi.min.js 和 oh-my-live2d.min.js 是否存在', 'err');
+            return;
         }
+        
+        try {
+            container.innerHTML = '<div id="loading-placeholder"><p>🐱</p><div class="spinner"></div><p style="font-size:14px;">正在加载...</p></div><div class="resize-handle nw"></div><div class="resize-handle ne"></div><div class="resize-handle sw"></div><div class="resize-handle se"></div><div class="resize-handle n"></div><div class="resize-handle s"></div><div class="resize-handle w"></div><div class="resize-handle e"></div>';
+            if (live2dApi) live2dApi = null;
+            
+            // 用 parentElement 让 oh-my-live2d 挂载到我们的容器内
+            live2dApi = loader({
+                parentElement: container,
+                models: [{
+                    path: './assets/model/hiyori/Hiyori.model3.json',
+                    scale: 0.16,
+                    position: [0, 60],
+                    stageStyle: {
+                        height: 480
+                    }
+                }],
+                dockedPosition: 'left'
+            });
+            
+            // Live2D 加载后动态居中模型
+            setTimeout(() => {
+                const loading = document.getElementById('loading-placeholder');
+                if (loading) loading.style.display = 'none';
+                centerLive2DModel();
+                log('Live2D 加载完成', 'ok');
+
+                // v1.9.52: 启动闲置微动作定时器
+                startIdleMotionTimer();
+                
+                // 防止 oh-my-live2d 自动 stageSlideOut 导致模型消失
+                // 库内部用 transform: translateX(-100%) 将 stage 滑出容器隐藏
+                setInterval(() => {
+                    const st = document.getElementById('oml2d-stage');
+                    if (st) {
+                        const tx = getComputedStyle(st).transform;
+                        if (tx && tx !== 'none' && tx.includes('-1')) {
+                            st.style.transform = 'none';
+                            st.style.transition = 'none';
+                            log('Live2D stage 被拉回（检测到滑出）', 'info');
+                        }
+                    }
+                }, 2000);
+            }, 2500);
+        } catch(e) { log('Live2D 错误: ' + e.message, 'err'); }
     }
 
     // ========== v1.9.52: Live2D 闲置微动作 ==========
@@ -7755,7 +7767,7 @@ R - 复位`);
         const checks = [];
         // 版本检查
         const versionBadge = document.getElementById('layout-version-badge');
-        checks.push({name: '版本', ok: versionBadge && versionBadge.textContent.includes('1.9.54'), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
+        checks.push({name: '版本', ok: versionBadge && /^v\d+\.\d+\.\d+$/.test(versionBadge.textContent.trim()), detail: versionBadge ? versionBadge.textContent : 'NOT FOUND'});
         // WS 连接
         checks.push({name: 'WebSocket', ok: ws?.readyState === WebSocket.OPEN, detail: `state=${ws?.readyState} onOpen=${_wsOnOpenFired} msgs=${_wsMsgCount}`});
         // TTS 音色列表

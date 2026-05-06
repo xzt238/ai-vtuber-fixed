@@ -36,6 +36,317 @@
 |🟡 BETA|测试中|
 |🟢 STABLE|稳定版|
 
+## 🟢 v1.9.85 (2026-05-06) ✅ STABLE
+
+**对话时间戳持久化 — 历史消息时间不再重置**
+
+### 🔧 修复
+- **[chat] 历史消息时间戳重置修复**：`append_user_msg()`/`append_ai_msg()` 新增 `timestamp` 参数，加载历史消息时传入保存的原始时间（`msg.get("time")`），不再使用 `datetime.now()` 生成新时间戳。影响 `_load_chat_history`、`_on_session_switched`、`on_backend_ready` 三处历史加载逻辑
+- **[session] 会话列表时间显示优化**：tooltip 新增"更新时间"显示，时间格式改为友好显示（今天 HH:MM / 昨天 HH:MM / MM-DD HH:MM / YYYY-MM-DD HH:MM）
+
+## 🟢 v1.9.84 (2026-05-06) ✅ STABLE
+
+**实时语音修复 + TTS流式分句 + 布局响应式优化**
+
+### 🔧 修复
+- **[voice] 实时语音 AI 回复不显示修复**：`_stop_streaming()` 未终结当前流式消息占位，且与 `_on_realtime_speech` 存在竞态条件。现在 `_stop_streaming` 会调用 `finish_streaming()` 终结当前消息；`_on_realtime_speech` 使用 `QTimer.singleShot(50ms)` 延迟发送新消息，确保状态清理完成；`_on_stream_finished` 增加防重复处理守卫
+- **[layout] TTS 工具栏缩放重叠修复**：将单行固定宽度布局改为两行自适应布局（核心控件 + 速度/音量滑块），所有 `setFixedWidth` 改为 `setMinimumWidth`，滑块使用 `stretch=1` 自动填充；SessionManager 从 `setFixedWidth(200)` 改为 `setMinimumWidth(160)+setMaximumWidth(220)`；ChatPage 设置 `setMinimumSize(800,500)`；聊天卡片设置 `setMinimumHeight(200)`
+
+### ✨ 新增
+- **[tts] 流式/整段模式切换按钮**：TTS 工具栏新增"流式"切换按钮，默认开启流式分句合成（检测到句子结束标点即合成播放），关闭后为整段合成模式
+- **[tts] StreamChatWorker 流式分句 TTS**：`StreamChatWorker` 新增 `streaming_tts` 参数和 `sentence_ready` 信号，流式模式下在 LLM 输出过程中检测完整句子并立即合成播放，大幅降低首句 TTS 延迟
+
+## 🟢 v1.9.83 (2026-05-06) ✅ STABLE
+
+**Qt6 渲染引擎修复 + Shiboken 类型转换修复**
+
+### 🔧 修复
+- **[core] QQuickWidget QRhi 初始化失败修复**：Windows 下 Qt6 默认使用 D3D11 RHI 后端，与 QOpenGLWidget（Live2D）所需 OpenGL 冲突，导致 `QQuickWidget: Failed to get a QRhi` 错误。在 QApplication 创建前调用 `QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.OpenGL)` 强制使用 OpenGL 后端
+- **[settings] GPT-SoVITS 音色列表 Shiboken 转换错误修复**：`_populate_gptsovits_voices()` 中 `get_voices()` 返回的 dict 值可能不是字符串，传给 `QComboBox.addItem(userData=...)` 时触发 `Shiboken::Conversions: Cannot copy-convert (dict) to C++` 错误。已用 `str()` 包裹 value 和 label 参数
+
+## 🟢 v1.9.82 (2026-05-05) ✅ STABLE
+
+**聊天界面卡片式重构 — 三层视觉分区 + 紧凑TTS工具栏**
+
+### ✨ 改进
+- **[chat] 卡片式布局重构**：聊天区/输入栏/TTS工具栏各自独立卡片，视觉层次分明
+- **[chat] 输入栏重设计**：附件按钮左置 + 竖分隔线 + 圆角输入框 + 渐变发送按钮，类现代聊天应用风格
+- **[chat] TTS工具栏单行化**：两行控件压缩为一行紧凑工具栏，pill风格切换按钮，滑块用文字标签替代
+- **[chat] 实时语音按钮缩短**："实时语音"→"语音"，"监听中..."→"监听中"
+- **[theme] QSS新增卡片容器规则**：避免全局QWidget样式污染chatCard/inputCard/ttsCard
+
+## 🟢 v1.9.81 (2026-05-04) ✅ STABLE
+
+**对话 UI 全面升级 — 微信级消息分组 + SVG头像 + 打字光标**
+
+### ✨ 新增
+- **[chat] 微信级消息分组**：同一方连续发言自动合并，只显示一次头像，后续消息用占位符保持对齐
+- **[chat] 条件时间戳**：仅在对话间隔>3分钟时显示居中胶囊时间标签，格式支持"昨天"/"月日"
+- **[chat] SVG 内联头像**：AI 机器人轮廓图标 + 用户人形轮廓图标，替代旧的纯文字"AI"/"我"
+- **[chat] 打字光标闪烁**：流式回复时尾部显示 ▍ 光标，530ms 闪烁，完成后自动消失
+- **[chat] 三点跳动思考动画**：AI 思考中用 ●●● 轮转亮度动画替代骨架屏
+
+### 🐛 优化
+- **[chat] 气泡视觉升级**：AI气泡色#2a2d3a提高对比度、padding加大到12px16px、line-height1.7、font-size14px
+- **[chat] 去除AI回复分隔线**：移除干扰阅读流的border-top分隔线
+- **[chat] 系统消息胶囊化**：居中胶囊标签样式，与时间戳风格统一
+- **[theme] v3.0**：新增消息分组颜色常量、SVG头像生成函数、时间戳格式化函数
+
+## 🟢 v1.9.78 (2026-05-03) ✅ STABLE
+
+**实时语音核心 Bug 修复 + 布局响应式优化**
+
+### 🔧 实时语音修复
+- **[voice] ASR 不再阻塞录音线程**：新增 `_ASRWorker(QThread)`，ASR 识别在独立线程运行，录音线程只负责 VAD + 写 WAV 文件
+- **[voice] 关闭延迟消除**：`stop_listening()` 不再同步调用 ASR，只设停止标志 + 等待线程退出（≤2s），UI 不再冻结
+- **[voice] 后端就绪检查**：启动实时语音前检查 backend 是否已初始化，避免 2 秒初始化延迟期间启动失败
+- **[voice] backend 属性简化**：移除不必要的 main-thread guard，ASR worker 直接通过 `_backend` 访问
+- **[voice] 录音循环退出自动处理**：循环结束后自动处理剩余语音段，不丢失数据
+
+### 🏗️ 布局修复
+- **[chat] TTS 控制行拆分为两行**：核心控件（TTS引擎/音色/录音/实时语音/宠物）在第一行，辅助控件（速度/音量滑块）在第二行，窄窗口不再重叠
+
+## 🟢 v1.9.77 (2026-05-03) ✅ STABLE
+
+**设置页重排 + 对话页简化 + 模型下载功能**
+
+### ✨ 设置页
+- **[settings] 卡片重新排序**：模型配置/语音配置/视觉OCR置顶，外观/系统/关于移到下方
+- **[settings] 新增"模型下载"卡片**：5个核心模型可视化下载状态，点击下载按钮自动下载（FunASR/Faster-Whisper/BGE-Base/RapidOCR/Silero VAD）
+
+### ✨ 对话页
+- **[chat] 移除表情动作面板**：用户反馈无实用价值，Live2D 占满左侧
+- **[chat] 移除频谱可视化**：用户反馈无实用价值，释放垂直空间
+- **[chat] 对话轮次分隔线**：AI 回复后自动添加细线分隔，区分不同对话轮次
+- **[chat] 用户消息头像**：用户气泡增加圆形头像标识"我"（绿色渐变），与 AI 头像对称
+- **[chat] ASR 识别结果优化**：录音识别和实时语音识别结果直接显示为用户消息气泡，不再用系统消息蓝底
+
+### 🏗️ 记忆系统
+- **[memory] 时间格式改进**：记忆条目时间显示从"月-日"改为"年-月-日"，更清晰
+
+## 🟢 v1.9.76 (2026-05-03) ✅ STABLE
+
+**主动说话开关 Bug 修复**
+
+### 🐛 修复
+- **[settings] 主动说话切换失败修复**：`ProactiveSpeechManager.start()` 增加可选 `interval` 参数，解决 `got an unexpected keyword argument 'interval'` 错误
+- **[settings] 开启时同步设 `enabled=True`**：确保 UI 开关能正确激活已禁用的主动说话模块
+- **[settings] 关闭时同步设 `enabled=False`**：确保停止后不会被自动重启
+
+================================================================================
+
+## 🟢 v1.9.75 (2026-05-03) ✅ STABLE
+
+**UI/UX 全面升级 — 行业顶级标准对齐**
+
+### ✨ 视觉
+- **[theme] 主题系统 v2.0**：Material Elevation 阴影体系、渐变按钮、聚焦发光、骨架屏动画定义
+- **[theme] 颜色层次升级**：窗口/卡片/悬停三级区分、气泡边框、渐变强调色、输入聚焦阴影
+- **[theme] 全局 QSS 升级**：圆润 Tab 设计、柔和列表交互、极简滚动条、工具提示样式
+- **[chat] 对话气泡重新设计**：AI 气泡带圆形头像标识、差异化圆角（AI左下/用户右下）、时间戳
+- **[chat] 骨架屏替代"正在思考..."**：shimmer 动画占位，视觉更专业
+- **[chat] 用户气泡渐变色**：从 `#5c7cfa` 到 `#4263eb` 对角渐变
+
+### ✨ 交互
+- **[chat] 发送按钮渐变主色调**：蓝色渐变 + 悬停/按下/禁用状态
+- **[chat] 停止按钮醒目红色渐变**：视觉警示更清晰
+- **[chat] 录音按钮激活态红色**、实时语音按钮激活态绿色
+- **[settings] 所有保存按钮渐变蓝色**、检查更新按钮渐变绿色
+- **[train] S1 训练按钮渐变绿色**、S2 渐变紫色、停止渐变红色
+- **[train] 训练日志终端风格**：Cascadia Code 等宽字体 + 深色终端背景
+- **[memory] 统计卡片左侧彩色边框**：替代旧版圆点，hover 态提升
+
+### 🏗️ 布局
+- **[chat] 边距从 8px 提升到 12px**，间距从 8px 提升到 10px
+- **[chat] 对话区去边框 + 12px 圆角**
+- **[settings] 边距从 24px 提升到 28px**，标题 22px 加粗
+- **[main] 导航栏展开宽度 200px**，可折叠
+- **[main] 窗口背景色主题适配**
+
+### 🔧 细节
+- **[全局] 所有硬编码颜色改为 `get_colors()` 主题引用**
+- **[train] 训练状态标签颜色使用主题色**
+- **[memory] 详情面板背景色使用主题色**
+- **[chat] 图片预览气泡圆角 10px**
+
+================================================================================
+
+## 🟢 v1.9.74 (2026-05-03) ✅ STABLE
+
+**MiniMax API 修复**
+
+### 🔧 修复
+
+- **[llm] MiniMax OpenAI 格式端点路径错误**：使用已废弃的 `/v1/text/chatcompletion_v2`，改为正确的 `/v1/chat/completions`（非流式+流式两处）
+- **[llm] MiniMax base_url 无标准化处理**：用户配置含 `/v1` 时导致双重路径 `/v1/v1/...`，与 Ollama 同类问题。已添加 Anthropic/OpenAI 双格式自动标准化
+- **[llm] MiniMax 默认 base_url 硬编码内网 IP**：`http://120.24.86.32:3000` 改为 `https://api.minimaxi.com`
+- **[llm] MiniMax OpenAI 格式 max_tokens 字段过时**：改为 MiniMax 官方要求的 `max_completion_tokens`（非流式+流式两处）
+- **[llm] MiniMax Anthropic 格式空 system 消息**：无条件传 `"system": ""` 可能被 API 拒绝，改为条件性传递
+- **[main] 备用域名过时**：`api.minimax.chat` 已迁移到 `api.minimaxi.com`，更新硬编码备用配置
+
+## 🟢 v1.9.73 (2026-05-03) ✅ STABLE
+
+**原生桌面模式Bug修复+功能适配**
+
+### 🔧 修复
+
+- **[native] NameError: action not defined**：StreamChatWorker.run() 中 `action` 变量未定义，缺少 `action = result.get("action")`。导致每次对话都触发 NameError 被 try/except 静默捕获
+- **[native] 实时语音闪退**：`_init_vad()` 在主线程调用 `torch.hub.load()` 导致（1）PyTorch CUDA 不匹配时原生 segfault 闪退（2）下载模型时阻塞 Qt 事件循环。已移到录音线程中执行
+- **[native] speech_recognized 双重连接**：main.py 和 chat_page.py 都连接了 speech_recognized → _send_message()，导致重复调用。移除 main.py 中的全局连接
+- **[native] 信号连接竞态**：先 start_listening() 再 connect() 导致早期数据丢失。改为先 connect() 再 start_listening()
+- **[native] voice_manager 线程安全**：_audio_buffer 和 _is_speaking 无锁多线程访问。添加 _buffer_lock
+- **[native] backend 属性子线程安全**：从录音线程访问 backend 属性可能触发 Qt UI 操作。添加主线程检查
+
+### ✨ 新增
+
+- **[native] 主动说话开关连接**：proactive_switch 和 proactive_interval 现在真正连接到 backend.proactive.start()/stop()，支持持久化配置
+- **[native] 自动表情检测**：AI 回复关键词自动切换 Live2D 表情（与 WebUI autoDetectExpression 同步），支持 happy/smile/shine/sad/angry/surprised 六种情绪
+- **[native] 实时语音打断**：用户说话时自动停止当前 AI 播放和流式生成（与 WebUI 行为一致）
+- **[native] TTS 速度/音量控制**：添加速度滑块(50%-200%)和音量滑块(0%-150%)，实时生效
+- **[native] 视觉/OCR 设置完善**：添加 MiniMax VL Host、MiniCPM-V2 模型路径、INT4 量化开关、保存视觉配置按钮、provider 切换联动
+
+## 🟢 v1.9.69 (2026-05-02) ✅ STABLE
+- **[native] 对话记忆路径错误**：CWD 在 native/ 导致 "./memory" 解析到 native/memory/ 而非项目根。已修复为创建 AIVTuber 前先 os.chdir(PROJECT_DIR)
+- **[native] 日志 UTF-8 崩溃修复**：io.TextIOWrapper(sys.stderr,...) 二次包装文本流导致 TypeError，改为 sys.stderr.reconfigure(encoding='utf-8')
+
+## 🟢 v1.9.68 (2026-05-02) ✅ STABLE
+
+**原生桌面模式全面 Bug 修复：cleanup 机制 + TTS stop + 版本号统一 + 日志乱码 + 路径错误 + backend property**
+
+### 🔧 修复
+
+- **[native] PerformanceManager cleanup 无效**：voice_manager 和 hotkey_manager 没有 cleanup() 方法，导致 force_cleanup() 清理0个目标，内存告警无法释放资源。已添加 cleanup() 方法
+- **[native] GPTSoVITSEngine.stop() 防御性编码**：stop() 方法增加 getattr 保护，避免 _stop_requested 未初始化时崩溃；清理旧 .pyc 缓存
+- **[native] 日志中文乱码**：StreamHandler 默认使用系统编码(GBK)，强制改为 UTF-8 输出
+- **[native] HotkeyManager._config_path 路径错误**：3层 dirname 只到 native/，改为4层到达项目根目录
+- **[native] SettingsPage 缺少 backend property**：直接用 self.window()._backend 访问后端，添加 @property backend 与其他页面保持一致
+- **[全局] 版本号不统一**：9+处文件版本号不一致（v1.9.67/v1.9.68/v2.0/v2.0.0），统一为 v1.9.68
+
+## 🟢 v1.9.67 (2026-05-02) ✅ STABLE
+
+**原生桌面模式 Bug 修复 + GPT-SoVITS lora_rank KeyError 修复 + perf_manager 属性名修复**
+
+### 🔧 修复
+
+- **[native] perf_manager 属性名错误**：`CRITICAL_THRESHOLD` 和 `WARNING_THRESHOLD` 应为 `MEMORY_CRITICAL_THRESHOLD` / `MEMORY_WARNING_THRESHOLD`，导致内存监控定时器每次触发都抛 `AttributeError`
+- **[native] chat_page._update_ai_message 方法不存在**：流式消息完成回调引用了旧的 `_update_ai_message()` 方法（已在 v1.9.66 重写为 `_update_streaming_text()`），导致流式对话完成时崩溃
+- **[native] chat_page.on_backend_ready 属性名错误**：`tts_engine_combo` / `tts_voice_combo` 应为 `tts_combo` / `voice_combo`，导致后端就绪时刷新 TTS 音色列表崩溃
+- **[tts] GPTSoVITSEngine 缺少 stop() 方法**：`main.py` 调用 `tts.stop()` 时抛 `AttributeError`，因为 GPTSoVITSEngine 未继承 TTSEngine 基类。已添加 `stop()` 方法和 `_stop_requested` / `_is_playing` 状态属性
+- **[tts] GPT-SoVITS lora_rank KeyError**：3 处代码直接用 `dict_s2["lora_rank"]` 读取 LoRA 配置，当 checkpoint 未保存 `lora_rank` 字段时崩溃。已改为 `dict_s2.get("lora_rank", 16)` 默认值保护（TTS.py / api.py / inference_webui.py）
+- **[native] 托盘图标路径回退修正**：`project_dir` 解析到 `native/`，但图标实际在 `native/gugu_native/resources/app.ico`，导致 `QSystemTrayIcon::setVisible: No Icon set` 警告
+- **[native] setHighDpiScaleFactorRoundingPolicy 调用顺序**：必须在 `QApplication()` 创建之前调用，改为类方法调用 `QApplication.setHighDpiScaleFactorRoundingPolicy()`
+
+## 🟢 v1.9.64 (2026-05-01) ✅ STABLE
+
+**proactive.py 定时器双重调度修复 — 指数级线程爆炸导致 CPU/内存爆满 + 记忆系统无限增长修复**
+
+### 🔧 修复
+
+- **[proactive] 定时器双重调度致命 Bug**：`_check_and_trigger()` 方法中，`try` 块内每个 `return` 前都调用了 `_schedule_next()`，但 `finally` 块又无条件调用了一次。Python 的 `finally` 在 `return` 之后仍然执行，导致每次检查创建 2 个定时器 → 2→4→8→16 呈指数级线程爆炸 → 几分钟内 CPU/内存同时爆满。修复：移除 `try` 块内所有 `_schedule_next()` 调用，只在 `finally` 中统一调度
+- **[memory] episodic_memory 无上限增长**：情景记忆只有遗忘扫描清理，但衰减参数和保护期导致绝大多数记忆永远不会被遗忘。长期运行后 `episodic_memory` 列表无限增长，消耗大量内存。修复：新增 `episodic_memory_limit=200` 硬上限，超限时淘汰最旧记忆
+
+### 🔍 影响分析
+
+proactive.py 线程爆炸是导致以下症状的共同根因：
+- **ASR 无法识别**：CPU 被成百上千个定时器线程占满，ASR 推理无法获得 CPU 时间片
+- **记忆系统不显示**：内存被线程栈和上下文数据占满，记忆系统序列化/反序列化超时
+- **OCR/视觉截图不出来**：资源耗尽导致截图和图像处理阻塞
+修复后以上问题应恢复正常
+
+## 🟢 v1.9.63 (2026-05-01) ✅ STABLE
+
+**set_project 缩进错误修复 — GPT-SoVITS 引擎因 IndentationError 无法加载，回退 EdgeTTS 导致音色列表为空**
+
+### 🔧 修复
+
+- **[tts] set_project() 缩进错误（致命）**：v1.9.62 新增的 `_pipeline_project` 检查逻辑 if 语句缩进多了4空格（12→8），导致整个 `gptsovits.py` 模块 `IndentationError` 无法 import。`TTSFactory.create()` 捕获异常后回退到 EdgeTTS，`EdgeTTS.get_voices()` 返回嵌套字典而非项目列表格式，前端 `projects_list` 处理时 `forEach` 无法遍历 → `tts-voice` 下拉框 options=0
+
+## 🟢 v1.9.62 (2026-05-01) ✅ STABLE
+
+**GPT-SoVITS 音色版本检测核心修复 — LoRA 模型被误判为 v1 导致音色完全丢失**
+
+### 🔧 修复
+
+- **[tts] SoVITS 版本检测致命 Bug**：GPT-SoVITS 官方 `get_sovits_version_from_path_fast()` 按文件大小判断版本，v3/v4 LoRA 模型只保存适配器参数（50-70MB），远小于完整 v3 模型（~750MB），被错误判定为 v1。v1 判定 → 加载 v1 GPT 底模 → v1/v3 不匹配 → 回退到 v1 全底模 → 所有训练音色信息丢失。影响 hongkong、mansui 等所有 LoRA 训练音色
+- **[tts] TTS.py init_vits_weights 版本误判**：同上 Bug 影响 GPT-SoVITS 官方 `init_vits_weights()`，ZIP 格式 LoRA 的 `if_lora_v3=False`，导致走普通加载路径而非 LoRA 叠加路径，音色参数未正确加载
+- **[tts] set_project 跳过切换逻辑错误**：`current_project == project_name and tts_pipeline is not None` 不检查 pipeline 是否加载了正确模型，导致预热 mansui 后切换 hongkong 被跳过，继续使用 mansui 的 v1 底模。新增 `_pipeline_project` 追踪变量
+- **[tts] LoRA 回退策略修正**：ZIP LoRA 模型加载失败时不再回退到 v1 底模（会丢失音色），改为报错提示
+
+### 根因链条
+
+1. `SV_mansui.pth`（53MB ZIP）和 `web_hongkong_e25_s1225_l8.pth`（64MB ZIP）都是 v3 LoRA
+2. `get_sovits_version_from_path_fast` 第三步按大小判断：<81MB → v1（Bug!）
+3. v1 判定 → 加载 v1 GPT → TTS 初始化失败 → 回退 v1 全底模
+4. v1 底模无任何训练音色 → 输出通用底模声音
+5. 切换 hongkong 时 pipeline 不重载 → 继续用 v1 底模 → 音色完全不对
+
+### 修复策略
+
+- ZIP 头（b"PK"）的模型，无论文件大小，一律视为 v3/v4 LoRA
+- 在 `gptsovits.py _lazy_init()` 和 `TTS.py init_vits_weights()` 两处均增加 ZIP 头优先检测
+- `set_project()` 增加 `_pipeline_project` 追踪，确保模型切换时 pipeline 正确重载
+
+================================================================================
+
+## 🟢 v1.9.61 (2026-05-01) ✅ STABLE
+
+**GPT-SoVITS 音色路径修复 + pywebview 竞态条件修复**
+
+### 🔧 修复
+
+- **[tts] hongkong 等已训练音色无法加载**：训练模型保存在 `GPT_weights_v3/` 和 `SoVITS_weights_v3/` 全局目录，但 `config.json` 中记录的是 `ckpt/` 和 `s2_ckpt/` 相对路径（项目目录下无此子目录），导致 `is_available()` 返回 False 降级到 Edge TTS。`_resolve_project_path()` 增加全局权重目录回退搜索
+- **[tts] _get_gptsovits_model_dir() 路径错误**：计算结果为 `app/GPT-SoVITS`（不存在），实际应为项目根目录下 `GPT-SoVITS/`。向上多取一级目录
+- **[config] root_dir 错误**：`config.yaml` 中 `gptsovits.root_dir` 写的 `./app/GPT-SoVITS` 不存在，修正为 `./GPT-SoVITS`
+- **[launcher] pywebview getVersion 竞态条件**：splash.html 的 `setTimeout(loadVersion, 2000)` 在页面跳转（`load_url`）后触发，JS 上下文已销毁，回调找不到 `_returnValuesCallbacks` 导致 TypeError。`onBackendReady()` 中取消 pending 的定时器
+
+================================================================================
+
+## 🟢 v1.9.60 (2026-05-01) ✅ STABLE
+
+**Mutex Bug 根因修复：彻底解决多实例放行 + CMD 闪现死循环**
+
+### 🔧 修复
+
+- **[launcher] Mutex GetLastError 致命 Bug**：`ctypes.windll.kernel32.GetLastError()` 被 Python 内部 API 调用覆盖，导致 `ERROR_ALREADY_EXISTS (183)` 永远检测不到，多个实例全部放行。改用 `ctypes.WinDLL('kernel32', use_last_error=True)` + `ctypes.get_last_error()`
+- **[launcher] Mutex 前缀改 Local\\**：`Global\\` 需要 `SeCreateGlobalPrivilege` 权限（普通用户可能无此权限导致互斥体创建失败），改为 `Local\\` 无需特权
+- **[launcher] 重复启动提示**：检测到已有实例时弹 MessageBox 告知用户，不再静默退出
+- **[main] input() 桌面模式挂起**：后端异常时 `input("Press Enter to exit...")` 在无控制台桌面模式下会永久阻塞进程，改为检测 `GUGUGAGA_DESKTOP` 跳过
+- **[tools] subprocess SW_HIDE**：`GrepTool`/`BashTool` 的 subprocess.run 添加 `_win_subprocess_kwargs()`，桌面模式隐藏 CMD
+- **[mcp] subprocess SW_HIDE**：MCP 服务器子进程 Popen 添加 SW_HIDE + CREATE_NO_WINDOW
+- **[web] nvidia-smi SW_HIDE**：GPU 统计的 subprocess.run 添加 SW_HIDE + CREATE_NO_WINDOW
+
+================================================================================
+
+## 🟢 v1.9.59 (2026-05-01) ✅ STABLE
+
+**Launcher 核心修复：彻底解决 CMD 窗口反复闪现 + 崩溃循环问题**
+
+### 🔧 修复
+
+- **[launcher] subprocess SW_HIDE**：所有 subprocess 调用（netstat/taskkill/powershell/pip）均添加 `STARTUPINFO(SW_HIDE)` + `CREATE_NO_WINDOW`，彻底消除 CMD 窗口闪现
+- **[launcher] Windows 命名互斥体替代文件锁** (`CreateMutexW`)：进程崩溃后 OS 立即释放互斥体，比 msvcrt 文件锁更可靠，不会出现锁泄漏
+- **[launcher] 端口匹配精确化**：`_kill_port_occupants` 改为解析 IP:PORT 格式精确匹配端口号，避免 `:1239` 误匹配 `:12393`
+- **[launcher] 后端进程 CREATE_NO_WINDOW**：后端子进程添加 `CREATE_NO_WINDOW` 标志，防止 python.exe 创建控制台窗口
+- **[launcher] 崩溃循环检测** (`_check_crash_loop`)：15秒内重复启动弹窗询问，防止无限闪退循环
+- **[launcher] 错误弹窗** (`_show_error_box`)：EXE 崩溃时用 Windows MessageBox 显示错误，不再静默退出
+- **[launcher] finally 块杀后端**：`main()` 的 finally 块确保后端进程被终止，防止孤儿进程占端口
+- **[launcher] taskkill /F /T 进程树终止**：`BackendManager.stop()` 改用 taskkill 杀进程树，确保子进程也被清理
+- **[launcher] DLL 解锁标记**：`_unblock_dlls()` 只运行一次并写标记文件，避免每次启动都跑 PowerShell
+
+================================================================================
+
+## 🟢 v1.9.58 (2026-05-01) ✅ STABLE
+
+**Launcher 稳定性修复：解决 EXE 启动后 CMD 窗口反复闪现问题**
+
+### 🔧 修复
+
+- **[launcher] 端口清理机制** (`_kill_port_occupants`)：启动前自动清理占用 12393/12394 端口的残留 python 进程，防止上次 launcher 崩溃后旧后端继续占用端口导致新实例立刻退出
+- **[launcher] 单实例文件锁** (`_acquire_single_instance_lock`)：防止 GuguGaga.exe 被双击多次导致多个 launcher 并发启动，出现端口冲突循环
+- **[launcher] EXE 模式崩溃日志重定向** (`_redirect_print_to_log`)：frozen=True 时将 launcher 自身的 stdout/stderr 重定向到 launcher.log，确保 pywebview 崩溃原因可追踪（之前 EXE 无控制台，崩溃信息完全丢失）
+- **[launcher] webview.start() 异常捕获**：捕获 pywebview 事件循环异常并写入日志，不再静默崩溃
+- **[launcher] main() 崩溃详情记录**：异常退出时写完整 traceback 到 launcher.log
+
 ================================================================================
 
 ## 🟢 v1.9.57 (2026-05-01) ✅ STABLE

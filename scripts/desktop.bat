@@ -45,7 +45,12 @@ if errorlevel 1 (
 )
 
 REM 解除 pip 下载 DLL 的网络锁定标记（否则 .NET 拒绝加载 WebView2）
-powershell -Command "Get-ChildItem '%cd%\python\Lib\site-packages' -Recurse -Include *.dll,*.pyd | Unblock-File -ErrorAction SilentlyContinue" >nul 2>&1
+REM v1.9.59: 检查标记文件，只运行一次
+if not exist "%cd%\logs\.dlls_unblocked" (
+    powershell -Command "Get-ChildItem '%cd%\python\Lib\site-packages' -Recurse -Include *.dll,*.pyd | Unblock-File -ErrorAction SilentlyContinue" >nul 2>&1
+    if not exist "%cd%\logs" mkdir "%cd%\logs"
+    echo. > "%cd%\logs\.dlls_unblocked"
+)
 
 REM 启动桌面应用
 echo Starting GuguGaga Desktop...

@@ -57,6 +57,19 @@ import subprocess
 import shlex
 import glob as glob_module
 import re
+import os
+import sys
+
+
+# v1.9.60: Windows 桌面模式隐藏 CMD 窗口的辅助函数
+def _win_subprocess_kwargs():
+    """桌面模式下 subprocess 调用添加 SW_HIDE + CREATE_NO_WINDOW"""
+    if sys.platform != "win32" or os.getenv("GUGUGAGA_DESKTOP") != "1":
+        return {}
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    si.wShowWindow = subprocess.SW_HIDE
+    return {"startupinfo": si, "creationflags": subprocess.CREATE_NO_WINDOW}
 
 
 # =====================================================================
@@ -437,7 +450,8 @@ class GrepTool(Tool):
                 ['grep', '-r', pattern, path, '--include=*.py'],
                 capture_output=True,
                 text=True,
-                timeout=10  # 10秒超时，防止搜索大量文件时卡住
+                timeout=10,  # 10秒超时，防止搜索大量文件时卡住
+                **_win_subprocess_kwargs(),
             )
             # 按换行分割，最多返回 20 行
             lines = result.stdout.split('\n')[:20]
@@ -545,7 +559,8 @@ class BashTool(Tool):
                 shell=False,          # 不使用 shell，直接执行
                 capture_output=True,  # 捕获 stdout 和 stderr
                 text=True,            # 以文本模式返回（而非字节）
-                timeout=timeout       # 超时保护
+                timeout=timeout,      # 超时保护
+                **_win_subprocess_kwargs(),
             )
             return {
                 "success": result.returncode == 0,  # 退出码 0 表示成功

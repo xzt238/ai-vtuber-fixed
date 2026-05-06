@@ -28,7 +28,7 @@ tts:
     # GPT-SoVITS 音色克隆配置
     device: "cuda"                            # cuda/cpu
     is_half: true                             # 是否使用半精度
-    root_dir: "./app/GPT-SoVITS"              # GPT-SoVITS 根目录
+    root_dir: "./GPT-SoVITS"                   # GPT-SoVITS 根目录（项目根目录下）
     version: "v3"                             # 模型版本
   # 备用引擎列表 (主引擎失败时自动切换)
   fallback_engines:

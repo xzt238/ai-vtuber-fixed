@@ -81,14 +81,23 @@ class ProactiveSpeechManager:
         self._timer = None                        # 定时器
         self._running = False                     # 是否正在运行
         self._lock = threading.Lock()             # 保护 _running 状态
+        self._native_callback = None               # v1.9.80: 原生桌面模式回调函数
 
         if self.enabled:
             self.logger.info(f"[主动说话] 已启用: idle={self.idle_timeout}s, min_interval={self.min_interval}s, max_daily={self.max_daily_count}")
         else:
             self.logger.info("[主动说话] 未启用 (proactive_speech.enabled=false)")
 
-    def start(self):
-        """启动主动说话定时器"""
+    def start(self, interval=None):
+        """启动主动说话定时器
+
+        Args:
+            interval: 可选，覆盖 min_interval（秒）。用于 UI 动态调整间隔。
+        """
+        if interval is not None:
+            self.min_interval = max(10, interval)
+            self.logger.info(f"[主动说话] 间隔已更新为 {self.min_interval}s")
+
         if not self.enabled:
             return
         with self._lock:
@@ -124,7 +133,13 @@ class ProactiveSpeechManager:
         self._timer.start()
 
     def _check_and_trigger(self):
-        """定时检查是否应该主动说话"""
+        """定时检查是否应该主动说话
+
+        v1.9.64 修复：移除 try 块内的 _schedule_next() 调用，
+        只保留 finally 中的统一调度。之前的写法导致双重调度：
+        try 中 return 前调用 _schedule_next() + finally 再调用一次
+        → 每次2个Timer → 指数级线程爆炸 → CPU/内存爆满
+        """
         try:
             with self._lock:
                 if not self._running:
@@ -135,30 +150,24 @@ class ProactiveSpeechManager:
             # 1. 检查空闲时间
             idle_seconds = now - self._last_user_activity
             if idle_seconds < self.idle_timeout:
-                # 还没到空闲阈值，跳过
-                self._schedule_next()
-                return
+                return  # 还没到空闲阈值，跳过（由 finally 统一调度）
 
             # 2. 检查最小间隔
             since_last_proactive = now - self._last_proactive_time
             if since_last_proactive < self.min_interval:
-                self._schedule_next()
                 return
 
             # 3. 检查每日上限
             self._check_daily_reset(now)
             if self._daily_count >= self.max_daily_count:
-                self._schedule_next()
                 return
 
             # 4. 检查 AI 是否正在说话
             if self._is_ai_speaking():
-                self._schedule_next()
                 return
 
             # 5. 检查 WebSocket 客户端是否连接
             if not self._has_connected_client():
-                self._schedule_next()
                 return
 
             # 所有条件满足，触发主动说话
@@ -168,7 +177,7 @@ class ProactiveSpeechManager:
         except Exception as e:
             self.logger.error(f"[主动说话] 检查异常: {e}")
         finally:
-            # 无论是否触发，都安排下一次检查
+            # 无论是否触发，都安排下一次检查（唯一调度点）
             self._schedule_next()
 
     def _is_ai_speaking(self) -> bool:
@@ -192,8 +201,12 @@ class ProactiveSpeechManager:
         return False
 
     def _has_connected_client(self) -> bool:
-        """检查是否有 WebSocket 客户端连接"""
+        """检查是否有 WebSocket 客户端连接，或原生桌面模式"""
         try:
+            # v1.9.80: 原生桌面模式检测 — 如果设置了 native_callback，说明运行在原生模式
+            if self._native_callback:
+                return True
+
             ws_server = getattr(self.app, '_lazy_modules', {}).get('ws')
             if ws_server and hasattr(ws_server, 'server'):
                 clients = getattr(ws_server.server, 'clients', {})
@@ -262,8 +275,16 @@ class ProactiveSpeechManager:
 
             self.logger.info(f"[主动说话] 内容: {reply[:50]}...")
 
-            # 通过 WebSocket 推送给前端
-            self._push_to_clients(reply)
+            # v1.9.80: 优先使用原生回调（桌面模式）
+            if self._native_callback:
+                try:
+                    self._native_callback(reply)
+                    self.logger.info("[主动说话] 已通过原生回调推送")
+                except Exception as cb_err:
+                    self.logger.error(f"[主动说话] 原生回调失败: {cb_err}")
+            else:
+                # 通过 WebSocket 推送给前端（WebUI 模式）
+                self._push_to_clients(reply)
 
             # 写入记忆系统
             try:
@@ -278,8 +299,13 @@ class ProactiveSpeechManager:
             if hasattr(self.app, '_save_history'):
                 self.app._save_history()
 
-            # 触发 TTS（如果有客户端连接）
-            self._trigger_tts(reply)
+            # 触发 TTS
+            if self._native_callback:
+                # 原生模式：TTS 由回调侧处理（chat_page 的 _on_proactive_speech 会播放）
+                pass
+            else:
+                # WebUI 模式：通过 WebSocket 发送音频 URL
+                self._trigger_tts(reply)
 
         except Exception as e:
             self.logger.error(f"[主动说话] 执行失败: {e}")

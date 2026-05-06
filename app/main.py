@@ -37,6 +37,7 @@
 
 import os
 import sys
+import subprocess as _subprocess
 
 # Windows GBK 编码安全网：强制 stdout/stderr 使用 UTF-8
 # 避免 print() 含 emoji/特殊字符时 UnicodeEncodeError 崩溃
@@ -60,6 +61,23 @@ from functools import cached_property
 # 将当前 app/ 目录插入 Python 模块搜索路径的最前面
 # 这样 import asr / import tts 等能正确解析到 app/ 下的子模块
 sys.path.insert(0, str(Path(__file__).parent))
+
+
+# ============ Windows subprocess 安全辅助函数 ============
+# 桌面模式下所有 subprocess 调用必须隐藏 CMD 窗口，否则会闪现控制台
+def _win_subprocess_args():
+    """返回 Windows 桌面模式下 subprocess 隐藏 CMD 窗口所需的额外参数。
+    返回 dict，可直接 **解包到 subprocess.run() 或 subprocess.Popen()。
+    在非 Windows 或非桌面模式下返回空 dict。"""
+    if sys.platform != "win32" or os.getenv("GUGUGAGA_DESKTOP") != "1":
+        return {}
+    si = _subprocess.STARTUPINFO()
+    si.dwFlags |= _subprocess.STARTF_USESHOWWINDOW
+    si.wShowWindow = _subprocess.SW_HIDE
+    return {
+        "startupinfo": si,
+        "creationflags": _subprocess.CREATE_NO_WINDOW,
+    }
 
 # ============ 模型缓存目录配置 ============
 # 所有模型下载缓存统一放在项目根目录下的 models/ 中，避免散落在各处
@@ -385,7 +403,7 @@ class Config:
             return {
                 "asr": {"provider": "faster_whisper", "faster_whisper": {"model_size": "base", "device": "cuda"}},
                 "tts": {"provider": "edge", "edge": {"voice": "zh-CN-XiaoxiaoNeural"}},
-                "llm": {"provider": "minimax", "minimax": {"api_key": os.getenv("MINIMAX_API_KEY", ""), "base_url": os.getenv("MINIMAX_BASE_URL", "https://api.minimax.chat/v1"), "model": "MiniMax-M2.5"}},
+                "llm": {"provider": "minimax", "minimax": {"api_key": os.getenv("MINIMAX_API_KEY", ""), "base_url": os.getenv("MINIMAX_BASE_URL", "https://api.minimaxi.com/anthropic"), "model": "MiniMax-M2.5"}},
                 "live2d": {"enabled": False},
                 "voice": {"enabled": True},
                 "dialogue": {"max_history": 10},
@@ -574,6 +592,9 @@ class ToolExecutor:
             # 安全拆分命令为参数列表（不经过 shell 解释）
             cmd_parts = shlex.split(command) if command else []
 
+            # v1.9.60: 桌面模式下隐藏 CMD 窗口
+            win_args = _win_subprocess_args()
+
             # 提交到线程池执行，避免阻塞调用线程
             future = self._executor.submit(
                 subprocess.run,
@@ -581,7 +602,8 @@ class ToolExecutor:
                 shell=False,          # 关键: 不经过 shell，防止注入
                 capture_output=True,  # 捕获 stdout 和 stderr
                 text=True,            # 以文本模式返回（非 bytes）
-                timeout=self.timeout  # 超时秒数
+                timeout=self.timeout, # 超时秒数
+                **win_args            # v1.9.60: 桌面模式隐藏 CMD
             )
 
             # 阻塞等待线程池中的执行结果
@@ -791,6 +813,23 @@ class AIVTuber:
             else:
                 game_skip(f"TTS [{type(self._lazy_modules['tts']).__name__}]", "需安装依赖")
         return self._lazy_modules['tts']
+
+    @property
+    def trainer(self):
+        """
+        GPT-SoVITS 声音训练管理器 - 懒加载
+
+        延迟导入: from trainer.manager import TrainingManager
+        功能: 列出/管理/启动 GPT-SoVITS 训练项目
+        原生桌面模式的训练页依赖此属性
+
+        返回值:
+            TrainingManager 实例
+        """
+        if 'trainer' not in self._lazy_modules:
+            from trainer.manager import TrainingManager
+            self._lazy_modules['trainer'] = TrainingManager()
+        return self._lazy_modules['trainer']
 
     @property
     def llm(self):
@@ -1904,7 +1943,7 @@ def main():
 
         args = parser.parse_args()
 
-        game_header("咕咕嘎嘎 AI-VTuber v1.9.56")
+        game_header("咕咕嘎嘎 AI-VTuber v1.9.82")
         game_info("系统启动中", f"{_timestamp()} | Python {sys.version_info.major}.{sys.version_info.minor}")
 
         # 使用上下文管理器创建 AIVTuber 实例（确保退出时清理资源）
@@ -1957,7 +1996,9 @@ def main():
         print(f"\n[FATAL] Error: {e}")
         import traceback
         traceback.print_exc()
-        input("\nPress Enter to exit...")
+        # v1.9.60: 桌面模式下跳过 input()（无控制台，input() 会挂起进程）
+        if not os.getenv("GUGUGAGA_DESKTOP"):
+            input("\nPress Enter to exit...")
 
 
 if __name__ == "__main__":

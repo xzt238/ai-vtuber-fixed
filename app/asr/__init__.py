@@ -537,7 +537,9 @@ class FunASRASR(ASREngine):
             )
             # result 格式: [{"text": "识别结果", "key": "..."}]
             if result and len(result) > 0:
-                return result[0]["text"]
+                text = result[0]["text"]
+                # FunASR Paraformer 在中文字间插入空格，需要去除
+                return text.replace(" ", "").strip()
             return None
         except Exception as e:
             print(f"️ 识别错误: {e}")

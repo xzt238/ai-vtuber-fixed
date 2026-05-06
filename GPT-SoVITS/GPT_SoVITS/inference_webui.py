@@ -327,7 +327,7 @@ def change_sovits_weights(sovits_path, prompt_language=None, text_language=None)
             "loading sovits_%spretrained_G" % model_version,
             vq_model.load_state_dict(load_sovits_new(path_sovits)["weight"], strict=False),
         )
-        lora_rank = dict_s2["lora_rank"]
+        lora_rank = dict_s2.get("lora_rank", 16)  # default rank=16
         lora_config = LoraConfig(
             target_modules=["to_k", "to_q", "to_v", "to_out.0"],
             r=lora_rank,

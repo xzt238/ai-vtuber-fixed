@@ -180,7 +180,11 @@ class BackendManager:
                 encoding='utf-8',
                 errors='replace',
                 startupinfo=si,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
+                # v1.9.59: CREATE_NO_WINDOW 防止 python.exe 创建控制台窗口闪现
+                creationflags=(
+                    (subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW)
+                    if sys.platform == "win32" else 0
+                ),
             )
 
             self._running = True
@@ -207,27 +211,37 @@ class BackendManager:
             return False
 
     def stop(self):
-        """优雅停止后端"""
+        """优雅停止后端（含进程树清理）"""
         print("[启动器] 正在停止后端...")
         self._running = False
 
         if self.process and self.process.poll() is None:
             try:
-                if sys.platform == "win32":
-                    os.kill(self.process.pid, signal.CTRL_BREAK_EVENT)
-                else:
-                    self.process.terminate()
-
-                self.process.wait(timeout=5)
-                print("[启动器] 后端已正常退出")
-            except subprocess.TimeoutExpired:
-                print("[启动器] 后端未响应，强制终止")
-                self.process.kill()
+                # v1.9.59: 优先用 taskkill /F /T 杀进程树（含子进程）
+                si = _subprocess_startupinfo()
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(self.process.pid)],
+                    capture_output=True, timeout=5,
+                    startupinfo=si,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+                )
                 self.process.wait(timeout=3)
+                print("[启动器] 后端已终止（taskkill）")
+            except subprocess.TimeoutExpired:
+                try:
+                    self.process.kill()
+                    self.process.wait(timeout=3)
+                    print("[启动器] 后端已强制终止（kill）")
+                except Exception:
+                    pass
             except ProcessLookupError:
                 pass
             except Exception as e:
                 print(f"[启动器] 停止异常: {e}")
+                try:
+                    self.process.kill()
+                except Exception:
+                    pass
 
     @property
     def is_running(self) -> bool:
@@ -394,6 +408,27 @@ class DesktopApp:
         self._tray = None
         self._should_quit = False
         self._splash_done = False  # splash 关闭后不再调用 evaluate_js（防止死锁）
+        self._log_file = None
+
+    def _redirect_print_to_log(self):
+        """
+        v1.9.58: EXE（windowed/无控制台）模式下，将 launcher 自身的 stdout/stderr
+        重定向到 launcher.log，确保崩溃信息可追踪。
+        开发模式下直接 print 到控制台即可，不需要重定向。
+        """
+        if not getattr(sys, 'frozen', False):
+            return  # 开发模式，控制台可用，无需重定向
+        try:
+            import datetime
+            log_path = PROJECT_ROOT / "logs" / "launcher.log"
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            self._log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+            self._log_file.write(f"\n{'='*60}\n[{datetime.datetime.now():%Y-%m-%d %H:%M:%S}] 启动器进程启动\n{'='*60}\n")
+            self._log_file.flush()
+            sys.stdout = self._log_file
+            sys.stderr = self._log_file
+        except Exception:
+            pass  # 重定向失败不影响主流程
 
     def _load_splash_html(self) -> str:
         """加载 splash.html 并嵌入 Logo Base64，返回修改后的 HTML 内容"""
@@ -418,12 +453,18 @@ class DesktopApp:
 
     def run(self):
         """主入口 — 启动应用"""
+        # v1.9.58: 将 launcher 自身的输出也写入日志文件（EXE 无控制台，print 会丢失）
+        self._redirect_print_to_log()
+
         try:
             import webview
         except ImportError:
             print("[启动器] pywebview 未安装，尝试安装...")
             self._install_pywebview()
             import webview
+
+        print(f"[启动器] pywebview {getattr(webview, '__version__', '?')} 加载成功")
+        print(f"[启动器] frozen={getattr(sys, 'frozen', False)}, PROJECT_ROOT={PROJECT_ROOT}")
 
         # 绑定后端回调
         self.backend.on_status = self._on_backend_status
@@ -467,7 +508,25 @@ class DesktopApp:
 
         # 启动 pywebview 事件循环（阻塞，直到窗口关闭）
         debug = "--debug" in sys.argv or os.getenv("GUGUGAGA_DEBUG") == "1"
-        webview.start(debug=debug, http_server=False)
+        print("[启动器] 进入 pywebview 事件循环...")
+        try:
+            webview.start(debug=debug, http_server=False)
+            print("[启动器] pywebview 事件循环正常结束")
+        except Exception as e:
+            import traceback
+            err_detail = traceback.format_exc()
+            print(f"[启动器] pywebview 崩溃: {e}")
+            print(err_detail)
+            # 写入日志
+            try:
+                log_path = PROJECT_ROOT / "logs" / "launcher.log"
+                with open(log_path, "a", encoding="utf-8") as f:
+                    import datetime
+                    f.write(f"\n[{datetime.datetime.now():%Y-%m-%d %H:%M:%S}] pywebview 崩溃\n")
+                    f.write(err_detail)
+                    f.write("\n")
+            except Exception:
+                pass
 
         # 窗口关闭后 → 停止后端
         self.backend.stop()
@@ -582,9 +641,11 @@ class DesktopApp:
         import subprocess as sp
         print("[启动器] 安装 pywebview...")
         try:
+            si = _subprocess_startupinfo()
             sp.check_call(
                 [sys.executable, "-m", "pip", "install", "pywebview"],
                 stdout=sp.DEVNULL, stderr=sp.DEVNULL,
+                startupinfo=si,
             )
             print("[启动器] pywebview 安装成功")
         except sp.CalledProcessError:
@@ -604,7 +665,10 @@ class DesktopApp:
         self.backend.on_failed = lambda msg: print(f"[启动器] 失败: {msg}")
 
         if not self.backend.start():
-            input("按回车退出...")
+            if getattr(sys, 'frozen', False):
+                _show_error_box("咕咕嘎嘎 — 启动失败", "无法启动后端服务")
+            else:
+                input("按回车退出...")
             sys.exit(1)
 
         print("[启动器] 按 Ctrl+C 退出")
@@ -616,7 +680,11 @@ class DesktopApp:
 
     def _show_error_and_exit(self, msg: str):
         print(f"[启动器] {msg}")
-        input("按回车退出...")
+        # EXE 模式下用 Windows MessageBox 显示错误（无控制台可 input）
+        if getattr(sys, 'frozen', False):
+            _show_error_box("咕咕嘎嘎 — 启动失败", msg)
+        else:
+            input("按回车退出...")
         sys.exit(1)
 
 
@@ -644,7 +712,7 @@ class LauncherAPI:
                     for part in line.split():
                         if part.startswith("v") and any(c.isdigit() for c in part):
                             return part
-        return "1.9.54"
+        return "1.9.82"
 
     def isDesktop(self) -> bool:
         return True
@@ -672,20 +740,267 @@ class LauncherAPI:
 
 # ============ 入口 ============
 
+def _subprocess_startupinfo():
+    """获取隐藏子进程窗口的 STARTUPINFO（防止 CMD 闪现）"""
+    if sys.platform != "win32":
+        return None
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    si.wShowWindow = subprocess.SW_HIDE
+    return si
+
+
+def _kill_port_occupants():
+    """
+    v1.9.58: 启动前清理占用后端端口的残留进程。
+    防止上次 launcher 崩溃后，后端进程仍在运行导致端口冲突。
+    v1.9.59: 修复端口误匹配 + 合并 netstat 调用 + SW_HIDE 防闪现。
+    """
+    si = _subprocess_startupinfo()
+    ports = {BACKEND_PORT, BACKEND_WS_PORT}
+    pids_to_kill = set()
+
+    try:
+        result = subprocess.run(
+            ["netstat", "-ano"],
+            capture_output=True, text=True, timeout=5,
+            startupinfo=si,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        for line in result.stdout.splitlines():
+            if "LISTENING" not in line and "ESTABLISHED" not in line:
+                continue
+            parts = line.strip().split()
+            if len(parts) < 5:
+                continue
+            # 精确匹配端口号，避免 :1239 匹配 :12393
+            addr = parts[1]  # e.g. "127.0.0.1:12393" or "0.0.0.0:12393"
+            try:
+                port_part = int(addr.rsplit(":", 1)[-1])
+            except (ValueError, IndexError):
+                continue
+            if port_part in ports:
+                try:
+                    pid = int(parts[-1])
+                    if pid > 4 and pid != os.getpid():
+                        pids_to_kill.add(pid)
+                except ValueError:
+                    pass
+    except Exception as e:
+        print(f"[启动器] 端口扫描失败: {e}")
+
+    for pid in pids_to_kill:
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/PID", str(pid)],
+                capture_output=True, timeout=5,
+                startupinfo=si,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            )
+            print(f"[启动器] 清理残留进程 PID={pid}")
+        except Exception:
+            pass
+
+
+_MUTEX_HANDLE = None
+
+def _acquire_single_instance_lock():
+    """
+    v1.9.60: 使用 Windows 命名互斥体（Named Mutex）防多实例。
+    
+    v1.9.59 的 BUG 修复:
+    ctypes.windll.kernel32.GetLastError() 不可靠——Python 内部在
+    CreateMutexW 返回后、GetLastError() 调用前，会执行其他 Windows API
+    调用（如 GIL 管理、类型转换），导致 last error 被覆盖为 0。
+    结果: ERROR_ALREADY_EXISTS (183) 永远检测不到，多个实例全部放行。
+    
+    修复: 使用 ctypes.WinDLL('kernel32', use_last_error=True)，
+    让 Python 在调用前后自动保存/恢复 last error，再用
+    ctypes.get_last_error() 读取。
+    
+    同时改用 Local\\ 前缀（不需要 SeCreateGlobalPrivilege 权限，
+    普通用户也能正常工作）。
+    
+    返回 True=获取锁成功（可以启动），False=已有实例在运行。
+    """
+    global _MUTEX_HANDLE
+    if sys.platform != "win32":
+        return True  # 非 Windows 平台跳过互斥体
+    try:
+        import ctypes
+        
+        # 关键: use_last_error=True 让 ctypes 在每次调用前后
+        # 自动保存/恢复 Windows last error，防止被 Python 内部覆盖
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        
+        # Local\\ 前缀不需要管理员权限（Global\\ 需要 SeCreateGlobalPrivilege）
+        mutex_name = "Local\\GuguGaga_AI_VTuber_SingleInstance"
+        # CreateMutexW: 创建或打开命名互斥体
+        _MUTEX_HANDLE = kernel32.CreateMutexW(None, True, mutex_name)
+        # 关键: 用 ctypes.get_last_error() 而不是 kernel32.GetLastError()
+        last_error = ctypes.get_last_error()
+        
+        if last_error == 183:  # ERROR_ALREADY_EXISTS
+            # 已有实例在运行
+            try:
+                kernel32.CloseHandle(_MUTEX_HANDLE)
+            except Exception:
+                pass
+            _MUTEX_HANDLE = None
+            return False
+        
+        if not _MUTEX_HANDLE:
+            # CreateMutexW 返回 NULL — 严重错误，降级允许启动
+            print(f"[启动器] 互斥体创建失败 (last_error={last_error})，降级允许启动")
+            return True
+            
+        return True
+    except Exception as e:
+        # 互斥体创建异常（不应该发生），降级为允许启动
+        print(f"[启动器] 互斥体创建异常: {e}")
+        return True
+
+
+def _release_single_instance_lock():
+    """释放命名互斥体"""
+    global _MUTEX_HANDLE
+    if _MUTEX_HANDLE:
+        try:
+            import ctypes
+            kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+            kernel32.ReleaseMutex(_MUTEX_HANDLE)
+            kernel32.CloseHandle(_MUTEX_HANDLE)
+        except Exception:
+            pass
+        _MUTEX_HANDLE = None
+
+
+def _show_error_box(title: str, message: str):
+    """v1.9.59: 显示 Windows 原生错误弹窗（不依赖 pywebview）"""
+    try:
+        import ctypes
+        # MB_OK=0, MB_ICONERROR=16, MB_SETFOREGROUND=0x10000
+        ctypes.windll.user32.MessageBoxW(0, message, title, 0x10 | 0x10000)
+    except Exception:
+        pass
+
+
+def _check_crash_loop() -> bool:
+    """
+    v1.9.59: 检测崩溃循环。
+    如果上次启动在 15 秒内崩溃，认为是崩溃循环，询问用户是否继续。
+    返回 True=可以继续启动，False=用户选择退出。
+    """
+    crash_marker = PROJECT_ROOT / "logs" / ".last_start_time"
+    now = time.time()
+    
+    try:
+        if crash_marker.exists():
+            last_time = float(crash_marker.read_text().strip())
+            elapsed = now - last_time
+            if elapsed < 15:
+                # 上次启动不到15秒就重新启动 → 崩溃循环
+                msg = (
+                    f"检测到启动器在 {elapsed:.1f} 秒前异常退出，可能存在崩溃循环。\n\n"
+                    "常见原因：\n"
+                    "  • WebView2 Runtime 未安装\n"
+                    "  • pythonnet / clr 加载失败\n"
+                    "  • 显卡驱动不兼容\n\n"
+                    "是否继续尝试启动？\n"
+                    "选「否」可查看日志排查问题。"
+                )
+                import ctypes
+                result = ctypes.windll.user32.MessageBoxW(
+                    0, msg, "咕咕嘎嘎 — 崩溃检测", 0x04 | 0x10 | 0x10000
+                    # MB_YESNO=4, MB_ICONERROR=16, MB_SETFOREGROUND=0x10000
+                )
+                if result != 6:  # IDYES=6
+                    return False
+    except Exception:
+        pass
+    
+    # 记录本次启动时间
+    try:
+        crash_marker.parent.mkdir(parents=True, exist_ok=True)
+        crash_marker.write_text(str(now))
+    except Exception:
+        pass
+    
+    return True
+
+
+def _clear_crash_marker():
+    """启动成功后清除崩溃标记"""
+    try:
+        crash_marker = PROJECT_ROOT / "logs" / ".last_start_time"
+        if crash_marker.exists():
+            crash_marker.unlink()
+    except Exception:
+        pass
+
+
 def main():
     # v1.9.29: 解除 pip 下载 DLL 的网络锁定标记
     # Windows 会对从网络下载的 DLL 添加 Zone.Identifier，.NET 拒绝加载导致 pywebview 崩溃
     _unblock_dlls()
 
+    # v1.9.59: 崩溃循环检测 — 防止反复闪退
+    if getattr(sys, 'frozen', False):
+        if not _check_crash_loop():
+            return
+
+    # v1.9.58: 单实例锁 — 防止双击多次导致多个 launcher 并发
+    if not _acquire_single_instance_lock():
+        print("[启动器] 检测到已有实例在运行，退出。")
+        # v1.9.60: 提示用户已有实例在运行（不再静默退出）
+        _show_error_box(
+            "咕咕嘎嘎 — 已在运行",
+            "检测到咕咕嘎嘎已在运行中。\n\n"
+            "请不要重复启动，如需重新启动请先关闭已有窗口。"
+        )
+        return
+
+    # v1.9.58: 清理上次崩溃留下的残留后端进程（防止端口占用）
+    _kill_port_occupants()
+
     app = DesktopApp()
     try:
         app.run()
+        # 正常退出，清除崩溃标记
+        _clear_crash_marker()
     except KeyboardInterrupt:
         app.backend.stop()
     except Exception as e:
+        import traceback
+        err_msg = traceback.format_exc()
         print(f"[启动器] 异常退出: {e}")
+        print(err_msg)
+        # 写入日志
+        try:
+            log_path = PROJECT_ROOT / "logs" / "launcher.log"
+            with open(log_path, "a", encoding="utf-8") as f:
+                import datetime
+                f.write(f"\n[{datetime.datetime.now():%Y-%m-%d %H:%M:%S}] 启动器崩溃\n")
+                f.write(err_msg)
+                f.write("\n")
+        except Exception:
+            pass
+        # 停止后端
         app.backend.stop()
+        # EXE 模式下弹窗显示错误
+        if getattr(sys, 'frozen', False):
+            _show_error_box(
+                "咕咕嘎嘎 — 启动失败",
+                f"启动器异常退出:\n{e}\n\n"
+                f"详细信息请查看:\n{PROJECT_ROOT / 'logs' / 'launcher.log'}"
+            )
     finally:
+        # v1.9.59: 确保后端进程被终止（防孤儿进程占端口）
+        try:
+            app.backend.stop()
+        except Exception:
+            pass
+        _release_single_instance_lock()
         print("[启动器] 再见~")
 
 
@@ -694,13 +1009,22 @@ def _unblock_dlls():
     sp_dir = PROJECT_ROOT / "python" / "Lib" / "site-packages"
     if not sp_dir.exists():
         return
+    # v1.9.59: 如果已标记为已解锁，跳过（避免每次启动都跑 PowerShell 闪 CMD）
+    unlock_marker = PROJECT_ROOT / "logs" / ".dlls_unblocked"
+    if unlock_marker.exists():
+        return
     try:
-        import subprocess
+        si = _subprocess_startupinfo()
         subprocess.run(
             ["powershell", "-Command",
              f"Get-ChildItem '{sp_dir}' -Recurse -Include *.dll,*.pyd | Unblock-File -ErrorAction SilentlyContinue"],
-            capture_output=True, timeout=10
+            capture_output=True, timeout=30,
+            startupinfo=si,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
+        # 标记已完成，后续启动跳过
+        unlock_marker.parent.mkdir(parents=True, exist_ok=True)
+        unlock_marker.touch()
     except Exception:
         pass  # 解锁失败不影响启动
 

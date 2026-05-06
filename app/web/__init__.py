@@ -101,6 +101,9 @@ from queue import Queue
 # onnxruntime-web 1.22+ 用 ES Module 动态 import .mjs 文件
 mimetypes.add_type('application/javascript', '.mjs')
 mimetypes.add_type('application/wasm', '.wasm')
+# v1.9.64: 注册 Live2D Cubism 模型文件 MIME 类型
+# .moc3 是 Cubism 3+ 的二进制模型文件，缺少 MIME 类型会导致部分浏览器加载失败
+mimetypes.add_type('application/octet-stream', '.moc3')
 
 try:
     import jieba_fast as jieba
@@ -290,7 +293,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
         
         # L2修复: 健康检查端点，用于部署监控和启动器检测后端就绪
         if self.path == "/api/health":
-            self.send_json({"status": "ok", "version": "1.9.54"})
+            self.send_json({"status": "ok", "version": "1.9.82"})
             return
 
         # 其他请求返回 405 Method Not Allowed
@@ -3397,9 +3400,19 @@ class WebSocketServer:
             # GPU 内存
             try:
                 import subprocess
+                import sys as _sys
+                import os
+                nvidia_kwargs = dict(capture_output=True, text=True, timeout=5)
+                # v1.9.60: 桌面模式下隐藏 nvidia-smi 的 CMD 窗口
+                if _sys.platform == "win32" and os.getenv("GUGUGAGA_DESKTOP") == "1":
+                    si = subprocess.STARTUPINFO()
+                    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    si.wShowWindow = subprocess.SW_HIDE
+                    nvidia_kwargs["startupinfo"] = si
+                    nvidia_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
                 result = subprocess.run(
                     ['nvidia-smi', '--query-gpu=memory.used,memory.total,temperature.gpu', '--format=csv,noheader,nounits'],
-                    capture_output=True, text=True, timeout=5
+                    **nvidia_kwargs,
                 )
                 if result.returncode == 0:
                     parts = result.stdout.strip().split(',')

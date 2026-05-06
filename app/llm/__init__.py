@@ -758,17 +758,30 @@ class MiniMaxLLM(LLMEngine):
                 - retry_delay (float): 基础重试延迟（秒），默认 1.0
         """
         self.api_key = config.get("api_key", "")
-        self.base_url = config.get("base_url", "http://120.24.86.32:3000")
+        raw_base_url = config.get("base_url", "https://api.minimaxi.com")
         self.model = config.get("model", "MiniMax-M2.7")
         self.group_id = config.get("group_id", "")
-        
+
+        # 【格式自动判断】base_url 包含 "/anthropic" 时使用 Anthropic 兼容格式
+        self._is_anthropic = "/anthropic" in raw_base_url
+
+        # 【base_url 标准化】防止路径重复拼接
+        # Anthropic 格式: base_url = https://api.minimaxi.com/anthropic
+        # OpenAI 格式:    base_url = https://api.minimaxi.com/v1
+        if self._is_anthropic:
+            # 确保 base_url 以 /anthropic 结尾（不含多余的 /v1）
+            self.base_url = raw_base_url.replace("/v1", "").rstrip("/")
+            if not self.base_url.endswith("/anthropic"):
+                self.base_url = self.base_url.rstrip("/") + "/anthropic"
+        else:
+            # OpenAI 格式：确保 base_url 以 /v1 结尾
+            self.base_url = raw_base_url.replace("/anthropic", "").rstrip("/")
+            if not self.base_url.endswith("/v1"):
+                self.base_url = self.base_url.rstrip("/") + "/v1"
+
         # v2.0: max_tokens 从 512 提升到 2048，支持更长的回复
         self.max_tokens = config.get("max_tokens", 2048)
-        
-        # 【格式自动判断】base_url 包含 "/anthropic" 时使用 Anthropic 兼容格式
-        # 这允许通过代理服务器将 Anthropic 格式的请求转发给 MiniMax
-        self._is_anthropic = "/anthropic" in self.base_url
-        
+
         # 【HTTP 连接池配置】
         import requests
         self._session = requests.Session()
@@ -960,8 +973,8 @@ class MiniMaxLLM(LLMEngine):
             Dict: {"text": 回复文本, "action": 动作指令或 None}
 
         【API 格式】
-        POST /v1/text/chatcompletion_v2
-        Body: {"model": ..., "messages": [...], "temperature": 0.7, "max_tokens": 2048}
+        POST /chat/completions（base_url 已含 /v1）
+        Body: {"model": ..., "messages": [...], "temperature": 0.7, "max_completion_tokens": 2048}
         Response: {"choices": [{"message": {"content": "..."}}]}
         """
         # 构建 OpenAI 格式的消息列表（含 system + history + current）
@@ -970,13 +983,14 @@ class MiniMaxLLM(LLMEngine):
             "model": self.model,
             "messages": messages,
             "temperature": 0.7,          # 生成多样性（0=确定性，1=最随机）
-            "max_tokens": self.max_tokens,
+            "max_completion_tokens": self.max_tokens,  # MiniMax OpenAI 兼容格式使用 max_completion_tokens
         }
         # group_id 是 MiniMax 特有的必填字段（某些账号需要）
         if self.group_id:
             data["group_id"] = self.group_id
 
-        url = f"{self.base_url}/v1/text/chatcompletion_v2"
+        # base_url 已含 /v1，直接拼接 /chat/completions
+        url = f"{self.base_url}/chat/completions"
         
         # 发送请求（timeout=60秒，非流式需等待完整生成）
         response = self._session.post(url, json=data, timeout=60)
@@ -1016,10 +1030,11 @@ class MiniMaxLLM(LLMEngine):
         data = {
             "model": self.model,
             "messages": messages,
-            "system": system_prompt,     # Anthropic 格式：system 通过顶层字段传递
             "max_tokens": self.max_tokens,
             "temperature": 1.0,          # Anthropic 推荐 temperature=1.0（不同于 OpenAI 的 0.7）
         }
+        if system_prompt:                 # 仅当 system_prompt 非空时传递，避免 API 拒绝空字符串
+            data["system"] = system_prompt
 
         url = f"{self.base_url}/v1/messages"
         response = self._session.post(url, json=data, timeout=60)
@@ -1064,15 +1079,31 @@ class MiniMaxLLM(LLMEngine):
         if not self._rate_limiter.acquire(timeout=30):
             return {"text": "请求过于频繁，请稍后再试", "action": None}
 
-        try:
-            # 根据格式分发到对应流式实现
-            if self._is_anthropic:
-                return self._stream_anthropic(message, history, callback, memory_system, chunk_size)
-            return self._stream_openai(message, history, callback, memory_system, chunk_size)
-        except Exception as e:
-            print(f"[LLM] 流式错误: {e}")
-            # M5修复: 中断时返回已有的部分响应而非丢弃
-            return {"text": "", "action": None, "_stream_error": str(e)}
+        # v1.9.72: 流式请求也增加重试（500 服务端临时故障）
+        max_retries = 2
+        last_error = None
+        for attempt in range(max_retries + 1):
+            try:
+                # 根据格式分发到对应流式实现
+                if self._is_anthropic:
+                    return self._stream_anthropic(message, history, callback, memory_system, chunk_size)
+                return self._stream_openai(message, history, callback, memory_system, chunk_size)
+            except Exception as e:
+                last_error = e
+                error_str = str(e)
+                # 只有 5xx 服务端错误才重试
+                is_server_error = any(code in error_str for code in ["500", "502", "503", "504"])
+                if is_server_error and attempt < max_retries:
+                    import time
+                    wait = 2 ** attempt  # 指数退避: 1s, 2s
+                    print(f"[LLM] 流式请求 {attempt+1}/{max_retries+1} 失败({error_str})，{wait}s后重试...")
+                    time.sleep(wait)
+                    continue
+                break
+
+        print(f"[LLM] 流式错误: {last_error}")
+        # M5修复: 中断时返回已有的部分响应而非丢弃
+        return {"text": "", "action": None, "_stream_error": str(last_error)}
 
     def _stream_openai(self, message: str, history, callback, memory_system, chunk_size) -> Dict[str, Any]:
         """
@@ -1097,13 +1128,14 @@ class MiniMaxLLM(LLMEngine):
             "model": self.model,
             "messages": messages,
             "temperature": 0.7,
-            "max_tokens": self.max_tokens,
+            "max_completion_tokens": self.max_tokens,  # MiniMax OpenAI 兼容格式
             "stream": True,          # 启用流式模式
         }
         if self.group_id:
             data["group_id"] = self.group_id
 
-        url = f"{self.base_url}/v1/text/chatcompletion_v2"
+        # base_url 已含 /v1，直接拼接 /chat/completions
+        url = f"{self.base_url}/chat/completions"
         # stream=True: requests 不立即读取响应体，而是保持连接流式读取
         response = self._session.post(url, json=data, timeout=120, stream=True)
         response.raise_for_status()
@@ -1187,11 +1219,12 @@ class MiniMaxLLM(LLMEngine):
         data = {
             "model": self.model,
             "messages": messages,
-            "system": system_prompt,
             "max_tokens": self.max_tokens,
             "temperature": 1.0,
             "stream": True,
         }
+        if system_prompt:                 # 仅当 system_prompt 非空时传递
+            data["system"] = system_prompt
 
         url = f"{self.base_url}/v1/messages"
         response = self._session.post(url, json=data, timeout=120, stream=True)
@@ -1546,7 +1579,7 @@ class OpenAILLM(LLMEngine):
                 "max_tokens": self.max_tokens,
                 "stream": True,  # 启用 SSE 流式模式
             }
-            
+
             response = self._session.post(
                 f"{self.base_url}/chat/completions",
                 json=data, timeout=120, stream=True

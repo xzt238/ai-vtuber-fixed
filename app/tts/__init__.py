@@ -524,8 +524,9 @@ def _get_gptsovits_model_dir() -> str:
         GPTSoVITSEngine 的 root_dir 参数默认使用此函数的结果。
     """
     tts_pkg_dir = os.path.dirname(os.path.abspath(__file__))
-    app_dir = os.path.dirname(tts_pkg_dir)
-    return os.path.join(app_dir, "GPT-SoVITS")
+    app_dir = os.path.dirname(tts_pkg_dir)  # app/
+    project_root = os.path.dirname(app_dir)  # 项目根目录
+    return os.path.join(project_root, "GPT-SoVITS")
 
 
 # =====================================================================

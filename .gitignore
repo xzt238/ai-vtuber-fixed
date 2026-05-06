@@ -93,3 +93,15 @@ GPT-SoVITS/memory/
 
 # ---------- Node ----------
 node_modules/
+
+# ---------- 原生桌面构建产物 ----------
+native/build/
+native/dist/
+native/*.spec
+
+# ---------- 运行时状态 ----------
+app/state/
+native/app/
+
+# ---------- G2PW 模型数据（含 .onnx）----------
+GPT-SoVITS/GPT_SoVITS/G2PWModel/

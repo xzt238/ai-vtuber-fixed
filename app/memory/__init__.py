@@ -1062,6 +1062,7 @@ class MemorySystem:
         self.working_memory_limit = self.config.get("working_memory_limit", 30)  # v3.0: 20→30
         self.summarize_threshold = self.config.get("summarize_threshold", 20)    # v3.0: 15→20
         self.summarize_batch = self.config.get("summarize_batch", 5)
+        self.episodic_memory_limit = self.config.get("episodic_memory_limit", 200)  # v1.9.64: 情景记忆上限，防止无限增长
         
         # LLM 回调 (由外部通过 set_llm_callback 设置)
         self._llm_chat_func = None
@@ -1371,10 +1372,19 @@ class MemorySystem:
             facts=list(set(all_facts)),  # 去重
             tags=AutoTagger.tag(summary_text),
         )
-        
+
         # 加入情景记忆
         self.episodic_memory.append(summary_item)
-        
+
+        # v1.9.64: 情景记忆上限保护，防止无限增长
+        if len(self.episodic_memory) > self.episodic_memory_limit:
+            # 优先淘汰遗忘分数最低的旧记忆
+            self.episodic_memory.sort(key=lambda x: x.timestamp)  # 按时间排序
+            excess = len(self.episodic_memory) - self.episodic_memory_limit
+            self.episodic_memory = self.episodic_memory[excess:]  # 丢弃最旧的
+            self.forgotten_count += excess
+            print(f" 情景记忆裁剪: 淘汰 {excess} 条最旧记忆 (上限: {self.episodic_memory_limit})")
+
         # 重要摘要存入向量库
         if summary_item.importance >= 3:
             self.vector_store.add(
@@ -1396,25 +1406,34 @@ class MemorySystem:
     def _forgetting_sweep(self):
         """
         遗忘扫描 v2 — 跳过保护期内的新记忆
+
+        v1.9.64: 增加硬上限保护，即使遗忘阈值没触发，超过上限也淘汰最旧记忆
         """
         forgotten = 0
         now = time.time()
-        
+
         survivors = []
         for item in self.episodic_memory:
             hours_old = (now - item.timestamp) / 3600
-            
+
             # v3.0: 新记忆保护期, 不参与遗忘
             if RetentionScorer.is_in_grace_period(hours_old):
                 survivors.append(item)
                 continue
-            
+
             if item.should_forget():
                 forgotten += 1
             else:
                 survivors.append(item)
         self.episodic_memory = survivors
-        
+
+        # v1.9.64: 硬上限保护——即使遗忘阈值没触发，超出上限也要淘汰最旧的
+        if len(self.episodic_memory) > self.episodic_memory_limit:
+            excess = len(self.episodic_memory) - self.episodic_memory_limit
+            self.episodic_memory.sort(key=lambda x: x.timestamp)
+            self.episodic_memory = self.episodic_memory[excess:]
+            forgotten += excess
+
         if forgotten > 0:
             self.forgotten_count += forgotten
             print(f" 遗忘扫描: 清理了 {forgotten} 条过期情景记忆 (累计: {self.forgotten_count})")

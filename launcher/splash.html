@@ -262,7 +262,7 @@
   <button class="retry-btn" id="retryBtn" onclick="retryLaunch()">重新启动</button>
 
   <!-- 版本号 -->
-  <div class="version" id="versionText">v1.9.57</div>
+  <div class="version" id="versionText">v1.9.82</div>
 
   <script>
     // ===== 生成背景粒子 =====
@@ -279,6 +279,8 @@
     }
 
     // ===== 获取版本号 =====
+    // v1.9.61 修复: 保存 setTimeout ID，在 onBackendReady 中取消，避免页面跳转后回调报错
+    var _pendingVersionTimers = [];
     function loadVersion() {
       if (window.pywebview && window.pywebview.api) {
         window.pywebview.api.getVersion().then(v => {
@@ -286,8 +288,8 @@
         }).catch(() => {});
       }
     }
-    setTimeout(loadVersion, 500);
-    setTimeout(loadVersion, 2000);
+    _pendingVersionTimers.push(setTimeout(loadVersion, 500));
+    _pendingVersionTimers.push(setTimeout(loadVersion, 2000));
 
     // ===== 被 launcher.py 调用的接口 =====
 
@@ -299,6 +301,12 @@
     }
 
     function onBackendReady() {
+      // v1.9.61 修复: 取消 pending 的 getVersion 定时器，防止页面跳转后回调报错
+      if (typeof _pendingVersionTimers !== 'undefined') {
+        _pendingVersionTimers.forEach(id => clearTimeout(id));
+        _pendingVersionTimers = [];
+      }
+
       document.getElementById('logoRing').classList.add('ready');
       document.getElementById('logoInner').classList.add('ready');
 

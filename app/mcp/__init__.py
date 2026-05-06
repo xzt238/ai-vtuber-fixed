@@ -64,14 +64,21 @@ class MCPTransport:
             env.update(self.env)
 
             cmd = [self.command] + self.args
-            self._process = subprocess.Popen(
-                cmd,
+            # v1.9.60: 桌面模式下隐藏 MCP 服务器子进程的 CMD 窗口
+            popen_kwargs = dict(
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=env,
                 bufsize=0,
             )
+            if sys.platform == "win32" and os.getenv("GUGUGAGA_DESKTOP") == "1":
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = subprocess.SW_HIDE
+                popen_kwargs["startupinfo"] = si
+                popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+            self._process = subprocess.Popen(cmd, **popen_kwargs)
 
             # 发送 initialize 请求
             result = self._send_request("initialize", {
