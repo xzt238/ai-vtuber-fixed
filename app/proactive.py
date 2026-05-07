@@ -25,6 +25,7 @@ v1.9.51: 新增功能
 
 import time
 import threading
+from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -184,7 +185,7 @@ class ProactiveSpeechManager:
         """检查 AI 是否正在说话"""
         try:
             # 检查 web 模块的 realtime 状态
-            ws_server = getattr(self.app, '_lazy_modules', {}).get('ws')
+            ws_server = getattr(self.app, '_lazy_modules', {}).get('ws_server')
             if ws_server:
                 # 检查是否有客户端正在 realtime pipeline 中
                 realtime_states = getattr(ws_server, '_realtime', {})
@@ -207,9 +208,9 @@ class ProactiveSpeechManager:
             if self._native_callback:
                 return True
 
-            ws_server = getattr(self.app, '_lazy_modules', {}).get('ws')
+            ws_server = getattr(self.app, '_lazy_modules', {}).get('ws_server')
             if ws_server and hasattr(ws_server, 'server'):
-                clients = getattr(ws_server.server, 'clients', {})
+                clients = getattr(ws_server.server, 'clients', [])
                 return len(clients) > 0
         except Exception:
             pass
@@ -286,18 +287,11 @@ class ProactiveSpeechManager:
                 # 通过 WebSocket 推送给前端（WebUI 模式）
                 self._push_to_clients(reply)
 
-            # 写入记忆系统
+            # 写入记忆和历史（统一使用 record_interaction，确保 MAX_HISTORY 截断等逻辑一致）
             try:
-                mem = getattr(self.app, 'memory', None)
-                if mem is not None:
-                    mem.add_interaction("assistant", f"[主动说话] {reply}")
+                self.app.record_interaction("[主动说话触发]", reply)
             except Exception as e:
-                self.logger.warning(f"[主动说话] 记忆写入失败: {e}")
-
-            # 写入历史记录
-            self.app.history.append({"role": "assistant", "content": reply})
-            if hasattr(self.app, '_save_history'):
-                self.app._save_history()
+                self.logger.warning(f"[主动说话] 记录交互失败: {e}")
 
             # 触发 TTS
             if self._native_callback:
@@ -336,13 +330,13 @@ class ProactiveSpeechManager:
     def _push_to_clients(self, text: str):
         """通过 WebSocket 推送消息给所有连接的客户端"""
         try:
-            ws_server = getattr(self.app, '_lazy_modules', {}).get('ws')
+            ws_server = getattr(self.app, '_lazy_modules', {}).get('ws_server')
             if not ws_server or not hasattr(ws_server, 'server'):
                 return
 
             import json
-            clients = getattr(ws_server.server, 'clients', {})
-            for client_id, client in list(clients.items()):
+            clients = getattr(ws_server.server, 'clients', [])
+            for client in clients:
                 try:
                     ws_server.server.send_message(client, json.dumps({
                         "type": "text",
@@ -357,7 +351,7 @@ class ProactiveSpeechManager:
     def _trigger_tts(self, text: str):
         """触发 TTS 语音合成，发送音频给前端"""
         try:
-            ws_server = getattr(self.app, '_lazy_modules', {}).get('ws')
+            ws_server = getattr(self.app, '_lazy_modules', {}).get('ws_server')
             if not ws_server:
                 return
 
@@ -376,8 +370,8 @@ class ProactiveSpeechManager:
             # 发送音频 URL 给前端
             audio_url = "/audio/" + os.path.basename(audio_path)
 
-            clients = getattr(ws_server.server, 'clients', {})
-            for client_id, client in list(clients.items()):
+            clients = getattr(ws_server.server, 'clients', [])
+            for client in clients:
                 try:
                     ws_server.server.send_message(client, json.dumps({
                         "type": "tts_done",

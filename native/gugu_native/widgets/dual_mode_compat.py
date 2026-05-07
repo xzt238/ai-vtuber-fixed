@@ -5,25 +5,33 @@
 1. 共享配置目录 (app/cache/, memory/)
 2. 共享对话历史 (memory/state/chat_history.json)
 3. 共享 LLM 偏好 (app/cache/llm_preferences.json)
-4. 互斥锁 — 同一时间只运行一种模式
+4. 互斥锁 — 同一时间只运行一种模式（统一命名，两种模式可互相检测）
 5. 端口检测 — WebUI 运行时通知用户
 """
 
 import os
 import sys
 import json
-import ctypes
 import logging
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# 互斥体名称统一从 shared_config 引入
+try:
+    from app.shared_config import MUTEX_NAME_BASE, MUTEX_NAME_NATIVE
+    _MUTEX_BASE = MUTEX_NAME_BASE
+    _MUTEX_NATIVE = MUTEX_NAME_NATIVE
+except ImportError:
+    _MUTEX_BASE = "Local\\GuguGagaAI-VTuber"
+    _MUTEX_NATIVE = _MUTEX_BASE + "_Native"
+
 
 class DualModeCompat:
     """双模式兼容管理器"""
 
-    # Mutex 名称（与 WebUI launcher 共享）
-    MUTEX_NAME = "Local\\GuguGagaAI-VTuber"
+    # Mutex 名称（与 WebUI launcher 共享，统一命名）
+    MUTEX_NAME = _MUTEX_BASE
 
     # 端口配置
     WEBUI_HTTP_PORT = 12393
@@ -63,9 +71,12 @@ class DualModeCompat:
             True = 成功获取（无其他实例运行）
             False = 已有实例在运行
         """
+        if sys.platform != "win32":
+            return True  # 非 Windows 平台跳过互斥体
         try:
+            import ctypes
             kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
-            mutex_name = self.MUTEX_NAME + "_Native"
+            mutex_name = _MUTEX_NATIVE
 
             handle = kernel32.CreateMutexW(None, False, mutex_name)
             last_error = ctypes.get_last_error()
@@ -98,6 +109,7 @@ class DualModeCompat:
         """释放互斥锁"""
         if self._mutex_handle:
             try:
+                import ctypes
                 kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
                 kernel32.CloseHandle(self._mutex_handle)
             except Exception:

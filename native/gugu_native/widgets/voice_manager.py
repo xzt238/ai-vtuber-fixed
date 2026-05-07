@@ -325,23 +325,33 @@ class RealtimeVoiceManager(QObject):
         改为写入临时 WAV 文件后启动 _ASRWorker QThread
         这样录音线程可以立即继续录音，ASR 在独立线程运行
         """
+        # 先在锁内提取数据，再在锁外发射信号（避免持锁发信号导致死锁）
+        audio_data = None
+        merge_error = None
         with self._buffer_lock:
             self._is_speaking = False
-            self.vad_state_changed.emit(False)
+            should_emit_vad = True
 
             if not self._audio_buffer:
-                return
-
-            try:
-                import numpy as np
-
-                # 合并音频数据
-                audio_data = np.concatenate(self._audio_buffer, axis=0)
                 self._audio_buffer = []
-            except Exception as e:
-                self._audio_buffer = []
-                self.error_occurred.emit(f"音频合并失败: {e}")
-                return
+                # 先释放锁再发信号
+            else:
+                try:
+                    import numpy as np
+                    audio_data = np.concatenate(self._audio_buffer, axis=0)
+                    self._audio_buffer = []
+                except Exception as e:
+                    self._audio_buffer = []
+                    merge_error = f"音频合并失败: {e}"
+
+        # 在锁外发射信号（避免 Qt 信号回调中再次获取锁导致死锁）
+        if should_emit_vad:
+            self.vad_state_changed.emit(False)
+        if merge_error:
+            self.error_occurred.emit(merge_error)
+            return
+        if audio_data is None:
+            return
 
         # 以下操作不需要锁（audio_data 是局部变量）
         try:

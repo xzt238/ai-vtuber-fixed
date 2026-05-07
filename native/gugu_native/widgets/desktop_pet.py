@@ -15,12 +15,11 @@
 """
 
 import os
-import sys
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QMenu
 )
 from PySide6.QtCore import Qt, Signal, QPoint, QTimer
-from PySide6.QtGui import QPainter, QColor, QCursor, QAction
+from PySide6.QtGui import QAction
 
 # live2d-py 是可选依赖
 try:
@@ -54,6 +53,7 @@ class DesktopPetWindow(QWidget):
         super().__init__(parent)
         self._main_window = main_window
         self._drag_pos = QPoint()
+        self._drag_start_pos = QPoint()  # 记录按下位置，用于区分点击和拖拽
         self._model_loaded = False
         self._init_ui()
         self._init_menu()
@@ -167,6 +167,7 @@ class DesktopPetWindow(QWidget):
         """鼠标按下 — 记录拖拽起始位置"""
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._drag_start_pos = event.globalPosition().toPoint()  # 记录按下位置
         elif event.button() == Qt.MouseButton.RightButton:
             # 右键菜单
             self._menu.exec(event.globalPosition().toPoint())
@@ -179,13 +180,16 @@ class DesktopPetWindow(QWidget):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        """鼠标释放"""
+        """鼠标释放 — 仅在未拖拽时触发动作（移动距离 < 5px 视为点击）"""
         if event.button() == Qt.MouseButton.LeftButton and self.live2d_widget.model:
-            # 点击宠物 → 挥手动作
-            try:
-                self.live2d_widget.start_random_motion("TapBody")
-            except Exception:
-                pass
+            release_pos = event.globalPosition().toPoint()
+            distance = (release_pos - self._drag_start_pos).manhattanLength()
+            if distance < 5:
+                # 点击宠物 → 挥手动作
+                try:
+                    self.live2d_widget.start_random_motion("TapBody")
+                except Exception:
+                    pass
         super().mouseReleaseEvent(event)
 
     def closeEvent(self, event):

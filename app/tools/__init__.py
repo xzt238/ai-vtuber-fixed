@@ -695,18 +695,33 @@ class ToolFactory:
         "think": ThinkTool,         # 深度思考
         "architect": ArchitectTool, # 架构分析
     }
-    
+
+    # 伴侣工具（FC 专用）— 延迟导入避免循环依赖
+    _companion_tools_loaded = False
+
+    @classmethod
+    def _ensure_companion_tools(cls):
+        """延迟加载伴侣工具（避免启动时导入所有依赖）"""
+        if not cls._companion_tools_loaded:
+            try:
+                from .companion import COMPANION_TOOLS
+                cls._tools.update(COMPANION_TOOLS)
+                cls._companion_tools_loaded = True
+            except Exception as e:
+                print(f"[ToolFactory] 伴侣工具加载失败: {e}")
+
     @classmethod
     def create(cls, tool_name: str) -> Optional[Tool]:
         """
         【类方法】根据名称创建工具实例
 
         【参数说明】
-            tool_name (str): 工具名称（如 "read"、"bash"）
+            tool_name (str): 工具名称（如 "read"、"bash"、"get_time"）
 
         【返回值】
             Optional[Tool]: 工具实例；名称不存在时返回 None
         """
+        cls._ensure_companion_tools()
         tool_class = cls._tools.get(tool_name)
         return tool_class() if tool_class else None
     

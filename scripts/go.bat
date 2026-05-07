@@ -7,7 +7,7 @@ cd /d "%~dp0.."
 echo.
 echo ========================================
 echo    GuguGaga AI VTuber - Browser Mode
-echo    version: 1.9.82
+echo    version: 1.9.86
 echo ========================================
 echo.
 

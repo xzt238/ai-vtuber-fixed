@@ -1,6 +1,6 @@
 # 🖥️ 咕咕嘎嘎 AI-VTuber 原生桌面应用架构文档
 
-> **版本**: v1.0 | **适用项目版本**: v1.9.82+ | **日期**: 2026-05-05
+> **版本**: v1.1 | **适用项目版本**: v1.9.90+ | **日期**: 2026-05-07
 
 ---
 
@@ -207,20 +207,24 @@ self.addSubInterface(self.settings_page, FluentIcon.SETTING, "设置",
 **布局**：
 
 ```
-┌───────────────────────────────────────────────┐
-│ ┌─────────────┐  ┌────────────────────────┐  │
-│ │             │  │  聊天显示区              │  │
-│ │   Live2D    │  │  (QTextEdit, HTML气泡)  │  │
-│ │   Widget    │  │                         │  │
-│ │  (OpenGL)   │  │                         │  │
-│ │             │  ├────────────────────────┤  │
-│ │  380x480    │  │  输入栏卡片             │  │
-│ │             │  │  [📎][────输入框────][➤] │  │
-│ │             │  ├────────────────────────┤  │
-│ │             │  │  TTS工具栏 (单行)       │  │
-│ │             │  │  [TTS引擎][音色][🎤][🔊] │  │
-│ └─────────────┘  └────────────────────────┘  │
-└───────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────┐
+│ ┌─────────────┐  ┌────────────────────────────┐  │
+│ │             │  │  聊天显示区                  │  │
+│ │   Live2D    │  │  (QWebEngineView,           │  │
+│ │   Widget    │  │   Markdown/LaTeX 渲染)      │  │
+│ │  (OpenGL)   │  │                             │  │
+│ │             │  ├────────────────────────────┤  │
+│ │  380x480    │  │  会话管理栏                  │  │
+│ │             │  │  [新建会话][切换会话▼][搜索]  │  │
+│ │             │  ├────────────────────────────┤  │
+│ │             │  │  多行输入栏卡片              │  │
+│ │             │  │  [📎][────输入框────][➤]     │  │
+│ │             │  │  Ctrl+Enter 发送 / Enter换行 │  │
+│ │             │  ├────────────────────────────┤  │
+│ │             │  │  TTS工具栏 (单行)            │  │
+│ │             │  │  [TTS引擎][音色][🎤][🔊]     │  │
+│ └─────────────┘  └────────────────────────────┘  │
+└───────────────────────────────────────────────────┘
 ```
 
 **核心功能**：
@@ -228,6 +232,14 @@ self.addSubInterface(self.settings_page, FluentIcon.SETTING, "设置",
 | 功能 | 实现方式 |
 |------|---------|
 | 对话 | `_send_message()` → `backend.process_message()` → 流式显示 |
+| Markdown 渲染 | `markdown_renderer.py` → QWebEngineView 渲染 Markdown + LaTeX/KaTeX |
+| 聊天显示桥接 | `chat_web_display.py` → QWebChannel 双向通信 |
+| 多行输入 | `multi_line_input.py` → Ctrl+Enter 发送，Enter 换行 |
+| 会话管理 | `session_manager.py` → 多会话 CRUD、切换、持久化 |
+| 消息搜索 | `message_search.py` → 跨会话消息检索 |
+| 拖拽文件 | 拖拽文件到输入区 → 自动上传/OCR |
+| 引用回复 | 点击消息引用按钮 → 引用原消息回复 |
+| 编辑重发 | 编辑已发送消息 → 重新发送 |
 | TTS | `_speak_text()` → `backend.speak()` → QMediaPlayer 播放 |
 | 录音 | sounddevice 录音 → ASR → 发送消息 |
 | 实时语音 | `RealtimeVoiceManager` → VAD + ASR → 自动发送 |
@@ -237,20 +249,22 @@ self.addSubInterface(self.settings_page, FluentIcon.SETTING, "设置",
 | 主动说话 | `proactive._native_callback` → `_on_proactive_speech()` |
 | 聊天历史 | `_save_chat_history()` / `_load_chat_history()` → JSON 文件 |
 
-**对话气泡**（微信风格）：
-- AI 气泡：左对齐，灰色底 (#2a2d3e)，带 SVG 头像
+**对话气泡**（微信风格，QWebEngineView 渲染）：
+- AI 气泡：左对齐，灰色底 (#2a2d3e)，带 SVG 头像，Markdown + KaTeX 渲染
 - 用户气泡：右对齐，蓝色底 (#4263eb)，白字
 - 系统消息：居中胶囊标签
 - 时间戳：对话间隔 >3 分钟显示
 - 打字光标：流式回复时 ▍ 闪烁 (530ms)
 - 思考动画：●●● 轮转亮度
+- 引用回复：消息旁引用按钮，点击后输入框显示引用内容
+- 编辑重发：用户消息旁编辑按钮，修改后重新发送
 
 **流式回复实现**：
 ```python
 def _send_message(self):
     # 1. 在后台线程调用 LLM
     # 2. 使用 QTimer 轮询获取流式文本
-    # 3. 逐字追加到聊天显示区
+    # 3. 逐字追加到 QWebEngineView 聊天显示区（通过 QWebChannel）
     # 4. 每句完成时触发 TTS
     # 5. 完成后添加分隔线
 ```
@@ -389,7 +403,7 @@ def _send_message(self):
 │ 主动说话 [●]  间隔 [60___]秒                    │
 ├───────────────────────────────────────────────┤
 │ ℹ️ 关于                                         │
-│ 咕咕嘎嘎 AI-VTuber v1.9.82                    │
+│ 咕咕嘎嘎 AI-VTuber v1.9.90                    │
 │ GitHub: xzt238/ai-vtuber-fixed               │
 └───────────────────────────────────────────────┘
 ```
@@ -540,6 +554,96 @@ check_for_updates()
 - 主题循环
 - 模拟模式（无音频时）
 
+### 5.10 Markdown 渲染器 (`markdown_renderer.py`)
+
+**架构**：基于 QWebEngineView 的 Markdown/LaTeX 渲染组件。
+
+**核心能力**：
+- QWebEngineView 加载本地 HTML 页面，内嵌 marked.js + KaTeX
+- 支持完整 Markdown 语法（表格、代码块、列表等）
+- 支持行内 LaTeX (`$...$`) 和块级 LaTeX (`$$...$$`)，通过 KaTeX 渲染
+- 流式追加：通过 QWebChannel 桥接，逐字追加 Markdown 内容并实时渲染
+- 主题适配：根据当前主题动态切换 CSS（暗色/亮色代码块样式）
+
+**使用方式**：
+```python
+renderer = MarkdownRenderer(parent)
+renderer.set_markdown("# Hello\n$$E=mc^2$$")
+renderer.append_markdown("more **text**")
+```
+
+### 5.11 聊天 Web 显示桥接 (`chat_web_display.py`)
+
+**架构**：QWebChannel 双向通信桥，连接 Python 后端与 QWebEngineView 前端。
+
+**核心能力**：
+- `ChatBridge(QObject)` — 暴露给 JS 的 Python 对象
+- JS → Python：用户点击引用、编辑、复制等操作
+- Python → JS：追加消息、更新流式内容、切换主题
+- 消息格式化：Python 端生成 HTML 气泡，JS 端插入 DOM
+
+**桥接方法**：
+```python
+class ChatBridge(QObject):
+    on_quote = Signal(str)      # 引用回复
+    on_edit = Signal(str)       # 编辑重发
+    on_copy = Signal(str)       # 复制消息
+```
+
+### 5.12 多行输入组件 (`multi_line_input.py`)
+
+**架构**：支持多行文本输入的聊天输入框。
+
+**核心能力**：
+- QPlainTextEdit 替代 QLineEdit，支持多行输入
+- Ctrl+Enter 发送消息，Enter 换行
+- 自动调整高度（最小 1 行，最大 6 行）
+- 拖拽文件支持：拖入文件自动触发上传/OCR
+- 引用回复模式：显示引用内容条，Esc 取消引用
+- 发送信号：`message_sent(str)`
+
+**快捷键**：
+
+| 快捷键 | 动作 |
+|--------|------|
+| Ctrl+Enter | 发送消息 |
+| Enter | 换行 |
+| Esc | 取消引用回复 |
+
+### 5.13 会话管理器 (`session_manager.py`)
+
+**架构**：多会话管理组件，支持 CRUD、切换、持久化。
+
+**核心能力**：
+- 会话 CRUD：新建、重命名、删除会话
+- 会话切换：下拉框切换当前会话，自动保存/恢复聊天记录
+- 持久化：每个会话独立 JSON 文件存储于 `app/cache/sessions/`
+- 会话列表：显示会话标题 + 最后消息时间
+- 自动标题：根据首条消息自动生成会话标题
+- 信号：`session_switched(str)` / `session_created(str)` / `session_deleted(str)`
+
+### 5.14 消息搜索 (`message_search.py`)
+
+**架构**：跨会话消息搜索组件。
+
+**核心能力**：
+- 跨会话搜索：在所有会话中搜索消息内容
+- 实时过滤：输入时即时显示匹配结果
+- 搜索结果显示：消息摘要 + 所属会话 + 时间
+- 点击结果跳转：跳转到对应会话并定位到消息
+- 高亮匹配文本
+
+### 5.15 动画控制器 (`animation_controller.py`, v1.9.86+)
+
+**架构**：Live2D 空闲/表情动画控制器。
+
+**核心能力**：
+- 空闲动画：Live2D 模型待机时的微动效果（呼吸、眨眼、轻微晃动）
+- 情感动画：根据 AI 回复情感标签切换表情动画
+- 动画队列：支持动画排队播放，避免冲突
+- 平滑过渡：表情切换时使用参数插值，避免突变
+- 与 `Live2DWidget` 集成：通过 `set_expression()` / `play_motion()` 联动
+
 ---
 
 ## 6. 后端交互方式
@@ -681,7 +785,7 @@ build.bat
 
 | 页面/功能 | 完成度 | 说明 |
 |-----------|--------|------|
-| 对话页 | ⭐⭐⭐⭐ | 核心功能完整，流式回复+TTS+录音+Live2D |
+| 对话页 | ⭐⭐⭐⭐⭐ | Markdown渲染+多行输入+会话管理+搜索+引用回复完成 |
 | 训练页 | ⭐⭐⭐ | 基本可用，缺少精确进度反馈 |
 | 记忆页 | ⭐⭐⭐ | 展示完整，后端 API 部分缺失 |
 | 模型下载页 | ⭐⭐⭐⭐ | 功能完整 |
@@ -694,9 +798,9 @@ build.bat
 
 ### 9.2 P0 待改进（核心体验）
 
-| # | 问题 | 影响 | 建议方案 |
+| # | 问题 | 影响 | 状态/建议方案 |
 |---|------|------|---------|
-| 1 | 工具系统未激活 | LLM 无法使用 9 个内置工具 | 实施 Function Calling（见可行性报告） |
+| 1 | 工具系统 | LLM 使用内置工具 | FC 已通过 `fc_executor` 部分激活，持续完善中 |
 | 2 | 实时语音体验 | VAD 精度、降噪、断句 | 优化 VAD 参数 + 添加降噪 |
 | 3 | 流式回复与 TTS 协调 | 逐句 TTS 有时延迟 | 优化句子分割 + 预加载 |
 
@@ -707,7 +811,7 @@ build.bat
 | 4 | 记忆搜索/编辑不完整 | 用户无法有效管理记忆 | 完善 backend API + UI |
 | 5 | 训练进度不精确 | 用户不知道训练到哪一步 | 解析更多训练日志格式 |
 | 6 | MCP 工具集成 | 原生模式无 MCP 支持 | 添加 MCP 管理页面 |
-| 7 | 对话历史管理 | 无搜索/导出/清除功能 | 添加对话历史管理 |
+| 7 | 对话历史管理 | 无搜索/导出/清除功能 | ~~添加对话历史管理~~ ✅ 已完成（session_manager + message_search） |
 | 8 | 多窗口模式 | 无分离式窗口 | 支持 QDockWidget 拖出 |
 
 ### 9.4 P2 待改进（体验打磨）
@@ -811,7 +915,50 @@ if hasattr(self.window(), '_backend_ready') and self.window()._backend_ready:
 2. 在 `native/main.py` 的 `_on_hotkey_triggered()` 中添加处理
 3. 更新默认快捷键配置
 
-### 10.6 调试原生桌面
+### 10.6 QWebEngineView 开发指南
+
+**环境要求**：
+- PySide6 必须包含 `PySide6.QtWebEngineWidgets` 模块
+- 部分精简安装可能缺少此模块，需单独安装：`pip install PySide6-QtWebEngine`
+- QWebEngineView 初始化较慢（~200ms），建议延迟加载或在后台预创建
+
+**QWebChannel 桥接模式**：
+
+```python
+from PySide6.QtWebChannel import QChannel
+from PySide6.QtWebEngineWidgets import QWebEngineView
+
+# 1. 创建桥接对象（Python 端）
+class MyBridge(QObject):
+    response_ready = Signal(str)
+    
+    @Slot(str)
+    def handle_js_event(self, data):
+        # JS → Python
+        print(f"From JS: {data}")
+
+# 2. 绑定到 QWebEngineView
+bridge = MyBridge()
+channel = QChannel()
+channel.registerObject("bridge", bridge)
+view = QWebEngineView()
+view.page().setWebChannel(channel)
+
+# 3. 在 HTML/JS 中使用
+# <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+# new QWebChannel(qt.webChannelTransport, function(channel) {
+#     window.bridge = channel.objects.bridge;
+#     bridge.handle_js_event("hello");
+#     bridge.response_ready.connect(function(msg) { ... });
+# });
+```
+
+**注意事项**：
+- QWebChannel 的 Signal/Slot 跨线程安全，可直接在主线程使用
+- 流式内容更新建议批量追加，避免频繁 JS 调用导致性能问题
+- Markdown 渲染器 (`markdown_renderer.py`) 已封装此模式，新组件优先复用
+
+### 10.7 调试原生桌面
 
 ```bash
 # 直接运行，查看控制台输出
@@ -828,4 +975,4 @@ python -c "import live2d; print('live2d OK')"
 
 ---
 
-*本文档最后更新: 2026-05-05 | 适用版本: v1.9.82+*
+*本文档最后更新: 2026-05-07 | 适用版本: v1.9.90+*

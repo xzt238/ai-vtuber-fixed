@@ -1,7 +1,7 @@
 # 🏆 AI VTuber / Live2D 实时对话产品竞品差距分析
 
-> **分析日期**: 2026-05-06  
-> **对标产品**: 咕咕嘎嘎 AI VTuber v1.9.85  
+> **分析日期**: 2026-05-06 | **最后审阅**: 2026-05-07
+> **对标产品**: 咕咕嘎嘎 AI VTuber v1.9.90
 > **分析范围**: 开源 AI VTuber + Live2D 实时对话类产品
 
 ---
@@ -34,12 +34,12 @@
 | 自训练/微调模型 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅(核心优势) |
 | LLM 热切换 | ✅ | ✅ | ✅ | ❓ | ❌ | ❌ | ❌ |
 | RAG / 知识库 | ❌ | ✅(via Letta) | ✅(LangChain/Dify) | ❌ | ❌ | ❌ | ❌(未公开) |
-| Function Calling / 工具 | ⚠️(待激活) | ❌ | ✅ | ❌ | ❌ | ❌ | ✅(Neuro SDK) |
+| Function Calling / 工具 | ✅(已激活) | ❌ | ✅ | ❌ | ❌ | ❌ | ✅(Neuro SDK) |
 | 多 AI 群聊 | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅(Evil Neuro) |
 
 **🔍 差距识别**:
 - **RAG/知识库**: 咕咕嘎嘎缺乏 RAG 检索增强能力，Open-LLM-VTuber 通过 Letta/MemGPT 集成，Luna AI 通过 LangChain/Dify 集成
-- **Function Calling**: 工具系统虽已搭建但未激活，Neuro-sama 的 Neuro SDK 是标杆
+- **Function Calling**: ✅ 已于 v1.9.86 激活，fc_executor + companion tools 已上线
 - **Gemini 支持**: 缺少 Google Gemini 系列模型接入
 - **多 AI 群聊**: Open-LLM-VTuber 和 Neuro-sama 均支持
 
@@ -57,14 +57,14 @@
 | ElevenLabs | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Azure TTS | ❌ | ❌ | ✅ | ❌ | ❌ | ❌(隐含) | ✅ |
 | Fish-Speech | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| CosyVoice | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| ChatTTS | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| CosyVoice | ✅(v1.9.86) | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| ChatTTS | ✅(v1.9.87) | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | 语音转换 (SVC) | ❌ | ❌ | ✅(so-vits-svc) | ❌ | ❌ | ❌ | ❌ |
 | ASR 语音识别 | ✅(FunASR/faster-whisper) | ✅(sherpa-onnx) | ✅(SenseVoice) | ❓ | ✅(STT) | ✅ | ✅ |
 | 唱歌能力 | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅(独立模型) |
 
 **🔍 差距识别**:
-- **TTS 引擎丰富度**: Luna AI 支持 15+ TTS 引擎，咕咕嘎嘎仅 2 种 (GPT-SoVITS + Edge TTS)
+- **TTS 引擎丰富度**: Luna AI 支持 15+ TTS 引擎，咕咕嘎嘎现已扩展至 4 种 (GPT-SoVITS + Edge TTS + CosyVoice + ChatTTS)
 - **声音克隆是核心优势**: 内置训练面板是独有优势，但缺乏 SVC 声音转换层
 - **ElevenLabs/Azure TTS**: 缺少国际主流 TTS 引擎支持
 - **唱歌能力**: Neuro-sama 有独立唱歌模型，完全缺失
@@ -85,11 +85,11 @@
 | 透明窗口/置顶 | ✅ | ✅(Electron) | ❌ | ❌ | ✅ | ✅ | ❌ |
 | 模型自定义导入 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅(VRM) | ❌(专属模型) |
 | Wav2Lip/GeneFace 数字人 | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| 动作/姿态系统 | ❌ | ❌ | ❌ | ❌ | ✅ | ✅(VRM) | ✅(Live2D) |
+| 动作/姿态系统 | ✅(AnimationController) | ❌ | ❌ | ❌ | ✅ | ✅(VRM) | ✅(Live2D) |
 
 **🔍 差距识别**:
 - **VRM 3D 模型**: AIRI、Soul of Waifu、HoloWaifu 均支持 VRM，咕咕嘎嘎仅 Live2D
-- **动作/姿态系统**: 缺少 Live2D 表情-动作联动系统（如挥手、点头等主动动画）
+- **动作/姿态系统**: ✅ v1.9.86 已实现 AnimationController，支持情绪驱动主动动画（挥手/点头/摇头等）
 - **UE5 数字人**: Luna AI 支持 UE5+Audio2Face 全身数字人，差距巨大
 - **Wav2Lip 等实时人脸**: Luna AI 集成了多条数字人管线
 
@@ -145,15 +145,15 @@
 | 系统托盘 | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | 全局热键 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 开机自启 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Markdown 渲染聊天 | ✅(QWebEngineView) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Markdown 渲染聊天 | ✅(完整) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 代码高亮 | ✅(Pygments) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 多会话管理 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 消息搜索 | ✅(基础) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 多会话管理 | ✅(完整) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 消息搜索 | ✅(完整) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 自动更新 | ✅ | ✅(Git) | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 **🔍 差距识别**:
 - **原生桌面体验是核心优势**: PySide6 原生渲染 + Markdown + 代码高亮 + 多会话，在所有竞品中**独一无二**
-- **聊天 UI 领先**: QWebEngineView + Pygments 代码高亮，竞品基本只有纯文本
+- **聊天 UI 领先**: ✅ Markdown 渲染 + 代码高亮 + 多会话管理 + 消息搜索，竞品基本只有纯文本
 - **系统级功能完善**: 托盘/热键/自启，其他开源项目基本不具备
 - **缺少 Electron 版本**: Open-LLM-VTuber 和 AIRI 有 Electron 跨平台桌面版
 
@@ -256,8 +256,8 @@
 
 | # | 差距 | 现状 | 竞品标杆 | 影响 | 建议方向 |
 |---|------|------|----------|------|----------|
-| 1 | **Function Calling 未激活** | 工具系统已搭建但未启用 | Neuro-sama Neuro SDK | 无法让 AI 执行实际操作（查天气、控制电脑等），交互停留在"对话"层面 | 激活 LLM Function Calling，构建白名单工具集 |
-| 2 | **TTS 引擎数量不足** | 仅 GPT-SoVITS + Edge TTS | Luna AI 15+ TTS 引擎 | 用户选择受限，特别是国际用户无 ElevenLabs/Azure | 增加适配层，优先接入 CosyVoice、ChatTTS、Fish-Speech |
+| 1 | **Function Calling 已激活** | ✅ v1.9.86 已激活 fc_executor + companion tools | Neuro-sama Neuro SDK | 已实现核心工具调用能力，可继续扩展工具集 | 继续扩展工具列表，优化工具执行体验 |
+| 2 | **TTS 引擎扩展** | ✅ CosyVoice(v1.9.86) + ChatTTS(v1.9.87) 已接入 | Luna AI 15+ TTS 引擎 | 已从 2 种扩展到 4 种，仍可继续扩展 | 继续接入 Fish-Speech、ElevenLabs 等 |
 | 3 | **RAG/知识库缺失** | 仅向量检索用于记忆 | Open-LLM-VTuber Letta 集成 | 无法让 AI 基于外部文档回答，角色知识深度受限 | 构建 RAG 管线，支持文档导入+检索增强 |
 
 ### 🟡 P1 — 重要差距（影响用户体验与市场扩展）
@@ -278,7 +278,7 @@
 |---|------|------|----------|------|----------|
 | 11 | **Google Gemini 支持** | 无 | Open-LLM-VTuber/Luna AI | 缺少一个主流 LLM 选择 | 添加 Gemini API 适配器 |
 | 12 | **Docker 部署** | 无 | Luna AI | 服务器/云端部署不便 | 编写 Dockerfile + docker-compose |
-| 13 | **Live2D 主动动画** | 仅口型+表情切换 | Soul of Waifu/HoloWaifu | 角色无主动动作（挥手/点头/摇头），缺乏生命感 | 构建动作触发系统，根据情绪/场景自动播放 |
+| 13 | **Live2D 主动动画** | ✅ v1.9.86 AnimationController 已实现 | Soul of Waifu/HoloWaifu | 情绪驱动动画（挥手/点头/摇头）已上线，idle动画已支持 | 继续丰富动画库，增加场景触发 |
 | 14 | **多 AI 群聊** | 无 | Open-LLM-VTuber/Neuro-sama | 无法体验多角色互动 | 构建多 Agent 对话框架 |
 | 15 | **社交 Bot** | 无 | AIRI Discord/Telegram | 无法在其他平台使用 | 开发 Discord/Telegram Bot 接口 |
 | 16 | **摄像头视觉输入** | 无 | 无竞品支持 | 无法让 AI "看到"用户 | 长期规划，接入视觉模型 |
@@ -320,14 +320,14 @@
 
 ## 七、发展路线建议
 
-### Phase 1 — 补齐核心差距 (v2.0)
-1. **激活 Function Calling** — 让 AI 能执行实际操作
-2. **TTS 引擎扩展** — 接入 CosyVoice、ChatTTS、Fish-Speech
-3. **RAG 知识库** — 文档导入 + 检索增强生成
+### Phase 1 — 补齐核心差距 (v2.0) ✅ 大部分已完成
+1. ~~**激活 Function Calling**~~ — ✅ v1.9.86 已完成 (fc_executor + companion tools)
+2. ~~**TTS 引擎扩展**~~ — ✅ CosyVoice(v1.9.86) + ChatTTS(v1.9.87) 已接入
+3. **RAG 知识库** — 文档导入 + 检索增强生成（待实现）
 
 ### Phase 2 — 扩展能力边界 (v2.x)
 4. **VRM 3D 模型支持** — Three.js + VRM 加载器
-5. **Live2D 主动动画系统** — 情绪驱动动作
+5. ~~**Live2D 主动动画系统**~~ — ✅ v1.9.86 AnimationController 已实现
 6. **Bilibili 直播弹幕集成** — 进入直播场景
 7. **SVC 声音转换** — so-vits-svc 后处理层
 8. **macOS 适配** — 扩大用户群
@@ -346,8 +346,10 @@
 咕咕嘎嘎在**记忆系统、声音克隆、原生桌面体验、部署易用性**四个维度上拥有明确的护城河，综合评分在开源竞品中排名第二（67分），仅次于 Luna AI（71分）。
 
 主要差距集中在：
-- **交互深度不足**: Function Calling 未激活，AI 只能"说"不能"做"
-- **生态宽度不够**: TTS 引擎少、无直播集成、无游戏感知
-- **形象维度单一**: 仅 Live2D，缺 VRM 3D 和主动动画
+- ~~**交互深度不足**: Function Calling 未激活~~ → ✅ v1.9.86 已激活
+- ~~**TTS 引擎少**: 仅 2 种~~ → ✅ v1.9.86-87 扩展至 4 种 (CosyVoice + ChatTTS)
+- **RAG 知识库仍缺失**: 文档导入+检索增强尚未实现
+- **生态宽度待扩展**: 无直播集成、无游戏感知
+- **形象维度**: Live2D 主动动画已实现，但仍缺 VRM 3D
 
-建议优先激活 Function Calling（P0），这是从"聊天机器人"进化为"AI 伴侣"的关键一步，也是与 Neuro-sama 差距最大的维度。
+建议优先实现 RAG 知识库（Phase 1 唯一剩余项），这是补齐核心差距的最后一步。同时继续扩展 Function Calling 的工具集和 TTS 引擎生态。

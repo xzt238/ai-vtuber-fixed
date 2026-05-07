@@ -680,8 +680,9 @@ class LLMEngine(ABC):
         pass
     
     @abstractmethod
-    def stream_chat(self, message: str, history: List[Dict] = None, callback=None, 
-                    memory_system = None, chunk_size: int = 10) -> Dict[str, Any]:
+    def stream_chat(self, message: str, history: List[Dict] = None, callback=None,
+                    memory_system = None, chunk_size: int = 10,
+                    on_tool_call=None) -> Dict[str, Any]:
         """
         【抽象方法】流式对话接口（子类必须实现）
 
@@ -1053,7 +1054,8 @@ class MiniMaxLLM(LLMEngine):
         return {"text": text, "action": action}
 
     def stream_chat(self, message: str, history: List[Dict] = None, callback=None,
-                    memory_system = None, chunk_size: int = 10) -> Dict[str, Any]:
+                    memory_system = None, chunk_size: int = 10,
+                    on_tool_call=None) -> Dict[str, Any]:
         """
         【功能说明】流式对话（SSE 逐 chunk 回调）
 
@@ -1063,6 +1065,7 @@ class MiniMaxLLM(LLMEngine):
             callback: 每积累 chunk_size 个字符时触发，signature: callback(chunk: str)
             memory_system: 记忆系统实例
             chunk_size (int): 触发回调的字符数阈值（默认 10）
+            on_tool_call: FC 工具调用状态回调，signature: fn(tool_name, display_text, args)
 
         【返回值】
             Dict: {"text": 完整回复文本, "action": 动作指令或 None}
@@ -1087,7 +1090,7 @@ class MiniMaxLLM(LLMEngine):
                 # 根据格式分发到对应流式实现
                 if self._is_anthropic:
                     return self._stream_anthropic(message, history, callback, memory_system, chunk_size)
-                return self._stream_openai(message, history, callback, memory_system, chunk_size)
+                return self._stream_openai(message, history, callback, memory_system, chunk_size, on_tool_call)
             except Exception as e:
                 last_error = e
                 error_str = str(e)
@@ -1105,7 +1108,7 @@ class MiniMaxLLM(LLMEngine):
         # M5修复: 中断时返回已有的部分响应而非丢弃
         return {"text": "", "action": None, "_stream_error": str(last_error)}
 
-    def _stream_openai(self, message: str, history, callback, memory_system, chunk_size) -> Dict[str, Any]:
+    def _stream_openai(self, message: str, history, callback, memory_system, chunk_size, on_tool_call=None) -> Dict[str, Any]:
         """
         【功能说明】OpenAI 兼容格式的 SSE 流式对话
 
@@ -1134,35 +1137,66 @@ class MiniMaxLLM(LLMEngine):
         if self.group_id:
             data["group_id"] = self.group_id
 
+        # v2.0: Function Calling — 添加工具定义
+        try:
+            from app.tools.fc_executor import get_tool_schemas
+            tool_schemas = get_tool_schemas()
+            if tool_schemas:
+                data["tools"] = tool_schemas
+                data["tool_choice"] = "auto"
+        except Exception as e:
+            print(f"[LLM] FC 工具 schema 加载失败(不影响对话): {e}")
+
         # base_url 已含 /v1，直接拼接 /chat/completions
         url = f"{self.base_url}/chat/completions"
         # stream=True: requests 不立即读取响应体，而是保持连接流式读取
         response = self._session.post(url, json=data, timeout=120, stream=True)
         response.raise_for_status()
-        
+
         full_text = ""   # 完整回复文本（累积）
         buffer = ""      # 待触发回调的缓冲区
         in_thinking = False  # Qwen3 thinking 标签跟踪
-        
+        tool_calls_accum = {}  # v2.0: FC 累积 tool_calls
+
         # iter_lines(): 逐行读取 SSE 流，自动处理分块传输编码
         for line in response.iter_lines():
             if not line:
                 continue  # 跳过 SSE 的空行分隔符
-            
+
             line = line.decode('utf-8')
             if not line.startswith("data: "):
                 continue  # 只处理数据行，忽略注释行（以 ":" 开头）
-            
+
             data_str = line[6:]  # 去掉 "data: " 前缀，提取 JSON 数据
             if data_str == "[DONE]":
                 break  # 流结束标记
-            
+
             try:
                 chunk = json.loads(data_str)
+                choice = chunk["choices"][0]
                 # OpenAI SSE 格式：choices[0].delta.content 包含增量文本
-                delta = chunk["choices"][0].get("delta", {})
+                delta = choice.get("delta", {})
                 content = delta.get("content") or ""
-                
+
+                # v2.0: FC — 累积 tool_calls delta
+                delta_tool_calls = delta.get("tool_calls")
+                if delta_tool_calls:
+                    for tc_delta in delta_tool_calls:
+                        idx = tc_delta.get("index", 0)
+                        if idx not in tool_calls_accum:
+                            tool_calls_accum[idx] = {
+                                "id": "",
+                                "type": "function",
+                                "function": {"name": "", "arguments": ""}
+                            }
+                        if tc_delta.get("id"):
+                            tool_calls_accum[idx]["id"] = tc_delta["id"]
+                        func_delta = tc_delta.get("function", {})
+                        if func_delta.get("name"):
+                            tool_calls_accum[idx]["function"]["name"] += func_delta["name"]
+                        if func_delta.get("arguments"):
+                            tool_calls_accum[idx]["function"]["arguments"] += func_delta["arguments"]
+
                 if content:
                     # Qwen3 thinking 模式：跳过 <think >...</think > 内容
                     if "<think" in content and ">" in content:
@@ -1174,24 +1208,58 @@ class MiniMaxLLM(LLMEngine):
                             continue
                     if in_thinking:
                         continue
-                    
+
                     full_text += content   # 累积到完整文本
                     buffer += content      # 累积到回调缓冲区
-                    
+
                     # 缓冲区达到 chunk_size 时触发回调（通知 TTS 开始合成）
                     if len(buffer) >= chunk_size and callback:
                         callback(buffer)
                         buffer = ""  # 清空缓冲区
             except:
                 continue  # 单行解析失败不中断流式处理
-        
+
+        # v2.0: FC — 检查是否有 tool_calls 需要执行
+        # 修复：原条件 `tool_calls_accum and (finish_reason == "tool_calls" or tool_calls_accum)`
+        # 等价于 `tool_calls_accum`（始终为 True），修正为仅检查 finish_reason
+        finish_reason = choice.get("finish_reason", "") if 'choice' in dir() and 'chunk' in dir() else ""
+        if tool_calls_accum and finish_reason == "tool_calls":
+            tool_calls_list = [tool_calls_accum[i] for i in sorted(tool_calls_accum.keys())]
+            print(f"[LLM] FC 检测到 {len(tool_calls_list)} 个工具调用")
+            try:
+                from app.tools.fc_executor import handle_tool_calls_stream
+                fc_result = handle_tool_calls_stream(
+                    tool_calls=tool_calls_list,
+                    messages=messages,
+                    session=self._session,
+                    base_url=self.base_url,
+                    model=self.model,
+                    api_key=self.api_key,
+                    max_tokens=self.max_tokens,
+                    on_chunk=callback,
+                    chunk_size=chunk_size,
+                    on_tool_call=on_tool_call,
+                )
+                fc_text = fc_result.get("text", "")
+                _ui_actions = fc_result.get("_ui_actions", [])
+                if fc_text:
+                    return {"text": fc_text, "action": None, "_ui_actions": _ui_actions}
+                tool_summary_parts = []
+                for tr in fc_result.get("tool_results", []):
+                    tool_summary_parts.append(tr.get("result", {}).get("content", ""))
+                return {"text": "\n".join(tool_summary_parts) or "工具已执行", "action": None, "_ui_actions": _ui_actions}
+            except Exception as e:
+                print(f"[LLM] FC 执行失败: {e}")
+                if full_text:
+                    return {"text": full_text, "action": None}
+
         # 流结束后兜底清理
         full_text = _strip_thinking(full_text)
-        
+
         # 流结束后，发送缓冲区中剩余的文本片段
         if buffer and callback:
             callback(buffer)
-        
+
         action_str = _parse_action(full_text)
         action = json.loads(action_str) if action_str else None
         return {"text": full_text, "action": action}
@@ -1424,9 +1492,16 @@ class OpenAILLM(LLMEngine):
             text = msg.get("content") or ""  # Qwen3 thinking 模式下 content 可能为 None
             # 兜底清理：<think >...</think > 标签（部分 Qwen3 版本会输出到 content 中）
             text = _strip_thinking(text)
-            action_str = _parse_action(text)
-            
-            ret = {"text": text, "action": action_str}
+            action = _parse_action(text)
+            # 统一返回格式：action 始终为解析后的 dict 或 None（与 MiniMax 等一致）
+            if isinstance(action, str):
+                try:
+                    import json as _json
+                    action = _json.loads(action)
+                except (ValueError, TypeError):
+                    action = None
+
+            ret = {"text": text, "action": action}
             # v1.8: 缓存写入加锁
             with self._cache_lock:
                 self._cache[cache_key] = (ret, time.time())
@@ -1541,7 +1616,8 @@ class OpenAILLM(LLMEngine):
             return {"text": f"Ollama 流式错误: {str(e)}", "action": None}
 
     def stream_chat(self, message: str, history: List[Dict] = None, callback=None,
-                    memory_system = None, chunk_size: int = 10) -> Dict[str, Any]:
+                    memory_system = None, chunk_size: int = 10,
+                    on_tool_call=None) -> Dict[str, Any]:
         """
         【功能说明】OpenAI SSE 真流式对话（v1.8 升级）
 
@@ -1580,16 +1656,27 @@ class OpenAILLM(LLMEngine):
                 "stream": True,  # 启用 SSE 流式模式
             }
 
+            # v2.0: Function Calling — 添加工具定义
+            try:
+                from app.tools.fc_executor import get_tool_schemas
+                tool_schemas = get_tool_schemas()
+                if tool_schemas:
+                    data["tools"] = tool_schemas
+                    data["tool_choice"] = "auto"
+            except Exception as e:
+                print(f"[LLM] FC 工具 schema 加载失败(不影响对话): {e}")
+
             response = self._session.post(
                 f"{self.base_url}/chat/completions",
                 json=data, timeout=120, stream=True
             )
             response.raise_for_status()
-            
+
             full_text = ""
             buffer = ""
             in_thinking = False  # Qwen3 thinking 标签跟踪
-            
+            tool_calls_accum = {}  # 累积 tool_calls (按 index 分组)
+
             # 逐行处理 SSE 数据流
             for line in response.iter_lines():
                 if not line:
@@ -1600,13 +1687,35 @@ class OpenAILLM(LLMEngine):
                 data_str = line[6:]
                 if data_str == "[DONE]":
                     break  # 流结束
-                
+
                 try:
                     chunk = json.loads(data_str)
-                    # OpenAI SSE：choices[0].delta.content 为增量文本
-                    delta = chunk["choices"][0].get("delta", {})
+                    choice = chunk["choices"][0]
+                    delta = choice.get("delta", {})
                     content = delta.get("content") or ""  # content 可能为 None
-                    
+
+                    # v2.0: FC — 累积 tool_calls delta
+                    delta_tool_calls = delta.get("tool_calls")
+                    if delta_tool_calls:
+                        for tc_delta in delta_tool_calls:
+                            idx = tc_delta.get("index", 0)
+                            if idx not in tool_calls_accum:
+                                tool_calls_accum[idx] = {
+                                    "id": "",
+                                    "type": "function",
+                                    "function": {"name": "", "arguments": ""}
+                                }
+                            # 累积 id
+                            if tc_delta.get("id"):
+                                tool_calls_accum[idx]["id"] = tc_delta["id"]
+                            # 累积 function name
+                            func_delta = tc_delta.get("function", {})
+                            if func_delta.get("name"):
+                                tool_calls_accum[idx]["function"]["name"] += func_delta["name"]
+                            # 累积 function arguments
+                            if func_delta.get("arguments"):
+                                tool_calls_accum[idx]["function"]["arguments"] += func_delta["arguments"]
+
                     if content:
                         # Qwen3 thinking 模式：跳过 <think >...</think > 内容
                         # 检测 thinking 开始
@@ -1622,7 +1731,7 @@ class OpenAILLM(LLMEngine):
                         # thinking 中的内容不回调和不累积到 buffer
                         if in_thinking:
                             continue
-                        
+
                         full_text += content
                         buffer += content
                         # 缓冲区达到阈值时触发 TTS 回调
@@ -1631,14 +1740,53 @@ class OpenAILLM(LLMEngine):
                             buffer = ""
                 except:
                     continue
-            
+
+            # v2.0: FC — 检查是否有 tool_calls 需要执行
+            finish_reason = choice.get("finish_reason", "") if chunk.get("choices") else ""
+            if tool_calls_accum and (finish_reason == "tool_calls" or tool_calls_accum):
+                # 将累积的 tool_calls 转为列表
+                tool_calls_list = [tool_calls_accum[i] for i in sorted(tool_calls_accum.keys())]
+                print(f"[LLM] FC 检测到 {len(tool_calls_list)} 个工具调用")
+
+                try:
+                    from app.tools.fc_executor import handle_tool_calls_stream
+                    fc_result = handle_tool_calls_stream(
+                        tool_calls=tool_calls_list,
+                        messages=messages,
+                        session=self._session,
+                        base_url=self.base_url,
+                        model=self.model,
+                        api_key=self.api_key,
+                        max_tokens=self.max_tokens,
+                        on_chunk=callback,
+                        chunk_size=chunk_size,
+                        on_tool_call=on_tool_call,
+                    )
+                    # 合并工具结果到最终回复
+                    fc_text = fc_result.get("text", "")
+                    _ui_actions = fc_result.get("_ui_actions", [])
+                    if fc_text:
+                        return {"text": fc_text, "action": None, "_ui_actions": _ui_actions}
+                    else:
+                        # 工具执行了但 LLM 没有生成自然语言回复，拼接工具结果
+                        tool_summary_parts = []
+                        for tr in fc_result.get("tool_results", []):
+                            tool_summary_parts.append(tr.get("result", {}).get("content", ""))
+                        return {"text": "\n".join(tool_summary_parts) or "工具已执行", "action": None, "_ui_actions": _ui_actions}
+                except Exception as e:
+                    print(f"[LLM] FC 执行失败: {e}")
+                    # FC 失败不影响对话，返回已有的文本内容
+                    if full_text:
+                        return {"text": full_text, "action": None}
+                    return {"text": f"工具调用执行出错: {str(e)}", "action": None}
+
             # 流结束后兜底清理 thinking 标签
             full_text = _strip_thinking(full_text)
-            
+
             # 发送剩余缓冲区内容
             if buffer and callback:
                 callback(buffer)
-            
+
             action_str = _parse_action(full_text)
             action = json.loads(action_str) if action_str else None
             return {"text": full_text, "action": action}
@@ -1787,19 +1935,22 @@ class AnthropicLLM(LLMEngine):
             result = response.json()
             # Anthropic 回复格式：content[0].text
             text = result["content"][0]["text"]
-            action_str = _parse_action(text)
+            # 清理 <think/> 标签（部分 Anthropic 模型会泄漏思维链标签）
+            text = _strip_thinking(text)
+            action = _parse_action(text)
             
-            ret = {"text": text, "action": action_str}
+            ret = {"text": text, "action": action}
             # v1.8: 缓存写入加锁
             with self._cache_lock:
                 self._cache[cache_key] = (ret, time.time())
-            
+
             return ret
         except Exception as e:
             return {"text": f"对话错误: {str(e)}", "action": None}
 
     def stream_chat(self, message: str, history: List[Dict] = None, callback=None,
-                    memory_system = None, chunk_size: int = 10) -> Dict[str, Any]:
+                    memory_system = None, chunk_size: int = 10,
+                    on_tool_call=None) -> Dict[str, Any]:
         """
         【功能说明】Anthropic SSE 真流式对话（v1.8 升级）
 

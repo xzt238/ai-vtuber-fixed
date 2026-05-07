@@ -712,7 +712,8 @@ class LauncherAPI:
                     for part in line.split():
                         if part.startswith("v") and any(c.isdigit() for c in part):
                             return part
-        return "1.9.82"
+        from app.version import VERSION
+        return VERSION
 
     def isDesktop(self) -> bool:
         return True
@@ -833,8 +834,9 @@ def _acquire_single_instance_lock():
         # 自动保存/恢复 Windows last error，防止被 Python 内部覆盖
         kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
         
-        # Local\\ 前缀不需要管理员权限（Global\\ 需要 SeCreateGlobalPrivilege）
-        mutex_name = "Local\\GuguGaga_AI_VTuber_SingleInstance"
+        # 互斥体名称统一管理（与 native 模式共享同一前缀，互相可检测）
+        from app.shared_config import MUTEX_NAME_LAUNCHER
+        mutex_name = MUTEX_NAME_LAUNCHER
         # CreateMutexW: 创建或打开命名互斥体
         _MUTEX_HANDLE = kernel32.CreateMutexW(None, True, mutex_name)
         # 关键: 用 ctypes.get_last_error() 而不是 kernel32.GetLastError()

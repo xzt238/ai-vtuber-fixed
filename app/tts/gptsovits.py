@@ -914,45 +914,22 @@ class GPTSoVITSEngine:
 
         # 确保 text 以标点结尾
         if text:
-            # v1.5.3 清理 emoji（GPT-SoVITS 无法处理 emoji）
+            # v1.9.89: 统一由 text_enhancer 处理所有文本清理和增强
+            # 不再在 gptsovits.py 中重复做 emoji/markdown/连字符清理
+            try:
+                from app.tts.text_enhancer import enhance_text
+                text = enhance_text(text)
+            except Exception:
+                pass
+
+            # 引擎兜底：确保文本以标点结尾
             import re as _re
-            text = _re.sub(r'[\U00010000-\U0010FFFF]', '', text)  # 4字节 emoji
-            text = _re.sub(r'[\u2000-\u2BFF]', '', text)  # 符号区
-            # v1.5.4 修复：替换换行符，防止 GPT-SoVITS 内部 pre_seg_text() 按 \n 切分
-            text = text.replace('\n', '，').replace('\r', '')
-            # v1.7.5 清理 markdown 格式符号（LLM 输出常包含 markdown，TTS 无法处理）
-            text = _re.sub(r'-{2,}', '，', text)                # --- 横线 → 逗号（避免前后文字粘连）
-            text = _re.sub(r'\*{1,3}([^*]+)\*{1,3}', r'\1', text)  # **bold** / *italic* → 纯文字
-            text = _re.sub(r'#{1,6}\s*', '', text)            # ## heading → 删除标记
-            text = _re.sub(r'(?<=[，,。.！!？?；;：:])\s*[-*+]\s*', '', text)  # 标点后 - list → 删除标记（含无空格情况）
-            text = _re.sub(r'^\s*[-*+]\s*', '', text)                                # 行首 - list → 删除标记
-            text = _re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)  # [link](url) → link text
-            # v1.7.5b 额外清理：反引号 code、括号说明
-            text = _re.sub(r'`([^`]+)`', r'\1', text)           # `code` → code（去除反引号，保留内容）
-            text = _re.sub(r'\([^)]*\)', '', text)              # (说明性文字) → 删除（如 (Terminal/Log)）
-            # v1.9.21: 彻底清理所有横杠/减号（GPT-SoVITS 内部把 - 当标点，会读成"减"）
-            # 策略：先把所有 - 替换为逗号，再恢复英文复合词中的连字符
-            # 这样确保没有任何横杠到达 GPT-SoVITS，同时保留 GPT-SoVITS、v1.9-beta、5-10 等
-            text = text.replace('-', '，')
-            text = _re.sub(r'([a-zA-Z0-9])，([a-zA-Z0-9])', r'\1-\2', text)  # 恢复英文复合词连字符
+            if text and text[-1] not in '。！？.!?':
+                text += "。"
             text = text.strip()
 
-        # v1.6.7 修复: 清理 LLM 异常输出的连续标点（如 。，，。。等）
-        # 在分句前做预处理，避免连续标点被切成空句
-        if text:
-            import re as _re
-            # 合并连续的同类标点：。。。→。，，，→，
-            # 但保留交替模式如 ？！（不要合成 ?!）
-            for punct_group in [
-                r'([。\.]{2,})', r'([！!]{2,})', r'([？?]{2,})',
-                r'([，,]{2,})', r'([、]{2,})', r'([；;]{2,})', r'([：:]{2,})'
-            ]:
-                text = _re.sub(punct_group, lambda m: m.group(1)[0], text)
-            # 清理标点+空格混合（如 "。  " → "。"）
-            text = _re.sub(r'([。！？.!?])\s+([。！？.!?])', r'\1\2', text)
-            # 清理句首标点（如 "。你好" → "你好"）
-            text = _re.sub(r'^[，,、；：。！？.!?]+', '', text)
-            text = text.strip()
+        # v1.9.89: 连续标点清理已由 text_enhancer Step 7.5 统一处理
+        # 这里仅做引擎级兜底检查
             if not text:
                 return output_path  # 清理后为空，直接返回
 
@@ -1179,30 +1156,16 @@ class GPTSoVITSEngine:
         # GPT-SoVITS 可能还按逗号切分，所以把逗号也替换成空格
         # 空格不会触发切分，保持文本连贯
         if sentence:
-            # 清理 emoji（GPT-SoVITS 无法处理 emoji，会导致截断）
+            # v1.9.89: 统一由 text_enhancer 处理所有文本清理和增强
+            try:
+                from app.tts.text_enhancer import enhance_text
+                sentence = enhance_text(sentence)
+            except Exception:
+                pass
+
+            # 流式模式特有：逗号替换为空格（避免 GPT-SoVITS 按逗号切分导致流式碎片化）
             import re as _re
-            sentence = _re.sub(r'[\U00010000-\U0010FFFF]', '', sentence)  # 4字节 emoji（\U 大写 = 8位十六进制）
-            # v1.9.20 修复：缩窄符号清理范围，避免删除英文字母和数字
-            # 旧代码 [\u1F300-\u1F9FF] 是严重 Bug！\u 只支持4位十六进制，
-            # Python 把 \u1F300 解析为 \u1F30 + '0'，字符范围恰好覆盖全部英文字母！
-            # 正确的 emoji 清理已由 \U00010000-\U0010FFFF 覆盖
-            sentence = _re.sub(r'[\u2000-\u2BFF]', '', sentence)  # 通用符号区（不含英文字母/数字）
-            # 清理 markdown 格式符号（与 speak() 方法对齐）
-            sentence = _re.sub(r'-{2,}', '，', sentence)                # --- 横线 → 逗号
-            sentence = _re.sub(r'\*{1,3}([^*]+)\*{1,3}', r'\1', sentence)  # **bold** → 纯文字
-            sentence = _re.sub(r'#{1,6}\s*', '', sentence)            # ## heading → 删除标记
-            sentence = _re.sub(r'(?<=[，,。.！!？?；;：:])\s*[-*+]\s*', '', sentence)  # 标点后 - list → 删除
-            sentence = _re.sub(r'^\s*[-*+]\s*', '', sentence)         # 行首 - list → 删除
-            sentence = _re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', sentence)  # [link](url) → link
-            sentence = _re.sub(r'`([^`]+)`', r'\1', sentence)         # `code` → code
-            sentence = _re.sub(r'\([^)]*\)', '', sentence)            # (说明性文字) → 删除
-            # v1.9.21: 彻底清理所有横杠/减号（GPT-SoVITS 内部把 - 当标点，会读成"减"）
-            # 策略：先把所有 - 替换为逗号，再恢复英文复合词中的连字符
-            # 这样确保没有任何横杠到达 GPT-SoVITS，同时保留 GPT-SoVITS、v1.9-beta、5-10 等
-            sentence = sentence.replace('-', '，')
-            sentence = _re.sub(r'([a-zA-Z0-9])，([a-zA-Z0-9])', r'\1-\2', sentence)  # 恢复英文复合词连字符
-            sentence = sentence.replace('\n', ' ').replace('\r', '').replace('，', ' ').replace(',', ' ')
-            # 清理多余空格
+            sentence = sentence.replace('，', ' ').replace(',', ' ')
             sentence = ' '.join(sentence.split())
             if sentence and sentence[-1] not in '。！？.!?':
                 sentence += "。"

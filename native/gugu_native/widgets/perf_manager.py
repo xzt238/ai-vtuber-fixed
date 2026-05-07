@@ -121,7 +121,9 @@ class PerformanceManager(QObject):
             proc = psutil.Process(os.getpid())
             return proc.memory_info().rss / (1024 * 1024)
         except ImportError:
-            # psutil 不可用时用 Windows API 回退
+            # psutil 不可用时用 Windows API 回退（仅 Windows 平台）
+            if sys.platform != "win32":
+                return 0.0
             try:
                 import ctypes
                 kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)

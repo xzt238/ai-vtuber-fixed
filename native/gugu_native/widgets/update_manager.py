@@ -8,7 +8,8 @@
 - 支持跳过版本
 
 使用方式:
-    manager = UpdateManager("xzt238/ai-vtuber-fixed", current_version="1.9.64")
+    from app.version import VERSION
+    manager = UpdateManager("xzt238/ai-vtuber-fixed", current_version=VERSION)
     manager.check_done.connect(on_check_result)
     manager.download_progress.connect(on_progress)
     manager.download_done.connect(on_download_done)
@@ -74,16 +75,41 @@ class CheckUpdateWorker(QThread):
 
     @staticmethod
     def _compare_versions(v1: str, v2: str) -> bool:
-        """比较版本号，v1 > v2 返回 True"""
+        """比较版本号，v1 > v2 返回 True
+
+        支持数字和带后缀的版本号，如 "1.9.86" 和 "1.9.88-hotfix"
+        后缀部分按字典序比较（hotfix > beta > alpha 等）
+        """
+        import re
         try:
-            parts1 = [int(x) for x in v1.split(".")]
-            parts2 = [int(x) for x in v2.split(".")]
+            # 分离版本号和后缀：1.9.88-hotfix → ("1.9.88", "hotfix")
+            def _parse(v):
+                match = re.match(r'^([\d.]+)(?:[-.]?(\w+))?$', v.strip())
+                if not match:
+                    return [0], ""
+                nums = [int(x) for x in match.group(1).split('.')]
+                suffix = match.group(2) or ""
+                return nums, suffix
+
+            parts1, suffix1 = _parse(v1)
+            parts2, suffix2 = _parse(v2)
+
             # 补齐长度
             while len(parts1) < len(parts2):
                 parts1.append(0)
             while len(parts2) < len(parts1):
                 parts2.append(0)
-            return parts1 > parts2
+
+            # 先比较数字部分
+            if parts1 != parts2:
+                return parts1 > parts2
+
+            # 数字相同则比较后缀（无后缀 > 有后缀，即正式版 > 预发布版）
+            if not suffix1 and suffix2:
+                return True  # v1 是正式版，v2 是预发布
+            if suffix1 and not suffix2:
+                return False  # v1 是预发布，v2 是正式版
+            return suffix1 > suffix2  # 都有后缀，按字典序
         except Exception:
             return False
 
@@ -143,8 +169,15 @@ class UpdateManager(QObject):
     download_done = Signal(str)
     error = Signal(str)
 
-    def __init__(self, repo="xzt238/ai-vtuber-fixed", current_version="1.9.64", parent=None):
+    def __init__(self, repo="xzt238/ai-vtuber-fixed", current_version=None, parent=None):
         super().__init__(parent)
+        # 默认版本号从 app/version.py 读取，确保与项目版本一致
+        if current_version is None:
+            try:
+                from app.version import VERSION
+                current_version = VERSION
+            except ImportError:
+                current_version = "1.9.90"
         self.repo = repo
         self.current_version = current_version
         self._check_worker = None

@@ -457,26 +457,20 @@ assets/model/
 - https://github.com/guansss/pixi-live2d-demo
 """
         (web_dir / "README.md").write_text(readme)
-        
-        # 切换工作目录到 web 目录（HTTP 服务器的根目录）
-        os.chdir(web_dir)
-        
-        # 静默日志的 HTTP 处理器
+
+        # 使用 SimpleHTTPRequestHandler 的 directory 参数指定服务目录
+        # 不再使用 os.chdir()，避免影响整个进程的相对路径解析
+        _web_dir = str(web_dir)  # 闭包捕获
+
         class Handler(http.server.SimpleHTTPRequestHandler):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, directory=_web_dir, **kwargs)
+
             def log_message(self, format, *args):
-                """
-                【内部方法】抑制 HTTP 服务器的日志输出
-
-                【参数说明】
-                    format: 日志格式字符串
-                    *args: 日志参数
-
-                【返回值】
-                    无
-                """
                 pass  # 抑制每条请求的日志输出
-        
-        # 启动 TCP 服务器
+
+        # 启动 TCP 服务器（allow_reuse_address 避免端口占用重启失败）
+        socketserver.TCPServer.allow_reuse_address = True
         with socketserver.TCPServer(("", self.port), Handler) as httpd:
             print(f"\n🎭 Live2D服务: http://localhost:{self.port}")
             print(f"📁 模型目录: {assets_dir}")

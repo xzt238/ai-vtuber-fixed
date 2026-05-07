@@ -78,9 +78,35 @@ class TTSEngine(ABC):
     """
 
     # 类级别的播放状态（所有 TTS 实例共享，实现全局唯一播放）
-    _current_process = None       # 当前播放音频的子进程对象（subprocess.Popen）
-    _current_audio_file = None    # 当前播放的音频文件路径
-    _is_playing = False           # 是否正在播放的标志
+    # 使用 property 桥接，保持 self._is_playing 等访问方式不变
+    # 但实际数据存储在类变量 _cls_* 中，避免实例变量遮蔽类变量
+    _cls_current_process = None       # 当前播放音频的子进程对象
+    _cls_current_audio_file = None    # 当前播放的音频文件路径
+    _cls_is_playing = False           # 是否正在播放
+
+    @property
+    def _is_playing(self):
+        return TTSEngine._cls_is_playing
+
+    @_is_playing.setter
+    def _is_playing(self, value):
+        TTSEngine._cls_is_playing = value
+
+    @property
+    def _current_process(self):
+        return TTSEngine._cls_current_process
+
+    @_current_process.setter
+    def _current_process(self, value):
+        TTSEngine._cls_current_process = value
+
+    @property
+    def _current_audio_file(self):
+        return TTSEngine._cls_current_audio_file
+
+    @_current_audio_file.setter
+    def _current_audio_file(self, value):
+        TTSEngine._cls_current_audio_file = value
 
     @abstractmethod
     def speak(self, text: str, output_path: str = None) -> Optional[str]:
@@ -418,6 +444,14 @@ class EdgeTTS(TTSEngine):
         if output_path is None:
             output_path = self._get_output_path()
 
+        # v1.9.89: 文本增强（与 GPT-SoVITS 统一处理）
+        # Edge TTS 不理解 [laugh] 等标记，需要先转为纯文本
+        try:
+            from app.tts.text_enhancer import enhance_text
+            text = enhance_text(text)
+        except Exception:
+            pass
+
         # 4. 重试循环
         last_error = None
         for attempt in range(self._max_retries):
@@ -594,7 +628,7 @@ class TTSFactory:
         【内部静态方法】根据 provider 名称创建具体的引擎实例
 
         【参数说明】
-            provider (str): 引擎名称（"edge" 或 "gptsovits"）
+            provider (str): 引擎名称（"edge" / "gptsovits" / "chattts" / "cosyvoice"）
             provider_config (Dict): 该引擎的专属配置
             full_config (Dict): 完整的 TTS 配置（用于跨引擎共享参数）
 
@@ -613,5 +647,13 @@ class TTSFactory:
             provider_config = dict(provider_config)  # 避免修改原始配置
             provider_config.setdefault("root_dir", _get_gptsovits_model_dir())
             return GPTSoVITSEngine(provider_config)
+        elif provider == "chattts":
+            # ChatTTS — 专为对话设计的 TTS，笑声/停顿自然
+            from .chattts import ChatTTSEngine
+            return ChatTTSEngine(provider_config)
+        elif provider == "cosyvoice":
+            # CosyVoice — 阿里通义 TTS，支持情感控制
+            from .cosyvoice import CosyVoiceEngine
+            return CosyVoiceEngine(provider_config)
         else:
             raise ValueError(f"未知 TTS 提供商: {provider}")

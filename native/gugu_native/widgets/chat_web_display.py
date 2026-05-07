@@ -49,10 +49,17 @@ _CHAT_HTML_TEMPLATE = """
 <meta charset="utf-8">
 <!-- 内嵌 qwebchannel.js — QWebChannel 桥接必须库 -->
 <script>{qwebchannel_js}</script>
-<!-- KaTeX CDN — LaTeX 公式渲染（async 不阻塞页面初始化） -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<!-- KaTeX CDN — LaTeX 公式渲染（全部 async，离线时不阻塞页面加载） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" media="print" id="katex-css">
 <script async src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script>
+// KaTeX CSS 加载完成后再应用（media="print" 是加载技巧，JS 激活后才真正渲染样式）
+setTimeout(function() {{
+  var css = document.getElementById('katex-css');
+  if (css) css.setAttribute('media', 'all');
+}}, 3000);
+</script>
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 
@@ -570,14 +577,19 @@ function updateStreaming(text) {{
   if (!streamingMsg) return;
   streamingMsg.text = text;
 
-  // 使用 pyBridge 的渲染方法
-  if (pyBridge) {{
-    pyBridge.renderMarkdown(text, function(html) {{
+  // 使用 pyBridge 的同步渲染方法（renderMarkdownSync 直接返回 HTML 字符串）
+  if (pyBridge && pyBridge.renderMarkdownSync) {{
+    try {{
+      var html = pyBridge.renderMarkdownSync(text);
       if (streamingMsg) {{
         streamingMsg.contentDiv.innerHTML = html + '<span class="typing-cursor"></span>';
         scrollToBottom();
       }}
-    }});
+    }} catch(e) {{
+      // 降级：简单转义
+      streamingMsg.contentDiv.innerHTML = escapeHtml(text).replace(/\\n/g, '<br>') + '<span class="typing-cursor"></span>';
+      scrollToBottom();
+    }}
   }} else {{
     // 降级：简单转义
     streamingMsg.contentDiv.innerHTML = escapeHtml(text).replace(/\\n/g, '<br>') + '<span class="typing-cursor"></span>';
@@ -588,9 +600,10 @@ function updateStreaming(text) {{
 function finishStreaming(text) {{
   if (!streamingMsg) return;
 
-  // 最终渲染
-  if (pyBridge) {{
-    pyBridge.renderMarkdown(text, function(html) {{
+  // 最终渲染（使用同步方法直接获取渲染结果）
+  if (pyBridge && pyBridge.renderMarkdownSync) {{
+    try {{
+      var html = pyBridge.renderMarkdownSync(text);
       if (streamingMsg) {{
         streamingMsg.contentDiv.innerHTML = html;
         streamingMsg.text = text;
@@ -607,7 +620,21 @@ function finishStreaming(text) {{
         streamingMsg = null;
         scrollToBottom();
       }}
-    }});
+    }} catch(e) {{
+      streamingMsg.contentDiv.innerHTML = escapeHtml(text).replace(/\\n/g, '<br>');
+      streamingMsg.text = text;
+      messages.push({{
+        role: 'assistant',
+        text: text,
+        html: streamingMsg.contentDiv.innerHTML,
+        element: streamingMsg.row,
+        contentElement: streamingMsg.contentDiv,
+        msgId: streamingMsg.msgId
+      }});
+      renderLatex(streamingMsg.bubble);
+      streamingMsg = null;
+      scrollToBottom();
+    }}
   }} else {{
     streamingMsg.contentDiv.innerHTML = escapeHtml(text).replace(/\\n/g, '<br>');
     streamingMsg.text = text;
@@ -957,13 +984,16 @@ class ChatWebDisplay(QWidget):
 
     # ===== 公共接口 =====
 
-    def append_user_msg(self, text: str, quote: str = "", timestamp: str = ""):
+    def append_user_msg(self, text: str, quote: str = "", timestamp: str = None):
         """添加用户消息
 
         Args:
             text: 消息文本
             quote: 引用文本
-            timestamp: 消息时间戳，为空时使用当前时间
+            timestamp: 消息时间戳(ISO格式)。
+                       None = 新消息，使用当前时间；
+                       "" = 历史消息无时间戳，使用当前时间作为兜底；
+                       有效ISO字符串 = 解析后显示真实时间
         """
         from gugu_native.theme import format_timestamp
         if timestamp:
@@ -974,6 +1004,7 @@ class ChatWebDisplay(QWidget):
             except (ValueError, TypeError):
                 ts = format_timestamp(datetime.now())
         else:
+            # None 或 ""：使用当前时间
             ts = format_timestamp(datetime.now())
         html = render_markdown(text)
 
@@ -990,13 +1021,16 @@ class ChatWebDisplay(QWidget):
         else:
             self._fallback_append_user(text)
 
-    def append_ai_msg(self, text: str, quote: str = "", timestamp: str = ""):
+    def append_ai_msg(self, text: str, quote: str = "", timestamp: str = None):
         """添加 AI 消息
 
         Args:
             text: 消息文本
             quote: 引用文本
-            timestamp: 消息时间戳，为空时使用当前时间
+            timestamp: 消息时间戳(ISO格式)。
+                       None = 新消息，使用当前时间；
+                       "" = 历史消息无时间戳，使用当前时间作为兜底；
+                       有效ISO字符串 = 解析后显示真实时间
         """
         from gugu_native.theme import format_timestamp
         if timestamp:
@@ -1006,6 +1040,7 @@ class ChatWebDisplay(QWidget):
             except (ValueError, TypeError):
                 ts = format_timestamp(datetime.now())
         else:
+            # None 或 ""：使用当前时间
             ts = format_timestamp(datetime.now())
         html = render_markdown(text)
 

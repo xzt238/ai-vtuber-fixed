@@ -4907,15 +4907,26 @@
             }
             
             // 流式 chunk
-            if (data.type === 'text_chunk' && streamingMsgEl) {
-                streamingText += data.text;
-                streamingMsgEl.textContent = streamingText;
-                streamingMsgEl.classList.add('typing');
-                // v1.9.31: 收到第一个 chunk 时移除思考指示器
-                _hideThinkingIndicator(streamingMsgEl);
-                // 自动滚动到底部
-                const chatEl = document.getElementById('chat-messages');
-                chatEl.scrollTop = chatEl.scrollHeight;
+            if (data.type === 'text_chunk') {
+                if (!streamingMsgEl && !streamingText) {
+                    // v1.9.87: 流式占位元素丢失，重建
+                    console.warn('[WS] text_chunk 到达时 streamingMsgEl 为空，重建占位');
+                    const chatEl2 = document.getElementById('chat-messages');
+                    if (chatEl2) {
+                        streamingMsgEl = addMessage('', 'ai', true);
+                        streamingMsgEl.classList.add('typing');
+                    }
+                }
+                if (streamingMsgEl) {
+                    streamingText += data.text;
+                    streamingMsgEl.textContent = streamingText;
+                    streamingMsgEl.classList.add('typing');
+                    // v1.9.31: 收到第一个 chunk 时移除思考指示器
+                    _hideThinkingIndicator(streamingMsgEl);
+                    // 自动滚动到底部
+                    const chatEl = document.getElementById('chat-messages');
+                    chatEl.scrollTop = chatEl.scrollHeight;
+                }
             }
             
             // 流式结束
@@ -4931,6 +4942,11 @@
                     streamingMsgEl.classList.remove('typing');
                     _hideThinkingIndicator(streamingMsgEl);  // v1.9.31
                     streamingMsgEl = null;
+                } else if (data.text && data.text.trim()) {
+                    // v1.9.87: fallback — 如果流式占位元素丢失但后端发送了完整文本，
+                    // 仍然创建新消息显示（防止"有声音没文字"问题）
+                    console.warn('[WS] text_done 到达时 streamingMsgEl 为空，创建新消息');
+                    addMessage(data.text, 'ai');
                 }
                 streamingText = '';
                 // v1.9.51: 生成结束，恢复发送按钮
@@ -5580,13 +5596,17 @@
     }
     
     // ========== TTS ==========
+    // Edge TTS 音色列表 — 需与 app/shared_config.py EDGE_VOICES 保持同步
     const voiceOptions = {
         edge: [
-            {value: 'zh-CN-XiaoxiaoNeural', label: '小雪 (女)'},
-            {value: 'zh-CN-YunxiNeural', label: '云希 (男)'},
-            {value: 'zh-CN-XiaoyuNeural', label: '小宇 (女)'},
-            {value: 'zh-CN-YunfanNeural', label: '云凡 (男)'},
-            {value: 'zh-CN-XiaoxiaoMultilingualNeural', label: '小雪 (多语言)'},
+            {value: 'zh-CN-XiaoxiaoNeural', label: '中文女声 (标准)'},
+            {value: 'zh-CN-XiaoyiNeural', label: '中文女声 (年轻)'},
+            {value: 'zh-CN-YunxiNeural', label: '中文男声 (云希)'},
+            {value: 'zh-CN-YunyangNeural', label: '中文男声 (云扬)'},
+            {value: 'zh-HK-HiuGaaiNeural', label: '粤语女声'},
+            {value: 'zh-HK-HiuMaanNeural', label: '粤语女声2'},
+            {value: 'zh-TW-HsiaoChenNeural', label: '台湾女声'},
+            {value: 'zh-TW-HsiaoYuNeural', label: '台湾女声2'},
         ],
         gptsovits: []  // 动态从后端获取
     };
@@ -6804,13 +6824,13 @@
     // 自动表情联动开关状态
     let autoExpressionEnabled = true;
     
-    // 表情关键词映射
+    // 表情关键词映射 — 需与 app/shared_config.py EXPRESSION_KEYWORDS / EXPRESSION_MAP 保持同步
     const expressionKeywords = {
-        happy: ['开心', '高兴', '快乐', '好开心', '哈哈', '笑', '太棒', '太好了', '哈哈', '嘻', '棒', '赞', '爱你', '喜欢', '么么哒', '可爱', '萌'],
+        happy: ['开心', '高兴', '快乐', '好开心', '哈哈', '笑', '太棒', '太好了', '嘻', '棒', '赞', '爱你', '喜欢', '么么哒', '可爱', '萌'],
         smile: ['微笑', '嗯', '好的', '可以', '行', '没问题', '了解', '知道', '明白', '懂', '是', '对'],
         shine: ['哇', '啊', '惊讶', '惊喜', '厉害', '太厉害', '真的吗', '真的假的', '天哪', '我的天', '哇塞', '哇哦', '好厉害', '惊了'],
-        sad: ['难过', '伤心', '哭', '悲伤', '遗憾', '可惜', '唉', '郁闷', '烦', '讨厌', '讨厌'],
-        angry: ['生气', '愤怒', '哼', '气死', '可恶', '讨厌', '滚', '烦死了'],
+        sad: ['难过', '伤心', '哭', '悲伤', '遗憾', '可惜', '唉', '郁闷', '烦'],
+        angry: ['生气', '愤怒', '哼', '气死', '可恶', '烦死了'],
         surprised: ['惊讶', '震惊', '什么', '怎么', '为什么', '啥', '啥情况'],
     };
     

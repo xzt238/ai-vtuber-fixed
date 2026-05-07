@@ -293,7 +293,8 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
         
         # L2修复: 健康检查端点，用于部署监控和启动器检测后端就绪
         if self.path == "/api/health":
-            self.send_json({"status": "ok", "version": "1.9.82"})
+            from app.version import VERSION
+            self.send_json({"status": "ok", "version": VERSION})
             return
 
         # 其他请求返回 405 Method Not Allowed
@@ -2543,7 +2544,8 @@ class WebSocketServer:
                     for item in app_history[-40:]:  # 最近20轮对话（每轮2条）
                         history_list.append({
                             "role": item.get("role", "?"),
-                            "content": item.get("content", str(item))
+                            "content": item.get("content", str(item)),
+                            "time": item.get("time", "")
                         })
                 else:
                     # 回退：从记忆系统获取（仅当 app.history 为空时）
@@ -2553,13 +2555,15 @@ class WebSocketServer:
                             for item in memory.working_memory[-20:]:
                                 history_list.append({
                                     "role": getattr(item, 'role', '?'),
-                                    "content": getattr(item, 'content', str(item))
+                                    "content": getattr(item, 'content', str(item)),
+                                    "time": getattr(item, 'time', '')
                                 })
                         if hasattr(memory, 'episodic_memory'):
                             for item in memory.episodic_memory[-5:]:
                                 history_list.append({
                                     "role": getattr(item, 'role', '?'),
-                                    "content": getattr(item, 'content', str(item))
+                                    "content": getattr(item, 'content', str(item)),
+                                    "time": getattr(item, 'time', '')
                                 })
                 
                 self.server.send_message(client, json.dumps({
@@ -5927,7 +5931,25 @@ class WebSocketServer:
         text = re.sub(r'"tool_call"\s*:', '', text)
         text = re.sub(r'"function_call"\s*:', '', text)
         # 工具调用的方括号格式
-        text = re.sub(r'<tool_call>.*?</tool_call>', '', text, flags=re.DOTALL)
+        # v1.9.87: 保护 TTS 表达标记不被误删
+        # [laugh]/[uv_break]/[lbreak] 等标记需要保留到 text_enhancer 处理
+        _TTS_PROTECTED = {
+            '[laugh]', '[uv_break]', '[lbreak]',
+            '[笑]', '[笑声]', '[大笑]', '[轻笑]', '[偷笑]', '[苦笑]',
+            '[开心]', '[撒娇]', '[叹气]', '[惊讶]', '[思考]',
+            '[害羞]', '[生气]', '[哭泣]', '[啜泣]', '[难过]',
+            '[sigh]', '[gasp]',
+        }
+        _tts_restore = {}
+        for i, marker in enumerate(_TTS_PROTECTED):
+            if marker in text:
+                ph = f'__TTS_PROTECT_{i}__'  # 临时占位符，不会与正常文本冲突
+                _tts_restore[ph] = marker
+                text = text.replace(marker, ph)
+        text = re.sub(r'\[.*?\]', '', text, flags=re.DOTALL)
+        # 恢复 TTS 标记
+        for ph, marker in _tts_restore.items():
+            text = text.replace(ph, marker)
         text = re.sub(r'<tool>.*?</tool>', '', text, flags=re.DOTALL)
         # 工具名称关键字
         for kw in ['openclaw', 'open_claw', 'weather', 'search', 'calculator']:

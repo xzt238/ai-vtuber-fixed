@@ -106,11 +106,11 @@ if LIVE2D_AVAILABLE:
                 # 启动空闲动作
                 self.model.StartRandomMotion("Idle", live2d.MotionPriority.IDLE)
 
-                # 启动动画定时器
+                # 启动动画定时器（30FPS — Live2D idle 动画无需 60FPS，降帧降低 GPU 占用）
                 if self._timer is None:
                     self._timer = QTimer(self)
                     self._timer.timeout.connect(self._tick)
-                    self._timer.start(16)  # ~60 FPS
+                    self._timer.start(33)  # ~30 FPS
 
                 # 调整大小
                 self.model.Resize(self.width(), self.height())
@@ -136,7 +136,9 @@ if LIVE2D_AVAILABLE:
                 return False
 
         def _tick(self):
-            """动画帧更新"""
+            """动画帧更新 — 不可见时跳过渲染以节省 GPU 资源"""
+            if not self.isVisible():
+                return
             if self.model:
                 self.model.Drag(self._mouse_x, self._mouse_y)
             self.update()

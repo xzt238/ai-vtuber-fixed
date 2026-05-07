@@ -125,7 +125,7 @@ def create_splash_image():
 
     draw.text((width // 2, 100), "GuguGaga AI-VTuber",
               fill=(255, 255, 255, 255), font=title_font, anchor="mm")
-    draw.text((width // 2, 150), "v1.9.82 — Native Desktop",
+    draw.text((width // 2, 150), "v1.9.90 — Native Desktop",
               fill=(136, 204, 255, 255), font=sub_font, anchor="mm")
     draw.text((width // 2, 250), "Loading...",
               fill=(150, 150, 170, 255), font=sub_font, anchor="mm")

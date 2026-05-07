@@ -34,6 +34,15 @@ tts:
   fallback_engines:
     - "edge"
 
+# ==================== 文本增强 (v1.9.89) ====================
+# 控制 TTS 合成前的文本预处理强度
+text_enhancement:
+  style: "companion"       # 增强风格：companion(活泼自然)/neutral(基础清洗)/off(关闭)
+  auto_detect: true        # 自动检测情感词并插入 TTS 标记
+  chinese_features: true   # 中文语气词/重复强调/填充词增强
+  emotion_diffusion: true  # 情绪扩散（标记影响周围句子语气）
+  max_markers_per_reply: 3 # 每段回复中自动插入的最大标记数
+
 # ==================== 大语言模型 (LLM) ====================
 llm:
   provider: "ollama"            # v1.9.43: deepseek/kimi/glm/qwen/minimax/doubao/mimo/openai/anthropic/ollama

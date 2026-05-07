@@ -1,6 +1,6 @@
 # 🛠️ 咕咕嘎嘎 AI-VTuber 开发者指南
 
-> **版本**: v1.0 | **适用项目版本**: v1.9.82+ | **日期**: 2026-05-05
+> **版本**: v1.0 | **适用项目版本**: v1.9.90+ | **日期**: 2026-05-07
 
 ---
 
@@ -24,16 +24,22 @@
 
 ## 1. 项目概览
 
-**咕咕嘎嘎 (GuguGaga)** 是一个功能丰富的 AI 虚拟形象系统，当前版本 v1.9.82。
+**咕咕嘎嘎 (GuguGaga)** 是一个功能丰富的 AI 虚拟形象系统，当前版本 v1.9.90。
 
 核心能力：
 - **实时语音对话** — ASR 语音识别 → LLM 推理 → TTS 语音合成
 - **文字聊天** — 多 LLM 后端支持（10 个 Provider）
+- **Function Calling** — 统一工具调用执行器（fc_executor），OpenAI/MiniMax 已激活
+- **7 个伴侣工具** — GetTime、GetWeather、SetReminder、RememberThing、ChangeExpression、SearchWeb、PlayMusic
+- **TTS 文本增强** — text_enhancer 自动处理 ChatTTS 标记、中文特性和情感扩散
+- **ChatTTS / CosyVoice** — 新增 TTS 引擎，扩展语音合成选项
 - **声音克隆训练** — 内置 GPT-SoVITS v3 训练面板
 - **Live2D 虚拟形象** — 浏览器 WebGL / 原生 OpenGL 渲染
 - **四层记忆系统** — 工作记忆 + 情景记忆 + 语义记忆 + 事实记忆
 - **视觉理解** — OCR + 图片理解 + 屏幕感知
 - **三种运行模式** — 浏览器 WebUI / 桌面 pywebview / 原生 PySide6
+- **版本号集中管理** — version.py 单一来源，所有代码统一导入
+- **共享配置单源模式** — shared_config.py 集中管理 Provider 配置、语音列表、表情关键词、互斥名
 
 **项目基本信息**：
 
@@ -61,7 +67,7 @@
 | **原生桌面** | PySide6 6.x + PySide6-Fluent-Widgets | Qt6 + Windows 11 Fluent Design |
 | **Live2D 原生** | live2d-py 0.6.x | QOpenGLWidget + OpenGL 渲染 |
 | **ASR** | FunASR (Paraformer) / faster-whisper (CTranslate2) | 语音识别 |
-| **TTS** | GPT-SoVITS v3 (本地 GPU) / Edge TTS (在线备用) | 语音合成 |
+| **TTS** | GPT-SoVITS v3 (本地 GPU) / Edge TTS (在线备用) / ChatTTS / CosyVoice | 语音合成 |
 | **LLM** | MiniMax / OpenAI / Anthropic + 7 个 OpenAI 兼容 Provider | 大语言模型 |
 | **视觉** | MiniMax VL API / MiniCPM-V2 / RapidOCR | 图片理解 + OCR |
 | **记忆** | sentence-transformers (BAAI/bge-base-zh-v1.5) | 向量嵌入 |
@@ -98,22 +104,29 @@ ai-vtuber-fixed/
 │
 ├── app/                          # 核心应用后端
 │   ├── main.py                   # 主入口：AIVTuber + Config + ToolExecutor
+│   ├── version.py                # 版本号单一来源（VERSION）
+│   ├── shared_config.py          # 共享配置：Provider配置、语音列表、表情关键词、互斥名
 │   ├── config.yaml               # 统一配置文件（245行）
 │   ├── requirements.txt          # Python 依赖清单
 │   ├── requirements-build.txt    # 打包专用依赖
 │   │
 │   ├── asr/__init__.py           # ASR 语音识别（FunASR / FasterWhisper / OpenAI Whisper）
-│   ├── tts/__init__.py           # TTS 语音合成（GPT-SoVITS / Edge TTS + 工厂降级）
+│   ├── tts/__init__.py           # TTS 语音合成（GPT-SoVITS / Edge TTS / ChatTTS / CosyVoice + 工厂降级）
 │   ├── tts/gptsovits.py          # GPT-SoVITS TTS 引擎
-│   ├── llm/__init__.py           # LLM 大语言模型（MiniMax / OpenAI / Anthropic）
+│   ├── tts/chattts.py            # ChatTTS 引擎
+│   ├── tts/cosyvoice.py          # CosyVoice 引擎
+│   ├── tts/text_enhancer.py      # TTS 文本增强系统（ChatTTS 标记、中文特性、情感扩散）
+│   ├── llm/__init__.py           # LLM 大语言模型（MiniMax / OpenAI / Anthropic + Function Calling）
 │   ├── llm/prompts.py            # 系统提示词 & 人格设定
 │   ├── memory/__init__.py        # v3.0 四层记忆系统
 │   ├── vision/__init__.py        # 视觉理解（RapidOCR / MiniMax VL / MiniCPM）
-│   ├── live2d/__init__.py        # Live2D 虚拟形象管理
+│   ├── live2d/__init__.py        # Live2D 虚拟形象管理 + AnimationController
 │   ├── voice/__init__.py         # 语音输入（本地 + Web）
 │   ├── trainer/__init__.py       # 训练管理器接口
 │   ├── trainer/manager.py        # GPT-SoVITS 训练编排
-│   ├── tools/__init__.py         # 9+ 内置工具（Read/Write/Edit/Glob/Grep/LS/Bash/Think/Architect）
+│   ├── tools/__init__.py         # 16 内置工具（9 代码工具 + 7 陪伴工具）
+│   ├── tools/fc_executor.py      # Function Calling 执行器（统一工具调用循环）
+│   ├── tools/companion.py        # 7 个伴侣工具（GetTime/GetWeather/SetReminder/RememberThing/ChangeExpression/SearchWeb/PlayMusic）
 │   ├── ocr/__init__.py           # OCR 模块
 │   ├── web/__init__.py           # HTTP + WebSocket 服务
 │   ├── web/static/index.html     # 单文件前端（11,374 行！）
@@ -153,7 +166,12 @@ ai-vtuber-fixed/
 │       │   ├── update_manager.py # 自动更新（213行）
 │       │   ├── perf_manager.py   # 性能管理器（236行）
 │       │   ├── dual_mode_compat.py  # 双模式兼容（159行）
-│       │   └── audio_visualizer.py  # 音频频谱可视化（331行）
+│       │   ├── audio_visualizer.py  # 音频频谱可视化（331行）
+│       │   ├── markdown_renderer.py  # Markdown 渲染组件
+│       │   ├── chat_web_display.py   # 聊天 Web 展示组件
+│       │   ├── multi_line_input.py   # 多行输入组件
+│       │   ├── session_manager.py    # 会话管理组件
+│       │   └── message_search.py     # 消息搜索组件
 │       │
 │       ├── theme.py              # 统一主题管理（574行）
 │       └── resources/            # 图标、启动画面等资源
@@ -183,10 +201,16 @@ ai-vtuber-fixed/
 │   ├── README.md                 # 文档索引
 │   ├── BUILD.md                  # 构建/打包指南
 │   ├── VERSION.md                # 版本历史
-│   ├── DEVGUIDE.md               # ★ 本文档 — 开发者指南
+│   ├── CHANGE_IMPACT_MAP.md      # 变更影响地图
+│   ├── MODIFICATION_GUIDE.md     # 修改指南
+│   ├── KNOWN_ISSUES.md           # 已知问题完整列表
+│   ├── guides/                   # 指南文档
+│   │   └── DEVGUIDE.md           # ★ 本文档 — 开发者指南
 │   ├── NATIVE_DESKTOP.md         # ★ 原生桌面架构文档
-│   ├── feasibility_native_desktop.md    # 原生桌面可行性报告
-│   └── feasibility_tool_system_upgrade.md  # 工具系统升级可行性报告
+│   ├── archive/                  # 归档文档
+│   │   ├── feasibility_native_desktop.md    # 原生桌面可行性报告
+│   │   └── feasibility_tool_system_upgrade.md  # 工具系统升级可行性报告
+│   └── ...                       # 其他文档
 │
 ├── assets/                       # 静态资源
 │   ├── gugugaga_logo.png         # Logo（256x256）
@@ -328,7 +352,7 @@ class AIVTuber:
     @property
     def asr(self):    # 首次访问时才加载 FunASR/FasterWhisper
     @property
-    def tts(self):    # 首次访问时才加载 GPT-SoVITS/EdgeTTS
+    def tts(self):    # 首次访问时才加载 GPT-SoVITS/EdgeTTS/ChatTTS/CosyVoice
     @property
     def llm(self):    # 首次访问时才加载 LLM 引擎
     @property
@@ -354,7 +378,7 @@ class AIVTuber:
     ├── 记忆检索 (memory.retrieve)
     ├── 提示词注入 (PromptInjector)
     ├── LLM 推理 (llm.chat, 流式)
-    ├── 工具调用检测 (_handle_local_tool / ToolExecutor)
+    ├── 工具调用检测 (_handle_local_tool / ToolExecutor / fc_executor)
     ├── 记忆存储 (memory.store)
     └── 返回结果 {text, action, audio}
 ```
@@ -382,7 +406,7 @@ class AIVTuber:
 | 工厂 | 文件 | 可选实现 |
 |------|------|---------|
 | `ASRFactory` | `app/asr/__init__.py` | FunASR, FasterWhisper, OpenAI Whisper |
-| `TTSFactory` | `app/tts/__init__.py` | GPT-SoVITS, Edge TTS |
+| `TTSFactory` | `app/tts/__init__.py` | GPT-SoVITS, Edge TTS, ChatTTS, CosyVoice |
 | `LLMFactory` | `app/llm/__init__.py` | MiniMax, OpenAI (+ 7个兼容), Anthropic |
 | `ToolFactory` | `app/tools/__init__.py` | Read, Write, Edit, Glob, Grep, LS, Bash, Think, Architect |
 
@@ -409,6 +433,45 @@ class AIVTuber:
 - **出站消息类型**：43+ 种（ai_response, audio, tool_call_start/end, ...）
 - **实时语音管线**（方案 C）：VAD → ASR → LLM 流式 → 逐句 TTS → 音频推送
 
+### 5.6 version.py 集中管理模式
+
+`app/version.py` 是版本号的**单一来源（Single Source of Truth）**：
+
+```python
+# app/version.py
+VERSION = "v1.9.90"
+```
+
+**原则**：
+- 所有代码（Python 后端、原生桌面、启动脚本）通过 `from app.version import VERSION` 获取版本号
+- **禁止硬编码版本号**：不在 `main.py`、`native/main.py` 等文件中重复写版本号
+- 修改版本号只需改 `app/version.py` 一处
+
+### 5.7 shared_config.py 单源模式
+
+`app/shared_config.py` 集中管理多个跨模块共享的常量和配置：
+
+| 常量 | 说明 |
+|------|------|
+| `PROVIDER_CONFIG` | LLM Provider 配置映射 |
+| `EDGE_VOICES` | Edge TTS 可用语音列表 |
+| `EXPRESSION_KEYWORDS` | 表情触发关键词 |
+| `EXPRESSION_MAP` | 关键词到表情的映射 |
+| `MUTEX` | Windows 命名互斥体名称 |
+
+**原则**：
+- 跨模块共享的配置常量集中在此文件
+- 避免在多个文件中重复定义相同的常量
+- 修改共享配置只需改 `shared_config.py` 一处
+
+### 5.8 JS 同步注意事项
+
+`app/web/static/index.html` 是纯前端文件，**无法直接 import Python 模块**。因此：
+
+- `version.py` 和 `shared_config.py` 中的值需要**手动同步**到 `index.html` 的 JavaScript 中
+- 修改版本号或共享配置时，务必检查 `index.html` 中是否有对应的 JS 常量需要同步更新
+- 建议在修改后搜索 `index.html` 中的版本号字符串确认一致性
+
 ---
 
 ## 6. 模块详解
@@ -434,6 +497,8 @@ class AIVTuber:
 |------|------|------|
 | GPT-SoVITS | 本地 GPU 推理，声音克隆 | 有 NVIDIA GPU |
 | Edge TTS | 在线免费，无需配置 | 无 GPU / 备用 |
+| ChatTTS | 本地推理，自然韵律 | 有 GPU，追求自然度 |
+| CosyVoice | 本地推理，多风格 | 有 GPU，多语言 |
 
 **特性**：
 - 工厂模式 + 自动降级
@@ -450,7 +515,7 @@ class AIVTuber:
 
 | Provider | 底层引擎 | 特殊处理 |
 |----------|---------|---------|
-| minimax | MiniMaxLLM | 双格式支持（OpenAI/Anthropic） |
+| minimax | MiniMaxLLM | 双格式支持（OpenAI/Anthropic），Function Calling 已激活 |
 | anthropic | AnthropicLLM | Claude 原生格式 |
 | deepseek | OpenAILLM | OpenAI 兼容 |
 | kimi | OpenAILLM | OpenAI 兼容 |
@@ -458,7 +523,7 @@ class AIVTuber:
 | qwen | OpenAILLM | Qwen3 `<think/>` 标签剥离 |
 | doubao | OpenAILLM | OpenAI 兼容 |
 | mimo | OpenAILLM | OpenAI 兼容 |
-| openai | OpenAILLM | 标准 OpenAI |
+| openai | OpenAILLM | 标准 OpenAI，Function Calling 已激活 |
 | ollama | OpenAILLM | 自动检测 + `think:false` 关闭思考模式 |
 
 **关键子系统**：
@@ -468,6 +533,7 @@ class AIVTuber:
 - `RetryStrategy`：指数退避 + 抖动
 - HTTP 连接池（5/10），LRU 缓存 + TTL，线程安全锁
 - 真正的 SSE 流式传输
+- **Function Calling**：OpenAI 和 MiniMax 引擎已支持原生 Function Calling，由 fc_executor 统一执行
 
 ### 6.4 记忆系统 (`app/memory/__init__.py`)
 
@@ -522,6 +588,79 @@ class AIVTuber:
 - **HTTP 服务**：静态文件、音频服务、文件上传
 - **WebSocket 服务**：31 种入站消息，43+ 种出站消息
 - **实时语音管线**：VAD → ASR → LLM → TTS → 音频推送
+
+### 6.9 Function Calling 执行器 (`app/tools/fc_executor.py`)
+
+统一工具调用执行循环，支持 LLM 的原生 Function Calling（FC）能力。
+
+**核心功能**：
+- **统一执行循环**：接收 LLM 返回的 tool_calls，逐个执行对应工具，将结果返回 LLM
+- **流式/非流式模式**：支持流式 LLM 响应中的工具调用检测和非流式批量执行
+- **多轮工具调用**：支持 LLM 在一次对话中连续调用多个工具
+- **错误处理**：工具执行失败时返回错误信息给 LLM，不中断对话
+
+**执行流程**：
+```
+LLM 响应包含 tool_calls → fc_executor
+    ├── 解析 tool_calls 列表
+    ├── 逐个执行对应工具（内置工具 + 伴侣工具 + MCP 工具）
+    ├── 收集工具执行结果
+    └── 将结果返回 LLM 继续推理
+```
+
+**当前状态**：OpenAI 和 MiniMax Provider 已激活 Function Calling，其他 Provider 使用 Prompt 模式降级。
+
+### 6.10 伴侣工具 (`app/tools/companion.py`)
+
+7 个面向用户的伴侣工具，增强 AI 的实用能力：
+
+| 工具 | 说明 | 类型 |
+|------|------|------|
+| GetTimeTool | 获取当前时间 | 信息查询 |
+| GetWeatherTool | 查询天气信息 | 信息查询 |
+| SetReminderTool | 设置提醒 | 任务管理 |
+| RememberThingTool | 记住用户提到的信息 | 记忆增强 |
+| ChangeExpressionTool | 切换 Live2D 表情 | 形象控制 |
+| SearchWebTool | 搜索网页信息 | 信息检索 |
+| PlayMusicTool | 播放音乐 | 娱乐 |
+
+**特点**：
+- 通过 Function Calling 或 Prompt 模式被 LLM 自动调用
+- 每个工具都有 JSON Schema 定义，供 FC 引擎使用
+- 工具结果格式化为自然语言返回给 LLM
+
+### 6.11 TTS 文本增强 (`app/tts/text_enhancer.py`)
+
+在文本送入 TTS 引擎前进行预处理，提升语音合成质量。
+
+**核心功能**：
+- **ChatTTS 标记**：自动添加 `[laugh]`、`[uv_break]` 等 ChatTTS 专用标记
+- **自动检测**：根据 TTS 引擎类型自动选择增强策略
+- **中文特性处理**：数字转汉字、标点规范化、语气词处理
+- **情感扩散**：根据文本内容推断情感，调整 TTS 参数（语速、音调等）
+
+**使用方式**：
+```python
+from app.tts.text_enhancer import TextEnhancer
+
+enhancer = TextEnhancer(engine_type="chattts")
+enhanced_text = enhancer.enhance("今天天气真好啊，哈哈")
+# 输出可能包含: "今天天气真好啊，[laugh]"
+```
+
+### 6.12 ChatTTS / CosyVoice TTS 引擎
+
+**ChatTTS** (`app/tts/chattts.py`)：
+- 本地 GPU 推理，追求自然韵律和表现力
+- 支持情感标记和韵律控制
+- 适合对话场景，语音自然度高
+
+**CosyVoice** (`app/tts/cosyvoice.py`)：
+- 本地 GPU 推理，支持多语言和多风格
+- 支持零样本声音克隆
+- 适合多语言场景和风格化语音
+
+两个引擎均通过 TTSFactory 注册，支持自动降级到 Edge TTS。
 
 ---
 
@@ -653,13 +792,13 @@ logger.error("严重错误，功能受影响")
 
 ### 8.6 版本号约定
 
-格式：`v主版本.次版本.修订号`（如 v1.9.82）
+格式：`v主版本.次版本.修订号`（如 v1.9.90）
 
 | 变更类型 | 递增规则 | 示例 |
 |---------|---------|------|
 | 重大架构重构 / API 不兼容 | 主版本 | v1.x → v2.0 |
 | 新功能 / 模块优化 / 新增模块 | 次版本 | v1.9 → v1.10 |
-| Bug 修复 / 小改动 / 文档更新 | 修订号 | v1.9.82 → v1.9.83 |
+| Bug 修复 / 小改动 / 文档更新 | 修订号 | v1.9.90 → v1.9.91 |
 
 更新类型标记：✨ 新增 / 🔧 修复 / 🐛 优化 / 🔐 安全 / 📝 文档 / 🔄 重构 / ⚡ 性能
 
@@ -762,13 +901,16 @@ llm:
 # 在 _create_llm_config_card 中添加新 Provider 的表单
 ```
 
-4. 更新 `docs/VERSION.md`
+4. 在 `app/shared_config.py` 的 `PROVIDER_CONFIG` 中添加配置映射
+
+5. 更新 `docs/VERSION.md`
 
 ### 10.2 修改 WebUI 界面
 
 - 文件：`app/web/static/index.html`（单文件，11,374 行）
 - 修改后重启服务即生效，无需构建
 - 注意：此文件仅影响 WebUI 模式和 pywebview 桌面模式
+- **JS 同步**：修改 `version.py` 或 `shared_config.py` 后，需手动同步到 index.html 中的 JS 常量
 
 ### 10.3 修改原生桌面界面
 
@@ -843,20 +985,33 @@ build.bat    # PyInstaller 构建
 
 ## 11. 版本管理与发布流程
 
-### 11.1 代码修改后必做清单
+### 11.1 版本号集中管理
+
+版本号现已集中在 `app/version.py`，所有代码通过 `from app.version import VERSION` 获取版本号。
+
+**修改版本号只需改一处**：`app/version.py`
+
+```python
+# app/version.py
+VERSION = "v1.9.90"
+```
+
+### 11.2 代码修改后必做清单
 
 | 步骤 | 文件 | 说明 |
 |------|------|------|
-| 1 | `docs/VERSION.md` | 在顶部添加新版本记录 |
-| 2 | `README.md` | 更新版本号 badge |
-| 3 | `native/main.py` | 更新 `setWindowTitle` 和 `UpdateManager` 中的版本号 |
-| 4 | `scripts/start.bat` | 更新 `version:` 行 |
+| 1 | `app/version.py` | 更新版本号（单一来源） |
+| 2 | `docs/VERSION.md` | 在顶部添加新版本记录 |
+| 3 | `README.md` | 更新版本号 badge |
+| 4 | `app/web/static/index.html` | 手动同步版本号到 JS 常量 |
 | 5 | (可选) PyInstaller 重新打包 | 仅修改了 `launcher/` 下文件时需要 |
 
-### 11.2 VERSION.md 格式
+**参考文档**：修改前请查阅 `docs/CHANGE_IMPACT_MAP.md` 了解变更影响范围，参考 `docs/MODIFICATION_GUIDE.md` 获取详细修改指引。
+
+### 11.3 VERSION.md 格式
 
 ```markdown
-## 🟢 v1.9.83 (2026-05-06) ✅ STABLE
+## 🟢 v1.9.91 (2026-05-08) ✅ STABLE
 
 **简要描述本次更新**
 
@@ -870,7 +1025,7 @@ build.bat    # PyInstaller 构建
 - 具体优化内容
 ```
 
-### 11.3 Git 提交流程
+### 11.4 Git 提交流程
 
 ```bash
 cd C:\Users\x\Desktop\ai-vtuber-fixed
@@ -882,13 +1037,13 @@ git status
 git add .
 
 # 3. 提交
-git commit -m "v1.9.83: 更新描述"
+git commit -m "v1.9.91: 更新描述"
 
 # 4. 推送
 git push
 
 # 5. (可选) 打标签
-git tag v1.9.83
+git tag v1.9.91
 git push origin main --tags
 ```
 
@@ -898,11 +1053,12 @@ git push origin main --tags
 
 ## 12. 已知问题与改进方向
 
+详见 `../KNOWN_ISSUES.md` 获取完整已知问题列表。
+
 ### 12.1 原生桌面模式待改进项
 
 | 优先级 | 问题 | 说明 |
 |--------|------|------|
-| P0 | 工具系统未激活 | LLM 不支持原生 Function Calling，9 个内置工具 LLM 无法调用 |
 | P0 | 实时语音体验待优化 | VAD 断句精度、录音降噪、多人说话识别 |
 | P1 | 记忆页面功能不完整 | 搜索/编辑/删除 UI 存在但后端 API 不完整 |
 | P1 | 训练页面缺少进度反馈 | GPT-SoVITS 训练进度显示不精确 |
@@ -916,19 +1072,11 @@ git push origin main --tags
 | 优先级 | 问题 | 说明 |
 |--------|------|------|
 | P0 | 前端单文件过大 | index.html 11,374 行，维护困难 |
-| P1 | 工具调用不可视化 | LLM 自动调用的工具不发送 WS 事件 |
 | P1 | MCP 服务器配置为空 | 默认无 MCP 服务器，用户需手动配置 |
 
 ### 12.3 架构改进方向
 
-详见 `docs/feasibility_native_desktop.md` 和 `docs/feasibility_tool_system_upgrade.md`。
-
-**工具系统升级**（最高优先级）：
-1. 给本地工具添加 JSON Schema
-2. 三引擎添加 tools 参数（Function Calling）
-3. 工具调用循环（多轮工具调用）
-4. Prompt 模式降级（不支持 FC 的模型）
-5. 统一工具调用事件（可视化）
+详见 `../archive/feasibility_native_desktop.md` 和 `../archive/feasibility_tool_system_upgrade.md`。
 
 ---
 
@@ -941,18 +1089,23 @@ git push origin main --tags
 3. **live2d.init()** 必须在 `QApplication` 创建之前调用
 4. **配置持久化**：用户通过 UI 修改的配置保存在 `app/cache/llm_preferences.json`，优先级高于 `config.yaml`
 5. **PyInstaller 打包**：必须使用 Python 3.11，其他版本会缺少 pywebview 等模块
-6. **版本号**散布在多个文件：`VERSION.md`、`README.md`、`native/main.py`、`scripts/start.bat`
-7. **前端规模**：WebUI 前端是 11,374 行的单文件 HTML，原生桌面是 ~6000 行的分散 Python 文件
-8. **主题系统**：原生桌面的所有颜色常量集中在 `native/gugu_native/theme.py`，不要在页面中硬编码颜色
+6. **版本号集中管理**：所有版本号从 `app/version.py` 导入（`from app.version import VERSION`），不要在其他文件硬编码版本号
+7. **共享配置单源**：跨模块常量集中在 `app/shared_config.py`（PROVIDER_CONFIG、EDGE_VOICES、EXPRESSION_KEYWORDS、EXPRESSION_MAP、MUTEX）
+8. **前端规模**：WebUI 前端是 11,374 行的单文件 HTML，原生桌面是 ~6000 行的分散 Python 文件
+9. **主题系统**：原生桌面的所有颜色常量集中在 `native/gugu_native/theme.py`，不要在页面中硬编码颜色
+10. **JS 同步**：`index.html` 无法 import Python，修改 `version.py` 或 `shared_config.py` 后必须手动同步到 JS
 
 ### 修改后必须检查
 
+- [ ] `app/version.py` 版本号是否更新
 - [ ] `docs/VERSION.md` 是否更新
 - [ ] `README.md` 版本号是否更新
-- [ ] 原生桌面的版本号是否更新（`native/main.py`、`scripts/start.bat`）
+- [ ] `app/web/static/index.html` 中的 JS 版本号常量是否同步
 - [ ] 是否影响三种启动模式的兼容性
 - [ ] 是否影响 WebUI 和原生桌面共享的后端逻辑
 - [ ] `app/cache/` 下的 JSON 文件格式是否需要迁移
+- [ ] 参考 `docs/CHANGE_IMPACT_MAP.md` 确认变更影响范围
+- [ ] 参考 `docs/MODIFICATION_GUIDE.md` 获取详细修改指引
 
 ### 不要做的事
 
@@ -961,7 +1114,9 @@ git push origin main --tags
 - ❌ 不要在原生桌面页面中硬编码颜色值（使用 `theme.py` 的 `get_colors()`）
 - ❌ 不要在 AIVTuber 的 `__init__` 中做重型导入
 - ❌ 不要用 Python 3.14+ 打包 PyInstaller（必须 3.11）
+- ❌ 不要在代码中硬编码版本号（使用 `from app.version import VERSION`）
+- ❌ 不要在多个文件中重复定义共享常量（使用 `app/shared_config.py`）
 
 ---
 
-*本文档最后更新: 2026-05-05 | 适用版本: v1.9.82+*
+*本文档最后更新: 2026-05-07 | 适用版本: v1.9.90+*

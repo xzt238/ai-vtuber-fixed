@@ -808,6 +808,14 @@ class AIVTuber:
             from tts import TTSFactory
             tts_config = self.config.config.get("tts", {})
             self._lazy_modules['tts'] = TTSFactory.create(tts_config)
+            # v1.9.89: 加载文本增强配置
+            try:
+                from tts.text_enhancer import configure_enhancement
+                enhancement_config = self.config.config.get("text_enhancement", {})
+                if enhancement_config:
+                    configure_enhancement(enhancement_config)
+            except Exception:
+                pass
             if self._lazy_modules['tts'].is_available():
                 game_ok(f"TTS [{type(self._lazy_modules['tts']).__name__}]", "就绪")
             else:
@@ -1650,7 +1658,7 @@ class AIVTuber:
                     role = getattr(item, 'role', None)
                     content = getattr(item, 'content', None)
                     if role and content:
-                        self.history.append({"role": role, "content": content})
+                        self.history.append({"role": role, "content": content, "time": datetime.now().isoformat()})
                 print(f"  [历史] 从工作记忆恢复对话历史: {len(self.history)}条")
                 # 首次恢复后保存到磁盘
                 self._save_history()
@@ -1663,6 +1671,10 @@ class AIVTuber:
         """v1.9.50: 保存对话历史到磁盘"""
         try:
             data = self.history[-(self.MAX_HISTORY * 2):]
+            # v1.9.89: 为缺少 time 的旧消息补充时间戳
+            for m in data:
+                if not m.get('time'):
+                    m['time'] = datetime.now().isoformat()
             tmp_file = self._history_file.with_suffix('.tmp')
             with open(tmp_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
@@ -1687,8 +1699,8 @@ class AIVTuber:
             self.logger.debug(f"记忆写入错误（可忽略）: {e}")
         # 2. 历史记录 + 截断 + 持久化
         try:
-            self.history.append({"role": "user", "content": user_text})
-            self.history.append({"role": "assistant", "content": assistant_text})
+            self.history.append({"role": "user", "content": user_text, "time": datetime.now().isoformat()})
+            self.history.append({"role": "assistant", "content": assistant_text, "time": datetime.now().isoformat()})
             if len(self.history) > self.MAX_HISTORY * 2:
                 self.history = self.history[-(self.MAX_HISTORY * 2):]
             self._save_history()
@@ -1943,7 +1955,8 @@ def main():
 
         args = parser.parse_args()
 
-        game_header("咕咕嘎嘎 AI-VTuber v1.9.82")
+        from app.version import VERSION
+        game_header(f"咕咕嘎嘎 AI-VTuber v{VERSION}")
         game_info("系统启动中", f"{_timestamp()} | Python {sys.version_info.major}.{sys.version_info.minor}")
 
         # 使用上下文管理器创建 AIVTuber 实例（确保退出时清理资源）

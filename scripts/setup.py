@@ -83,6 +83,13 @@ PACKAGES = [
     ('mss', 'mss>=10.0', 'optional'),
     # Windows
     ('win32api', 'pywin32>=306', 'optional'),
+    # Native Desktop (PySide6)
+    ('PySide6', 'PySide6>=6.6', 'recommended'),
+    ('qfluentwidgets', 'PySide6-Fluent-Widgets>=1.7', 'recommended'),
+    # Live2D (optional — requires live2d-py, may need manual install)
+    ('live2d', 'live2d-py', 'optional'),
+    # ChatTTS (optional — 对话场景 TTS, CC BY-NC 4.0)
+    ('ChatTTS', 'ChatTTS', 'optional'),
 ]
 
 # ================================================================
@@ -538,6 +545,129 @@ def download_models(project_root):
         else:
             stats['fail'] += 1
 
+    # --- BigVGAN v2 (v3 声码器) ---
+    bigvgan_dir = os.path.join(pretrained_dir, 'models--nvidia--bigvgan_v2_24khz_100band_256x')
+    bigvgan_generator = os.path.join(bigvgan_dir, 'bigvgan_generator.pt')
+    bigvgan_config = os.path.join(bigvgan_dir, 'config.json')
+    if check_model_file(bigvgan_generator, 100_000_000) and check_model_file(bigvgan_config, 100):
+        print(f"    [OK] BigVGAN v2 already exists ({format_size(os.path.getsize(bigvgan_generator))})")
+        stats['skip'] += 1
+    else:
+        os.makedirs(bigvgan_dir, exist_ok=True)
+        dl_ok = True
+        if not check_model_file(bigvgan_config, 100):
+            if not download_file(
+                f"{HF_MIRROR}/nvidia/bigvgan_v2_24khz_100band_256x/resolve/main/config.json",
+                bigvgan_config, "BigVGAN v2 config.json"
+            ):
+                dl_ok = False
+        if dl_ok and not check_model_file(bigvgan_generator, 100_000_000):
+            if not download_file(
+                f"{HF_MIRROR}/nvidia/bigvgan_v2_24khz_100band_256x/resolve/main/bigvgan_generator.pt",
+                bigvgan_generator, "BigVGAN v2 generator (~450MB)"
+            ):
+                dl_ok = False
+        if dl_ok:
+            stats['ok'] += 1
+        else:
+            print("    Manual: https://hf-mirror.com/nvidia/bigvgan_v2_24khz_100band_256x")
+            stats['fail'] += 1
+
+    # --- SV 说话人验证 (ERes2NetV2) ---
+    sv_dir = os.path.join(pretrained_dir, 'sv')
+    sv_file = os.path.join(sv_dir, 'pretrained_eres2netv2w24s4ep4.ckpt')
+    if check_model_file(sv_file, 100_000_000):
+        print(f"    [OK] SV model (ERes2NetV2) already exists ({format_size(os.path.getsize(sv_file))})")
+        stats['skip'] += 1
+    else:
+        os.makedirs(sv_dir, exist_ok=True)
+        if download_file(
+            f"{HF_MIRROR}/lj1995/GPT-SoVITS/resolve/main/sv/pretrained_eres2netv2w24s4ep4.ckpt",
+            sv_file, "SV model ERes2NetV2 (~103MB)"
+        ):
+            stats['ok'] += 1
+        else:
+            print("    Manual: https://hf-mirror.com/lj1995/GPT-SoVITS")
+            stats['fail'] += 1
+
+    return stats
+
+
+def download_chattts_models(project_root):
+    """下载 ChatTTS 模型文件（通过 HuggingFace mirror）。
+
+    ChatTTS 首次 load() 时会自动下载模型，但国内直连 HuggingFace 很慢。
+    这里预先通过 hf-mirror 下载到 HF_HOME 缓存目录，避免首次使用时等待。
+
+    模型约 1.5GB，包含:
+    - ChatTTS_u7n.ckpt (decoder)
+    - ChatTTS_dvnn.ckpt (VQ decoder)
+    等
+    """
+    stats = {'ok': 0, 'skip': 0, 'fail': 0}
+
+    # ChatTTS 模型缓存目录
+    hf_home = os.path.join(project_root, '.cache', 'huggingface')
+    chattts_dir = os.path.join(hf_home, 'hub', 'models--2Noise--ChatTTS')
+    snapshots_dir = os.path.join(chattts_dir, 'snapshots')
+
+    # 检查是否已经下载过（snapshots 目录存在且非空）
+    if os.path.isdir(snapshots_dir) and os.listdir(snapshots_dir):
+        print(f"    [OK] ChatTTS 模型已缓存")
+        stats['skip'] += 1
+        return stats
+
+    # 检查 ChatTTS 是否已安装
+    python = find_python(project_root)
+    if not python:
+        print("    [--] ChatTTS 跳过（未找到 Python）")
+        stats['fail'] += 1
+        return stats
+
+    try:
+        r = subprocess.run(
+            python + ['-c', 'import ChatTTS'],
+            capture_output=True, timeout=10
+        )
+        if r.returncode != 0:
+            print("    [--] ChatTTS 跳过（ChatTTS 包未安装，请先 pip install ChatTTS）")
+            stats['skip'] += 1
+            return stats
+    except Exception:
+        stats['skip'] += 1
+        return stats
+
+    # 通过 ChatTTS 自带下载器 + HF mirror 预下载模型
+    print("    正在预下载 ChatTTS 模型（~1.5GB，使用 hf-mirror.com 镜像）...")
+    print("    这可能需要 5-15 分钟，取决于网络速度")
+
+    try:
+        # 设置环境变量使用国内镜像
+        env = os.environ.copy()
+        env['HF_HOME'] = hf_home
+        env['HF_ENDPOINT'] = HF_MIRROR
+
+        r = subprocess.run(
+            python + ['-c',
+                      'import os; os.environ["HF_ENDPOINT"]="' + HF_MIRROR + '"; '
+                      'import ChatTTS; chat=ChatTTS.Chat(); chat.load(compile=False)'],
+            env=env,
+            timeout=1800  # 30 分钟超时
+        )
+
+        if r.returncode == 0:
+            print("    [OK] ChatTTS 模型下载完成")
+            stats['ok'] += 1
+        else:
+            print("    [XX] ChatTTS 模型下载失败")
+            stats['fail'] += 1
+    except subprocess.TimeoutExpired:
+        print("    [XX] ChatTTS 模型下载超时（30分钟）")
+        stats['fail'] += 1
+    except Exception as e:
+        print(f"    [XX] ChatTTS 模型下载异常: {e}")
+        stats['fail'] += 1
+
     return stats
 
 # ================================================================
@@ -607,6 +737,8 @@ def run_verification(python, project_root):
         ('s2Gv3.pth', os.path.join(pretrained_dir, 's2Gv3.pth'), 100_000_000, True),
         ('s1v3.ckpt', os.path.join(pretrained_dir, 's1v3.ckpt'), 100_000_000, True),
         ('chinese-hubert-base', os.path.join(pretrained_dir, 'chinese-hubert-base', 'pytorch_model.bin'), 100_000_000, True),
+        ('BigVGAN v2 (v3 声码器)', os.path.join(pretrained_dir, 'models--nvidia--bigvgan_v2_24khz_100band_256x', 'bigvgan_generator.pt'), 100_000_000, True),
+        ('SV model (ERes2NetV2)', os.path.join(pretrained_dir, 'sv', 'pretrained_eres2netv2w24s4ep4.ckpt'), 100_000_000, True),
         ('G2PW model', os.path.join(g2pw_dir, 'g2pW.onnx'), 1_000_000, False),
     ]
 
@@ -621,6 +753,37 @@ def run_verification(python, project_root):
             else:
                 print(f"    [--] {name} - MISSING (optional)")
                 results['warn'] += 1
+
+    # Native Desktop (PySide6)
+    if check_import(python, 'PySide6'):
+        print("    [OK] PySide6 (Native Desktop)")
+        results['ok'] += 1
+    else:
+        print("    [--] PySide6 - MISSING (Native Desktop 不可用，可用 WebUI 模式)")
+        results['warn'] += 1
+
+    # Live2D
+    if check_import(python, 'live2d'):
+        print("    [OK] live2d-py (Live2D 模型支持)")
+        results['ok'] += 1
+    else:
+        print("    [--] live2d-py - MISSING (Live2D 不可用，角色不会动)")
+        results['warn'] += 1
+
+    # ChatTTS
+    if check_import(python, 'ChatTTS'):
+        # 检查模型是否已下载
+        hf_home = os.path.join(project_root, '.cache', 'huggingface')
+        chattts_snapshots = os.path.join(hf_home, 'hub', 'models--2Noise--ChatTTS', 'snapshots')
+        if os.path.isdir(chattts_snapshots) and os.listdir(chattts_snapshots):
+            print("    [OK] ChatTTS (已安装 + 模型已缓存)")
+            results['ok'] += 1
+        else:
+            print("    [--] ChatTTS (已安装，模型未缓存 — 首次使用时自动下载)")
+            results['warn'] += 1
+    else:
+        print("    [--] ChatTTS - NOT INSTALLED (对话场景 TTS 不可用)")
+        results['warn'] += 1
 
     return results
 
@@ -681,7 +844,7 @@ def main():
     print(f"  Using: {' '.join(python)}")
 
     step = 0
-    totals = {'all': 5, 'deps': 3, 'models': 2, 'verify': 1}
+    totals = {'all': 6, 'deps': 3, 'models': 3, 'verify': 1}
     total = totals[mode]
 
     # ===== Embedded Python =====
@@ -739,6 +902,18 @@ def main():
         dl_stats = download_models(project_root)
         print()
         print(f"  Model summary: {dl_stats['ok']} downloaded, {dl_stats['skip']} already present, {dl_stats['fail']} failed")
+
+        # ChatTTS 模型（可选，仅当 ChatTTS 已安装时下载）
+        step += 1
+        print_header(step, total, "ChatTTS Model (Optional)")
+        chattts_stats = download_chattts_models(project_root)
+        print()
+        if chattts_stats['skip'] > 0:
+            print("  ChatTTS: 已缓存或未安装（跳过）")
+        elif chattts_stats['ok'] > 0:
+            print(f"  ChatTTS: 模型下载完成")
+        else:
+            print("  ChatTTS: 下载失败（不影响核心功能，首次使用时将自动下载）")
 
     # ===== Verification =====
     step += 1

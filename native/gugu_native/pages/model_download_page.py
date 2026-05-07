@@ -3,17 +3,26 @@
 
 从 settings_page.py 拆分出来，放在主导航栏与对话/训练/记忆同级。
 
-支持:
-- FunASR (语音识别)
-- Faster-Whisper (多语言 ASR)
-- BGE-Base (语义向量)
-- RapidOCR (文字识别)
-- Silero VAD (语音活动检测)
-- 下载状态检测 + 进度显示 + 重新下载
+支持下载类型:
+  huggingface  — HuggingFace Hub snapshot_download（支持 local_dir 自定义路径）
+  pip          — pip install 安装 Python 包
+  torch_hub    — torch.hub.load 自动下载
+  direct_url   — 直接 URL 下载单文件（带实时进度）
+  zip_url      — 下载 zip 并解压（带实时进度）
+
+模型分类:
+  语音识别 — FunASR, Faster-Whisper
+  语音合成 — GPT-SoVITS 系列、BigVGAN v2 声码器、ERes2NetV2 说话人验证
+  语义检索 & 工具 — BGE-Base, RapidOCR, Silero VAD, fast-langdetect
 """
 
 import os
 import sys
+import time
+import shutil
+import zipfile
+import tempfile
+import urllib.request
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar
 )
@@ -28,17 +37,22 @@ from qfluentwidgets import (
 # 项目根目录
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+# 国内 HuggingFace 镜像
+HF_MIRROR = 'https://hf-mirror.com'
+
 from gugu_native.theme import get_colors
 
 
 # ===== 模型下载列表配置 =====
 MODEL_DOWNLOADS = [
+    # ── 语音识别 (ASR) ──────────────────────────────────────
     {
         "id": "funasr",
         "name": "FunASR (语音识别)",
         "desc": "Paraformer-ZH 中文语音识别模型，约 900MB",
         "type": "huggingface",
         "repo_id": "funasr/paraformer-zh",
+        "category": "语音识别",
     },
     {
         "id": "faster_whisper",
@@ -46,13 +60,91 @@ MODEL_DOWNLOADS = [
         "desc": "Whisper-large-v3 多语言识别模型，约 1.5GB",
         "type": "huggingface",
         "repo_id": "Systran/faster-whisper-large-v3",
+        "category": "语音识别",
     },
+
+    # ── 语音合成 (TTS) ──────────────────────────────────────
+    {
+        "id": "gpt_sovits_s2g",
+        "name": "GPT-SoVITS 语义解码器 (s2Gv3)",
+        "desc": "SoVITS v3 语义解码器，语音合成核心模型，约 733MB",
+        "type": "direct_url",
+        "url": "https://hf-mirror.com/jackal119/GPT-SoVITS-v3/resolve/main/pretrained_models/s2Gv3.pth",
+        "dest": "GPT-SoVITS/GPT_SoVITS/pretrained_models/s2Gv3.pth",
+        "min_size": 100_000_000,
+        "category": "语音合成",
+    },
+    {
+        "id": "gpt_sovits_s1v",
+        "name": "GPT-SoVITS GPT模型 (s1v3)",
+        "desc": "GPT v3 预训练模型，语音合成核心模型，约 155MB",
+        "type": "direct_url",
+        "url": "https://hf-mirror.com/kevinwang676/GPT-SoVITS-v3/resolve/main/GPT_SoVITS/pretrained_models/s1v3.ckpt",
+        "dest": "GPT-SoVITS/GPT_SoVITS/pretrained_models/s1v3.ckpt",
+        "min_size": 100_000_000,
+        "category": "语音合成",
+    },
+    {
+        "id": "chinese_hubert",
+        "name": "Chinese HuBERT (特征提取)",
+        "desc": "中文语音特征提取模型，GPT-SoVITS 依赖，约 189MB",
+        "type": "direct_url",
+        "url": "https://hf-mirror.com/TencentGameMate/chinese-hubert-base/resolve/main/pytorch_model.bin",
+        "dest": "GPT-SoVITS/GPT_SoVITS/pretrained_models/chinese-hubert-base/pytorch_model.bin",
+        "min_size": 100_000_000,
+        "category": "语音合成",
+    },
+    {
+        "id": "chinese_roberta",
+        "name": "Chinese RoBERTa (BERT语义)",
+        "desc": "中文语义模型，GPT-SoVITS 依赖，约 651MB",
+        "type": "huggingface",
+        "repo_id": "uer/chinese-roberta-wwm-ext-large",
+        "local_dir": "GPT-SoVITS/GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large",
+        "category": "语音合成",
+    },
+    {
+        "id": "g2pw",
+        "name": "G2PW (字音转换)",
+        "desc": "中文多音字消歧模型，GPT-SoVITS 依赖，约 635MB",
+        "type": "zip_url",
+        "url": "https://www.modelscope.cn/models/kamiorinn/g2pw/resolve/master/G2PWModel_1.1.zip",
+        "dest": "GPT-SoVITS/GPT_SoVITS/text/G2PWModel",
+        "rename_from": "G2PWModel_1.1",
+        "rename_to": "G2PWModel",
+        "check_file": "GPT-SoVITS/GPT_SoVITS/text/G2PWModel/g2pW.onnx",
+        "min_size": 1_000_000,
+        "category": "语音合成",
+    },
+    {
+        "id": "bigvgan_v2",
+        "name": "BigVGAN v2 (声码器)",
+        "desc": "GPT-SoVITS v3 声码器模型，v3 语音合成必需，约 450MB",
+        "type": "huggingface",
+        "repo_id": "nvidia/bigvgan_v2_24khz_100band_256x",
+        "local_dir": "GPT-SoVITS/GPT_SoVITS/pretrained_models/models--nvidia--bigvgan_v2_24khz_100band_256x",
+        "allow_patterns": ["config.json", "bigvgan_generator.pt"],
+        "category": "语音合成",
+    },
+    {
+        "id": "sv_eres2net",
+        "name": "ERes2NetV2 (说话人验证)",
+        "desc": "参考音频说话人验证模型，GPT-SoVITS 参考音频质量检测依赖，约 103MB",
+        "type": "direct_url",
+        "url": "https://hf-mirror.com/lj1995/GPT-SoVITS/resolve/main/sv/pretrained_eres2netv2w24s4ep4.ckpt",
+        "dest": "GPT-SoVITS/GPT_SoVITS/pretrained_models/sv/pretrained_eres2netv2w24s4ep4.ckpt",
+        "min_size": 100_000_000,
+        "category": "语音合成",
+    },
+
+    # ── 语义检索 & 工具 ─────────────────────────────────────
     {
         "id": "bge_base",
         "name": "BGE-Base (语义向量)",
         "desc": "记忆系统语义检索模型，约 400MB",
         "type": "huggingface",
         "repo_id": "BAAI/bge-base-zh-v1.5",
+        "category": "语义检索 & 工具",
     },
     {
         "id": "rapidocr",
@@ -60,12 +152,22 @@ MODEL_DOWNLOADS = [
         "desc": "本地OCR模型，约 50MB",
         "type": "pip",
         "package": "rapidocr_onnxruntime",
+        "category": "语义检索 & 工具",
     },
     {
         "id": "silero_vad",
         "name": "Silero VAD (语音活动检测)",
         "desc": "实时语音端点检测模型，约 2MB",
         "type": "torch_hub",
+        "category": "语义检索 & 工具",
+    },
+    {
+        "id": "fast_langdetect",
+        "name": "fast-langdetect (语种检测)",
+        "desc": "多语言语种检测工具，GPT-SoVITS 多语言推理依赖，首次使用时自动下载模型",
+        "type": "pip",
+        "package": "fast-langdetect>=0.3.1",
+        "category": "语义检索 & 工具",
     },
 ]
 
@@ -73,15 +175,31 @@ MODEL_DOWNLOADS = [
 def _check_model_downloaded(mdl: dict) -> bool:
     """检测模型是否已下载 — 多策略检测
 
-    v1.9.81 修复: huggingface 模型缓存格式不统一，
-    FunASR/Faster-Whisper 等通过自身库下载不走 snapshot_download，
-    所以统一用 import 检测（最可靠）+ 目录检测（兜底）
+    支持类型: huggingface / pip / torch_hub / direct_url / zip_url / chattts
     """
     mdl_type = mdl["type"]
     mdl_id = mdl["id"]
 
     if mdl_type == "huggingface":
         repo_id = mdl.get("repo_id", "")
+        local_dir = mdl.get("local_dir")
+
+        # 优先检查 local_dir（自定义路径模型如 chinese-roberta）
+        if local_dir:
+            full_path = os.path.join(PROJECT_DIR, local_dir)
+            if os.path.isdir(full_path) and os.listdir(full_path):
+                # 目录非空，但还需要确认有实际模型文件（排除只有 .git 的情况）
+                has_model = False
+                for f in os.listdir(full_path):
+                    if f.endswith(('.bin', '.safetensors', '.onnx', '.pth', '.ckpt')):
+                        has_model = True
+                        break
+                    # 包含 config.json 也算（完整 repo 下载）
+                    if f == 'config.json':
+                        has_model = True
+                        break
+                if has_model:
+                    return True
 
         # 策略1 (最可靠): import 检测 — 对应的 Python 库能导入就说明模型已下载
         import_map = {
@@ -90,7 +208,8 @@ def _check_model_downloaded(mdl: dict) -> bool:
             "bge_base": "sentence_transformers",
         }
         import_name = import_map.get(mdl_id)
-        if import_name:
+        if import_name and not local_dir:
+            # 有 local_dir 的模型不能用 import 检测（import 成功不代表本地文件在正确位置）
             try:
                 __import__(import_name)
                 return True
@@ -133,10 +252,35 @@ def _check_model_downloaded(mdl: dict) -> bool:
             if os.path.exists(p) and os.path.isdir(p) and os.listdir(p):
                 return True
 
+    elif mdl_type == "direct_url":
+        # 检查目标文件是否存在且大于最小尺寸
+        dest = os.path.join(PROJECT_DIR, mdl["dest"])
+        min_size = mdl.get("min_size", 0)
+        if os.path.exists(dest):
+            try:
+                return os.path.getsize(dest) > min_size
+            except OSError:
+                pass
+        return False
+
+    elif mdl_type == "zip_url":
+        # 检查解压后的关键文件是否存在
+        check_file = mdl.get("check_file")
+        if check_file:
+            full_path = os.path.join(PROJECT_DIR, check_file)
+            min_size = mdl.get("min_size", 0)
+            if os.path.exists(full_path):
+                try:
+                    return os.path.getsize(full_path) > min_size
+                except OSError:
+                    pass
+        return False
+
     elif mdl_type == "pip":
         # 策略: 尝试 import 检测
         package_map = {
             "rapidocr": "rapidocr_onnxruntime",
+            "fast_langdetect": "fast_langdetect",
         }
         import_name = package_map.get(mdl_id, mdl.get("package", mdl_id))
         try:
@@ -167,13 +311,63 @@ def _check_model_downloaded(mdl: dict) -> bool:
 
 
 class _DownloadWorker(QThread):
-    """模型下载线程"""
+    """模型下载线程
+
+    支持: huggingface / pip / torch_hub / direct_url / zip_url / chattts
+    direct_url 和 zip_url 类型支持实时下载进度。
+    """
     progress = Signal(str, int)          # model_id, percent
     finished = Signal(str, bool, str)    # model_id, success, message
 
     def __init__(self, model_info):
         super().__init__()
         self.model_info = model_info
+
+    @staticmethod
+    def _apply_hf_mirror(url):
+        """对 HuggingFace 官方 URL 替换为国内镜像"""
+        if "huggingface.co" in url and "hf-mirror.com" not in url:
+            return url.replace("huggingface.co", "hf-mirror.com")
+        return url
+
+    def _download_file_with_progress(self, url, dest, mdl_id):
+        """下载单个文件，实时报告进度。"""
+        url = self._apply_hf_mirror(url)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            total = int(resp.headers.get('Content-Length', 0))
+            done = 0
+            with open(dest, 'wb') as f:
+                while True:
+                    chunk = resp.read(65536)  # 64KB chunks
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    done += len(chunk)
+                    if total > 0:
+                        # 最多报 95%，留 5% 给后续处理
+                        self.progress.emit(mdl_id, min(int(done / total * 95), 95))
+
+            # 验证下载完整性
+            if total > 0 and done < total:
+                raise IOError(f"下载不完整: {done}/{total} bytes")
+
+        self.progress.emit(mdl_id, 98)
+
+    def _set_env(self, key, value):
+        """临时设置环境变量，返回旧值（None 表示之前不存在）"""
+        old = os.environ.get(key)
+        os.environ[key] = value
+        return old
+
+    def _restore_env(self, key, old_value):
+        """恢复环境变量"""
+        if old_value is not None:
+            os.environ[key] = old_value
+        elif key in os.environ:
+            del os.environ[key]
 
     def run(self):
         mdl = self.model_info
@@ -183,16 +377,70 @@ class _DownloadWorker(QThread):
         try:
             if mdl_type == "huggingface":
                 from huggingface_hub import snapshot_download
-                # 下载到项目本地目录
-                local_dir = os.path.join(PROJECT_DIR, "app", "cache", f"{mdl_id}_models")
+
+                # 确定下载目标目录
+                local_dir_cfg = mdl.get("local_dir")
+                if local_dir_cfg:
+                    local_dir = os.path.join(PROJECT_DIR, local_dir_cfg)
+                else:
+                    local_dir = os.path.join(PROJECT_DIR, "app", "cache", f"{mdl_id}_models")
                 os.makedirs(local_dir, exist_ok=True)
 
                 self.progress.emit(mdl_id, 10)
 
-                snapshot_download(
-                    repo_id=mdl["repo_id"],
-                    local_dir=local_dir,
-                )
+                # 设置 HF 镜像（国内加速）
+                old_endpoint = self._set_env('HF_ENDPOINT', HF_MIRROR)
+                try:
+                    kwargs = dict(
+                        repo_id=mdl["repo_id"],
+                        local_dir=local_dir,
+                    )
+                    # 支持仅下载指定文件（避免下载整个 repo 中不需要的大文件）
+                    allow_patterns = mdl.get("allow_patterns")
+                    if allow_patterns:
+                        kwargs["allow_patterns"] = allow_patterns
+                    snapshot_download(**kwargs)
+                finally:
+                    self._restore_env('HF_ENDPOINT', old_endpoint)
+
+                self.finished.emit(mdl_id, True, "下载完成")
+
+            elif mdl_type == "direct_url":
+                dest = os.path.join(PROJECT_DIR, mdl["dest"])
+                self._download_file_with_progress(mdl["url"], dest, mdl_id)
+                self.finished.emit(mdl_id, True, "下载完成")
+
+            elif mdl_type == "zip_url":
+                # 先下载 zip 到临时目录
+                zip_path = os.path.join(tempfile.gettempdir(), f'_gugu_dl_{mdl_id}.zip')
+                self._download_file_with_progress(mdl["url"], zip_path, mdl_id)
+
+                # 解压
+                dest = os.path.join(PROJECT_DIR, mdl["dest"])
+                parent = os.path.dirname(os.path.abspath(dest))
+                os.makedirs(parent, exist_ok=True)
+
+                with zipfile.ZipFile(zip_path, 'r') as zf:
+                    zf.extractall(parent)
+
+                # 重命名（如需要）
+                rename_from = mdl.get("rename_from")
+                rename_to = mdl.get("rename_to")
+                if rename_from and rename_to:
+                    src = os.path.join(parent, rename_from)
+                    dst = os.path.join(parent, rename_to)
+                    if os.path.exists(dst):
+                        shutil.rmtree(dst)
+                    os.rename(src, dst)
+
+                # 清理 zip
+                try:
+                    if os.path.exists(zip_path):
+                        os.remove(zip_path)
+                except OSError:
+                    pass
+
+                self.progress.emit(mdl_id, 100)
                 self.finished.emit(mdl_id, True, "下载完成")
 
             elif mdl_type == "pip":
@@ -243,18 +491,35 @@ class ModelDownloadPage(ScrollArea):
 
         main_layout = QVBoxLayout(container)
         main_layout.setContentsMargins(28, 24, 28, 24)
-        main_layout.setSpacing(16)
+        main_layout.setSpacing(8)
 
         # 标题
         title = TitleLabel("模型下载")
         title.setStyleSheet("font-size: 22px; font-weight: 600;")
         main_layout.addWidget(title)
 
-        hint = CaptionLabel("首次使用需要下载以下模型，点击「下载」按钮自动下载到本地")
+        hint = CaptionLabel("首次使用需要下载以下模型，点击「下载」按钮自动下载到本地。所有 HuggingFace 下载均使用国内镜像源。")
         main_layout.addWidget(hint)
 
-        # 模型卡片
+        main_layout.addSpacing(8)
+
+        # 按分类渲染模型卡片
+        current_category = None
         for mdl in MODEL_DOWNLOADS:
+            cat = mdl.get("category", "")
+            if cat != current_category:
+                current_category = cat
+                # 分类标题
+                c = get_colors()
+                cat_label = BodyLabel(f"  {cat}")
+                cat_label.setStyleSheet(f"""
+                    color: {c.text_secondary};
+                    font-size: 14px;
+                    font-weight: 600;
+                    padding: 12px 0 4px 0;
+                """)
+                main_layout.addWidget(cat_label)
+
             card = self._create_model_card(mdl)
             main_layout.addWidget(card)
 
@@ -285,15 +550,6 @@ class ModelDownloadPage(ScrollArea):
         # 第一行: 模型名称 + 状态标签 + 下载按钮
         row1 = QHBoxLayout()
         row1.setSpacing(12)
-
-        # 模型图标
-        type_icons = {
-            "huggingface": FluentIcon.GLOBE,
-            "pip": FluentIcon.DOWNLOAD,
-            "torch_hub": FluentIcon.SETTING,
-        }
-        icon_label = QLabel()
-        # 简化: 用文字代替图标
 
         name_label = BodyLabel(mdl["name"])
         name_label.setStyleSheet(f"font-weight: 600; font-size: 14px; color: {c.text_primary};")

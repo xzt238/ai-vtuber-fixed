@@ -32,79 +32,8 @@ if PROJECT_DIR not in sys.path:
 
 from gugu_native.theme import apply_theme, get_global_qss, is_dark
 
-# ===== Provider 配置数据（与 Web UI 的 _providerConfig 同步）=====
-PROVIDER_CONFIG = {
-    "deepseek": {
-        "label": "DeepSeek",
-        "baseUrl": "https://api.deepseek.com",
-        "models": ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"],
-        "defaultModel": "deepseek-chat",
-        "keyPlaceholder": "在 platform.deepseek.com 获取",
-    },
-    "kimi": {
-        "label": "Kimi",
-        "baseUrl": "https://api.moonshot.cn/v1",
-        "models": ["kimi-k2.6", "kimi-k2.5", "kimi-k2-thinking", "kimi-k2-thinking-turbo", "kimi-k2-0905-preview", "moonshot-v1-128k", "moonshot-v1-32k", "moonshot-v1-8k"],
-        "defaultModel": "kimi-k2.6",
-        "keyPlaceholder": "在 platform.kimi.com 获取",
-    },
-    "glm": {
-        "label": "智谱 GLM",
-        "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
-        "models": ["GLM-5.1", "GLM-5", "GLM-5-Turbo", "GLM-4.7", "GLM-4.7-FlashX", "GLM-4.6", "GLM-4.5-Air", "GLM-4-Long", "GLM-4.7-Flash"],
-        "defaultModel": "GLM-4.7-FlashX",
-        "keyPlaceholder": "在 open.bigmodel.cn 获取",
-    },
-    "qwen": {
-        "label": "通义千问",
-        "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "models": ["qwen3.6-max-preview", "qwen3.6-plus", "qwen3.6-flash", "qwen-max", "qwen-plus", "qwen-turbo"],
-        "defaultModel": "qwen3.6-plus",
-        "keyPlaceholder": "在 dashscope.console.aliyun.com 获取",
-    },
-    "minimax": {
-        "label": "MiniMax",
-        "baseUrl": "https://api.minimaxi.com/anthropic",
-        "models": ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M2.5", "MiniMax-M2.5-highspeed", "MiniMax-M2.1", "MiniMax-M2.1-highspeed", "MiniMax-M2"],
-        "defaultModel": "MiniMax-M2.7",
-        "keyPlaceholder": "在 minimaxi.com 获取",
-    },
-    "doubao": {
-        "label": "豆包",
-        "baseUrl": "https://ark.cn-beijing.volces.com/api/v3",
-        "models": ["doubao-seed-1-8-250415", "doubao-seed-1-6-251015", "doubao-seed-1-6-flash-250415", "doubao-1.5-pro-32k", "doubao-1.5-pro-256k", "doubao-1.5-lite-32k"],
-        "defaultModel": "doubao-1.5-pro-32k",
-        "keyPlaceholder": "在 console.volcengine.com/ark 获取",
-    },
-    "mimo": {
-        "label": "小米 MiMo",
-        "baseUrl": "https://api.xiaomimimo.com/v1",
-        "models": ["mimo-v2.5-pro", "mimo-v2.5", "mimo-v2.5-flash"],
-        "defaultModel": "mimo-v2.5",
-        "keyPlaceholder": "在 platform.xiaomimimo.com 获取",
-    },
-    "openai": {
-        "label": "OpenAI",
-        "baseUrl": "https://api.openai.com/v1",
-        "models": ["gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini", "o3", "o4-mini"],
-        "defaultModel": "gpt-4o-mini",
-        "keyPlaceholder": "在 platform.openai.com 获取",
-    },
-    "anthropic": {
-        "label": "Anthropic",
-        "baseUrl": "https://api.anthropic.com",
-        "models": ["claude-sonnet-4-6-20260219", "claude-sonnet-4-5-20250929", "claude-haiku-4-5-20251015", "claude-opus-4-20250514"],
-        "defaultModel": "claude-sonnet-4-5-20250929",
-        "keyPlaceholder": "在 console.anthropic.com 获取",
-    },
-    "ollama": {
-        "label": "Ollama (本地)",
-        "baseUrl": "http://localhost:11434/v1",
-        "models": [],  # 运行时动态获取
-        "defaultModel": "qwen3:8b",
-        "keyPlaceholder": "ollama",
-    },
-}
+# ===== Provider 配置数据（统一从 shared_config 引入，不再本地维护副本）=====
+from app.shared_config import PROVIDER_CONFIG, EDGE_VOICES
 
 # Provider 显示名 -> 内部 key 的映射
 _LABEL_TO_KEY = {v["label"]: k for k, v in PROVIDER_CONFIG.items()}
@@ -115,17 +44,7 @@ _LLM_PREFS_FILE = os.path.join(_CACHE_DIR, "llm_preferences.json")
 _API_KEYS_FILE = os.path.join(_CACHE_DIR, "api_keys.json")
 _TTS_PREFS_FILE = os.path.join(_CACHE_DIR, "tts_preferences.json")
 
-# Edge TTS 音色列表（与 app/tts/__init__.py EdgeTTS.VOICES 同步）
-EDGE_VOICES = [
-    ("zh-CN-XiaoxiaoNeural", "中文女声 (标准)"),
-    ("zh-CN-XiaoyiNeural", "中文女声 (年轻)"),
-    ("zh-CN-YunxiNeural", "中文男声 (云希)"),
-    ("zh-CN-YunyangNeural", "中文男声 (云扬)"),
-    ("zh-HK-HiuGaaiNeural", "粤语女声"),
-    ("zh-HK-HiuMaanNeural", "粤语女声2"),
-    ("zh-TW-HsiaoChenNeural", "台湾女声"),
-    ("zh-TW-HsiaoYuNeural", "台湾女声2"),
-]
+# Edge TTS 音色列表已从 app/shared_config.py 引入（不再本地维护副本）
 
 
 class SettingsPage(ScrollArea):
@@ -397,7 +316,8 @@ class SettingsPage(ScrollArea):
         about_layout.setContentsMargins(16, 8, 16, 16)
         about_layout.setSpacing(8)
 
-        version_label = StrongBodyLabel("咕咕嘎嘎 AI-VTuber v1.9.82")
+        from app.version import VERSION
+        version_label = StrongBodyLabel(f"咕咕嘎嘎 AI-VTuber v{VERSION}")
         about_layout.addWidget(version_label)
 
         desc_label = CaptionLabel("AI 实时对话伴侣 — 声音克隆训练 + 深度记忆 + Live2D 形象")
@@ -513,19 +433,35 @@ class SettingsPage(ScrollArea):
         self._load_api_key_for_provider(provider_key)
 
     def _load_ollama_models(self):
-        """从 Ollama API 动态获取模型列表"""
-        try:
-            import requests
-            resp = requests.get("http://localhost:11434/api/tags", timeout=3)
-            if resp.status_code == 200:
-                data = resp.json()
-                models = [m.get("name", "") for m in data.get("models", [])]
-                if models:
-                    self.model_combo.addItems(models)
-                    return
-        except Exception:
-            pass
-        self.model_combo.addItem("qwen3:8b")
+        """从 Ollama API 动态获取模型列表（异步，不阻塞 UI）"""
+        from PySide6.QtCore import QThread
+
+        class _OllamaFetchWorker(QThread):
+            finished = Signal(list)  # 模型名列表
+
+            def run(self):
+                try:
+                    import requests
+                    resp = requests.get("http://localhost:11434/api/tags", timeout=3)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        models = [m.get("name", "") for m in data.get("models", [])]
+                        self.finished.emit(models)
+                        return
+                except Exception:
+                    pass
+                self.finished.emit([])
+
+        self._ollama_worker = _OllamaFetchWorker(self)
+        self._ollama_worker.finished.connect(self._on_ollama_models_fetched)
+        self._ollama_worker.start()
+
+    def _on_ollama_models_fetched(self, models: list):
+        """Ollama 模型列表获取完成"""
+        if models:
+            self.model_combo.addItems(models)
+        else:
+            self.model_combo.addItem("qwen3:8b")
 
     def _load_api_key_for_provider(self, provider_key: str):
         """加载指定 provider 的已保存 API Key"""
@@ -620,7 +556,7 @@ class SettingsPage(ScrollArea):
             print(f"[SettingsPage] 保存 API Key 失败: {e}")
 
     def _apply_llm_config_to_backend(self, provider_key: str, api_key: str, model: str, base_url: str):
-        """将 LLM 配置应用到后端"""
+        """将 LLM 配置应用到后端（引擎重建在后台线程执行）"""
         backend = self.backend
         if not backend:
             return
@@ -645,7 +581,7 @@ class SettingsPage(ScrollArea):
             minimax_vl = vision_section.setdefault("minimax_vl", {})
             minimax_vl["api_key"] = api_key
 
-        # 重建 LLM 引擎
+        # 判断是否需要重建 LLM 引擎
         need_rebuild = False
         if hasattr(backend, '_lazy_modules'):
             llm = backend._lazy_modules.get('llm')
@@ -671,10 +607,27 @@ class SettingsPage(ScrollArea):
                         old_llm.cleanup()
                     except Exception:
                         pass
-                try:
-                    _ = backend.llm
-                except Exception as e:
-                    print(f"[SettingsPage] LLM 引擎重建失败: {e}")
+                # 在后台线程重建 LLM 引擎，避免阻塞 UI
+                from PySide6.QtCore import QThread
+
+                class _LLMRebuildWorker(QThread):
+                    error = Signal(str)
+
+                    def __init__(self, backend_ref):
+                        super().__init__()
+                        self._backend_ref = backend_ref
+
+                    def run(self):
+                        try:
+                            _ = self._backend_ref.llm
+                        except Exception as e:
+                            self.error.emit(str(e))
+
+                self._llm_rebuild_worker = _LLMRebuildWorker(backend)
+                self._llm_rebuild_worker.error.connect(
+                    lambda e: print(f"[SettingsPage] LLM 引擎重建失败: {e}")
+                )
+                self._llm_rebuild_worker.start()
 
     # ========== TTS 配置逻辑 ==========
 
@@ -685,43 +638,70 @@ class SettingsPage(ScrollArea):
             self.tts_voice.addItem(f"{label} ({voice_id})", userData=voice_id)
 
     def _populate_gptsovits_voices(self):
-        """填充 GPT-SoVITS 音色列表（从后端获取项目列表）"""
+        """填充 GPT-SoVITS 音色列表（后台加载，不阻塞 UI）"""
         self.tts_voice.clear()
         backend = self.backend
         if not backend:
             self.tts_voice.addItem("默认音色", userData="default")
             return
 
-        try:
-            tts = backend.tts
-            if tts and hasattr(tts, 'get_voices'):
-                voices = tts.get_voices()
-                if voices:
-                    for v in voices:
-                        if isinstance(v, dict):
-                            value = str(v.get('value', v.get('name', '')))
-                            label = str(v.get('label', value))
-                            self.tts_voice.addItem(label, userData=value)
-                        else:
-                            self.tts_voice.addItem(str(v), userData=str(v))
-                    return
-        except Exception as e:
-            print(f"[SettingsPage] 获取 GPT-SoVITS 音色失败: {e}")
+        # 先添加占位提示
+        self.tts_voice.addItem("加载中...", userData="")
 
-        # 回退: 尝试从 trainer 获取项目列表
-        try:
-            from app.trainer.manager import TrainingManager
-            trainer = TrainingManager()
-            projects = trainer.list_projects()
-            if projects:
-                for p in projects:
-                    name = p.get('name', '') if isinstance(p, dict) else str(p)
-                    self.tts_voice.addItem(name, userData=name)
-                return
-        except Exception:
-            pass
+        from PySide6.QtCore import QThread
 
-        self.tts_voice.addItem("默认音色", userData="default")
+        class _VoiceFetchWorker(QThread):
+            finished = Signal(list)  # [(label, value), ...]
+
+            def __init__(self, backend_ref):
+                super().__init__()
+                self._backend_ref = backend_ref
+
+            def run(self):
+                voices = []
+                try:
+                    tts = self._backend_ref.tts
+                    if tts and hasattr(tts, 'get_voices'):
+                        raw_voices = tts.get_voices()
+                        if raw_voices:
+                            for v in raw_voices:
+                                if isinstance(v, dict):
+                                    value = str(v.get('value', v.get('name', '')))
+                                    label = str(v.get('label', value))
+                                    voices.append((label, value))
+                                else:
+                                    voices.append((str(v), str(v)))
+                            self.finished.emit(voices)
+                            return
+                except Exception as e:
+                    print(f"[SettingsPage] 获取 GPT-SoVITS 音色失败: {e}")
+
+                # 回退: 尝试从 trainer 获取项目列表
+                try:
+                    from app.trainer.manager import TrainingManager
+                    trainer = TrainingManager()
+                    projects = trainer.list_projects()
+                    if projects:
+                        for p in projects:
+                            name = p.get('name', '') if isinstance(p, dict) else str(p)
+                            voices.append((name, name))
+                except Exception:
+                    pass
+
+                self.finished.emit(voices)
+
+        self._voice_fetch_worker = _VoiceFetchWorker(backend)
+        self._voice_fetch_worker.finished.connect(self._on_gptsovits_voices_fetched)
+        self._voice_fetch_worker.start()
+
+    def _on_gptsovits_voices_fetched(self, voices: list):
+        """GPT-SoVITS 音色列表获取完成"""
+        self.tts_voice.clear()
+        if voices:
+            for label, value in voices:
+                self.tts_voice.addItem(label, userData=value)
+        else:
+            self.tts_voice.addItem("默认音色", userData="default")
 
     def _on_tts_engine_changed(self, index: int):
         """TTS 引擎切换 — 动态填充音色列表"""
@@ -764,7 +744,7 @@ class SettingsPage(ScrollArea):
         except Exception as e:
             print(f"[SettingsPage] 保存 TTS 偏好失败: {e}")
 
-        # 2. 更新后端配置并重建 TTS 引擎
+        # 2. 更新后端配置并重建 TTS 引擎（后台线程执行）
         backend = self.backend
         if backend:
             tts_section = backend.config.config.setdefault("tts", {})
@@ -783,15 +763,34 @@ class SettingsPage(ScrollArea):
                         old_tts.cleanup()
                     except Exception:
                         pass
-                try:
-                    _ = backend.tts
-                    # TTS 引擎重建后，设置音色
-                    if hasattr(backend.tts, 'set_voice'):
-                        backend.tts.set_voice(voice_id)
-                    elif provider == "gptsovits" and hasattr(backend.tts, 'set_project'):
-                        backend.tts.set_project(voice_id)
-                except Exception as e:
-                    print(f"[SettingsPage] TTS 引擎重建失败: {e}")
+                # 在后台线程重建 TTS 引擎，避免阻塞 UI
+                from PySide6.QtCore import QThread
+
+                class _TTSRebuildWorker(QThread):
+                    error = Signal(str)
+
+                    def __init__(self, backend_ref, voice_id_ref, provider_ref):
+                        super().__init__()
+                        self._backend_ref = backend_ref
+                        self._voice_id = voice_id_ref
+                        self._provider = provider_ref
+
+                    def run(self):
+                        try:
+                            _ = self._backend_ref.tts
+                            # TTS 引擎重建后，设置音色
+                            if hasattr(self._backend_ref.tts, 'set_voice'):
+                                self._backend_ref.tts.set_voice(self._voice_id)
+                            elif self._provider == "gptsovits" and hasattr(self._backend_ref.tts, 'set_project'):
+                                self._backend_ref.tts.set_project(self._voice_id)
+                        except Exception as e:
+                            self.error.emit(str(e))
+
+                self._tts_rebuild_worker = _TTSRebuildWorker(backend, voice_id, provider)
+                self._tts_rebuild_worker.error.connect(
+                    lambda e: print(f"[SettingsPage] TTS 引擎重建失败: {e}")
+                )
+                self._tts_rebuild_worker.start()
 
         # 3. 同步 ChatPage 的 TTS 控件
         main_window = self.window()

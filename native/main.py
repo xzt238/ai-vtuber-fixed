@@ -1,5 +1,5 @@
 """
-咕咕嘎嘎 AI-VTuber — 原生桌面应用 v1.9.82
+咕咕嘎嘎 AI-VTuber — 原生桌面应用
 
 主入口文件
 
@@ -76,6 +76,14 @@ from gugu_native.widgets.update_manager import UpdateManager
 from gugu_native.widgets.perf_manager import PerformanceManager
 from gugu_native.widgets.dual_mode_compat import DualModeCompat
 
+# 统一版本号（从 app/version.py 读取）
+def _get_version():
+    try:
+        from app.version import VERSION
+        return VERSION
+    except ImportError:
+        return "1.9.90"  # fallback
+
 # 配置日志 — 强制 UTF-8 编码避免 Windows 中文乱码
 # 注意: sys.stderr 本身已是文本流，不能用 io.TextIOWrapper 二次包装（会导致 flush 写 bytes 崩溃）
 # 正确做法: reconfigure 直接修改 stderr 的编码，或在 Python 启动参数加 -X utf8
@@ -96,7 +104,7 @@ class GuguGagaApp(FluentWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("咕咕嘎嘎 AI-VTuber v1.9.82")
+        self.setWindowTitle(f"咕咕嘎嘎 AI-VTuber v{_get_version()}")
         self.setMinimumSize(1100, 700)
         self.resize(1280, 800)
         self.setObjectName("guguGagaApp")
@@ -181,7 +189,7 @@ class GuguGagaApp(FluentWindow):
         self._pet_window = None
 
         # === 自动更新管理器 ===
-        self.update_manager = UpdateManager("xzt238/ai-vtuber-fixed", "1.9.82", parent=self)
+        self.update_manager = UpdateManager("xzt238/ai-vtuber-fixed", _get_version(), parent=self)
         self.update_manager.check_done.connect(self._on_update_check)
         self.update_manager.download_done.connect(self._on_update_downloaded)
 
@@ -435,13 +443,41 @@ class GuguGagaApp(FluentWindow):
         if self._pet_window and self._pet_window.isVisible():
             self._pet_window.hide()
             self.show()
+            # 恢复主窗口 Live2D 渲染
+            self._resume_main_live2d()
         else:
             if self._pet_window is None:
                 self._pet_window = DesktopPetWindow(self)
                 self._pet_window.switch_to_main.connect(self._on_pet_switch_to_main)
                 self._pet_window.pet_closed.connect(self._on_pet_closed)
+            # 暂停主窗口 Live2D 渲染（宠物窗口有自己的 Live2D 实例）
+            self._pause_main_live2d()
             self._pet_window.show()
             self.hide()
+
+    def _pause_main_live2d(self):
+        """暂停主窗口的 Live2D 渲染以节省 GPU 资源"""
+        try:
+            if hasattr(self.chat_page, 'live2d_widget') and self.chat_page.live2d_widget:
+                widget = self.chat_page.live2d_widget
+                if hasattr(widget, '_timer') and widget._timer:
+                    widget._timer.stop()
+                if hasattr(self.chat_page, '_animation_controller') and self.chat_page._animation_controller:
+                    self.chat_page._animation_controller.stop()
+        except Exception as e:
+            logger.debug(f"Pause main Live2D failed: {e}")
+
+    def _resume_main_live2d(self):
+        """恢复主窗口的 Live2D 渲染"""
+        try:
+            if hasattr(self.chat_page, 'live2d_widget') and self.chat_page.live2d_widget:
+                widget = self.chat_page.live2d_widget
+                if hasattr(widget, '_timer') and widget._timer and widget.model:
+                    widget._timer.start(33)  # 30 FPS
+                if hasattr(self.chat_page, '_animation_controller') and self.chat_page._animation_controller:
+                    self.chat_page._animation_controller.start()
+        except Exception as e:
+            logger.debug(f"Resume main Live2D failed: {e}")
 
     def _on_pet_switch_to_main(self):
         """宠物切回主窗口"""
@@ -449,10 +485,14 @@ class GuguGagaApp(FluentWindow):
             self._pet_window.hide()
         self.show()
         self.activateWindow()
+        # 恢复主窗口 Live2D 渲染
+        self._resume_main_live2d()
 
     def _on_pet_closed(self):
         """宠物窗口关闭"""
         self.show()
+        # 恢复主窗口 Live2D 渲染
+        self._resume_main_live2d()
 
     # ========== 自动更新 ==========
 
