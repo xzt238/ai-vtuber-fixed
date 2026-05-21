@@ -25,10 +25,12 @@ from qfluentwidgets import (
     StrongBodyLabel
 )
 
-# 项目根目录
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-if PROJECT_DIR not in sys.path:
-    sys.path.insert(0, PROJECT_DIR)
+# 项目根目录 — KI-005: 先本地计算用于 sys.path，再从 shared_config 统一引用
+_LOCAL_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+if _LOCAL_PROJECT_DIR not in sys.path:
+    sys.path.insert(0, _LOCAL_PROJECT_DIR)
+
+from app.shared_config import PROJECT_DIR
 
 from gugu_native.theme import apply_theme, get_global_qss, is_dark
 
@@ -601,13 +603,9 @@ class SettingsPage(ScrollArea):
                     need_rebuild = True
 
             if need_rebuild:
-                old_llm = backend._lazy_modules.pop('llm', None)
-                if old_llm and hasattr(old_llm, 'cleanup') and callable(old_llm.cleanup):
-                    try:
-                        old_llm.cleanup()
-                    except Exception:
-                        pass
-                # 在后台线程重建 LLM 引擎，避免阻塞 UI
+                # KI-013 FIX: 使用线程安全的 rebuild_llm() 方法
+                # 旧方式: 直接 pop _lazy_modules + 后台线程触发懒加载（有竞态风险）
+                # 新方式: 调用后端提供的线程安全 rebuild 方法
                 from PySide6.QtCore import QThread
 
                 class _LLMRebuildWorker(QThread):
@@ -619,7 +617,9 @@ class SettingsPage(ScrollArea):
 
                     def run(self):
                         try:
-                            _ = self._backend_ref.llm
+                            result = self._backend_ref.rebuild_llm()
+                            if not result:
+                                self.error.emit("LLM 引擎重建失败")
                         except Exception as e:
                             self.error.emit(str(e))
 
@@ -757,13 +757,9 @@ class SettingsPage(ScrollArea):
                     sub["project"] = voice_id  # GPT-SoVITS voice ID 就是 project name
 
             if hasattr(backend, '_lazy_modules') and 'tts' in backend._lazy_modules:
-                old_tts = backend._lazy_modules.pop('tts', None)
-                if old_tts and hasattr(old_tts, 'cleanup'):
-                    try:
-                        old_tts.cleanup()
-                    except Exception:
-                        pass
-                # 在后台线程重建 TTS 引擎，避免阻塞 UI
+                # KI-013 FIX: 使用线程安全的 rebuild_tts() 方法
+                # 旧方式: 直接 pop _lazy_modules + 后台线程触发懒加载（有竞态风险）
+                # 新方式: 调用后端提供的线程安全 rebuild 方法
                 from PySide6.QtCore import QThread
 
                 class _TTSRebuildWorker(QThread):
@@ -777,12 +773,17 @@ class SettingsPage(ScrollArea):
 
                     def run(self):
                         try:
-                            _ = self._backend_ref.tts
+                            result = self._backend_ref.rebuild_tts()
+                            if not result:
+                                self.error.emit("TTS 引擎重建失败")
+                                return
                             # TTS 引擎重建后，设置音色
-                            if hasattr(self._backend_ref.tts, 'set_voice'):
-                                self._backend_ref.tts.set_voice(self._voice_id)
-                            elif self._provider == "gptsovits" and hasattr(self._backend_ref.tts, 'set_project'):
-                                self._backend_ref.tts.set_project(self._voice_id)
+                            tts = self._backend_ref._lazy_modules.get('tts')
+                            if tts:
+                                if hasattr(tts, 'set_voice'):
+                                    tts.set_voice(self._voice_id)
+                                elif self._provider == "gptsovits" and hasattr(tts, 'set_project'):
+                                    tts.set_project(self._voice_id)
                         except Exception as e:
                             self.error.emit(str(e))
 

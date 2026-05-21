@@ -628,7 +628,7 @@ class TTSFactory:
         【内部静态方法】根据 provider 名称创建具体的引擎实例
 
         【参数说明】
-            provider (str): 引擎名称（"edge" / "gptsovits" / "chattts" / "cosyvoice"）
+            provider (str): 引擎名称（"edge" / "gptsovits"）
             provider_config (Dict): 该引擎的专属配置
             full_config (Dict): 完整的 TTS 配置（用于跨引擎共享参数）
 
@@ -647,13 +647,5 @@ class TTSFactory:
             provider_config = dict(provider_config)  # 避免修改原始配置
             provider_config.setdefault("root_dir", _get_gptsovits_model_dir())
             return GPTSoVITSEngine(provider_config)
-        elif provider == "chattts":
-            # ChatTTS — 专为对话设计的 TTS，笑声/停顿自然
-            from .chattts import ChatTTSEngine
-            return ChatTTSEngine(provider_config)
-        elif provider == "cosyvoice":
-            # CosyVoice — 阿里通义 TTS，支持情感控制
-            from .cosyvoice import CosyVoiceEngine
-            return CosyVoiceEngine(provider_config)
         else:
             raise ValueError(f"未知 TTS 提供商: {provider}")

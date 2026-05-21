@@ -1,20 +1,20 @@
 @echo off
 title GuguGaga Desktop
 
-REM 切换到项目根目录（bat 文件在 scripts/ 子目录下）
+REM 鍒囨崲鍒伴」鐩牴鐩綍锛坆at 鏂囦欢鍦?scripts/ 瀛愮洰褰曚笅锛?
 cd /d "%~dp0.."
 
 REM ============================================
-REM  咕咕嘎嘎 AI-VTuber 桌面版启动器
-REM  双击此文件即可启动桌面应用
+REM  鍜曞挄鍢庡槑 AI-VTuber 妗岄潰鐗堝惎鍔ㄥ櫒
+REM  鍙屽嚮姝ゆ枃浠跺嵆鍙惎鍔ㄦ闈㈠簲鐢?
 REM ============================================
 
-REM 环境变量
+REM 鐜鍙橀噺
 set HF_HOME=%cd%\.cache\huggingface
 set HF_ENDPOINT=https://hf-mirror.com
 set PYTHONIOENCODING=utf-8
 
-REM 检查 Python（嵌入式优先，回退系统安装）
+REM 妫€鏌?Python锛堝祵鍏ュ紡浼樺厛锛屽洖閫€绯荤粺瀹夎锛?
 if exist "%~dp0..\python\python.exe" (
     set PYTHON_CMD=%~dp0..\python\python.exe
     echo [OK] Using embedded Python: %PYTHON_CMD%
@@ -30,29 +30,29 @@ if exist "%~dp0..\python\python.exe" (
     echo [OK] Using system Python: py -3.11
 )
 
-REM 检查 pywebview（桌面窗口库）
+REM 妫€鏌?pywebview锛堟闈㈢獥鍙ｅ簱锛?
 %PYTHON_CMD% -c "import webview" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Installing pywebview...
     %PYTHON_CMD% -m pip install pywebview
 )
 
-REM 检查 pystray（系统托盘，可选）
+REM 妫€鏌?pystray锛堢郴缁熸墭鐩橈紝鍙€夛級
 %PYTHON_CMD% -c "import pystray" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Installing pystray + Pillow...
     %PYTHON_CMD% -m pip install pystray Pillow
 )
 
-REM 解除 pip 下载 DLL 的网络锁定标记（否则 .NET 拒绝加载 WebView2）
-REM v1.9.59: 检查标记文件，只运行一次
+REM 瑙ｉ櫎 pip 涓嬭浇 DLL 鐨勭綉缁滈攣瀹氭爣璁帮紙鍚﹀垯 .NET 鎷掔粷鍔犺浇 WebView2锛?
+REM v1.9.59: 妫€鏌ユ爣璁版枃浠讹紝鍙繍琛屼竴娆?
 if not exist "%cd%\logs\.dlls_unblocked" (
     powershell -Command "Get-ChildItem '%cd%\python\Lib\site-packages' -Recurse -Include *.dll,*.pyd | Unblock-File -ErrorAction SilentlyContinue" >nul 2>&1
     if not exist "%cd%\logs" mkdir "%cd%\logs"
     echo. > "%cd%\logs\.dlls_unblocked"
 )
 
-REM 启动桌面应用
+REM 鍚姩妗岄潰搴旂敤
 echo Starting GuguGaga Desktop...
 %PYTHON_CMD% launcher\launcher.py
 if errorlevel 1 (

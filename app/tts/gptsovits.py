@@ -789,11 +789,10 @@ class GPTSoVITSEngine:
                 print(f"[GPT-SoVITS] 版本检测未确定，使用项目配置: {sovits_version}")
 
             # v1 SoVITS 必须搭配 v1 预训练 GPT（仅限真正的 v1 标准格式模型）
+            # 注意：v1 预训练底模已移除，不再支持 v1 回退
             if sovits_version == "v1" and not is_zip_lora:
-                pretrained_gpt = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s1bert25hz-2kh-longer-epoch=68e-step=50232.ckpt")
-                if os.path.exists(pretrained_gpt):
-                    self.gpt_path = pretrained_gpt
-                    print(f"[GPT-SoVITS] v1 SoVITS 检测 → 使用 v1 兼容预训练 GPT: {os.path.basename(pretrained_gpt)}")
+                print(f"[GPT-SoVITS] ⚠️ v1 预训练底模已移除，强制升级到 v3")
+                sovits_version = "v3"
 
             tts_config = TTS_Config(str(GPT_SOVITS_DIR / "GPT_SoVITS/configs/tts_infer.yaml"))
             tts_config.device = self.device
@@ -825,13 +824,13 @@ class GPTSoVITSEngine:
                 # 只有真正是 v1 标准格式（非 ZIP LoRA）才回退到 v1 底模
                 if "list indices" in str(e) and not is_zip_lora:
                     print(f"[GPT-SoVITS] ⚠️ v1/v3 版本不匹配: {e}")
-                    print(f"[GPT-SoVITS] 强制使用 v1 预训练底模...")
-                    fallback_gpt = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s1bert25hz-2kh-longer-epoch=68e-step=50232.ckpt")
+                    print(f"[GPT-SoVITS] 强制使用 v3 预训练底模（v1 底模已移除）...")
+                    fallback_gpt = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s1v3.ckpt")
                     fallback_vits = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s2Gv3.pth")
                     tts_config.t2s_weights_path = fallback_gpt
                     tts_config.vits_weights_path = fallback_vits
-                    tts_config.update_version("v1")
-                    print(f"[GPT-SoVITS] 正在加载 v1 回退底模（输出已静默）...")
+                    tts_config.update_version("v3")
+                    print(f"[GPT-SoVITS] 正在加载 v3 回退底模（输出已静默）...")
                     with _SuppressVerboseOutput():
                         self.tts_pipeline = TTS(tts_config)
                     print(f"[GPT-SoVITS] ✓ v1 回退底模加载成功!")

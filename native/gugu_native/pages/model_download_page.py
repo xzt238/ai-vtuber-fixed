@@ -34,8 +34,9 @@ from qfluentwidgets import (
     HeaderCardWidget, ScrollArea, ProgressRing
 )
 
-# 项目根目录
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# 项目根目录 — KI-005: 从 shared_config 统一引用
+# KI-004: 同时引入 GPT_SOVITS_MODELS 模型列表
+from app.shared_config import PROJECT_DIR, GPT_SOVITS_MODELS
 
 # 国内 HuggingFace 镜像
 HF_MIRROR = 'https://hf-mirror.com'
@@ -157,7 +158,7 @@ MODEL_DOWNLOADS = [
     {
         "id": "silero_vad",
         "name": "Silero VAD (语音活动检测)",
-        "desc": "实时语音端点检测模型，约 2MB",
+        "desc": "实时语音端点检测模型，实时语音功能必需，约 2.3MB（首次下载需联网）",
         "type": "torch_hub",
         "category": "语义检索 & 工具",
     },
@@ -175,7 +176,7 @@ MODEL_DOWNLOADS = [
 def _check_model_downloaded(mdl: dict) -> bool:
     """检测模型是否已下载 — 多策略检测
 
-    支持类型: huggingface / pip / torch_hub / direct_url / zip_url / chattts
+    支持类型: huggingface / pip / torch_hub / direct_url / zip_url
     """
     mdl_type = mdl["type"]
     mdl_id = mdl["id"]
@@ -290,6 +291,18 @@ def _check_model_downloaded(mdl: dict) -> bool:
             pass
 
     elif mdl_type == "torch_hub":
+        # v15: 策略0: 检查项目本地 models/ 目录（voice_manager.py 优先加载路径）
+        local_model_path = os.path.join(
+            PROJECT_DIR, "models", "torch", "hub",
+            "snakers4_silero-vad_master", "src", "silero_vad", "data", "silero_vad.jit"
+        )
+        if os.path.exists(local_model_path):
+            try:
+                if os.path.getsize(local_model_path) > 1_000_000:  # > 1MB
+                    return True
+            except OSError:
+                pass
+
         # 策略1: 检查 torch hub 缓存 (snakers4_silero-vad_master 格式)
         hub_dir = os.path.join(os.path.expanduser("~"), ".cache", "torch", "hub")
         if os.path.exists(hub_dir):
@@ -313,7 +326,7 @@ def _check_model_downloaded(mdl: dict) -> bool:
 class _DownloadWorker(QThread):
     """模型下载线程
 
-    支持: huggingface / pip / torch_hub / direct_url / zip_url / chattts
+    支持: huggingface / pip / torch_hub / direct_url / zip_url
     direct_url 和 zip_url 类型支持实时下载进度。
     """
     progress = Signal(str, int)          # model_id, percent

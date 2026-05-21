@@ -448,6 +448,9 @@ class FactExtractor:
 事实列表:"""
             
             result = llm_chat_func(message=prompt)
+            # v1.9.97: 防御 LLM 返回 None 或非 dict
+            if not result or not isinstance(result, dict):
+                return []
             text = result.get("text", "").strip()
             
             if not text:
@@ -1005,6 +1008,9 @@ class SummaryGenerator:
 摘要:"""
         
         result = llm_chat_func(message=prompt)
+        # v1.9.97: 防御 LLM 返回 None 或非 dict 的情况
+        if not result or not isinstance(result, dict):
+            return None
         text = result.get("text", "").strip()
         if text and len(text) > 5:
             return text

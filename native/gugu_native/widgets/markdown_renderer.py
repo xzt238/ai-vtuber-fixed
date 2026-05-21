@@ -128,6 +128,20 @@ class _CodeBlockTreeprocessor(markdown.treeprocessors.Treeprocessor):
         return root
 
 
+# 模块级缓存 Markdown 实例 — 避免每次 render_markdown() 重建（优化 #1）
+_MD_EXTENSIONS = ["fenced_code", "tables", "nl2br", "sane_lists"]
+_MD_INSTANCE = None
+
+
+def _get_md_instance():
+    """获取缓存的 Markdown 实例（线程安全：reset() 后可复用）"""
+    global _MD_INSTANCE
+    if _MD_INSTANCE is None:
+        _MD_INSTANCE = markdown.Markdown(extensions=_MD_EXTENSIONS)
+    _MD_INSTANCE.reset()
+    return _MD_INSTANCE
+
+
 def render_markdown(text: str, theme: str = "dark") -> str:
     """将 Markdown 文本渲染为 HTML
 
@@ -149,16 +163,9 @@ def render_markdown(text: str, theme: str = "dark") -> str:
     latex_blocks = {}
     processed_text = _extract_latex(processed_text, latex_blocks)
 
-    # 使用 markdown 库渲染
-    extensions = [
-        "fenced_code",
-        "tables",
-        "nl2br",       # 换行转 <br>
-        "sane_lists",
-    ]
-
+    # 使用缓存实例渲染（优化 #1: 避免每次创建 markdown.Markdown()）
     try:
-        md = markdown.Markdown(extensions=extensions)
+        md = _get_md_instance()
         html = md.convert(processed_text)
     except Exception:
         # 降级：纯文本转 HTML

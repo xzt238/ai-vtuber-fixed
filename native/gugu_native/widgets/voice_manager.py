@@ -19,7 +19,68 @@ import time
 import wave
 import tempfile
 import threading
-from PySide6.QtCore import QObject, Signal, Slot, QThread
+import numpy as np
+from PySide6.QtCore import QObject, Signal, Slot, QThread, QMutex
+
+# 项目根目录
+from app.shared_config import PROJECT_DIR
+
+
+class _SileroOnnxWrapper:
+    """v15: Silero VAD ONNX 模型包装器 — 轻量级本地推理，不需要 PyTorch JIT
+
+    接口与 torch.jit.load 的模型兼容：__call__(audio_tensor, sample_rate) → speech_prob
+    """
+
+    def __init__(self, model_path: str):
+        import onnxruntime
+        opts = onnxruntime.SessionOptions()
+        opts.inter_op_num_threads = 1
+        opts.intra_op_num_threads = 1
+        self.session = onnxruntime.InferenceSession(
+            model_path, providers=['CPUExecutionProvider'], sess_options=opts
+        )
+        self._state = np.zeros((2, 1, 128), dtype=np.float32)
+        self._context = np.zeros(0, dtype=np.float32)
+        self._last_sr = 0
+        self._last_batch_size = 0
+
+    def reset_states(self, batch_size=1):
+        self._state = np.zeros((2, batch_size, 128), dtype=np.float32)
+        self._context = np.zeros(0, dtype=np.float32)
+        self._last_sr = 0
+        self._last_batch_size = 0
+
+    def __call__(self, x, sr: int):
+        if not self._last_batch_size:
+            self.reset_states(x.shape[0])
+        if self._last_sr and self._last_sr != sr:
+            self.reset_states(x.shape[0])
+        if self._last_batch_size and self._last_batch_size != x.shape[0]:
+            self.reset_states(x.shape[0])
+
+        num_samples = 512 if sr == 16000 else 256
+        context_size = 64 if sr == 16000 else 32
+
+        if len(self._context) == 0:
+            self._context = np.zeros((x.shape[0], context_size), dtype=np.float32)
+
+        x_np = x.numpy() if hasattr(x, 'numpy') else np.array(x, dtype=np.float32)
+        x_concat = np.concatenate([self._context, x_np], axis=1)
+
+        ort_inputs = {
+            'input': x_concat,
+            'state': self._state,
+            'sr': np.array(sr, dtype=np.int64)
+        }
+        ort_outs = self.session.run(None, ort_inputs)
+        out = ort_outs[0]
+        self._state = ort_outs[1]
+        self._context = x_concat[:, -context_size:]
+        self._last_sr = sr
+        self._last_batch_size = x.shape[0]
+
+        return out
 
 
 class _ASRWorker(QThread):
@@ -102,6 +163,7 @@ class RealtimeVoiceManager(QObject):
 
         # v1.9.78: ASR 工作线程追踪
         self._asr_workers = []
+        self._asr_workers_mutex = QMutex()  # KI-012 FIX: 保护 _asr_workers 列表
 
     def cleanup(self):
         """清理资源 — 供 PerformanceManager 调用
@@ -112,11 +174,16 @@ class RealtimeVoiceManager(QObject):
         self.stop_listening()
         self._audio_buffer = []
         # 等待所有 ASR 工作线程结束
-        for worker in self._asr_workers:
+        self._asr_workers_mutex.lock()
+        workers = list(self._asr_workers)
+        self._asr_workers_mutex.unlock()
+        for worker in workers:
             if worker.isRunning():
                 worker.quit()
                 worker.wait(1000)
+        self._asr_workers_mutex.lock()
         self._asr_workers.clear()
+        self._asr_workers_mutex.unlock()
         print("[VoiceManager] cleanup completed")
 
     @property
@@ -136,13 +203,47 @@ class RealtimeVoiceManager(QObject):
         return self._is_listening
 
     def _init_vad(self):
-        """初始化 Silero VAD 模型"""
+        """初始化 Silero VAD 模型
+
+        v15 FIX: 优先从本地路径加载，避免 torch.hub.load() 的网络依赖。
+        本地模型位于 PROJECT_DIR/models/torch/hub/snakers4_silero-vad_master/
+        """
         if self._vad_ready:
             return True
 
         try:
             import torch
-            # 尝试加载 Silero VAD 模型
+
+            # v15: 优先从本地加载 JIT 模型（不依赖网络）
+            local_model_path = os.path.join(
+                PROJECT_DIR, "models", "torch", "hub",
+                "snakers4_silero-vad_master", "src", "silero_vad", "data", "silero_vad.jit"
+            )
+            if os.path.exists(local_model_path):
+                try:
+                    self._vad_model = torch.jit.load(local_model_path, map_location=torch.device('cpu'))
+                    self._vad_model.eval()
+                    self._vad_ready = True
+                    print(f"[VoiceManager] Silero VAD 从本地加载成功: {local_model_path}")
+                    return True
+                except Exception as e:
+                    print(f"[VoiceManager] 本地 Silero VAD JIT 加载失败: {e}，尝试 ONNX...")
+
+            # v15: 尝试本地 ONNX 版本（更轻量，不需要 PyTorch JIT）
+            local_onnx_path = os.path.join(
+                PROJECT_DIR, "models", "torch", "hub",
+                "snakers4_silero-vad_master", "src", "silero_vad", "data", "silero_vad.onnx"
+            )
+            if os.path.exists(local_onnx_path):
+                try:
+                    self._vad_model = _SileroOnnxWrapper(local_onnx_path)
+                    self._vad_ready = True
+                    print(f"[VoiceManager] Silero VAD ONNX 从本地加载成功: {local_onnx_path}")
+                    return True
+                except Exception as e:
+                    print(f"[VoiceManager] 本地 Silero VAD ONNX 加载失败: {e}，回退到 torch.hub...")
+
+            # 回退：torch.hub.load（需要网络，可能失败）
             model, utils = torch.hub.load(
                 repo_or_dir='snakers4/silero-vad',
                 model='silero_vad',
@@ -150,7 +251,7 @@ class RealtimeVoiceManager(QObject):
             )
             self._vad_model = model
             self._vad_ready = True
-            print("[VoiceManager] Silero VAD 加载成功")
+            print("[VoiceManager] Silero VAD 通过 torch.hub 加载成功")
             return True
         except ImportError:
             print("[VoiceManager] PyTorch 未安装，使用能量检测 VAD")
@@ -176,24 +277,34 @@ class RealtimeVoiceManager(QObject):
             return 0.0
 
     def _detect_speech_silero(self, audio_chunk):
-        """Silero VAD 检测"""
+        """Silero VAD 检测
+
+        v15: 兼容 JIT 模型（返回 torch.Tensor）和 ONNX 包装器（返回 numpy array）
+        """
         if not self._vad_ready or self._vad_model is None:
             return self._detect_speech_energy(audio_chunk)
 
         try:
-            import torch
             if isinstance(audio_chunk, bytes):
-                import numpy as np
                 data = np.frombuffer(audio_chunk, dtype=np.int16).astype(np.float32) / 32768.0
             else:
                 data = np.array(audio_chunk, dtype=np.float32)
 
-            audio_tensor = torch.from_numpy(data).unsqueeze(0)
-
-            with torch.no_grad():
-                speech_prob = self._vad_model(audio_tensor, self._sample_rate).item()
-
-            return speech_prob
+            # v15: 判断模型类型，选择合适的推理路径
+            if isinstance(self._vad_model, _SileroOnnxWrapper):
+                # ONNX 模型：直接用 numpy
+                audio_np = data.reshape(1, -1)
+                result = self._vad_model(audio_np, self._sample_rate)
+                if isinstance(result, np.ndarray):
+                    return float(result.flat[0])
+                return float(result)
+            else:
+                # JIT 模型：需要 torch
+                import torch
+                audio_tensor = torch.from_numpy(data).unsqueeze(0)
+                with torch.no_grad():
+                    speech_prob = self._vad_model(audio_tensor, self._sample_rate).item()
+                return speech_prob
         except Exception:
             return self._detect_speech_energy(audio_chunk)
 
@@ -376,7 +487,9 @@ class RealtimeVoiceManager(QObject):
             worker.result_ready.connect(self._on_asr_result)
             worker.error_occurred.connect(self.error_occurred.emit)
             worker.finished.connect(lambda: self._cleanup_asr_worker(worker))
+            self._asr_workers_mutex.lock()
             self._asr_workers.append(worker)
+            self._asr_workers_mutex.unlock()
             worker.start()
 
         except Exception as e:
@@ -389,8 +502,11 @@ class RealtimeVoiceManager(QObject):
 
     def _cleanup_asr_worker(self, worker):
         """清理已完成的 ASR 工作线程"""
+        self._asr_workers_mutex.lock()
         try:
             if worker in self._asr_workers:
                 self._asr_workers.remove(worker)
         except Exception:
             pass
+        finally:
+            self._asr_workers_mutex.unlock()

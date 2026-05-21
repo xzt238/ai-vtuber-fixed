@@ -38,6 +38,7 @@
 import os
 import sys
 import subprocess as _subprocess
+import threading  # KI-013: 用于 _lazy_modules_lock
 
 # Windows GBK 编码安全网：强制 stdout/stderr 使用 UTF-8
 # 避免 print() 含 emoji/特殊字符时 UnicodeEncodeError 崩溃
@@ -81,7 +82,9 @@ def _win_subprocess_args():
 
 # ============ 模型缓存目录配置 ============
 # 所有模型下载缓存统一放在项目根目录下的 models/ 中，避免散落在各处
-PROJECT_ROOT = Path(__file__).parent.parent
+# KI-005: PROJECT_DIR 从 shared_config 统一引用
+from app.shared_config import PROJECT_DIR as _PROJECT_DIR_STR
+PROJECT_ROOT = Path(_PROJECT_DIR_STR)
 MODELS_CACHE = PROJECT_ROOT / "models"
 # 确保 models/ 及其父目录存在，parents=True 允许递归创建
 MODELS_CACHE.mkdir(parents=True, exist_ok=True)
@@ -744,6 +747,9 @@ class AIVTuber:
         # 懒加载模块注册表: 存储已加载的模块实例
         # key = 模块名, value = 模块实例
         self._lazy_modules = {}
+        # KI-013 FIX: 懒加载模块线程安全锁
+        # RebuildWorker 从后台线程访问 _lazy_modules，必须加锁防止竞态
+        self._lazy_modules_lock = threading.Lock()
 
         print("\n" + "="*50)
         game_separator()
@@ -1871,6 +1877,89 @@ class AIVTuber:
         except Exception as e:
             print(f"️ 播放失败: {e}")
 
+    # ============ 线程安全的模块重建方法 ============
+    # KI-013 FIX: 提供线程安全的 rebuild 方法，供 settings_page.py 的 RebuildWorker 调用
+    # 避免后台线程直接操作 _lazy_modules 字典导致竞态
+
+    def rebuild_llm(self):
+        """线程安全地重建 LLM 引擎
+
+        清除缓存中的旧 LLM 实例，触发懒加载重新创建。
+        由 settings_page.py 的 _LLMRebuildWorker 从后台线程调用。
+
+        Returns:
+            bool: True=重建成功, False=重建失败
+        """
+        with self._lazy_modules_lock:
+            if 'llm' in self._lazy_modules:
+                old_llm = self._lazy_modules.pop('llm')
+                if old_llm and hasattr(old_llm, 'cleanup') and callable(old_llm.cleanup):
+                    try:
+                        old_llm.cleanup()
+                    except Exception:
+                        pass
+            try:
+                _ = self.llm  # 触发懒加载重建
+                self.logger.info(f"LLM 引擎重建成功: {type(self._lazy_modules.get('llm')).__name__}")
+                return True
+            except Exception as e:
+                self.logger.error(f"LLM 引擎重建失败: {e}")
+                return False
+
+    def rebuild_tts(self):
+        """线程安全地重建 TTS 引擎
+
+        清除缓存中的旧 TTS 实例，触发懒加载重新创建。
+        由 settings_page.py 的 _TTSRebuildWorker 从后台线程调用。
+
+        Returns:
+            bool: True=重建成功, False=重建失败
+        """
+        with self._lazy_modules_lock:
+            if 'tts' in self._lazy_modules:
+                old_tts = self._lazy_modules.pop('tts')
+                if old_tts and hasattr(old_tts, 'cleanup') and callable(old_tts.cleanup):
+                    try:
+                        old_tts.cleanup()
+                    except Exception:
+                        pass
+            try:
+                _ = self.tts  # 触发懒加载重建
+                self.logger.info(f"TTS 引擎重建成功: {type(self._lazy_modules.get('tts')).__name__}")
+                return True
+            except Exception as e:
+                self.logger.error(f"TTS 引擎重建失败: {e}")
+                return False
+
+    def rebuild_tts_engine(self, new_config: dict = None):
+        """线程安全地重建 TTS 引擎（带可选配置更新）
+
+        KI-006b: 统一的 TTS 引擎重建逻辑，消除 settings_page.py 中的重复代码。
+
+        Args:
+            new_config: 可选的新 TTS 配置字典，会合并到当前配置中
+
+        Returns:
+            bool: True=重建成功, False=重建失败
+        """
+        with self._lazy_modules_lock:
+            if new_config:
+                self.config.config['tts'].update(new_config)
+            if 'tts' in self._lazy_modules:
+                old_tts = self._lazy_modules.pop('tts')
+                if old_tts and hasattr(old_tts, 'cleanup') and callable(old_tts.cleanup):
+                    try:
+                        old_tts.cleanup()
+                    except Exception:
+                        pass
+            try:
+                _ = self.tts  # 触发懒加载重建
+                self.logger.info(f"TTS 引擎重建成功: {type(self._lazy_modules.get('tts')).__name__}")
+                return True
+            except Exception as e:
+                self.logger.error(f"TTS 引擎重建失败: {e}")
+                return False
+
     def _handle_local_tool(self, text: str) -> Optional[str]:
         """
         处理本地工具调用（参考 Claude Code 的工具调用格式）
@@ -1952,6 +2041,10 @@ def main():
         parser.add_argument("--interactive", "-i", action="store_true", help="交互模式")
         parser.add_argument("--test-llm", action="store_true", help="测试LLM")
         parser.add_argument("--test-tts", type=str, help="测试TTS")
+
+        # KI-002 FIX: 默认端口从 shared_config 统一读取
+        from app.shared_config import HTTP_PORT as _DEFAULT_HTTP_PORT
+        parser.add_argument("--port", type=int, default=_DEFAULT_HTTP_PORT, help="HTTP端口")
 
         args = parser.parse_args()
 

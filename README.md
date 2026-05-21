@@ -7,7 +7,7 @@
 **GPT-SoVITS 声音克隆 · Live2D 虚拟形象 · 三层记忆 · Function Calling · 三种运行模式**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-v1.9.90-yellow.svg)](docs/VERSION.md)
+[![Version](https://img.shields.io/badge/version-v1.10.2-yellow.svg)](docs/VERSION.md)
 [![Python](https://img.shields.io/badge/python-3.11-yellow.svg)](https://www.python.org/downloads/release/python-3119/)
 [![Known Issues](https://img.shields.io/badge/known%20issues-15-orange.svg)](docs/KNOWN_ISSUES.md)
 
@@ -47,7 +47,7 @@
 | **声音训练** | WebUI 一键训练 LoRA | GPT-SoVITS v3 |
 | **视觉理解** | 图片理解 + 文字识别 + 屏幕感知 | MiniMax VL / MiniCPM-V2 / RapidOCR |
 | **记忆系统** | 工作/情景/语义三层 | 向量检索 + 时间衰减 + 遗忘机制 + 摘要压缩 |
-| **Live2D** | 可自定义模型，表情切换，动画控制器 | oh-my-live2d + pixi.js + AnimationController |
+| **Live2D** | 可自定义模型，表情切换，动画控制器 | WebUI: oh-my-live2d + pixi.js · 原生: live2d-py + QOpenGLWidget |
 | **工具系统** | Function Calling + 沙箱执行 + 伴侣工具 | fc_executor + companion（7 个内置工具） |
 | **VAD** | AI 语音活动检测 | Silero VAD (WASM) |
 | **桌面端** | 三种模式：浏览器/pywebview/PySide6 原生 | PySide6 + QWebEngineView + 系统托盘 |
@@ -270,7 +270,7 @@ ai-vtuber-fixed/
 │           ├── animation_controller.py # Live2D 动画控制器
 │           ├── chat_web_display.py # 聊天渲染
 │           ├── voice_manager.py # 语音管理
-│           ├── live2d_widget.py # Live2D 组件
+│           ├── live2d_widget.py # Live2D 原生渲染（live2d-py + OpenGL）
 │           ├── desktop_pet.py  # 桌面宠物
 │           ├── update_manager.py # 自动更新
 │           └── ...             # 其他组件
@@ -294,6 +294,7 @@ ai-vtuber-fixed/
 │   │   ├── DEVGUIDE.md         # 开发者指南
 │   │   ├── NATIVE_DESKTOP.md   # 原生桌面开发指南
 │   │   └── BUILD.md            # 构建和打包指南
+│   │   └── LIVE2D_NATIVE_RENDER.md  # Live2D 原生渲染方案
 │   ├── reference/              # 参考分析
 │   │   ├── COMPETITIVE_GAP_ANALYSIS.md
 │   │   └── GAP_DETAILED_ANALYSIS.md
@@ -322,7 +323,7 @@ ai-vtuber-fixed/
 | **后端** | Python 3.11 + aiohttp | 异步 HTTP + WebSocket 服务 |
 | **前端** | 原生 HTML/CSS/JS（单文件） | 面板系统 + Live2D + VAD + 实时语音 |
 | **通信** | WebSocket（实时） + HTTP（API） | 前后端实时双向通信 |
-| **桌面端** | pywebview（WebView2）/ PySide6（Qt6） | 原生窗口 + 系统托盘 + QWebEngineView |
+| **桌面端** | pywebview（WebView2）/ PySide6（Qt6） | 原生窗口 + 系统托盘 + QWebEngineView / QOpenGLWidget |
 | **工具** | Function Calling + 7 个伴侣工具 | fc_executor + companion |
 | **打包** | PyInstaller | 单 EXE 启动器 |
 
@@ -429,7 +430,7 @@ GPT-SoVITS 子模块遵循其自身的开源许可证（`GPT-SoVITS/LICENSE`）�
 - [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) — 声音克隆引擎
 - [ChatTTS](https://github.com/2noise/ChatTTS) — 自然语音合成
 - [CosyVoice](https://github.com/FunAudioLLM/CosyVoice) — 阿里语音合成
-- [oh-my-live2d](https://github.com/oh-my-live2d/oh-my-live2d) — Live2D 渲染
+- [live2d-py](https://github.com/Arkueid/live2d-py) — Live2D Python SDK（原生）
 - [FunASR](https://github.com/modelscope/FunASR) — 语音识别
 - [Silero VAD](https://github.com/snakers4/silero-vad) — 语音活动检测
 - [PySide6](https://doc.qt.io/qtforpython-6/) — Qt6 Python 绑定

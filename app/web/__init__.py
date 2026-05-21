@@ -266,6 +266,12 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
             self._handle_layout_api()
             return
 
+        # KI-001 FIX: 动态生成 config.js，从 shared_config.py 单一数据源
+        # 前端通过 <script src="/api/config.js"> 加载，彻底消除 JS-Python 手动同步
+        if self.path.startswith("/api/config.js"):
+            self._serve_config_js()
+            return
+
         # 其他请求走默认处理
         super().do_GET()
     
@@ -461,6 +467,33 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
             traceback.print_exc()
             self.send_json({"success": False, "error": str(e)})
 
+    def _serve_config_js(self):
+        """KI-001 FIX: 动态生成 config.js，从 shared_config.py 单一数据源
+
+        前端通过 <script src="/api/config.js"> 加载此文件，
+        消除 index.html 中 JS 配置与 Python shared_config.py 的手动同步问题。
+        每次页面加载时自动获取最新的 Python 端配置数据。
+        """
+        from app.shared_config import PROVIDER_CONFIG, EDGE_VOICES, EXPRESSION_KEYWORDS, EXPRESSION_MAP
+
+        js_code = f"""// Auto-generated from app/shared_config.py — DO NOT EDIT MANUALLY
+// KI-001: 此文件由服务器动态生成，修改配置请编辑 app/shared_config.py
+
+const _providerConfig = {json.dumps(PROVIDER_CONFIG, ensure_ascii=False, indent=2)};
+
+const voiceOptions = {{
+    edge: {json.dumps([{{"label": v[1], "value": v[0]}} for v in EDGE_VOICES], ensure_ascii=False)}
+}};
+
+const expressionKeywords = {json.dumps(EXPRESSION_KEYWORDS, ensure_ascii=False)};
+const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
+"""
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/javascript')
+        self.send_header('Cache-Control', 'no-cache')
+        self.end_headers()
+        self.wfile.write(js_code.encode('utf-8'))
+
     def _handle_layout_api(self):
         """
         处理布局存储 API.
@@ -632,7 +665,12 @@ class WebServer:
             无
         """
         web_config = config.get("web", {})
-        self.port = web_config.get("port", 12393)
+        # KI-002 FIX: 默认端口从 shared_config 统一读取
+        try:
+            from app.shared_config import HTTP_PORT as _DEFAULT_HTTP_PORT
+        except ImportError:
+            _DEFAULT_HTTP_PORT = 12393
+        self.port = web_config.get("port", _DEFAULT_HTTP_PORT)
         self.server = None
         self.thread = None
         self._app = app  # 保存 App 实例引用用于访问 subagent
@@ -811,7 +849,12 @@ class WebSocketServer:
             无
         """
         self.config = config.get("web", {})
-        self.port = self.config.get("ws_port", 12394)
+        # KI-002 FIX: 默认端口从 shared_config 统一读取
+        try:
+            from app.shared_config import WS_PORT as _DEFAULT_WS_PORT
+        except ImportError:
+            _DEFAULT_WS_PORT = 12394
+        self.port = self.config.get("ws_port", _DEFAULT_WS_PORT)
         self.app = app
         self.server = None
         self.thread = None
@@ -845,6 +888,45 @@ class WebSocketServer:
 
         # v1.9.52: 工具调用可视化历史
         self._tool_call_history = []   # 最近50条工具调用记录
+
+        # KI-009 FIX: TTS 引擎缓存锁（防止多线程重复创建引擎）
+        self._tts_engine_cache = {}
+        self._tts_cache_lock = threading.Lock()
+
+        # KI-007 FIX: 启动孤立状态定期清理线程
+        self._start_stale_client_cleanup()
+
+    def _start_stale_client_cleanup(self):
+        """KI-007 FIX: 启动定期清理孤立客户端状态的线程（每5分钟）"""
+        def stale_cleanup_worker():
+            import gc
+            while True:
+                try:
+                    time.sleep(300)  # 5 分钟
+                    # 获取当前所有在线客户端 ID
+                    online_ids = set()
+                    if self.server and hasattr(self.server, 'clients'):
+                        try:
+                            online_ids = {c.get('id') for c in self.server.clients.values() if c}
+                        except Exception:
+                            pass
+
+                    # 清理所有状态字典中不在在线列表的条目
+                    for state_dict in [self._client_tts_no_split, self._client_tts_engine,
+                                       self._client_tts_voice, self._client_asr_provider,
+                                       self._text_gen_running, self._text_gen_cancel,
+                                       self._text_gen_id]:
+                        stale = [k for k in list(state_dict.keys()) if k not in online_ids]
+                        for k in stale:
+                            val = state_dict.pop(k, None)
+                            if isinstance(val, threading.Event):
+                                val.set()  # 解除阻塞
+
+                    gc.collect()
+                except Exception as e:
+                    print(f"[WS] 孤立状态清理异常: {e}")
+
+        threading.Thread(target=stale_cleanup_worker, daemon=True).start()
 
     def _start_audio_cleanup(self):
         """启动音频文件自动清理线程(每5分钟清理一次超过10分钟的音频文件)"""
@@ -1272,6 +1354,34 @@ class WebSocketServer:
                 self._client_asr_provider.pop(client_id, None)
                 if client_id in self._vision_monitors:
                     del self._vision_monitors[client_id]
+
+                # KI-007 FIX: 完整清理所有客户端相关状态，防止 threading.Event 内存泄漏
+                if client_id in self._client_tts_no_split:
+                    self._client_tts_no_split.pop(client_id, None)
+
+                if client_id in self._text_gen_running:
+                    self._text_gen_running.pop(client_id, None)
+
+                if client_id in self._text_gen_cancel:
+                    evt = self._text_gen_cancel.pop(client_id, None)
+                    if evt and isinstance(evt, threading.Event):
+                        evt.set()  # 先解除阻塞
+
+                if client_id in self._text_gen_id:
+                    self._text_gen_id.pop(client_id, None)
+
+                # KI-007 FIX: 清理 TTS 缓存中该客户端相关的引擎实例
+                if hasattr(self, '_tts_engine_cache') and hasattr(self, '_tts_cache_lock'):
+                    with self._tts_cache_lock:
+                        keys_to_remove = [k for k in self._tts_engine_cache
+                                          if str(client_id) in str(k)]
+                        for k in keys_to_remove:
+                            engine = self._tts_engine_cache.pop(k, None)
+                            if engine and hasattr(engine, 'cleanup'):
+                                try:
+                                    engine.cleanup()
+                                except Exception:
+                                    pass
 
             self.server.set_fn_new_client(on_new)
             self.server.set_fn_message_received(on_message)
@@ -1903,6 +2013,9 @@ class WebSocketServer:
                     self._text_gen_id[client_id] = None
                     return
                 reply = result.get("text", full_text)
+                # v1.9.99: 如果 LLM 返回空回复且带有错误标记，通知前端
+                if not reply and result.get("_stream_error"):
+                    reply = f"对话错误: {result['_stream_error'][:100]}"
                 reply = _filter_reply(reply)
 
                 # 如果流式过程中没过滤掉任何内容,直接用 full_text
@@ -2138,42 +2251,43 @@ class WebSocketServer:
             return None
 
         cache_key = f"gptsovits:{voice}"
-        if not hasattr(self, '_tts_engine_cache'):
-            self._tts_engine_cache = {}
 
-        # 检查缓存:voice 相同时直接返回已有实例,避免重复加载 pipeline
-        if cache_key in self._tts_engine_cache:
-            tts_instance = self._tts_engine_cache[cache_key]
-            # 如果项目变化才切换;同项目不重新加载
-            if (hasattr(tts_instance, 'current_project') and
-                    tts_instance.current_project != voice):
-                try:
-                    tts_instance.set_project(voice)
-                except Exception:
-                    pass
-            return tts_instance
+        # KI-009 FIX: 使用锁保护缓存读写，double-check 模式防止重复创建
+        with self._tts_cache_lock:
+            # 检查缓存:voice 相同时直接返回已有实例,避免重复加载 pipeline
+            if cache_key in self._tts_engine_cache:
+                tts_instance = self._tts_engine_cache[cache_key]
+                # 如果项目变化才切换;同项目不重新加载
+                if (hasattr(tts_instance, 'current_project') and
+                        tts_instance.current_project != voice):
+                    try:
+                        tts_instance.set_project(voice)
+                    except Exception:
+                        pass
+                return tts_instance
 
-        try:
-            from tts import TTSFactory
+            # 缓存未命中：创建新引擎（仍在锁内，防止重复创建）
+            try:
+                from tts import TTSFactory
 
-            tts_config = self.app.config.config.get("tts", {}).copy()
-            tts_config['provider'] = 'gptsovits'
-            tts_config['gptsovits'] = {
-                'device': 'cuda',
-                'is_half': True,
-                'project': voice,
-            }
+                tts_config = self.app.config.config.get("tts", {}).copy()
+                tts_config['provider'] = 'gptsovits'
+                tts_config['gptsovits'] = {
+                    'device': 'cuda',
+                    'is_half': True,
+                    'project': voice,
+                }
 
-            print(f"[TTS] 创建引擎: provider=gptsovits, voice={voice}")
-            tts_instance = TTSFactory.create(tts_config)
-            self._tts_engine_cache[cache_key] = tts_instance
-            print(f"[TTS] 引擎创建成功: {type(tts_instance).__name__}")
-            return tts_instance
-        except Exception as e:
-            print(f"[TTS] 创建引擎失败: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
+                print(f"[TTS] 创建引擎: provider=gptsovits, voice={voice}")
+                tts_instance = TTSFactory.create(tts_config)
+                self._tts_engine_cache[cache_key] = tts_instance
+                print(f"[TTS] 引擎创建成功: {type(tts_instance).__name__}")
+                return tts_instance
+            except Exception as e:
+                print(f"[TTS] 创建引擎失败: {e}")
+                import traceback
+                traceback.print_exc()
+                return None
 
     def _handle_files(self, client, data):
         """
@@ -2623,11 +2737,20 @@ class WebSocketServer:
             "type": "text", "text": reply
         }))
 
-        # TTS
+        # TTS — KI-008 FIX: 复用已有 TTS 引擎，而非每次新建
         if hasattr(self.app, 'tts'):
             try:
-                from tts import TTSFactory
-                tts = TTSFactory.create(self.app.config.config.get("tts", {}))
+                client_id = client['id'] if client else 'unknown'
+                # 优先使用全局 TTS 引擎
+                tts = self.app.tts
+                # 如果客户端有自定义 TTS 配置，走缓存
+                client_engine = self._client_tts_engine.get(client_id, '')
+                client_voice = self._client_tts_voice.get(client_id, 'default')
+                if client_engine:
+                    cached_tts = self._get_tts_for_client(client_engine, client_voice)
+                    if cached_tts:
+                        tts = cached_tts
+
                 if tts:
                     tts_path = tts.speak(reply)
                     if tts_path and os.path.exists(tts_path):
@@ -5369,6 +5492,19 @@ class WebSocketServer:
         # v2.0: 传递 memory_system 支持 RAG 注入
         result = llm.stream_chat(text, callback=on_chunk, chunk_size=5, memory_system=memory)
         full_text = result.get("text", "")
+        
+        # v1.9.99: 检查 LLM 流式错误（_stream_error 标记）
+        if result.get("_stream_error"):
+            print(f"[REALTIME] LLM 流式错误: {result['_stream_error']}")
+            # 通知前端
+            self._safe_send(client, {
+                "type": "realtime_audio_done",
+                "error": f"LLM 错误: {result['_stream_error'][:100]}"
+            })
+            tts_worker_active[0] = False
+            state["speaking"] = False
+            state["running"] = False
+            return full_text if full_text else ""
 
         # v1.8: LLM 完成后检查 generation
         if not is_current():

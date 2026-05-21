@@ -21,18 +21,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, QPoint, QTimer
 from PySide6.QtGui import QAction
 
-# live2d-py 是可选依赖
-try:
-    import live2d.v3 as live2d
-    LIVE2D_AVAILABLE = True
-except ImportError:
-    live2d = None
-    LIVE2D_AVAILABLE = False
-
 from gugu_native.widgets.live2d_widget import Live2DWidget
 
-# 项目根目录
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# 项目根目录 — KI-005: 从 shared_config 统一引用
+from app.shared_config import PROJECT_DIR
 
 
 class DesktopPetWindow(QWidget):
@@ -196,3 +188,20 @@ class DesktopPetWindow(QWidget):
         """关闭事件"""
         self.pet_closed.emit()
         super().closeEvent(event)
+
+    # ========== 隐藏时释放 Live2D 资源 ==========
+
+    def hideEvent(self, event):
+        """隐藏时重置模型状态（Web 渲染模式下无需手动释放 VRAM）"""
+        if hasattr(self, 'live2d_widget') and self.live2d_widget:
+            self.live2d_widget.model = None
+            self._model_loaded = False
+        super().hideEvent(event)
+
+    def showEvent(self, event):
+        """显示时重新加载模型"""
+        if hasattr(self, 'live2d_widget') and self.live2d_widget:
+            if not self.live2d_widget.model:
+                # 重新加载模型
+                self._load_model()
+        super().showEvent(event)

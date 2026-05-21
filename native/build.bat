@@ -5,7 +5,7 @@ REM  Must run with Python 3.11
 REM ======================================
 
 echo ========================================
-echo  Building GuguGagaNative v1.9.90
+echo  Building GuguGagaNative v1.10.2
 echo ========================================
 
 REM Check Python 3.11

@@ -51,8 +51,9 @@ import yaml
 from pathlib import Path
 from datetime import datetime
 
-# 路径配置 - 从 trainer/manager.py 计算项目根目录
-_PROJECT_ROOT = Path(__file__).parent.parent.parent
+# 路径配置 - KI-005: 从 shared_config 统一引用项目根目录
+from app.shared_config import PROJECT_DIR as _PROJECT_DIR_STR
+_PROJECT_ROOT = Path(_PROJECT_DIR_STR)
 GPT_SOVITS_ROOT = _PROJECT_ROOT / "GPT-SoVITS"
 TRAIN_DATA_ROOT = GPT_SOVITS_ROOT / "data"
 

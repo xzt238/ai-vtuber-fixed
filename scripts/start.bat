@@ -7,7 +7,7 @@ cd /d "%~dp0.."
 echo.
 echo ========================================
 echo    GuguGaga AI VTuber
-echo    version: 1.9.86
+echo    version: 1.10.2
 echo ========================================
 echo.
 
@@ -32,24 +32,26 @@ if exist "%~dp0..\python\python.exe" (
     echo [OK] Using system Python: py -3.11
 )
 
-REM ========== Check PySide6 ==========
+REM ========== Check PySide6 (鍚?WebEngine) ==========
 %PYTHON_CMD% -c "import PySide6" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] PySide6 not installed, installing...
     %PYTHON_CMD% -m pip install PySide6 PySide6-Fluent-Widgets -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
 )
 
-REM ========== Check live2d ==========
-%PYTHON_CMD% -c "import live2d" >nul 2>&1
+REM ========== Check PySide6-WebEngine (Live2D Web 娓叉煋闇€瑕? ==========
+%PYTHON_CMD% -c "from PySide6.QtWebEngineWidgets import QWebEngineView" >nul 2>&1
 if errorlevel 1 (
-    echo [INFO] live2d-py not installed, installing...
-    %PYTHON_CMD% -m pip install live2d-py -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
+    echo [INFO] PySide6-WebEngine not installed, installing...
+    %PYTHON_CMD% -m pip install PySide6-WebEngine -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
     if errorlevel 1 (
-        echo [WARN] live2d-py install failed, Live2D will be disabled.
-        echo        You can try manually: pip install live2d-py
+        echo [WARN] PySide6-WebEngine install failed. Live2D will use fallback mode.
     )
 )
 
+REM ========== live2d-py (鍙€夛紝涓嶅啀寮哄埗瀹夎) ==========
+REM v2.0: Live2D 娓叉煋宸插垏鎹㈠埌 QWebEngineView + pixi.js 鏂规
+REM live2d-py 涓嶅啀鏄繀闇€渚濊禆锛屼絾淇濈暀鍏煎鎬?
 echo.
 echo [OK] Environment ready. Starting native desktop...
 echo.

@@ -65,6 +65,8 @@ class SpectrumWidget(QWidget):
         self._min_height = 3
         self.setMinimumHeight(60)
         self.setMaximumHeight(120)
+        # 优化 #3: 预创建渐变对象，避免每帧重建 32 个 QLinearGradient
+        self._gradients = [QLinearGradient() for _ in range(BAND_COUNT)]
 
     def set_bands(self, bands: np.ndarray):
         """设置当前频谱数据（0.0~1.0 归一化）"""
@@ -107,8 +109,10 @@ class SpectrumWidget(QWidget):
             x = start_x + i * (bar_width + self._bar_gap)
             y = h - 4 - bar_height
 
-            # 渐变色
-            gradient = QLinearGradient(x, y, x, h - 4)
+            # 渐变色（优化 #3: 复用预创建的渐变对象）
+            gradient = self._gradients[i]
+            gradient.setStart(x, y)
+            gradient.setFinalStop(x, h - 4)
             t = i / max(1, BAND_COUNT - 1)
             # 在颜色之间插值
             seg = t * (len(colors) - 1)

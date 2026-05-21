@@ -1,6 +1,6 @@
 # 📚 咕咕嘎嘎 AI-VTuber 文档中心
 
-> **最后更新**: 2026-05-07 | **当前版本**: v1.9.90 | **文档总数**: 17
+> **最后更新**: 2026-05-22 | **当前版本**: v1.10.2 | **文档总数**: 18
 
 欢迎来到项目文档中心！所有文档按功能分类，快速找到你需要的内容。
 
@@ -19,6 +19,7 @@
 | 查看版本变更记录 | [VERSION.md](VERSION.md) |
 | 构建和打包项目 | [guides/BUILD.md](guides/BUILD.md) |
 | 了解原生桌面架构 | [guides/NATIVE_DESKTOP.md](guides/NATIVE_DESKTOP.md) |
+| Live2D 原生渲染方案 | [guides/LIVE2D_NATIVE_RENDER.md](guides/LIVE2D_NATIVE_RENDER.md) |
 | 查看竞品差距 | [reference/COMPETITIVE_GAP_ANALYSIS.md](reference/COMPETITIVE_GAP_ANALYSIS.md) |
 
 ---
@@ -43,6 +44,7 @@
 | [guides/DEVGUIDE.md](guides/DEVGUIDE.md) | 开发者指南 — 架构、模块详解、开发规范、调试技巧 | 架构变更时 |
 | [guides/BUILD.md](guides/BUILD.md) | 构建打包指南 — WebUI / 桌面 / 原生 / 安装器 | 构建流程变更时 |
 | [guides/NATIVE_DESKTOP.md](guides/NATIVE_DESKTOP.md) | 原生桌面架构 — 页面、组件、后端交互、主题系统 | 原生桌面变更时 |
+| [guides/LIVE2D_NATIVE_RENDER.md](guides/LIVE2D_NATIVE_RENDER.md) | Live2D 原生渲染 — live2d-py 方案详解、API、迁移历史 | 渲染方案变更时 |
 
 ### reference/ — 参考分析
 

@@ -998,8 +998,11 @@ class MiniMaxLLM(LLMEngine):
         response.raise_for_status()  # 4xx/5xx 时抛出 HTTPError
         
         result = response.json()
-        # 提取回复文本（OpenAI 格式：choices[0].message.content）
-        msg = result["choices"][0].get("message", {})
+        # v1.9.99 修复: choices 可能为空列表，保护性处理
+        choices = result.get("choices", [])
+        if not choices:
+            return {"text": "(LLM 返回空回复)", "action": None}
+        msg = choices[0].get("message", {})
         text = msg.get("content", "")
         
         # 解析回复中可能嵌入的动作指令
@@ -1105,8 +1108,8 @@ class MiniMaxLLM(LLMEngine):
                 break
 
         print(f"[LLM] 流式错误: {last_error}")
-        # M5修复: 中断时返回已有的部分响应而非丢弃
-        return {"text": "", "action": None, "_stream_error": str(last_error)}
+        # v1.9.99: 流式错误时返回错误信息而非空字符串，让调用方能感知到失败
+        return {"text": f"对话错误: {str(last_error)}", "action": None, "_stream_error": str(last_error)}
 
     def _stream_openai(self, message: str, history, callback, memory_system, chunk_size, on_tool_call=None) -> Dict[str, Any]:
         """
@@ -1157,6 +1160,8 @@ class MiniMaxLLM(LLMEngine):
         buffer = ""      # 待触发回调的缓冲区
         in_thinking = False  # Qwen3 thinking 标签跟踪
         tool_calls_accum = {}  # v2.0: FC 累积 tool_calls
+        choice = None  # KI-010 FIX: 默认初始化，防止流无有效行时 NameError
+        chunk = None
 
         # iter_lines(): 逐行读取 SSE 流，自动处理分块传输编码
         for line in response.iter_lines():
@@ -1173,7 +1178,11 @@ class MiniMaxLLM(LLMEngine):
 
             try:
                 chunk = json.loads(data_str)
-                choice = chunk["choices"][0]
+                choices = chunk.get("choices", [])
+                # v1.9.99 修复: choices 可能为空（流结束信号有时不含 choices）
+                if not choices:
+                    continue
+                choice = choices[0]
                 # OpenAI SSE 格式：choices[0].delta.content 包含增量文本
                 delta = choice.get("delta", {})
                 content = delta.get("content") or ""
@@ -1222,7 +1231,8 @@ class MiniMaxLLM(LLMEngine):
         # v2.0: FC — 检查是否有 tool_calls 需要执行
         # 修复：原条件 `tool_calls_accum and (finish_reason == "tool_calls" or tool_calls_accum)`
         # 等价于 `tool_calls_accum`（始终为 True），修正为仅检查 finish_reason
-        finish_reason = choice.get("finish_reason", "") if 'choice' in dir() and 'chunk' in dir() else ""
+        # KI-010 FIX: 使用更安全的 None 检查代替 dir() 检查
+        finish_reason = choice.get("finish_reason", "") if choice else ""
         if tool_calls_accum and finish_reason == "tool_calls":
             tool_calls_list = [tool_calls_accum[i] for i in sorted(tool_calls_accum.keys())]
             print(f"[LLM] FC 检测到 {len(tool_calls_list)} 个工具调用")
@@ -1252,9 +1262,19 @@ class MiniMaxLLM(LLMEngine):
                 print(f"[LLM] FC 执行失败: {e}")
                 if full_text:
                     return {"text": full_text, "action": None}
+                # v1.9.99: FC 失败且无文本时，返回错误信息而非空字符串
+                return {"text": f"工具调用执行出错: {str(e)}", "action": None}
 
         # 流结束后兜底清理
         full_text = _strip_thinking(full_text)
+
+        # v14 FIX: 检查流式结果是否为空
+        if not full_text:
+            # 如果 thinking 被过滤后为空，给出明确提示
+            if in_thinking or _THINK_RE.search(response.text if hasattr(response, 'text') else ""):
+                full_text = "（LLM 只输出了思考内容，未生成回复，请重试）"
+            else:
+                full_text = "（LLM 未返回有效回复，请重试）"
 
         # 流结束后，发送缓冲区中剩余的文本片段
         if buffer and callback:
@@ -1351,7 +1371,14 @@ class MiniMaxLLM(LLMEngine):
         
         # 流结束后兜底清理
         full_text = _strip_thinking(full_text)
-        
+
+        # v14 FIX: 检查流式结果是否为空
+        if not full_text:
+            if in_thinking:
+                full_text = "（LLM 只输出了思考内容，未生成回复，请重试）"
+            else:
+                full_text = "（LLM 未返回有效回复，请重试）"
+
         # 发送缓冲区剩余内容
         if buffer and callback:
             callback(buffer)
@@ -1487,9 +1514,27 @@ class OpenAILLM(LLMEngine):
             response.raise_for_status()
             
             result = response.json()
-            # OpenAI Chat Completions 格式：choices[0].message.content
-            msg = result["choices"][0].get("message", {})
-            text = msg.get("content") or ""  # Qwen3 thinking 模式下 content 可能为 None
+            # v1.9.99 修复: choices 可能为空列表，保护性处理
+            choices = result.get("choices", [])
+            if not choices:
+                return {"text": "(LLM 返回空回复)", "action": None}
+            msg = choices[0].get("message", {})
+            raw_content = msg.get("content") or ""  # Qwen3 thinking 模式下 content 可能为 None
+            # v1.9.95 修复：content 可能是 list（多模态/vision 模型）或 dict，需提取文本
+            if isinstance(raw_content, list):
+                # OpenAI 多模态格式：[{"type": "text", "text": "..."}, ...]
+                text = ""
+                for item in raw_content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text += item.get("text", "")
+                    elif isinstance(item, str):
+                        text += item
+                if not text:
+                    text = str(raw_content)  # 兜底
+            elif isinstance(raw_content, dict):
+                text = raw_content.get("text", str(raw_content))
+            else:
+                text = str(raw_content)
             # 兜底清理：<think >...</think > 标签（部分 Qwen3 版本会输出到 content 中）
             text = _strip_thinking(text)
             action = _parse_action(text)
@@ -1545,10 +1590,26 @@ class OpenAILLM(LLMEngine):
             response.raise_for_status()
             result = response.json()
             msg = result.get("message", {})
-            text = msg.get("content") or ""
+            raw_content = msg.get("content") or ""
+            # v1.9.95 修复：content 可能是 list/dict 而非 string
+            if isinstance(raw_content, list):
+                text = ""
+                for item in raw_content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text += item.get("text", "")
+                    elif isinstance(item, str):
+                        text += item
+                if not text:
+                    text = str(raw_content)
+            elif isinstance(raw_content, dict):
+                text = raw_content.get("text", str(raw_content))
+            else:
+                text = str(raw_content)
             text = _strip_thinking(text)
             action_str = _parse_action(text)
-            ret = {"text": text, "action": action_str}
+            # v1.9.95 修复：action 始终返回解析后的 dict 或 None（与其他方法一致）
+            action = json.loads(action_str) if action_str else None
+            ret = {"text": text, "action": action}
             with self._cache_lock:
                 self._cache[cache_key] = (ret, time.time())
             return ret
@@ -1606,6 +1667,11 @@ class OpenAILLM(LLMEngine):
                     continue
 
             full_text = _strip_thinking(full_text)
+
+            # v14 FIX: 检查流式结果是否为空
+            if not full_text:
+                full_text = "（LLM 未返回有效回复，请重试）"
+
             if buffer and callback:
                 callback(buffer)
             action_str = _parse_action(full_text)
@@ -1690,7 +1756,11 @@ class OpenAILLM(LLMEngine):
 
                 try:
                     chunk = json.loads(data_str)
-                    choice = chunk["choices"][0]
+                    # v1.9.99 修复: choices 可能为空列表
+                    chunk_choices = chunk.get("choices", [])
+                    if not chunk_choices:
+                        continue
+                    choice = chunk_choices[0]
                     delta = choice.get("delta", {})
                     content = delta.get("content") or ""  # content 可能为 None
 
@@ -1742,8 +1812,10 @@ class OpenAILLM(LLMEngine):
                     continue
 
             # v2.0: FC — 检查是否有 tool_calls 需要执行
+            # v1.9.95 修复：原条件 `tool_calls_accum and (finish_reason == "tool_calls" or tool_calls_accum)`
+            # 等价于 `tool_calls_accum`（始终为 True），修正为仅检查 finish_reason
             finish_reason = choice.get("finish_reason", "") if chunk.get("choices") else ""
-            if tool_calls_accum and (finish_reason == "tool_calls" or tool_calls_accum):
+            if tool_calls_accum and finish_reason == "tool_calls":
                 # 将累积的 tool_calls 转为列表
                 tool_calls_list = [tool_calls_accum[i] for i in sorted(tool_calls_accum.keys())]
                 print(f"[LLM] FC 检测到 {len(tool_calls_list)} 个工具调用")
@@ -1782,6 +1854,13 @@ class OpenAILLM(LLMEngine):
 
             # 流结束后兜底清理 thinking 标签
             full_text = _strip_thinking(full_text)
+
+            # v14 FIX: 检查流式结果是否为空
+            if not full_text:
+                if in_thinking:
+                    full_text = "（LLM 只输出了思考内容，未生成回复，请重试）"
+                else:
+                    full_text = "（LLM 未返回有效回复，请重试）"
 
             # 发送剩余缓冲区内容
             if buffer and callback:
@@ -1933,8 +2012,12 @@ class AnthropicLLM(LLMEngine):
             response.raise_for_status()
             
             result = response.json()
-            # Anthropic 回复格式：content[0].text
-            text = result["content"][0]["text"]
+            # v1.9.99 修复: Anthropic 返回空 content 列表时保护性处理
+            content_blocks = result.get("content", [])
+            text = ""
+            for block in content_blocks:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text += block.get("text", "")
             # 清理 <think/> 标签（部分 Anthropic 模型会泄漏思维链标签）
             text = _strip_thinking(text)
             action = _parse_action(text)
@@ -2043,6 +2126,10 @@ class AnthropicLLM(LLMEngine):
                 except:
                     continue
             
+            # v14 FIX: 检查流式结果是否为空
+            if not full_text:
+                full_text = "（LLM 未返回有效回复，请重试）"
+
             # 发送缓冲区剩余内容
             if buffer and callback:
                 callback(buffer)

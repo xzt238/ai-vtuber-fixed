@@ -1,22 +1,20 @@
 @echo off
 title GuguGaga AI VTuber
 
-REM 切换到项目根目录（bat 文件在 scripts/ 子目录下）
-cd /d "%~dp0.."
+REM 鍒囨崲鍒伴」鐩牴鐩綍锛坆at 鏂囦欢鍦?scripts/ 瀛愮洰褰曚笅锛?cd /d "%~dp0.."
 
 echo.
 echo ========================================
 echo    GuguGaga AI VTuber - Browser Mode
-echo    version: 1.9.86
+echo    version: 1.10.2
 echo ========================================
 echo.
 
 REM ========== Environment Variables ==========
-REM HuggingFace 模型缓存目录（项目根目录下的 .cache/）
-set HF_HOME=%cd%\.cache\huggingface
+REM HuggingFace 妯″瀷缂撳瓨鐩綍锛堥」鐩牴鐩綍涓嬬殑 .cache/锛?set HF_HOME=%cd%\.cache\huggingface
 set HF_ENDPOINT=https://hf-mirror.com
 
-REM ========== Check Python (嵌入式优先，回退系统安装) ==========
+REM ========== Check Python (宓屽叆寮忎紭鍏堬紝鍥為€€绯荤粺瀹夎) ==========
 if exist "%~dp0..\python\python.exe" (
     set PYTHON_CMD=%~dp0..\python\python.exe
     echo [OK] Using embedded Python: %PYTHON_CMD%

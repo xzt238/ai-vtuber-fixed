@@ -88,8 +88,6 @@ PACKAGES = [
     ('qfluentwidgets', 'PySide6-Fluent-Widgets>=1.7', 'recommended'),
     # Live2D (optional — requires live2d-py, may need manual install)
     ('live2d', 'live2d-py', 'optional'),
-    # ChatTTS (optional — 对话场景 TTS, CC BY-NC 4.0)
-    ('ChatTTS', 'ChatTTS', 'optional'),
 ]
 
 # ================================================================
@@ -593,83 +591,6 @@ def download_models(project_root):
     return stats
 
 
-def download_chattts_models(project_root):
-    """下载 ChatTTS 模型文件（通过 HuggingFace mirror）。
-
-    ChatTTS 首次 load() 时会自动下载模型，但国内直连 HuggingFace 很慢。
-    这里预先通过 hf-mirror 下载到 HF_HOME 缓存目录，避免首次使用时等待。
-
-    模型约 1.5GB，包含:
-    - ChatTTS_u7n.ckpt (decoder)
-    - ChatTTS_dvnn.ckpt (VQ decoder)
-    等
-    """
-    stats = {'ok': 0, 'skip': 0, 'fail': 0}
-
-    # ChatTTS 模型缓存目录
-    hf_home = os.path.join(project_root, '.cache', 'huggingface')
-    chattts_dir = os.path.join(hf_home, 'hub', 'models--2Noise--ChatTTS')
-    snapshots_dir = os.path.join(chattts_dir, 'snapshots')
-
-    # 检查是否已经下载过（snapshots 目录存在且非空）
-    if os.path.isdir(snapshots_dir) and os.listdir(snapshots_dir):
-        print(f"    [OK] ChatTTS 模型已缓存")
-        stats['skip'] += 1
-        return stats
-
-    # 检查 ChatTTS 是否已安装
-    python = find_python(project_root)
-    if not python:
-        print("    [--] ChatTTS 跳过（未找到 Python）")
-        stats['fail'] += 1
-        return stats
-
-    try:
-        r = subprocess.run(
-            python + ['-c', 'import ChatTTS'],
-            capture_output=True, timeout=10
-        )
-        if r.returncode != 0:
-            print("    [--] ChatTTS 跳过（ChatTTS 包未安装，请先 pip install ChatTTS）")
-            stats['skip'] += 1
-            return stats
-    except Exception:
-        stats['skip'] += 1
-        return stats
-
-    # 通过 ChatTTS 自带下载器 + HF mirror 预下载模型
-    print("    正在预下载 ChatTTS 模型（~1.5GB，使用 hf-mirror.com 镜像）...")
-    print("    这可能需要 5-15 分钟，取决于网络速度")
-
-    try:
-        # 设置环境变量使用国内镜像
-        env = os.environ.copy()
-        env['HF_HOME'] = hf_home
-        env['HF_ENDPOINT'] = HF_MIRROR
-
-        r = subprocess.run(
-            python + ['-c',
-                      'import os; os.environ["HF_ENDPOINT"]="' + HF_MIRROR + '"; '
-                      'import ChatTTS; chat=ChatTTS.Chat(); chat.load(compile=False)'],
-            env=env,
-            timeout=1800  # 30 分钟超时
-        )
-
-        if r.returncode == 0:
-            print("    [OK] ChatTTS 模型下载完成")
-            stats['ok'] += 1
-        else:
-            print("    [XX] ChatTTS 模型下载失败")
-            stats['fail'] += 1
-    except subprocess.TimeoutExpired:
-        print("    [XX] ChatTTS 模型下载超时（30分钟）")
-        stats['fail'] += 1
-    except Exception as e:
-        print(f"    [XX] ChatTTS 模型下载异常: {e}")
-        stats['fail'] += 1
-
-    return stats
-
 # ================================================================
 #  Verification
 # ================================================================
@@ -768,21 +689,6 @@ def run_verification(python, project_root):
         results['ok'] += 1
     else:
         print("    [--] live2d-py - MISSING (Live2D 不可用，角色不会动)")
-        results['warn'] += 1
-
-    # ChatTTS
-    if check_import(python, 'ChatTTS'):
-        # 检查模型是否已下载
-        hf_home = os.path.join(project_root, '.cache', 'huggingface')
-        chattts_snapshots = os.path.join(hf_home, 'hub', 'models--2Noise--ChatTTS', 'snapshots')
-        if os.path.isdir(chattts_snapshots) and os.listdir(chattts_snapshots):
-            print("    [OK] ChatTTS (已安装 + 模型已缓存)")
-            results['ok'] += 1
-        else:
-            print("    [--] ChatTTS (已安装，模型未缓存 — 首次使用时自动下载)")
-            results['warn'] += 1
-    else:
-        print("    [--] ChatTTS - NOT INSTALLED (对话场景 TTS 不可用)")
         results['warn'] += 1
 
     return results
@@ -902,18 +808,6 @@ def main():
         dl_stats = download_models(project_root)
         print()
         print(f"  Model summary: {dl_stats['ok']} downloaded, {dl_stats['skip']} already present, {dl_stats['fail']} failed")
-
-        # ChatTTS 模型（可选，仅当 ChatTTS 已安装时下载）
-        step += 1
-        print_header(step, total, "ChatTTS Model (Optional)")
-        chattts_stats = download_chattts_models(project_root)
-        print()
-        if chattts_stats['skip'] > 0:
-            print("  ChatTTS: 已缓存或未安装（跳过）")
-        elif chattts_stats['ok'] > 0:
-            print(f"  ChatTTS: 模型下载完成")
-        else:
-            print("  ChatTTS: 下载失败（不影响核心功能，首次使用时将自动下载）")
 
     # ===== Verification =====
     step += 1

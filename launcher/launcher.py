@@ -72,11 +72,17 @@ APP_DIR = PROJECT_ROOT / "app"
 # 确保模块搜索路径包含 app/
 sys.path.insert(0, str(APP_DIR))
 
+# KI-002 FIX: 从 shared_config 统一读取端口配置，消除硬编码
+try:
+    from app.shared_config import HTTP_PORT as BACKEND_PORT, WS_PORT as BACKEND_WS_PORT
+except ImportError:
+    BACKEND_PORT = 12393
+    BACKEND_WS_PORT = 12394
+
 
 # ============ 配置 ============
-
-BACKEND_PORT = 12393
-BACKEND_WS_PORT = 12394
+# KI-002: BACKEND_PORT 和 BACKEND_WS_PORT 现从 shared_config.py 统一读取
+# （上面 import 时已设置，此行仅作文档说明）
 BACKEND_URL = f"http://localhost:{BACKEND_PORT}"
 STARTUP_TIMEOUT = 300       # 5 分钟超时
 HEALTH_INTERVAL = 0.3       # 300ms 检查一次（v1.9.27: 从 1s 优化，加速启动检测）
@@ -1007,7 +1013,9 @@ def main():
 
 
 def _unblock_dlls():
-    """解除 python/Lib/site-packages 下 DLL/PYD 的网络锁定标记"""
+    """解除 python/Lib/site-packages 下 DLL/PYD 的网络锁定标记
+    KI-006a: 使用 shared_config 中的公共 unblock_dlls() 函数
+    """
     sp_dir = PROJECT_ROOT / "python" / "Lib" / "site-packages"
     if not sp_dir.exists():
         return
@@ -1016,14 +1024,8 @@ def _unblock_dlls():
     if unlock_marker.exists():
         return
     try:
-        si = _subprocess_startupinfo()
-        subprocess.run(
-            ["powershell", "-Command",
-             f"Get-ChildItem '{sp_dir}' -Recurse -Include *.dll,*.pyd | Unblock-File -ErrorAction SilentlyContinue"],
-            capture_output=True, timeout=30,
-            startupinfo=si,
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
-        )
+        from app.shared_config import unblock_dlls
+        unblock_dlls(str(sp_dir), recursive=True)
         # 标记已完成，后续启动跳过
         unlock_marker.parent.mkdir(parents=True, exist_ok=True)
         unlock_marker.touch()

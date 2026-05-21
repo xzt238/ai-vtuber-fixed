@@ -577,19 +577,15 @@ function updateStreaming(text) {{
   if (!streamingMsg) return;
   streamingMsg.text = text;
 
-  // 使用 pyBridge 的同步渲染方法（renderMarkdownSync 直接返回 HTML 字符串）
+  // ★ QWebChannel 的 Slot 方法在 JS 端总是返回 Promise，不能同步获取返回值
+  // renderMarkdownSync(text) 返回 Promise<String>，必须用 .then() 解包
   if (pyBridge && pyBridge.renderMarkdownSync) {{
-    try {{
-      var html = pyBridge.renderMarkdownSync(text);
+    pyBridge.renderMarkdownSync(text).then(function(html) {{
       if (streamingMsg) {{
         streamingMsg.contentDiv.innerHTML = html + '<span class="typing-cursor"></span>';
         scrollToBottom();
       }}
-    }} catch(e) {{
-      // 降级：简单转义
-      streamingMsg.contentDiv.innerHTML = escapeHtml(text).replace(/\\n/g, '<br>') + '<span class="typing-cursor"></span>';
-      scrollToBottom();
-    }}
+    }});
   }} else {{
     // 降级：简单转义
     streamingMsg.contentDiv.innerHTML = escapeHtml(text).replace(/\\n/g, '<br>') + '<span class="typing-cursor"></span>';
@@ -600,10 +596,9 @@ function updateStreaming(text) {{
 function finishStreaming(text) {{
   if (!streamingMsg) return;
 
-  // 最终渲染（使用同步方法直接获取渲染结果）
+  // ★ QWebChannel 的 Slot 方法在 JS 端总是返回 Promise，必须用 .then() 解包
   if (pyBridge && pyBridge.renderMarkdownSync) {{
-    try {{
-      var html = pyBridge.renderMarkdownSync(text);
+    pyBridge.renderMarkdownSync(text).then(function(html) {{
       if (streamingMsg) {{
         streamingMsg.contentDiv.innerHTML = html;
         streamingMsg.text = text;
@@ -620,21 +615,7 @@ function finishStreaming(text) {{
         streamingMsg = null;
         scrollToBottom();
       }}
-    }} catch(e) {{
-      streamingMsg.contentDiv.innerHTML = escapeHtml(text).replace(/\\n/g, '<br>');
-      streamingMsg.text = text;
-      messages.push({{
-        role: 'assistant',
-        text: text,
-        html: streamingMsg.contentDiv.innerHTML,
-        element: streamingMsg.row,
-        contentElement: streamingMsg.contentDiv,
-        msgId: streamingMsg.msgId
-      }});
-      renderLatex(streamingMsg.bubble);
-      streamingMsg = null;
-      scrollToBottom();
-    }}
+    }});
   }} else {{
     streamingMsg.contentDiv.innerHTML = escapeHtml(text).replace(/\\n/g, '<br>');
     streamingMsg.text = text;
@@ -901,15 +882,54 @@ class ChatWebDisplay(QWidget):
         self._page_ready = False
         self._pending_messages = []
         self._msg_counter = 0
+        self._webengine_initialized = False  # 优化 #7: 标记是否已初始化
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         if _WEBENGINE_AVAILABLE:
-            self._init_webengine(layout)
+            # 优化 #7: 不立即创建 QWebEngineView，等首条消息时才懒创建
+            # 先显示占位符
+            from PySide6.QtWidgets import QLabel
+            from gugu_native.theme import get_colors
+            c = get_colors()
+            self._placeholder = QLabel(self)
+            self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._placeholder.setText("✨ 开始和 AI 对话吧")
+            self._placeholder.setStyleSheet(f"""
+                QLabel {{
+                    background-color: {c.chat_bg};
+                    color: {c.text_muted};
+                    font-size: 16px;
+                    border-radius: 13px;
+                    padding: 14px 16px;
+                }}
+            """)
+            layout.addWidget(self._placeholder)
         else:
             self._init_fallback(layout)
+
+    def _ensure_webengine(self):
+        """优化 #7: 确保QWebEngineView已创建（首次追加消息时调用）"""
+        if self._webengine_initialized:
+            return
+        self._webengine_initialized = True
+
+        layout = self.layout()
+        # 移除占位符
+        if hasattr(self, '_placeholder') and self._placeholder:
+            layout.removeWidget(self._placeholder)
+            self._placeholder.deleteLater()
+            self._placeholder = None
+
+        self._init_webengine(layout)
+
+        # 回放待处理消息
+        if self._pending_messages:
+            for method_name, args in self._pending_messages:
+                getattr(self, method_name)(*args)
+            self._pending_messages.clear()
 
     def _init_webengine(self, layout):
         """初始化 QWebEngineView 模式"""
@@ -995,6 +1015,7 @@ class ChatWebDisplay(QWidget):
                        "" = 历史消息无时间戳，使用当前时间作为兜底；
                        有效ISO字符串 = 解析后显示真实时间
         """
+        self._ensure_webengine()  # 优化 #7: 懒创建
         from gugu_native.theme import format_timestamp
         if timestamp:
             # 从 iso 格式解析后格式化显示
@@ -1032,6 +1053,7 @@ class ChatWebDisplay(QWidget):
                        "" = 历史消息无时间戳，使用当前时间作为兜底；
                        有效ISO字符串 = 解析后显示真实时间
         """
+        self._ensure_webengine()  # 优化 #7: 懒创建
         from gugu_native.theme import format_timestamp
         if timestamp:
             try:
@@ -1059,6 +1081,7 @@ class ChatWebDisplay(QWidget):
 
     def append_system_msg(self, text: str):
         """添加系统消息"""
+        self._ensure_webengine()  # 优化 #7: 懒创建
         if self._web_view:
             escaped = json.dumps(text, ensure_ascii=False)
             self._run_js(f"addSystemMsg({escaped})")

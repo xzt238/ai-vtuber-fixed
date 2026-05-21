@@ -32,8 +32,8 @@ from qfluentwidgets import (
     StrongBodyLabel, BodyLabel, HyperlinkButton
 )
 
-# 项目根目录
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# 项目根目录 — KI-005: 从 shared_config 统一引用
+from app.shared_config import PROJECT_DIR
 
 from gugu_native.theme import get_colors
 

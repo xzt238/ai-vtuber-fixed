@@ -37,25 +37,29 @@ if NATIVE_DIR not in sys.path:
     sys.path.insert(0, NATIVE_DIR)
 
 # 项目根目录（用于访问 app.main.AIVTuber 后端）
-PROJECT_DIR = os.path.dirname(NATIVE_DIR)
-if PROJECT_DIR not in sys.path:
-    sys.path.append(PROJECT_DIR)  # append 而非 insert，避免 app/ 覆盖 gugu_native
+# KI-005: 先本地计算用于 sys.path，再从 shared_config 统一引用
+_LOCAL_PROJECT_DIR = os.path.dirname(NATIVE_DIR)
+if _LOCAL_PROJECT_DIR not in sys.path:
+    sys.path.append(_LOCAL_PROJECT_DIR)  # append 而非 insert，避免 app/ 覆盖 gugu_native
 
-# live2d.init() 必须在 QApplication 和 QWidget 之前调用
-# live2d-py 是可选依赖，未安装时跳过 Live2D 功能
+from app.shared_config import PROJECT_DIR  # KI-005: 统一引用
+
+# v2.0: Live2D 渲染已切换到 QWebEngineView + pixi.js 方案
+# live2d-py 不再是必需依赖（保留为可选，兼容旧配置）
 LIVE2D_AVAILABLE = False
 live2d = None
 try:
     import live2d.v3 as _live2d
-    _live2d.init()
     live2d = _live2d
     LIVE2D_AVAILABLE = True
+    # 注意：live2d.init() 不再必须在 QApplication 之前调用
+    # 只有在仍使用旧版 QOpenGLWidget 渲染时才需要
+    # 新版 Web 渲染方案不依赖 live2d-py
 except ImportError:
-    print("[WARN] live2d-py not installed, Live2D features will be disabled.")
-    print("       Install it later: pip install live2d-py")
+    pass  # live2d-py 可选，不影响 Web 渲染方案
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import QApplication, QSplashScreen
+from PySide6.QtCore import Qt, QTimer, QThread
+from PySide6.QtWidgets import QApplication, QSplashScreen, QWidget
 from PySide6.QtGui import QIcon, QPixmap
 
 from qfluentwidgets import FluentWindow, NavigationItemPosition, setTheme, Theme, FluentIcon
@@ -82,7 +86,7 @@ def _get_version():
         from app.version import VERSION
         return VERSION
     except ImportError:
-        return "1.9.90"  # fallback
+        return "1.10.2"  # fallback
 
 # 配置日志 — 强制 UTF-8 编码避免 Windows 中文乱码
 # 注意: sys.stderr 本身已是文本流，不能用 io.TextIOWrapper 二次包装（会导致 flush 写 bytes 崩溃）
@@ -102,8 +106,10 @@ logger = logging.getLogger('GuguGagaApp')
 class GuguGagaApp(FluentWindow):
     """咕咕嘎嘎 AI-VTuber 主窗口"""
 
-    def __init__(self):
+    def __init__(self, start_time=None):
         super().__init__()
+        import time as _time
+        self._init_start_time = start_time or _time.time()
         self.setWindowTitle(f"咕咕嘎嘎 AI-VTuber v{_get_version()}")
         self.setMinimumSize(1100, 700)
         self.resize(1280, 800)
@@ -142,31 +148,18 @@ class GuguGagaApp(FluentWindow):
             QTimer.singleShot(0, self.close)
             return
 
-        # 检查 WebUI 是否在运行
-        if self.dual_mode.check_webui_running():
-            from qfluentwidgets import InfoBar, InfoBarPosition
-            InfoBar.warning(
-                title="WebUI 模式检测",
-                content="检测到 WebUI 模式正在运行，两者可以共存但共享同一后端配置。",
-                parent=self,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-            )
-
-        # === 性能管理器 ===
-        self.perf_manager = PerformanceManager(self)
-
         # === 开机自启管理器（需在 _create_pages 前初始化）===
         self.autostart_manager = AutoStartManager(self)
 
-        # 创建各页面
+        # === 创建各页面 ===
         self._create_pages()
 
-        # 设置主题
+        # === 设置主题 ===
         apply_theme(Theme.DARK)
-
-        # 应用全局样式表
         self.setStyleSheet(get_global_qss())
+
+        # === 性能管理器 ===
+        self.perf_manager = PerformanceManager(self)
 
         # === 系统托盘管理器 ===
         self.tray_manager = TrayManager(self)
@@ -175,8 +168,6 @@ class GuguGagaApp(FluentWindow):
 
         # === 实时语音管理器 ===
         self.voice_manager = RealtimeVoiceManager(parent=self)
-        # v1.9.76: speech_recognized 信号由 chat_page 在实时语音模式中按需连接
-        # 不在全局连接，避免与 chat_page._on_realtime_speech 重复触发 _send_message()
         self.voice_manager.vad_state_changed.connect(self._on_vad_state_changed)
         self.voice_manager.error_occurred.connect(self._on_voice_error)
 
@@ -193,10 +184,14 @@ class GuguGagaApp(FluentWindow):
         self.update_manager.check_done.connect(self._on_update_check)
         self.update_manager.download_done.connect(self._on_update_downloaded)
 
-        # === 延迟初始化后端（2秒后，让 UI 先渲染完）===
+        # WebUI 检测 — 异步通知式，不阻塞页面创建
+        self._start_webui_check()
+
+        # === 延迟初始化后端（100ms 后，让 UI 先渲染完）===
+        # v9: 500ms → 100ms（window.show() 已保证 UI 渲染，100ms 足够）
         self.perf_manager.schedule_backend_init(
             callback=self._on_backend_ready,
-            delay_ms=2000
+            delay_ms=100
         )
 
         # 延迟检查更新（10秒后，不抢后端初始化的资源）
@@ -207,6 +202,32 @@ class GuguGagaApp(FluentWindow):
         self.perf_manager.register_cleanup_target("hotkey_manager", self.hotkey_manager)
 
         logger.info("GuguGagaApp initialized")
+
+    def _start_webui_check(self):
+        """异步检测 WebUI 是否运行 — 纯通知式，不阻塞页面创建"""
+        from gugu_native.widgets.dual_mode_compat import WebUICheckWorker
+        self._webui_checker = WebUICheckWorker(self.dual_mode.WEBUI_HTTP_PORT)
+        self._webui_check_thread = QThread()
+        self._webui_checker.moveToThread(self._webui_check_thread)
+        self._webui_checker.result_ready.connect(self._on_webui_check_result)
+        self._webui_check_thread.started.connect(self._webui_checker.check)
+        self._webui_check_thread.start()
+
+    def _on_webui_check_result(self, is_running: bool):
+        """WebUI 检测回调 — 仅显示提示，不创建页面"""
+        if is_running:
+            from qfluentwidgets import InfoBar, InfoBarPosition
+            InfoBar.warning(
+                title="WebUI 模式检测",
+                content="检测到 WebUI 模式正在运行，两者可以共存但共享同一后端配置。",
+                parent=self,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+            )
+        # 清理线程
+        if hasattr(self, '_webui_check_thread') and self._webui_check_thread.isRunning():
+            self._webui_check_thread.quit()
+            self._webui_check_thread.wait(2000)
 
     def _create_pages(self):
         """创建导航页面"""
@@ -219,7 +240,7 @@ class GuguGagaApp(FluentWindow):
             "对话"
         )
 
-        # 训练页面
+        # 音色训练页面
         self.train_page = TrainPage(self)
         self.addSubInterface(
             self.train_page,
@@ -235,7 +256,7 @@ class GuguGagaApp(FluentWindow):
             "记忆"
         )
 
-        # 模型下载页面（v1.9.80: 从设置页拆出，提升到主导航栏）
+        # 模型下载页面
         self.model_download_page = ModelDownloadPage(self)
         self.addSubInterface(
             self.model_download_page,
@@ -246,10 +267,11 @@ class GuguGagaApp(FluentWindow):
         # 设置页面（放在底部）
         self.settings_page = SettingsPage(self)
         # 绑定开机自启开关到 AutoStartManager
-        self.settings_page.autostart_switch.setChecked(self.autostart_manager.is_enabled())
-        self.settings_page.autostart_switch.checkedChanged.connect(
-            lambda checked: self.autostart_manager.enable() if checked else self.autostart_manager.disable()
-        )
+        if hasattr(self.settings_page, 'autostart_switch'):
+            self.settings_page.autostart_switch.setChecked(self.autostart_manager.is_enabled())
+            self.settings_page.autostart_switch.checkedChanged.connect(
+                lambda checked: self.autostart_manager.enable() if checked else self.autostart_manager.disable()
+            )
         self.addSubInterface(
             self.settings_page,
             FluentIcon.SETTING,
@@ -291,10 +313,12 @@ class GuguGagaApp(FluentWindow):
 
     def _on_backend_ready(self):
         """后端初始化完成回调"""
-        logger.info("Backend ready, updating pages")
+        import time as _time
+        elapsed = _time.time() - self._init_start_time if hasattr(self, '_init_start_time') else 0
+        logger.info(f"Backend ready — total startup: {elapsed:.1f}s (from process entry)")
         # 通知各页面后端已就绪
         for page in [self.chat_page, self.train_page, self.memory_page, self.model_download_page, self.settings_page]:
-            if hasattr(page, 'on_backend_ready'):
+            if page and hasattr(page, 'on_backend_ready'):
                 try:
                     page.on_backend_ready()
                 except Exception as e:
@@ -458,24 +482,18 @@ class GuguGagaApp(FluentWindow):
     def _pause_main_live2d(self):
         """暂停主窗口的 Live2D 渲染以节省 GPU 资源"""
         try:
-            if hasattr(self.chat_page, 'live2d_widget') and self.chat_page.live2d_widget:
-                widget = self.chat_page.live2d_widget
-                if hasattr(widget, '_timer') and widget._timer:
-                    widget._timer.stop()
-                if hasattr(self.chat_page, '_animation_controller') and self.chat_page._animation_controller:
-                    self.chat_page._animation_controller.stop()
+            # v2.0: Web 渲染模式下无需手动管理定时器，只停止动画控制器
+            if hasattr(self.chat_page, '_animation_controller') and self.chat_page._animation_controller:
+                self.chat_page._animation_controller.stop()
         except Exception as e:
             logger.debug(f"Pause main Live2D failed: {e}")
 
     def _resume_main_live2d(self):
         """恢复主窗口的 Live2D 渲染"""
         try:
-            if hasattr(self.chat_page, 'live2d_widget') and self.chat_page.live2d_widget:
-                widget = self.chat_page.live2d_widget
-                if hasattr(widget, '_timer') and widget._timer and widget.model:
-                    widget._timer.start(33)  # 30 FPS
-                if hasattr(self.chat_page, '_animation_controller') and self.chat_page._animation_controller:
-                    self.chat_page._animation_controller.start()
+            # v2.0: Web 渲染模式下无需手动管理定时器，只恢复动画控制器
+            if hasattr(self.chat_page, '_animation_controller') and self.chat_page._animation_controller:
+                self.chat_page._animation_controller.start()
         except Exception as e:
             logger.debug(f"Resume main Live2D failed: {e}")
 
@@ -544,7 +562,7 @@ class GuguGagaApp(FluentWindow):
     def closeEvent(self, event):
         """关闭事件 — 最小化到托盘或退出"""
         # 先尝试最小化到托盘
-        if not getattr(self, '_force_quit', False) and self.tray_manager.handle_close_event(event):
+        if not getattr(self, '_force_quit', False) and hasattr(self, 'tray_manager') and self.tray_manager.handle_close_event(event):
             return  # 事件已处理（最小化到托盘）
 
         # 正常退出
@@ -559,19 +577,28 @@ class GuguGagaApp(FluentWindow):
         """清理资源并退出"""
         logger.info("Cleaning up and exiting...")
 
+        # 优化 #2: 强制保存所有脏会话
+        if hasattr(self, 'chat_page') and hasattr(self.chat_page, 'session_manager'):
+            try:
+                self.chat_page.session_manager.flush_dirty()
+            except Exception as e:
+                logger.warning(f"Failed to flush dirty sessions: {e}")
+
         # 停止语音管理器
-        if self.voice_manager.is_listening:
+        if hasattr(self, 'voice_manager') and self.voice_manager.is_listening:
             self.voice_manager.stop_listening()
 
         # 停止全局快捷键
-        self.hotkey_manager.stop()
+        if hasattr(self, 'hotkey_manager'):
+            self.hotkey_manager.stop()
 
         # 关闭桌面宠物
         if self._pet_window:
             self._pet_window.close()
 
         # 性能管理器清理
-        self.perf_manager.cleanup()
+        if hasattr(self, 'perf_manager'):
+            self.perf_manager.cleanup()
 
         # 释放互斥锁
         self.dual_mode.release_mutex()
@@ -594,12 +621,32 @@ class GuguGagaApp(FluentWindow):
                 except Exception as e:
                     logger.warning(f"Failed to stop backend: {e}")
 
-        self.tray_manager.cleanup()
+        if hasattr(self, 'tray_manager'):
+            self.tray_manager.cleanup()
         event.accept()
         logger.info("Cleanup completed")
 
 
 def main():
+    # v9: 全局启动计时 — 从 main() 入口开始，而非 __init__()
+    # 之前放在 __init__ 里测量的是"构造函数→后端就绪"的耗时，
+    # 但用户感知的"启动慢"是从双击 start.bat 到 UI 可用的总时间。
+    import time as _time
+    _PROCESS_START = _time.time()
+
+    # ★ Chromium GPU 加速开关 — 必须在 QApplication 创建之前设置！
+    # QWebEngineView 默认可能使用软件渲染（SwiftShader），导致 WebGL 性能极差
+    # 或 Live2D 模型无法正确渲染。
+    # 这些环境变量会被 Chromium 的 base::CommandLine 读取。
+    # 必须在 QApplication 之前设置，因为 Chromium 在 QApplication 构造时初始化。
+    os.environ.setdefault('QTWEBENGINE_CHROMIUM_FLAGS',
+        '--enable-gpu-rasterization '
+        '--enable-native-gpu-memory-buffers '
+        '--enable-webgl2-compute-context '
+        '--ignore-gpu-blocklist '
+        '--disable-software-rasterizer'
+    )
+
     # 高 DPI 支持 — 必须在 QApplication 创建之前设置
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
@@ -641,19 +688,25 @@ def main():
                           Qt.GlobalColor.white)
         app.processEvents()  # 确保 splash 立即渲染
 
-    window = GuguGagaApp()
+    window = GuguGagaApp(start_time=_PROCESS_START)
     window.show()
 
     # 关闭启动画面
     if splash:
         splash.finish(window)
 
+    # v9: 记录 UI 显示耗时（从 main() 入口到 window.show()）
+    import time as _time2
+    ui_elapsed = _time2.time() - _PROCESS_START
+    logger.info(f"UI visible in {ui_elapsed:.1f}s")
+
     exit_code = app.exec()
 
-    # 清理 Live2D 资源
+    # v2.0: live2d-py 清理（可选，Web 渲染模式不需要）
     if LIVE2D_AVAILABLE and live2d:
         try:
-            live2d.dispose()
+            if hasattr(live2d, 'dispose'):
+                live2d.dispose()
         except Exception:
             pass
 

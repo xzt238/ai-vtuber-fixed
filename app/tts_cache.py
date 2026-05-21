@@ -60,8 +60,13 @@ class TTSCache:
             - _cleanup_done: 标记过期清理是否已执行过（整个生命周期只执行一次）
             - _last_size_check: 上次容量检查的时间戳，用于实现 60 秒限频
         """
-        # 将字符串路径转换为 Path 对象，便于后续的路径拼接和文件操作
-        self.cache_dir = Path(cache_dir)
+        # v1.9.97: 将相对路径转为基于 app 目录的绝对路径
+        # start.bat 会 cd native/ 再运行，导致 "cache/tts" 变成 "native/cache/tts" 而非 "app/cache/tts"
+        cache_path = Path(cache_dir)
+        if not cache_path.is_absolute():
+            app_dir = Path(__file__).parent  # app/ 目录
+            cache_path = app_dir / cache_dir
+        self.cache_dir = cache_path
         # 创建缓存目录（含所有必要的父目录），如果已存在则不报错
         # parents=True 允许创建多级目录，exist_ok=True 避免目录已存在时抛异常
         self.cache_dir.mkdir(parents=True, exist_ok=True)

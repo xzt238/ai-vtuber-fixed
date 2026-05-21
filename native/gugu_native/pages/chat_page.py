@@ -30,6 +30,7 @@ import os
 import sys
 import json
 import time
+import random  # 优化 #5: 移到顶层，避免 _lipsync_tick 每 50ms 重复导入
 import tempfile
 from datetime import datetime, timedelta
 
@@ -49,10 +50,12 @@ from qfluentwidgets import (
 )
 from PySide6.QtWidgets import QFileDialog
 
-# 项目根目录
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-if PROJECT_DIR not in sys.path:
-    sys.path.insert(0, PROJECT_DIR)
+# 项目根目录 — KI-005: 先本地计算用于 sys.path，再从 shared_config 统一引用
+_LOCAL_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+if _LOCAL_PROJECT_DIR not in sys.path:
+    sys.path.insert(0, _LOCAL_PROJECT_DIR)
+
+from app.shared_config import PROJECT_DIR  # KI-005: 统一引用
 
 # TTS 偏好文件路径
 _TTS_PREFS_FILE = os.path.join(PROJECT_DIR, "app", "cache", "tts_preferences.json")
@@ -104,25 +107,40 @@ class StreamChatWorker(QThread):
         return val
 
     def _extract_sentences(self, chunk_text: str):
-        """流式模式：从 chunk 中提取完整句子"""
-        self._sentence_buffer += chunk_text
-        sentences = []
-        i = 0
-        while i < len(self._sentence_buffer):
-            if self._sentence_buffer[i] in self._SENTENCE_ENDS:
-                # 找到句子结束点
-                end = i + 1
-                # 包含连续的结束标点（如 ！！！）
-                while end < len(self._sentence_buffer) and self._sentence_buffer[end] in self._SENTENCE_ENDS:
-                    end += 1
-                sentence = self._sentence_buffer[:end].strip()
-                if sentence:
-                    sentences.append(sentence)
-                self._sentence_buffer = self._sentence_buffer[end:]
-                i = 0  # 重置索引（buffer 已截断）
-            else:
-                i += 1
-        return sentences
+        """流式模式：从 chunk 中提取完整句子（线程安全）"""
+        # KI-011 FIX: 使用互斥锁保护 buffer 操作
+        self._mutex.lock()
+        try:
+            self._sentence_buffer += chunk_text
+            sentences = []
+            i = 0
+            while i < len(self._sentence_buffer):
+                if self._sentence_buffer[i] in self._SENTENCE_ENDS:
+                    # 找到句子结束点
+                    end = i + 1
+                    # 包含连续的结束标点（如 ！！！）
+                    while end < len(self._sentence_buffer) and self._sentence_buffer[end] in self._SENTENCE_ENDS:
+                        end += 1
+                    sentence = self._sentence_buffer[:end].strip()
+                    if sentence:
+                        sentences.append(sentence)
+                    self._sentence_buffer = self._sentence_buffer[end:]
+                    i = 0  # 重置索引（buffer 已截断）
+                else:
+                    i += 1
+            return sentences
+        finally:
+            self._mutex.unlock()
+
+    def _get_and_clear_remaining_buffer(self):
+        """获取并清空缓冲区中剩余的未完结文本（线程安全）"""
+        self._mutex.lock()
+        try:
+            remaining = self._sentence_buffer.strip()
+            self._sentence_buffer = ""
+            return remaining
+        finally:
+            self._mutex.unlock()
 
     def run(self):
         try:
@@ -166,6 +184,20 @@ class StreamChatWorker(QThread):
             action = result.get("action")
             stream_error = result.get("_stream_error")
 
+            # v14 FIX: LLM 返回空文本时自动重试一次
+            if not reply and not stream_error:
+                print("[ChatPage] LLM 返回空回复，自动重试一次...")
+                # 重试时清空之前的累积文本
+                result = self.backend.llm.stream_chat(
+                    full_prompt,
+                    list(self.history),
+                    callback=on_chunk,
+                    on_tool_call=on_tool_call
+                )
+                reply = result.get("text", "")
+                action = result.get("action")
+                stream_error = result.get("_stream_error")
+
             # LLM 返回空文本 + 有流式错误 → 给用户明确提示
             if not reply and stream_error:
                 reply = f"LLM 请求失败: {stream_error}"
@@ -190,11 +222,10 @@ class StreamChatWorker(QThread):
             self.backend.record_interaction(self.text, reply)
 
             # 流式模式：处理缓冲区中剩余的未完结文本
-            if self.streaming_tts and self._sentence_buffer.strip():
-                remaining = self._sentence_buffer.strip()
+            if self.streaming_tts:
+                remaining = self._get_and_clear_remaining_buffer()
                 if remaining:
                     self.sentence_ready.emit(remaining)
-                self._sentence_buffer = ""
 
             # TTS 合成（整段模式在此时合成；流式模式已在 sentence_ready 中逐句合成）
             audio_path = None
@@ -277,8 +308,51 @@ class _OCRWorker(QThread):
             self.error.emit(str(e))
 
 
+class _VisionWorker(QThread):
+    """KI-014 FIX: 异步视觉理解工作线程，避免阻塞主线程"""
+    result_ready = Signal(str)   # 处理后的用户文本
+    error_occurred = Signal(str)
+
+    def __init__(self, backend, image_path, user_text):
+        super().__init__()
+        self.backend = backend
+        self.image_path = image_path
+        self.user_text = user_text
+
+    def run(self):
+        try:
+            if not self.user_text.strip():
+                # 无用户文本 → 纯 OCR
+                if hasattr(self.backend, 'vision'):
+                    vision = self.backend.vision
+                    ocr_result = vision.recognize_text(self.image_path)
+                    if ocr_result:
+                        self.result_ready.emit(
+                            f"请根据以下OCR识别结果回答：\n{ocr_result}"
+                        )
+                        return
+                self.result_ready.emit(self.user_text)
+            else:
+                # 有用户文本 → 视觉理解
+                if hasattr(self.backend, 'vision'):
+                    vision = self.backend.vision
+                    description = vision.understand(self.image_path, self.user_text)
+                    if description:
+                        self.result_ready.emit(
+                            f"[用户上传了一张图片，AI描述: {description}]\n用户问题: {self.user_text}"
+                        )
+                        return
+                self.result_ready.emit(self.user_text)
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+
+
 class ChatPage(QWidget):
     """对话页面 v2.0 — 完全重构版"""
+
+    # 优化 #13: 线程安全的 TTS 音频就绪信号
+    # v14 FIX: Signal 携带序号 (audio_path, seq)，用于流式 TTS 句子排序
+    _tts_audio_signal = Signal(str, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -296,6 +370,16 @@ class ChatPage(QWidget):
         self._animation_controller = None  # 主动画控制器
         self._audio_queue = []  # 音频播放队列（流式 TTS 逐句排队）
         self._tts_workers = []  # 活跃的 TTSWorker 列表（用于清理）
+        # 优化 #13: TTS 并发限制，防止线程爆炸
+        # v15 FIX: 恢复 max_workers=3 并行处理（效率高），
+        # 按序播放由 _tts_pending + _tts_next_play_seq 机制保证
+        from concurrent.futures import ThreadPoolExecutor
+        self._tts_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="tts")
+        self._tts_audio_signal.connect(self._on_tts_audio_ready)  # 优化 #13: 线程安全连接
+        # v14 FIX: 流式 TTS 句子排序 — 序号计数器和播放指针
+        self._tts_seq_counter = 0     # 递增序号，每个句子分配一个
+        self._tts_next_play_seq = 1   # 下一个预期播放的序号（序号从 1 开始）
+        self._tts_pending = {}        # 暂存乱序到达的音频: {seq: audio_path}
         self._init_ui()
         self._load_chat_history()
         self.setAcceptDrops(True)  # 启用拖拽
@@ -313,16 +397,28 @@ class ChatPage(QWidget):
         main_layout.setSpacing(8)
 
         # === 左侧: Live2D 区域 ===
-        left_panel = QVBoxLayout()
-        left_panel.setSpacing(4)
-        main_layout.addLayout(left_panel, stretch=2)
+        self._live2d_layout = QVBoxLayout()
+        self._live2d_layout.setSpacing(4)
+        main_layout.addLayout(self._live2d_layout, stretch=2)
 
-        # Live2D 渲染（占满整个左侧）
-        self.live2d_widget = Live2DWidget()
-        left_panel.addWidget(self.live2d_widget, stretch=1)
+        # ★ v11: Live2D 延迟创建 — 先用占位符，窗口显示后再创建 QWebEngineView
+        # QWebEngineView 的创建需要初始化 Chromium 进程，耗时 5-10 秒
+        # 延迟创建让窗口先显示，用户感知的启动时间大幅缩短
+        self.live2d_widget = None  # 将在 _lazy_init_live2d() 中创建
+        self._live2d_placeholder = QLabel("🐱 正在加载 Live2D...")
+        self._live2d_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._live2d_placeholder.setStyleSheet("""
+            QLabel {
+                color: rgba(255,255,255,0.4);
+                font-size: 16px;
+                background: transparent;
+            }
+        """)
+        self._live2d_placeholder.setMinimumSize(380, 480)
+        self._live2d_layout.addWidget(self._live2d_placeholder, stretch=1)
 
-        # 主动画控制器 — 让 Live2D 角色有生命感
-        self._animation_controller = AnimationController(self.live2d_widget)
+        # 主动画控制器 — 将在 _lazy_init_live2d() 中创建
+        self._animation_controller = None
 
         # === 中部: 会话列表侧边栏 ===
         self.session_manager = SessionManager(self)
@@ -502,7 +598,7 @@ class ChatPage(QWidget):
 
         # TTS 引擎选择 — 使用原生 QComboBox（支持 itemData/setSizeAdjustPolicy）
         self.tts_combo = QComboBox()
-        self.tts_combo.addItems(["Edge TTS", "GPT-SoVITS", "ChatTTS", "CosyVoice"])
+        self.tts_combo.addItems(["Edge TTS", "GPT-SoVITS"])
         self.tts_combo.setCurrentIndex(0)
         self.tts_combo.setMinimumWidth(100)
         self.tts_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
@@ -630,11 +726,101 @@ class ChatPage(QWidget):
         self._media_player.setAudioOutput(self._audio_output)
         self._audio_output.setVolume(0.8)
 
-        # === 延迟加载模型 ===
-        QTimer.singleShot(500, self._load_default_model)
+        # === Live2D 延迟初始化 ===
+        # v13: 不在 ChatPage 构造时启动 Live2D，改为在 on_backend_ready() 中启动
+        # 原因：QWebEngineView + Chromium 初始化耗时 5-10s，
+        # 如果在 ChatPage 构造时（GuguGagaApp.__init__ 内）启动，
+        # 会阻塞窗口显示，增加用户感知的启动时间。
+        # 延迟到后端就绪后启动，窗口可以更快显示出来。
+
+    def _lazy_init_live2d(self):
+        """v1.10.2: 延迟创建 Live2DWidget — 让窗口先显示再加载 Chromium
+
+        QWebEngineView 的创建需要启动 Chromium 渲染进程，这是整个启动链路中
+        最耗时的操作（5-10 秒）。通过延迟创建，窗口可以先显示出来，
+        用户看到的是"应用已启动"，而不是"等了 20 秒什么都没出来"。
+
+        v1.10.2 修复:
+        - 直接在 self._live2d_layout 上做 indexOf（placeholder 最初添加到的布局）
+        - 替换后 invalidate + activate 确保 QWebEngineView 几何正确传播
+        - 三段式 repaint：立即 + 500ms + 3000ms 安全网
+        """
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication
+
+        if self.live2d_widget is not None:
+            return  # 已经创建过了
+
+        # 创建 Live2D 组件
+        self.live2d_widget = Live2DWidget()
+
+        # 替换占位符 — 只在 _live2d_layout 上操作
+        # placeholder 在 __init__ 中通过 self._live2d_layout.addWidget() 添加，
+        # 必须在同一个 layout 实例上做 indexOf / removeWidget / insertWidget
+        if self._live2d_placeholder:
+            idx = self._live2d_layout.indexOf(self._live2d_placeholder)
+            if idx >= 0:
+                self._live2d_layout.removeWidget(self._live2d_placeholder)
+                self._live2d_placeholder.hide()
+                self._live2d_placeholder.deleteLater()
+                self._live2d_placeholder = None
+
+                # 在同一位置插入 Live2D widget
+                self._live2d_layout.insertWidget(idx, self.live2d_widget, stretch=1)
+                self.live2d_widget.show()
+                self.live2d_widget.updateGeometry()
+
+                # 强制布局刷新：invalidate + activate 确保 QWebEngineView
+                # 的几何信息在父布局链中正确传播
+                self._live2d_layout.invalidate()
+                self._live2d_layout.activate()
+                self.update()
+
+                # ★ 三段式 repaint：确保 QWebEngineView 合成到屏幕
+                # (1) 立即：通过 processEvents 让 pending 的布局事件先处理
+                # (2) 500ms：Chromium 轻量初始化可能已完成
+                # (3) 3000ms：安全网，覆盖 Chromium 完全冷启动
+                QApplication.processEvents()
+                self._force_live2d_repaint()
+                QTimer.singleShot(500, self._force_live2d_repaint)
+                QTimer.singleShot(3000, self._force_live2d_repaint)
+                print("[ChatPage] Live2D placeholder replaced with widget")
+            else:
+                # fallback: indexOf 没找到 — 追加到布局末尾
+                self._live2d_layout.addWidget(self.live2d_widget, stretch=1)
+                self.live2d_widget.show()
+                self.live2d_widget.updateGeometry()
+                self._live2d_placeholder.hide()
+                self._live2d_placeholder.deleteLater()
+                self._live2d_placeholder = None
+
+                QApplication.processEvents()
+                self._force_live2d_repaint()
+                QTimer.singleShot(500, self._force_live2d_repaint)
+                QTimer.singleShot(3000, self._force_live2d_repaint)
+                print("[ChatPage] Live2D placeholder replaced (fallback append)")
+
+        # 创建动画控制器
+        self._animation_controller = AnimationController(self.live2d_widget)
+
+        # 加载默认模型
+        self._load_default_model()
+
+    def _force_live2d_repaint(self):
+        """微调窗口尺寸强制 QWebEngineView 合成到屏幕"""
+        if not self.live2d_widget:
+            return
+        w = self.window()
+        if w:
+            g = w.geometry()
+            w.resize(g.width() + 1, g.height())
+            w.resize(g.width(), g.height())
 
     def _load_default_model(self):
         """加载默认 Live2D 模型"""
+        if self.live2d_widget is None:
+            return  # Live2D 还没创建
+
         model_path = os.path.join(
             PROJECT_DIR, "app", "web", "static", "assets", "model",
             "hiyori", "Hiyori.model3.json"
@@ -657,9 +843,13 @@ class ChatPage(QWidget):
         return self._backend
 
     def on_backend_ready(self):
-        """后端就绪回调 — 加载 TTS 配置和对话历史"""
+        """后端就绪回调 — 启动 Live2D、加载 TTS 配置和对话历史"""
         if not self.backend:
             return
+
+        # v13: 在后端就绪后启动 Live2D（而非 ChatPage 构造时）
+        # 确保窗口已经显示，Live2D 的 Chromium 初始化不会阻塞 UI
+        QTimer.singleShot(100, self._lazy_init_live2d)
 
         # 加载 TTS 配置
         try:
@@ -767,6 +957,11 @@ class ChatPage(QWidget):
         self._set_streaming_state(True)
         self._current_ai_text = ""
 
+        # v14 FIX: 重置流式 TTS 排序状态
+        self._tts_seq_counter = 0
+        self._tts_next_play_seq = 1  # 序号从 1 开始
+        self._tts_pending.clear()
+
         # 添加正在思考占位
         self.chat_display.start_streaming()
 
@@ -798,6 +993,10 @@ class ChatPage(QWidget):
             self._set_streaming_state(False)
             # 清空音频队列和等待中的 TTS Worker
             self._audio_queue.clear()
+            # v14 FIX: 清空排序缓冲区
+            self._tts_pending.clear()
+            self._tts_next_play_seq = 1
+            self._tts_seq_counter = 0
             for w in self._tts_workers:
                 if w.isRunning():
                     w.quit()
@@ -826,15 +1025,25 @@ class ChatPage(QWidget):
 
     @Slot(str)
     def _on_sentence_ready(self, sentence: str):
-        """流式 TTS：检测到完整句子，在后台线程合成音频"""
+        """流式 TTS：检测到完整句子，在后台线程合成音频
+
+        v14 FIX: 给每个句子分配递增序号，传递给 TTS 任务，
+        确保句子按 LLM 输出顺序播放（即使合成完成时间不同）
+        """
         if not sentence or not self.backend:
             return
-        worker = TTSWorker(self.backend, sentence, parent=self)
-        worker.audio_ready.connect(self._on_tts_audio_ready)
-        worker.error.connect(lambda e: print(f"[ChatPage] 流式 TTS 句子合成失败: {e}"))
-        worker.finished.connect(lambda: self._cleanup_tts_worker(worker))
-        self._tts_workers.append(worker)
-        worker.start()
+        # v14 FIX: 递增序号并捕获当前值
+        self._tts_seq_counter += 1
+        seq = self._tts_seq_counter
+        def _tts_task(text, seq_num):
+            try:
+                audio_path = self.backend.speak(text)
+                if audio_path and os.path.exists(audio_path):
+                    # 通过信号传回主线程（线程安全），携带序号
+                    self._tts_audio_signal.emit(audio_path, seq_num)
+            except Exception as e:
+                print(f"[ChatPage] 流式 TTS 句子合成失败: {e}")
+        self._tts_executor.submit(_tts_task, sentence, seq)
 
     @Slot(dict)
     def _on_stream_finished(self, result: dict):
@@ -859,12 +1068,10 @@ class ChatPage(QWidget):
                 self._animation_controller.trigger_emotion(emotion, lock_duration=5.0)
                 print(f"[ChatPage] FC 表情指令: {emotion}")
 
-        # 自动表情检测 → 主动画控制器驱动（仅在无 FC 表情指令时触发，避免覆盖）
+        # 自动表情检测 → 统一通过 AnimationController（优化 #6: 去重）
         if reply_text and not any(a.get("type") == "change_expression" for a in ui_actions):
             if self._animation_controller:
                 self._animation_controller.trigger_emotion_from_text(reply_text)
-            else:
-                self._auto_detect_expression(reply_text)
 
         # 播放 TTS 音频（整段模式才在这里播放；流式模式已逐句播放）
         audio_path = result.get("audio_path")
@@ -880,47 +1087,9 @@ class ChatPage(QWidget):
         self._save_chat_history()
 
     # ========== 自动表情检测 ==========
-
-    _EXPRESSION_KEYWORDS = {
-        "happy": ['开心', '高兴', '快乐', '好开心', '哈哈', '笑', '太棒', '太好了', '嘻', '棒', '赞', '爱你', '喜欢', '么么哒', '可爱', '萌'],
-        "smile": ['微笑', '嗯', '好的', '可以', '行', '没问题', '了解', '知道', '明白', '懂', '是', '对'],
-        "shine": ['哇', '啊', '惊讶', '惊喜', '厉害', '太厉害', '真的吗', '真的假的', '天哪', '我的天', '哇塞', '哇哦', '好厉害', '惊了'],
-        "sad": ['难过', '伤心', '哭', '悲伤', '遗憾', '可惜', '唉', '郁闷', '烦', '讨厌'],
-        "angry": ['生气', '愤怒', '哼', '气死', '可恶', '滚', '烦死了'],
-        "surprised": ['震惊', '什么', '怎么', '为什么', '啥', '啥情况'],
-    }
-
-    _EXPRESSION_MAP = {
-        "happy": "f02",
-        "smile": "f03",
-        "shine": "f04",
-        "neutral": "f01",
-        "sad": "f03",
-        "angry": "f03",
-        "surprised": "f04",
-    }
-
+    # 优化 #6: 已移除 _EXPRESSION_KEYWORDS / _EXPRESSION_MAP / _auto_detect_expression()
+    # 所有情绪检测统一通过 AnimationController.trigger_emotion_from_text()
     _auto_expression_enabled = True
-
-    def _auto_detect_expression(self, text: str):
-        """根据文本关键词自动触发表情"""
-        if not self._auto_expression_enabled or not text:
-            return
-
-        text_lower = text.lower()
-        max_score = 0
-        detected_type = None
-
-        for exp_type, keywords in self._EXPRESSION_KEYWORDS.items():
-            score = sum(1 for kw in keywords if kw in text_lower)
-            if score > max_score:
-                max_score = score
-                detected_type = exp_type
-
-        if max_score >= 1 and detected_type:
-            exp_name = self._EXPRESSION_MAP.get(detected_type, "f01")
-            if hasattr(self, 'live2d_widget') and self.live2d_widget:
-                self.live2d_widget.set_expression(exp_name)
 
     @Slot(str)
     def _on_error(self, error_msg: str):
@@ -1007,15 +1176,36 @@ class ChatPage(QWidget):
 
     # ========== TTS/录音 ==========
 
-    def _on_tts_audio_ready(self, audio_path: str):
-        """TTS 合成完成回调 — 入队或立即播放"""
+    def _on_tts_audio_ready(self, audio_path: str, seq: int = 0):
+        """TTS 合成完成回调 — 按句子序号排序播放
+
+        v14 FIX: 实现排序播放逻辑
+        - 只有当音频的序号等于下一个预期序号时才播放
+        - 否则暂存到排序缓冲区 _tts_pending
+        - 每次播放后检查缓冲区是否有连续的下一个序号可用
+        """
         if not audio_path or not os.path.exists(audio_path):
             return
-        # 如果播放器空闲，立即播放；否则入队等待
-        if self._media_player and self._media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
-            self._audio_queue.append(audio_path)
-        else:
-            self._play_audio(audio_path)
+
+        # v14 FIX: 序号为 0 表示非流式 TTS（如主动说话），直接播放
+        if seq == 0:
+            if self._media_player and self._media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+                self._audio_queue.append(audio_path)
+            else:
+                self._play_audio(audio_path)
+            return
+
+        # 流式 TTS：按序号排序播放
+        self._tts_pending[seq] = audio_path
+
+        # 检查是否有连续的序号可以播放
+        while self._tts_next_play_seq in self._tts_pending:
+            next_audio = self._tts_pending.pop(self._tts_next_play_seq)
+            self._tts_next_play_seq += 1
+            if self._media_player and self._media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+                self._audio_queue.append(next_audio)
+            else:
+                self._play_audio(next_audio)
 
     def _cleanup_tts_worker(self, worker):
         """清理已完成的 TTSWorker"""
@@ -1065,7 +1255,6 @@ class ChatPage(QWidget):
             return
         # 简易口型同步：用随机值模拟嘴巴开合
         # TODO: 后续可用音频振幅分析驱动更精确的口型
-        import random
         mouth_open = random.uniform(0.3, 1.0)
         self._animation_controller.set_mouth_open(mouth_open)
 
@@ -1186,7 +1375,10 @@ class ChatPage(QWidget):
     # ========== 实时语音 ==========
 
     def _toggle_realtime_voice(self, checked: bool):
-        """切换实时语音模式"""
+        """切换实时语音模式
+
+        v14 FIX: 改进错误处理和信号连接/断开逻辑
+        """
         main_window = self.window()
         if not hasattr(main_window, 'voice_manager'):
             self.chat_display.append_system_msg("语音管理器未初始化")
@@ -1201,11 +1393,19 @@ class ChatPage(QWidget):
             return
 
         if checked:
+            # v14 FIX: 先断开旧连接再重新连接，防止重复连接导致信号被多次触发
+            try:
+                voice_mgr.speech_recognized.disconnect(self._on_realtime_speech)
+            except (RuntimeError, TypeError):
+                pass  # 未连接，忽略
             voice_mgr.speech_recognized.connect(self._on_realtime_speech)
             voice_mgr.start_listening()
             if not voice_mgr.is_listening:
                 self.realtime_btn.setChecked(False)
-                voice_mgr.speech_recognized.disconnect(self._on_realtime_speech)
+                try:
+                    voice_mgr.speech_recognized.disconnect(self._on_realtime_speech)
+                except (RuntimeError, TypeError):
+                    pass
                 return
             self.realtime_btn.setText("监听中")
         else:
@@ -1213,18 +1413,35 @@ class ChatPage(QWidget):
             self.realtime_btn.setText("实时语音")
             try:
                 voice_mgr.speech_recognized.disconnect(self._on_realtime_speech)
-            except Exception:
+            except (RuntimeError, TypeError):
                 pass
 
     def _on_realtime_speech(self, text: str):
-        """实时语音识别完成"""
+        """实时语音识别完成
+
+        v14 FIX: 完善停止逻辑，清空所有旧的 TTS 状态，
+        防止旧流式回复的音频/信号干扰新的语音输入
+        """
         if text:
             # 如果正在流式回复，先停止并终结当前消息
             if self._is_streaming:
                 self._stop_streaming()
+
             # 停止当前 TTS 播放
             if self._media_player and self._media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
                 self._media_player.stop()
+
+            # v14 FIX: 清空旧的音频队列和排序缓冲区
+            self._audio_queue.clear()
+            self._tts_pending.clear()
+            self._tts_next_play_seq = 1
+            self._tts_seq_counter = 0
+
+            # 断开旧的播放状态监听，防止播放旧队列音频
+            try:
+                self._media_player.playbackStateChanged.disconnect(self._on_playback_state_changed)
+            except (RuntimeError, TypeError):
+                pass
 
             self.input_field.setText(text)
             # 延迟 50ms 发送，确保 _stop_streaming 的状态清理完全生效
@@ -1329,36 +1546,39 @@ class ChatPage(QWidget):
         self.chat_display.append_system_msg(f"OCR 识别失败: {error}")
 
     def _process_pending_image(self, user_text: str) -> str:
-        """处理待发送的图片"""
+        """处理待发送的图片 — KI-014 FIX: 异步处理，不阻塞主线程"""
         if not self._pending_image:
             return user_text
 
         image_path = self._pending_image
         self._pending_image = None
-        self.input_field.setPlaceholderText("输入消息，按 Enter 发送...")
 
         if not self.backend:
             return user_text
 
-        try:
-            if not user_text.strip():
-                if hasattr(self.backend, 'vision'):
-                    vision = self.backend.vision
-                    ocr_result = vision.recognize_text(image_path)
-                    if ocr_result:
-                        self.chat_display.append_system_msg(f"OCR 识别结果:\n{ocr_result}")
-                        return f"请根据以下OCR识别结果回答：\n{ocr_result}"
-                return user_text
+        # KI-014 FIX: 使用 QThread 异步处理视觉请求，避免 UI 冻结
+        self.input_field.setPlaceholderText("正在分析图片...")
+        self.input_field.setEnabled(False)
 
-            if hasattr(self.backend, 'vision'):
-                vision = self.backend.vision
-                description = vision.understand(image_path, user_text)
-                if description:
-                    return f"[用户上传了一张图片，AI描述: {description}]\n用户问题: {user_text}"
-        except Exception as e:
-            self.chat_display.append_system_msg(f"视觉理解失败: {e}")
+        self._vision_worker = _VisionWorker(self.backend, image_path, user_text)
+        self._vision_worker.result_ready.connect(self._on_vision_result)
+        self._vision_worker.error_occurred.connect(self._on_vision_error)
+        self._vision_worker.finished.connect(lambda: self.input_field.setEnabled(True))
+        self._vision_worker.start()
+        return None  # 异步返回，结果通过信号传递
 
-        return user_text
+    @Slot(str)
+    def _on_vision_result(self, enriched_text: str):
+        """视觉理解完成，发送消息"""
+        self.input_field.setPlaceholderText("输入消息，按 Enter 发送...")
+        if enriched_text:
+            self._send_message(enriched_text)
+
+    @Slot(str)
+    def _on_vision_error(self, error_msg: str):
+        """视觉理解失败"""
+        self.chat_display.append_system_msg(f"视觉理解失败: {error_msg}")
+        self.input_field.setPlaceholderText("输入消息，按 Enter 发送...")
 
     # ========== 多会话管理 ==========
 
@@ -1439,37 +1659,6 @@ class ChatPage(QWidget):
             print(f"[ChatPage] 获取 GPT-SoVITS 音色失败: {e}")
         self.voice_combo.addItem("默认音色", userData="default")
 
-    def _populate_chattts_voices_chat(self):
-        """填充 ChatTTS 音色列表"""
-        self.voice_combo.clear()
-        try:
-            from app.tts.chattts import ChatTTSEngine
-            engine = ChatTTSEngine({})
-            voices = engine.get_voices()
-            for v in voices:
-                if isinstance(v, dict):
-                    self.voice_combo.addItem(v.get("name", ""), userData=v.get("id", ""))
-                else:
-                    self.voice_combo.addItem(str(v), userData=str(v))
-        except Exception:
-            self.voice_combo.addItem("随机音色", userData="random")
-
-    def _populate_cosyvoice_voices_chat(self):
-        """填充 CosyVoice 音色列表"""
-        self.voice_combo.clear()
-        try:
-            from app.tts.cosyvoice import CosyVoiceEngine
-            config = self.backend.config.config.get("tts", {}).get("cosyvoice", {})
-            engine = CosyVoiceEngine(config)
-            voices = engine.get_voices()
-            for v in voices:
-                if isinstance(v, dict):
-                    self.voice_combo.addItem(v.get("name", ""), userData=v.get("id", ""))
-                else:
-                    self.voice_combo.addItem(str(v), userData=str(v))
-        except Exception:
-            self.voice_combo.addItem("中文女 (默认)", userData="中文女")
-
     def _on_tts_engine_changed_chat(self, index: int):
         """Chat 页 TTS 引擎切换"""
         engine = self.tts_combo.currentText()
@@ -1477,10 +1666,6 @@ class ChatPage(QWidget):
             self._populate_edge_voices_chat()
         elif engine == "GPT-SoVITS":
             self._populate_gptsovits_voices_chat()
-        elif engine == "ChatTTS":
-            self._populate_chattts_voices_chat()
-        elif engine == "CosyVoice":
-            self._populate_cosyvoice_voices_chat()
         self._apply_tts_to_backend()
 
     def _on_voice_changed_chat(self, index: int):
@@ -1526,7 +1711,7 @@ class ChatPage(QWidget):
             return
         engine = self.tts_combo.currentText()
         voice_id = self._get_voice_id_chat()
-        provider_map = {"Edge TTS": "edge", "GPT-SoVITS": "gptsovits", "ChatTTS": "chattts", "CosyVoice": "cosyvoice"}
+        provider_map = {"Edge TTS": "edge", "GPT-SoVITS": "gptsovits"}
         provider = provider_map.get(engine, "edge")
 
         tts_section = self.backend.config.config.setdefault("tts", {})
@@ -1610,14 +1795,18 @@ class ChatPage(QWidget):
             pass
 
     def _load_chat_history(self):
-        """加载对话历史"""
+        """加载对话历史（优化 #9: 仅渲染最近20条，完整历史保存在 _chat_messages 中供 LLM 上下文使用）"""
         try:
             path = self._get_history_path()
             if not os.path.exists(path):
                 return
             with open(path, "r", encoding="utf-8") as f:
                 messages = json.load(f)
-            for msg in messages[-100:]:
+            # 完整历史保存供 LLM 上下文使用
+            self._chat_messages = messages[-100:]
+            # 仅渲染最近20条到 UI
+            display_messages = self._chat_messages[-20:]
+            for msg in display_messages:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 time_str = msg.get("time", "")
@@ -1625,7 +1814,6 @@ class ChatPage(QWidget):
                     self.chat_display.append_user_msg(content, timestamp=time_str)
                 elif role == "assistant":
                     self.chat_display.append_ai_msg(content, timestamp=time_str)
-                self._chat_messages.append(msg)
         except Exception:
             pass
 
@@ -1657,7 +1845,9 @@ class ChatPage(QWidget):
         self.chat_display.append_ai_msg(text)
         self._record_message("assistant", text)
 
-        self._auto_detect_expression(text)
+        # 优化 #6: 统一通过 AnimationController 检测情绪
+        if self._animation_controller:
+            self._animation_controller.trigger_emotion_from_text(text)
 
         if self.backend:
             worker = TTSWorker(self.backend, text, parent=self)

@@ -31,8 +31,8 @@ from qfluentwidgets import (
     CaptionLabel, MessageBox
 )
 
-# 项目根目录
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# 项目根目录 — KI-005: 从 shared_config 统一引用
+from app.shared_config import PROJECT_DIR
 
 
 class ChatSession:
@@ -101,6 +101,13 @@ class SessionManager(QWidget):
         self.setMinimumWidth(160)
         self.setMaximumWidth(220)
         self._init_ui()
+
+        # 优化 #2: 防抖保存 — 避免每条消息同步写磁盘
+        self._dirty_sessions = set()
+        self._save_timer = QTimer(self)
+        self._save_timer.setSingleShot(True)
+        self._save_timer.timeout.connect(self._do_delayed_save)
+
         self._load_sessions()
 
     def _init_ui(self):
@@ -366,7 +373,7 @@ class SessionManager(QWidget):
     # ===== 持久化 =====
 
     def _load_sessions(self):
-        """加载所有会话"""
+        """加载所有会话（优化 #10: 仅加载元数据，messages 在切换时按需读取）"""
         os.makedirs(self._state_dir, exist_ok=True)
 
         try:
@@ -377,7 +384,16 @@ class SessionManager(QWidget):
                 try:
                     with open(filepath, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                    session = ChatSession.from_dict(data)
+                    # 优化 #10: 只加载元数据，messages 延迟到需要时读取
+                    session = ChatSession(
+                        session_id=data.get("session_id", ""),
+                        title=data.get("title", "新对话"),
+                        messages=None,  # 标记为未加载
+                        created_at=data.get("created_at", ""),
+                        updated_at=data.get("updated_at", ""),
+                    )
+                    session._messages_loaded = False
+                    session._full_data_path = filepath
                     self._sessions[session.session_id] = session
                 except Exception:
                     continue
@@ -387,6 +403,7 @@ class SessionManager(QWidget):
         # 如果没有会话，创建默认会话
         if not self._sessions:
             default = ChatSession(session_id="default", title="默认对话")
+            default._messages_loaded = True
             self._sessions[default.session_id] = default
 
         # 按更新时间排序，添加到列表
@@ -402,6 +419,23 @@ class SessionManager(QWidget):
         if sorted_sessions:
             self._current_session_id = sorted_sessions[0].session_id
             self._select_session(self._current_session_id)
+
+    def _ensure_messages_loaded(self, session: ChatSession):
+        """优化 #10: 按需加载会话消息"""
+        if session.messages is not None:
+            return
+        filepath = getattr(session, '_full_data_path', None)
+        if not filepath:
+            session.messages = []
+            session._messages_loaded = True
+            return
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            session.messages = data.get("messages", [])
+        except Exception:
+            session.messages = []
+        session._messages_loaded = True
 
     def _save_session(self, session: ChatSession):
         """保存单个会话"""
@@ -429,17 +463,23 @@ class SessionManager(QWidget):
         return self._current_session_id
 
     def current_session(self) -> Optional[ChatSession]:
-        """获取当前会话"""
+        """获取当前会话（优化 #10: 按需加载消息）"""
         if self._current_session_id:
-            return self._sessions.get(self._current_session_id)
+            session = self._sessions.get(self._current_session_id)
+            if session:
+                self._ensure_messages_loaded(session)
+            return session
         return None
 
     def get_session(self, session_id: str) -> Optional[ChatSession]:
-        """获取指定会话"""
-        return self._sessions.get(session_id)
+        """获取指定会话（优化 #10: 按需加载消息）"""
+        session = self._sessions.get(session_id)
+        if session:
+            self._ensure_messages_loaded(session)
+        return session
 
     def update_session_messages(self, session_id: str, messages: list):
-        """更新会话消息"""
+        """更新会话消息（优化 #2: 防抖保存，5s 无活动后批量写磁盘）"""
         session = self._sessions.get(session_id)
         if session:
             session.messages = messages[-100:]  # 只保留最近 100 条
@@ -448,7 +488,23 @@ class SessionManager(QWidget):
             if session.title == "新对话":
                 session.auto_title()
                 self._update_session_item(session_id)
-            self._save_session(session)
+            # 防抖：标记脏数据，延迟保存
+            self._dirty_sessions.add(session_id)
+            self._save_timer.start(5000)  # 5秒无活动后批量保存
+
+    def _do_delayed_save(self):
+        """执行延迟保存（优化 #2: 由 _save_timer 触发）"""
+        for sid in list(self._dirty_sessions):
+            session = self._sessions.get(sid)
+            if session:
+                self._save_session(session)
+        self._dirty_sessions.clear()
+
+    def flush_dirty(self):
+        """强制保存所有脏会话（退出时调用）"""
+        if self._save_timer.isActive():
+            self._save_timer.stop()
+        self._do_delayed_save()
 
     def refresh_theme(self):
         """刷新主题"""

@@ -36,6 +36,126 @@
 |🟡 BETA|测试中|
 |🟢 STABLE|稳定版|
 
+
+## 🟢 v1.10.2 (2026-05-21) ✅ STABLE
+
+**Native 桌面 Live2D — 迁移至 live2d-py + QOpenGLWidget**
+
+### 背景
+QWebEngineView + oh-my-live2d 存在架构级缺陷（Chromium 在已显示窗口插入后不自动合成），20+ 轮修复无效。迁移至 v1.x 的 live2d-py + QOpenGLWidget 原生渲染方案。
+
+### 🔧 变更
+- **[live2d] 重写 Live2DWidget**：从 QWebEngineView 工厂改为 `QOpenGLWidget` 直接类（423行），live2d-py v3 C 扩展 + OpenGL 原生渲染
+- **[live2d] 透明背景**：`clearBuffer(0,0,0,0)` + `WA_TranslucentBackground` + `AlphaBufferSize=8`
+- **[live2d] 眼神跟踪**：归一化坐标 [0,1] → `Drag/SetDragging` 每帧
+- **[live2d] 首次加载比例修复**：模型加载后立即调用 `Resize(w, h)`，无需点击触发
+- **[live2d] API 完全兼容**：3 信号 + 7 方法，chat_page.py 无需修改
+- **[version] v1.10.2**：15 处统一版本号
+
+## 🟡 v1.10.1 (2026-05-20) — 已废弃
+- **[live2d] 布局正确性**：使用 `self._live2d_layout` 直接操作，`invalidate()` + `activate()` 确保几何传播；fallback 处理 `indexOf` -1。
+
+
+## 🟡 v1.9.100 (2026-05-18) 🔄 BETA
+
+**原生桌面模式性能优化 + Live2D 居中修复 + 启动速度提升 + 鼠标交互修复**
+
+### ⚡ 性能
+- **[startup] Live2D 延迟创建**：QWebEngineView 创建需要启动 Chromium 渲染进程（5-10 秒），是启动链路中最大的瓶颈。v11 将 Live2DWidget 的创建从 ChatPage.__init__ 移至窗口显示后 200ms 执行，窗口先用占位符显示，用户感知的启动时间从 20 秒缩短至 3-5 秒
+- **[live2d] HTML 文件缓存**：`live2d_widget.html` 只在内容变化时才重新写入，避免每次创建 Live2DWidget 时的重复文件 I/O
+- **[live2d] 模型加载延迟缩短**：从 500ms 缩短至 Live2D 组件创建后立即加载
+
+### 🔧 修复
+- **[live2d] v12: 修复 CSS transform 破坏鼠标交互**：v11 使用 CSS `translate(-50%,-50%) scale(fitScale)` 居中 canvas，但 CSS transform 会改变浏览器的鼠标坐标映射，导致 PixiJS EventSystem 接收到的坐标与视觉位置不一致 → 眼球跟踪偏移、点击区域错位。v12 改为专业 VTuber 方案：通过 `live2dApi.pixiApp.app` 访问 PixiJS Application，使用 `model.scale.set(fitScale)` + `model.x/y` 在 PixiJS 坐标系内居中模型，canvas CSS 填满容器无 transform，鼠标坐标 1:1 对应 → 交互正确。若 PixiJS Application 不可访问，自动降级到 v11 CSS transform 方案
+- **[live2d] v11: 修复窗口缩放时不居中/变形**：v10 使用 `live2dApi.setStageStyle()/setScale()/setPosition()` API 居中模型，但这些 API 在不同版本的 oh-my-live2d 中行为不一致，导致窗口缩放时模型出现高矮胖瘦异常。v11 改为与 WebUI 完全一致的 CSS transform 方案（已在 v12 中升级为 JS-based 方案）
+- **[live2d] 修复 Live2D 加载后守护定时器过度检查**：v10 的守护定时器 5 秒检查一次 slideOut，v12 改为 2 秒检查且同时检测 stage 定位 + 模型缩放/位置状态，首次检查在模型就绪后 300ms
+
+### 🔄 重构
+- **[live2d] v12: JS-based 居中方案**：通过 oh-my-live2d 内部的 PixiJS Application 直接操作模型，替代 CSS transform。自动降级机制确保兼容性
+- **[live2d] v12: ResizeObserver**：新增 ResizeObserver 监听容器尺寸变化（比 window.resize 更可靠），配合 requestAnimationFrame 节流
+- **[live2d] v12: 统一守护检查**：`_guardCheck()` 同时检查 stage 定位异常和模型缩放/位置异常（JS 方案下检查 canvas transform 是否被重置、model.scale 偏差是否 > 20%）
+
+
+## 🟡 v1.9.99 (2026-05-17) 🔄 BETA
+
+**版本号统一修复 + 未使用 TTS 引擎清理 + 冗余模型清理 + 配置去重 + Bug 修复**
+
+### 🔧 修复
+- **[live2d] 修复 Live2D 不跟随窗口缩放**：CSS `#oml2d-canvas { width:100%; height:100% }` 导致 `centerLive2DModel()` 计算 fitScale 始终为 1.0。移除该 CSS 规则，改用 transform 控制缩放。增加模型自然尺寸缓存（`_initModelW`/`_initModelH`），参照 native v8 版实现。增加 window.resize 监听和 ResizeObserver
+- **[live2d] 修复 Live2D 不居中/比例异常**：同上，fitScale 计算错误导致模型显示异常
+- **[tts] 修复 TTS 流式生成句子顺序错乱**：`playStreamBuffer()` 使用 `source.start(0)` 立即播放所有 chunk，导致同一句子内多个 chunk 重叠播放。改为按 AudioContext 时间线顺序调度（`_sentenceEndTime` 跟踪），确保 chunk 依次播放
+- **[realtime] 修复实时沟通功能启动失败**：`startRealtime()` 在 VAD 初始化前设置 `realtime.active=true`，VAD 失败时状态不一致。改为 VAD 成功后才激活；增加麦克风权限预检查，提前报错；增加 WS 未连接提示；失败时恢复按钮状态
+- **[llm] 修复 LLM 偶尔返回空值**：(1) Anthropic `result["content"][0]["text"]` 空 content 列表时 IndexError → 改为安全遍历；(2) OpenAI `choices` 空列表 → 保护性处理；(3) MiniMax 流式错误返回空文本 → 改为返回错误信息；(4) FC 执行失败且无文本 → 返回错误信息而非空字符串；(5) 流式 `_stream_error` 标记 → 调用方检查并通知前端
+- **[version] 修复 9 处版本号不一致**：app/version.py 已是 v1.9.98，但以下文件仍使用旧版本号：native/build.bat (v1.9.90)、version_info.txt (1.9.90.0)、generate_icons.py (v1.9.90)、native/main.py fallback (1.9.90)、update_manager.py fallback (1.9.90)、scripts/go.bat (1.9.94)、scripts/start.bat (1.9.94)、launcher/splash.html (v1.9.82)、index.html 标题 (v1.9.82)。全部统一为 v1.9.98
+- **[tts] 移除未使用的 ChatTTS 引擎**：删除 app/tts/chattts.py，从 TTSFactory 移除 chattts 分支，从原生桌面 chat_page 下拉框和 provider_map 移除 ChatTTS 选项，删除 _populate_chattts_voices_chat() 方法
+- **[tts] 移除未使用的 CosyVoice 引擎**：删除 app/tts/cosyvoice.py，从 TTSFactory 移除 cosyvoice 分支，从原生桌面 chat_page 下拉框和 provider_map 移除 CosyVoice 选项，删除 _populate_cosyvoice_voices_chat() 方法
+- **[docs] 清理 model_download_page.py 中的 chattts 引用**
+- **[config] 修复 index.html _providerConfig 重复覆盖 bug**：L18 加载动态 /api/config.js，L7355 硬编码副本覆盖了动态版本。删除硬编码副本，将 hint/color 字段补入 shared_config.py，实现单一数据源
+- **[config] 修复 index.html voiceOptions/expressionKeywords 重复定义**：删除硬编码副本，改由 /api/config.js 动态提供
+- **[config] 更新 shared_config.py 注释**：删除"需手动同步"警告，改为"动态加载自动生效"
+- **[setup] 清理 setup.py 中 ChatTTS 下载和验证逻辑**：移除 download_chattts_models() 函数、安装检查和模型下载步骤
+- **[live2d] 修复 Live2D 比例异常**：`centerLive2DModel()` 未修复 `#oml2d-stage` 定位属性（Native 版已修复但 Web 版遗漏），oh-my-live2d 的 `reloadStyle()` 篡改 stage 样式导致模型移位和比例错误。现参照 Native 版增加 stage 定位修复；增加 canvas 尺寸有效性验证（<10px 不缓存）；增强守护定时器全面检测 stage 定位异常
+- **[live2d] 修复 Live2D 不立即显示**：模型加载后 2500ms 硬编码延迟导致用户需等 2.5 秒才看到模型。改为事件驱动：轮询检测 canvas 渲染完成（50ms 间隔）+ 100ms 安全延迟，平均 <500ms 即可显示；3s 超时兜底
+- **[perf] 优化 Live2D 启动速度**：①Live2D 库轮询 300ms→50ms（6s→3s 超时）②守护定时器 2s→1s 间隔③点击交互 3s→0.5s 延迟④加载覆盖层与 Live2D 就绪联动
+- **[perf] 优化 Native 桌面模式 Live2D 启动**：同步 Web 版优化：库轮询 300ms→50ms、模型就绪检测从 2500ms 硬延迟改为事件驱动、守护定时器 2s→1s
+- **[live2d] 修复 Native 模式 Live2D 缩放/比例异常**：CSS `#oml2d-stage { width:100%!important; height:100%!important }` 与 JS `stage.style.width = cw+'px'` 冲突，CSS `!important` 优先级高于 inline style 导致 JS 设置不生效。移除 width/height 的 `!important`，由 JS `centerLive2DModel()` 动态控制；增加 canvas 尺寸有效性验证（<10px 不缓存）；补齐 canvas 样式清理。Web 版 main.css 同步修复
+- **[perf] 优化 Native 模式启动速度**：后端初始化延迟 2000ms→500ms；增加启动计时日志帮助诊断
+- **[live2d] 修复 Native 模式 Live2D 容器尺寸震荡**：`ResizeObserver` + `window.resize` + 守护定时器三者互相触发形成反馈环，导致容器尺寸在 904×1373 ↔ 398×774 间震荡，模型反复重算居中。修复：①移除 ResizeObserver（与 window.resize 重复且触发反馈环）②增加容器尺寸变化阈值（<10px 不重算，消除微震荡）③防抖从 200ms 增至 300ms ④添加重入守卫防止并发 centerLive2DModel() ⑤守护定时器间隔从 1s 放宽到 3s ⑥降低居中日志噪音
+- **[perf] 修复 Native 模式启动计时与加速**：①启动计时从 `__init__` 内移至 `main()` 入口，测量用户感知的真实启动时间（非仅构造函数耗时）②后端初始化延迟 500ms→100ms ③新增 "UI visible" 日志标记界面显示时间
+
+### 🐛 优化
+- **[tts] TTS 引擎精简**：从 4 个引擎（Edge/GPT-SoVITS/ChatTTS/CosyVoice）精简为 2 个（Edge/GPT-SoVITS），减少代码维护负担和启动时的冗余检测
+- **[models] 删除冗余模型文件，释放 ~1.5GB 空间**：
+  - G2PWModel_1.1.zip (562MB) — 下载残留压缩包
+  - G2PWModel/g2pW.onnx (606MB) — 与 text/G2PWModel/g2pW.onnx 重复
+  - s2D488k.pth / s2G488k.pth / s1bert25hz-*.ckpt (~340MB) — v1 预训练底模（项目使用 v3）
+  - MiniCPM-V-2/assets/ (39MB) — 模型卡 GIF/PNG，非推理必需
+  - VAD examples/tests (24MB) — Silero VAD 示例和测试文件
+  - torch hub .partial (2MB) — 失败的下载残留
+- **[models] 更新 GPT-SoVITS config.py 默认预训练路径**：从 v1 更新为 v3，匹配实际使用版本
+- **[models] 更新 gptsovits.py 回退逻辑**：v1 底模引用改为 v3，确保加载失败时使用正确的回退模型
+- **[models] 更新 tts_infer.yaml v1 默认路径**：指向 v3 模型文件
+
+
+## 🟢 v1.9.97 (2026-05-17) ✅ STABLE
+
+**Live2D 原生模式定位修复 — 根因：模型钉在左下角而非居中**
+
+### 🔧 修复
+- **[live2d] 修复 Live2D 模型在原生桌面模式中显示在左下角的问题**：根因是原生模式的 HTML 缺少 WebUI `main.css` 中的 `#oml2d-stage` CSS 覆盖。oh-my-live2d 默认使用 `position: fixed; bottom: 0; left: 0` 将模型钉在视口左下角（网页挂件行为），而 QWebEngineView 需要改为 `position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: none` 让模型在容器内居中渲染
+- **[live2d] 修复窗口 resize 后 Live2D 模型消失/不居中的问题**：添加 `window.resize` 事件监听和 `ResizeObserver` 双重保障，QWebEngineView 大小变化时自动重新调用 `centerLive2DModel()` 重新计算居中位置
+- **[live2d] 增强 `centerLive2DModel()` 函数**：不仅居中 PIXI canvas，还强制修复 `#oml2d-stage` 的定位属性（position/top/left/bottom/width/height/transform/animationName），防止 oh-my-live2d 的 `reloadStyle()` 在内部事件中重设 stage 样式导致模型移位
+- **[live2d] 改进守护定时器**：从仅检测 transform 异常升级为全面检测 stage 定位异常（position/bottom/animationName/transform），一旦发现定位被篡改立即强制修复并重新居中
+
+### 🐛 优化
+- **[live2d] 添加 `#oml2d-canvas` CSS 覆盖**：`width: 100%; height: 100%` 确保画布跟随容器自适应
+
+
+## 🟢 v1.9.96 (2026-05-17) ✅ STABLE
+
+**对话显示修复 + Live2D 原生模式根本性修复**
+
+### 🔧 修复
+- **[native] 对话显示 [object Promise] 问题**：QWebChannel 的 Slot 方法在 JS 端总是返回 Promise，`renderMarkdownSync(text)` 返回 Promise 而非 HTML 字符串，直接赋值给 innerHTML 显示为 [object Promise]。改用 `.then()` 异步解包 Promise 结果。影响 `updateStreaming()` 和 `finishStreaming()` 两个函数
+- **[live2d] QWebEngineView 中 document.currentScript 为 null 的根本修复**：v5 的 HTTP 重定向方案只修复了 WASM 文件路径，但 Emscripten 的 nr（脚本目录）仍为空，可能影响其他内部路径操作。v6 在脚本加载前 monkey-patch `Document.prototype.currentScript`，当真实值为 null 时返回带有正确 `src` 的假元素，从根源上解决 Emscripten 路径解析问题
+- **[live2d] 修复 HTTP 服务器重复 Content-Type header**：`end_headers()` 对 .wasm 文件额外添加 `Content-Type: application/wasm`，但 `SimpleHTTPRequestHandler` 已通过 `mimetypes.guess_type()` 设置了相同的 header，导致响应包含两个 Content-Type 头，可能使 `WebAssembly.instantiateStreaming()` 失败。移除冗余 header
+- **[live2d] 改进守护定时器**：不仅检测 slideOut（translateX(-100%)），还检测初始隐藏（translateY(130%)），通过解析 CSS matrix 中的平移值判断是否需要强制重置 stage 位置
+- **[live2d] 增强诊断信息**：模型就绪检查时输出更详细的状态（models 的 keys、canvas 尺寸、currentScript patch 是否生效等）
+
+## 🟢 v1.9.95 (2026-05-17) ✅ STABLE
+
+**Live2D Web 渲染修复 — QWebEngineView 中模型显示问题彻底解决**
+
+### 🔧 修复
+- **[live2d] QWebEngineView 中 Live2D 模型不显示（核心修复）**：根因是 QWebEngineView 对 deferred script 不设置 document.currentScript，导致 oh-my-live2d 内部的 Emscripten 模块无法正确解析 WASM 文件路径（解析为 _em_module.wasm 而非 libs/_em_module.wasm），fetch 404，CubismCore 初始化失败，模型创建静默失败。修复方式：HTTP 服务器将根路径的 _em_module.wasm 请求重定向到 libs/_em_module.wasm
+- **[live2d] 移除 Live2DCubismCore.locateFile 预配置**：之前版本在脚本加载前预设 window.Live2DCubismCore = { locateFile: ... }，导致 oh-my-live2d 跳过内置 CubismCore 初始化，模型创建失败。已移除此预设
+- **[live2d] 简化模型就绪检测**：使用 setTimeout(2500) 代替轮询 models.model（与 WebUI 的 index.html 一致）
+- **[live2d] 简化守护定时器**：与 index.html 一致，2s 间隔只检测 slide-out，移除 forceStagePosition()
+- **[live2d] 移除 CSS !important 覆盖**：不覆盖 #oml2d-stage 的任何属性，让 oh-my-live2d 自由运行
+- **[llm] 修复 content 类型处理**：OpenAI API content 字段可以是 list/dict 而非 string，添加类型检查（list→提取 text items，dict→提取 text 字段，str→直接使用）
+- **[llm] 修复 _ollama_chat action 返回类型**：action 现在返回解析后的 dict（之前返回 JSON 字符串）
+- **[llm] 修复 Function Calling 条件逻辑**：(finish_reason == "tool_calls" or tool_calls_accum) 恒为 True，修正为 tool_calls_accum and finish_reason == "tool_calls"
+
 ## 🟢 v1.9.90 (2026-05-07) ✅ STABLE
 
 **全面代码审计 — 18 项 Bug 修复 + 版本号/配置集中化**

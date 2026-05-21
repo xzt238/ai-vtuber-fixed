@@ -15,6 +15,8 @@ import json
 import logging
 from pathlib import Path
 
+from PySide6.QtCore import QObject, Signal, QThread
+
 logger = logging.getLogger(__name__)
 
 # 互斥体名称统一从 shared_config 引入
@@ -26,6 +28,36 @@ except ImportError:
     _MUTEX_BASE = "Local\\GuguGagaAI-VTuber"
     _MUTEX_NATIVE = _MUTEX_BASE + "_Native"
 
+# KI-002 FIX: 端口配置从 shared_config 统一读取
+try:
+    from app.shared_config import HTTP_PORT, WS_PORT
+    _WEBUI_HTTP_PORT = HTTP_PORT
+    _WEBUI_WS_PORT = WS_PORT
+except ImportError:
+    _WEBUI_HTTP_PORT = 12393
+    _WEBUI_WS_PORT = 12394
+
+
+class WebUICheckWorker(QObject):
+    """优化 #4: 异步 WebUI 检测 — 避免阻塞主线程 1s"""
+
+    result_ready = Signal(bool)
+
+    def __init__(self, http_port: int, parent=None):
+        super().__init__(parent)
+        self._http_port = http_port
+
+    def check(self):
+        """在子线程中检测 WebUI 是否在运行"""
+        try:
+            import socket
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                result = s.connect_ex(('127.0.0.1', self._http_port))
+                self.result_ready.emit(result == 0)
+        except Exception:
+            self.result_ready.emit(False)
+
 
 class DualModeCompat:
     """双模式兼容管理器"""
@@ -33,9 +65,9 @@ class DualModeCompat:
     # Mutex 名称（与 WebUI launcher 共享，统一命名）
     MUTEX_NAME = _MUTEX_BASE
 
-    # 端口配置
-    WEBUI_HTTP_PORT = 12393
-    WEBUI_WS_PORT = 12394
+    # 端口配置（KI-002: 从 shared_config 统一读取）
+    WEBUI_HTTP_PORT = _WEBUI_HTTP_PORT
+    WEBUI_WS_PORT = _WEBUI_WS_PORT
 
     def __init__(self, project_dir: str):
         self.project_dir = Path(project_dir)
@@ -121,6 +153,8 @@ class DualModeCompat:
     def migrate_webui_config(self) -> dict:
         """从 WebUI 配置中提取原生桌面可用的设置
 
+        KI-015 FIX: 展开 ${VAR} 环境变量，与主 Config._load() 行为一致
+
         Returns:
             包含 LLM/TTS/ASR 配置的字典
         """
@@ -132,8 +166,21 @@ class DualModeCompat:
 
         try:
             import yaml
+            import re
+
             with open(config_path, 'r', encoding='utf-8') as f:
-                yaml_config = yaml.safe_load(f)
+                content = f.read()
+
+            # KI-015 FIX: 展开 ${VAR} 环境变量
+            def expand_env_vars(text):
+                pattern = re.compile(r'\$\{(\w+)\}')
+                def replacer(match):
+                    var_name = match.group(1)
+                    return os.environ.get(var_name, match.group(0))
+                return pattern.sub(replacer, text)
+
+            expanded_content = expand_env_vars(content)
+            yaml_config = yaml.safe_load(expanded_content)
 
             if yaml_config:
                 config = {
