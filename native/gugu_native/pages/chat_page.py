@@ -432,23 +432,23 @@ class ChatPage(QWidget):
         self._btn_live2d = QPushButton("🐱 Live2D")
         self._btn_live2d.setCheckable(True)
         self._btn_live2d.setChecked(True)
-        self._btn_live2d.setStyleSheet(f"""
-            QPushButton {{ background: {c['primary']}; color: #fff; border: none; 
-                border-radius: 4px; padding: 4px 12px; font-size: 12px; font-weight: bold; }}
-            QPushButton:checked {{ background: {c['primary']}; }}
-            QPushButton:!checked {{ background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }}
-            QPushButton:hover {{ background: {c['primary_hover']}; }}
+        self._btn_live2d.setStyleSheet("""
+            QPushButton { background: #4263eb; color: #fff; border: none; 
+                border-radius: 4px; padding: 4px 12px; font-size: 12px; font-weight: bold; }
+            QPushButton:checked { background: #4263eb; color: #fff; }
+            QPushButton:!checked { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+            QPushButton:hover { background: #5c7cfa; }
         """)
         self._btn_live2d.clicked.connect(lambda: self.switch_model_type("live2d"))
         
         self._btn_vrm = QPushButton("🧊 VRM 3D")
         self._btn_vrm.setCheckable(True)
-        self._btn_vrm.setStyleSheet(f"""
-            QPushButton {{ background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); border: none;
-                border-radius: 4px; padding: 4px 12px; font-size: 12px; }}
-            QPushButton:checked {{ background: {c['primary']}; color: #fff; font-weight: bold; }}
-            QPushButton:!checked {{ background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }}
-            QPushButton:hover {{ background: rgba(255,255,255,0.2); }}
+        self._btn_vrm.setStyleSheet("""
+            QPushButton { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); border: none;
+                border-radius: 4px; padding: 4px 12px; font-size: 12px; }
+            QPushButton:checked { background: #7c3aed; color: #fff; font-weight: bold; }
+            QPushButton:!checked { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+            QPushButton:hover { background: rgba(255,255,255,0.2); }
         """)
         self._btn_vrm.clicked.connect(lambda: self.switch_model_type("vrm"))
         
