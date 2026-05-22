@@ -1,20 +1,20 @@
 @echo off
 title GuguGaga AI VTuber
 
-REM 鍒囨崲鍒伴」鐩牴鐩綍锛坆at 鏂囦欢鍦?scripts/ 瀛愮洰褰曚笅锛?cd /d "%~dp0.."
+REM 閸掑洦宕查崚浼淬€嶉惄顔界壌閻╊喖缍嶉敍鍧哸t 閺傚洣娆㈤崷?scripts/ 鐎涙劗娲拌ぐ鏇氱瑓閿?cd /d "%~dp0.."
 
 echo.
 echo ========================================
 echo    GuguGaga AI VTuber - Browser Mode
-echo    version: 1.10.2
+echo    version: 1.10.3
 echo ========================================
 echo.
 
 REM ========== Environment Variables ==========
-REM HuggingFace 妯″瀷缂撳瓨鐩綍锛堥」鐩牴鐩綍涓嬬殑 .cache/锛?set HF_HOME=%cd%\.cache\huggingface
+REM HuggingFace 濡€崇€风紓鎾崇摠閻╊喖缍嶉敍鍫ャ€嶉惄顔界壌閻╊喖缍嶆稉瀣畱 .cache/閿?set HF_HOME=%cd%\.cache\huggingface
 set HF_ENDPOINT=https://hf-mirror.com
 
-REM ========== Check Python (宓屽叆寮忎紭鍏堬紝鍥為€€绯荤粺瀹夎) ==========
+REM ========== Check Python (瀹撳苯鍙嗗蹇庣喘閸忓牞绱濋崶鐐衡偓鈧化鑽ょ埠鐎瑰顥? ==========
 if exist "%~dp0..\python\python.exe" (
     set PYTHON_CMD=%~dp0..\python\python.exe
     echo [OK] Using embedded Python: %PYTHON_CMD%

@@ -37,6 +37,17 @@
 |🟢 STABLE|稳定版|
 
 
+## 🟢 v1.10.3 (2026-05-22) ✅ STABLE
+
+**LLM 补齐 + VRM 3D 实验性支持**
+
+### 🔧 新增
+- **[llm] 新增 Google Gemini + OpenRouter**（12 个 LLM 供应商）
+- **[vrm] VRM 3D 模型实验性支持**：`vrm_widget.py`（420行），QWebEngineView + three.js + three-vrm，与 Live2D 共用左侧面板。支持 .vrm 模型加载、BlendShape 表情、口型同步。
+- **[webui] 设置页 + 新手引导新增 Gemini / OpenRouter 选项**
+- **[docs] VRM 3D 模型可行性分析**
+- **[version] v1.10.3**
+
 ## 🟢 v1.10.2 (2026-05-21) ✅ STABLE
 
 **Native 桌面 Live2D — 迁移至 live2d-py + QOpenGLWidget**

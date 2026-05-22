@@ -7,7 +7,7 @@
 **GPT-SoVITS 声音克隆 · Live2D 虚拟形象 · 三层记忆 · Function Calling · 三种运行模式**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-v1.10.2-yellow.svg)](docs/VERSION.md)
+[![Version](https://img.shields.io/badge/version-v1.10.3-yellow.svg)](docs/VERSION.md)
 [![Python](https://img.shields.io/badge/python-3.11-yellow.svg)](https://www.python.org/downloads/release/python-3119/)
 [![Known Issues](https://img.shields.io/badge/known%20issues-15-orange.svg)](docs/KNOWN_ISSUES.md)
 
@@ -31,7 +31,7 @@
 | 👁️ **视觉理解** | 支持 OCR 文字识别、图片理解、屏幕感知 |
 | 🗣️ **5 种 TTS 引擎** | GPT-SoVITS（音色克隆）/ ChatTTS / CosyVoice / Edge TTS / 文本增强器 |
 | 🖥️ **三种运行模式** | 浏览器模式（WebUI）+ 桌面模式（pywebview）+ 原生模式（PySide6/Qt6） |
-| 🌐 **10 个 LLM 供应商** | DeepSeek / Kimi / 智谱GLM / 通义千问 / MiniMax / OpenAI / Anthropic / Ollama 等 |
+| 🌐 **12 个 LLM 供应商** | DeepSeek / Kimi / 智谱 / 千问 / MiniMax / OpenAI / Anthropic / Ollama / 豆包 / MiMo / Gemini / OpenRouter |
 | 🔌 **嵌入式 Python** | 桌面版包含独立 Python，拷贝即用无需预装 |
 | 🌍 **国内镜像加速** | 全程使用清华/阿里云/HuggingFace 镜像源，无需科学上网 |
 

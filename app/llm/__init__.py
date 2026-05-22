@@ -2172,17 +2172,24 @@ class LLMFactory:
     调用方只需传入配置，无需知道具体要实例化哪个类。
     
     v1.9.43: 支持 10 个 provider（7 国内 + 2 国际 + 1 本地）
+    v1.10.3: 新增 gemini + openrouter（OpenAI 兼容格式，base_url 自动设置）
     - minimax: MiniMaxLLM（支持 OpenAI/Anthropic 双格式自动判断）
     - anthropic: AnthropicLLM（原生 Anthropic API）
-    - deepseek/kimi/glm/qwen/doubao/mimo/openai: OpenAILLM（OpenAI 兼容格式）
+    - deepseek/kimi/glm/qwen/doubao/mimo/openai/gemini/openrouter: OpenAILLM（OpenAI 兼容格式）
     - ollama: OpenAILLM（_is_ollama 自动检测）
 
     【使用示例】
     engine = LLMFactory.create({"provider": "deepseek", "deepseek": {"api_key": "..."}})
     """
     
-    # v1.9.43: 使用 OpenAI 兼容格式的 provider 集合
-    _OPENAI_COMPAT_PROVIDERS = {'deepseek', 'kimi', 'glm', 'qwen', 'doubao', 'mimo', 'openai'}
+    # v1.10.3: 新增 gemini + openrouter
+    _OPENAI_COMPAT_PROVIDERS = {'deepseek', 'kimi', 'glm', 'qwen', 'doubao', 'mimo', 'openai', 'gemini', 'openrouter'}
+    
+    # v1.10.3: 新 provider 的默认 base_url（用户可在 WebUI 中覆盖）
+    _DEFAULT_BASE_URLS = {
+        'gemini': 'https://generativelanguage.googleapis.com/v1beta/openai/',
+        'openrouter': 'https://openrouter.ai/api/v1',
+    }
     
     @staticmethod
     def create(config: Dict[str, Any]) -> LLMEngine:
@@ -2211,7 +2218,10 @@ class LLMFactory:
             return OpenAILLM(config.get("ollama", {}))
         elif provider in LLMFactory._OPENAI_COMPAT_PROVIDERS:
             # v1.9.43: 所有 OpenAI 兼容的云端 provider 统一走 OpenAILLM
-            sub_cfg = config.get(provider, {})
+            sub_cfg = dict(config.get(provider, {}))
+            # v1.10.3: 自动设置新 provider 的默认 base_url
+            if provider in LLMFactory._DEFAULT_BASE_URLS and not sub_cfg.get("base_url"):
+                sub_cfg["base_url"] = LLMFactory._DEFAULT_BASE_URLS[provider]
             return OpenAILLM(sub_cfg)
         else:
             # 未知 provider 也尝试走 OpenAI 格式（兼容第三方代理）

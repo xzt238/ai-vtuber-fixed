@@ -67,6 +67,12 @@ from gugu_native.widgets.session_manager import SessionManager, ChatSession
 from gugu_native.widgets.message_search import MessageSearchBar
 from gugu_native.widgets.animation_controller import AnimationController
 
+# VRM 3D 模型支持（可选依赖，优雅降级）
+try:
+    from gugu_native.widgets.vrm_widget import VRMWidget
+except ImportError:
+    VRMWidget = None
+
 
 class StreamChatWorker(QThread):
     """流式对话线程 — 调用 backend.llm.stream_chat() 并逐 chunk 更新 UI
@@ -405,6 +411,8 @@ class ChatPage(QWidget):
         # QWebEngineView 的创建需要初始化 Chromium 进程，耗时 5-10 秒
         # 延迟创建让窗口先显示，用户感知的启动时间大幅缩短
         self.live2d_widget = None  # 将在 _lazy_init_live2d() 中创建
+        self._vrm_widget = None    # VRM 3D 模型 widget（延迟创建）
+        self._current_model_type = "live2d"  # "live2d" | "vrm"
         self._live2d_placeholder = QLabel("🐱 正在加载 Live2D...")
         self._live2d_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._live2d_placeholder.setStyleSheet("""
@@ -806,6 +814,18 @@ class ChatPage(QWidget):
         # 加载默认模型
         self._load_default_model()
 
+        # ★ VRM 3D 模型支持 — 延迟创建（与 Live2D 共用布局位置）
+        if VRMWidget is not None:
+            self._vrm_widget = VRMWidget()
+            # 添加到布局末尾（与 Live2D widget 同一层级），默认隐藏
+            self._live2d_layout.addWidget(self._vrm_widget, stretch=1)
+            self._vrm_widget.hide()
+            # 加载默认 VRM 模型（如果存在）
+            self._load_default_vrm_model()
+            print("[ChatPage] VRM widget 已创建（隐藏）")
+        else:
+            print("[ChatPage] VRMWidget 不可用，跳过 VRM 支持")
+
     def _force_live2d_repaint(self):
         """微调窗口尺寸强制 QWebEngineView 合成到屏幕"""
         if not self.live2d_widget:
@@ -832,6 +852,57 @@ class ChatPage(QWidget):
                 self._animation_controller.start()
         else:
             self.chat_display.append_system_msg(f"默认模型不存在: {model_path}")
+
+    def _load_default_vrm_model(self):
+        """加载默认 VRM 3D 模型"""
+        if self._vrm_widget is None:
+            return
+
+        vrm_path = os.path.join(
+            PROJECT_DIR, "app", "web", "static", "assets", "model",
+            "default.vrm"
+        )
+        if os.path.exists(vrm_path):
+            self._vrm_widget.load_model(vrm_path)
+            print(f"[ChatPage] VRM 默认模型已加载: {vrm_path}")
+        else:
+            print(f"[ChatPage] VRM 默认模型不存在: {vrm_path}")
+
+    def switch_model_type(self, model_type: str):
+        """切换 Live2D / VRM 模型显示
+
+        Args:
+            model_type: "live2d" 或 "vrm"
+        """
+        if model_type == self._current_model_type:
+            return
+
+        if model_type == "vrm" and self._vrm_widget is None:
+            print("[ChatPage] VRM widget 不可用，无法切换")
+            return
+
+        if model_type == "vrm":
+            # 切换到 VRM：隐藏 Live2D，显示 VRM
+            if self.live2d_widget:
+                self.live2d_widget.hide()
+            if self._vrm_widget:
+                self._vrm_widget.show()
+                # 重定向 AnimationController 到 VRM widget
+                if self._animation_controller:
+                    self._animation_controller._widget = self._vrm_widget
+            self._current_model_type = "vrm"
+            print("[ChatPage] 已切换到 VRM 模型")
+        else:
+            # 切换到 Live2D：隐藏 VRM，显示 Live2D
+            if self._vrm_widget:
+                self._vrm_widget.hide()
+            if self.live2d_widget:
+                self.live2d_widget.show()
+                # 重定向 AnimationController 到 Live2D widget
+                if self._animation_controller:
+                    self._animation_controller._widget = self.live2d_widget
+            self._current_model_type = "live2d"
+            print("[ChatPage] 已切换到 Live2D 模型")
 
     @property
     def backend(self):

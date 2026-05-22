@@ -1,20 +1,20 @@
 @echo off
 title GuguGaga Desktop
 
-REM 鍒囨崲鍒伴」鐩牴鐩綍锛坆at 鏂囦欢鍦?scripts/ 瀛愮洰褰曚笅锛?
+REM 閸掑洦宕查崚浼淬€嶉惄顔界壌閻╊喖缍嶉敍鍧哸t 閺傚洣娆㈤崷?scripts/ 鐎涙劗娲拌ぐ鏇氱瑓閿?
 cd /d "%~dp0.."
 
 REM ============================================
-REM  鍜曞挄鍢庡槑 AI-VTuber 妗岄潰鐗堝惎鍔ㄥ櫒
-REM  鍙屽嚮姝ゆ枃浠跺嵆鍙惎鍔ㄦ闈㈠簲鐢?
+REM  閸滄洖鎸勯崲搴℃ AI-VTuber 濡楀矂娼伴悧鍫濇儙閸斻劌娅?
+REM  閸欏苯鍤銈嗘瀮娴犺泛宓嗛崣顖氭儙閸斻劍顢戦棃銏犵安閻?
 REM ============================================
 
-REM 鐜鍙橀噺
+REM 閻滎垰顣ㄩ崣姗€鍣?
 set HF_HOME=%cd%\.cache\huggingface
 set HF_ENDPOINT=https://hf-mirror.com
 set PYTHONIOENCODING=utf-8
 
-REM 妫€鏌?Python锛堝祵鍏ュ紡浼樺厛锛屽洖閫€绯荤粺瀹夎锛?
+REM 濡偓閺?Python閿涘牆绁甸崗銉ョ础娴兼ê鍘涢敍灞芥礀闁偓缁崵绮虹€瑰顥婇敍?
 if exist "%~dp0..\python\python.exe" (
     set PYTHON_CMD=%~dp0..\python\python.exe
     echo [OK] Using embedded Python: %PYTHON_CMD%
@@ -30,29 +30,29 @@ if exist "%~dp0..\python\python.exe" (
     echo [OK] Using system Python: py -3.11
 )
 
-REM 妫€鏌?pywebview锛堟闈㈢獥鍙ｅ簱锛?
+REM 濡偓閺?pywebview閿涘牊顢戦棃銏㈢崶閸欙絽绨遍敍?
 %PYTHON_CMD% -c "import webview" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Installing pywebview...
     %PYTHON_CMD% -m pip install pywebview
 )
 
-REM 妫€鏌?pystray锛堢郴缁熸墭鐩橈紝鍙€夛級
+REM 濡偓閺?pystray閿涘牏閮寸紒鐔稿閻╂﹫绱濋崣顖炩偓澶涚礆
 %PYTHON_CMD% -c "import pystray" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Installing pystray + Pillow...
     %PYTHON_CMD% -m pip install pystray Pillow
 )
 
-REM 瑙ｉ櫎 pip 涓嬭浇 DLL 鐨勭綉缁滈攣瀹氭爣璁帮紙鍚﹀垯 .NET 鎷掔粷鍔犺浇 WebView2锛?
-REM v1.9.59: 妫€鏌ユ爣璁版枃浠讹紝鍙繍琛屼竴娆?
+REM 鐟欙綁娅?pip 娑撳娴?DLL 閻ㄥ嫮缍夌紒婊堟敚鐎规碍鐖ｇ拋甯礄閸氾箑鍨?.NET 閹锋帞绮烽崝鐘烘祰 WebView2閿?
+REM v1.9.59: 濡偓閺屻儲鐖ｇ拋鐗堟瀮娴犺绱濋崣顏囩箥鐞涘奔绔村▎?
 if not exist "%cd%\logs\.dlls_unblocked" (
     powershell -Command "Get-ChildItem '%cd%\python\Lib\site-packages' -Recurse -Include *.dll,*.pyd | Unblock-File -ErrorAction SilentlyContinue" >nul 2>&1
     if not exist "%cd%\logs" mkdir "%cd%\logs"
     echo. > "%cd%\logs\.dlls_unblocked"
 )
 
-REM 鍚姩妗岄潰搴旂敤
+REM 閸氼垰濮╁宀勬桨鎼存梻鏁?
 echo Starting GuguGaga Desktop...
 %PYTHON_CMD% launcher\launcher.py
 if errorlevel 1 (
