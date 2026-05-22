@@ -160,82 +160,112 @@ _VRM_TEMPLATE = r'''<!DOCTYPE html>
 <style>
 *{margin:0;padding:0}html,body{overflow:hidden;background:transparent}
 canvas{display:block}
+#msg{color:rgba(255,255,255,0.4);font-family:sans-serif;text-align:center;padding-top:40px}
 </style>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/loaders/GLTFLoader.js"></script>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 </head>
 <body>
-<script type="module">
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { VRMLoaderPlugin } from 'https://unpkg.com/@pixiv/three-vrm@3/lib/three-vrm.module.js';
+<div id="msg">Loading VRM...</div>
+<script>
+// three-vrm CDN (global build — compatible with QWebEngineView)
+var _vrmReady = false;
+var script = document.createElement('script');
+script.src = 'https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@1/lib/three-vrm.min.js';
+script.onload = function() { _vrmReady = true; onReady(); };
+script.onerror = function() { 
+  document.getElementById('msg').textContent = 'VRM SDK load failed';
+  // fallback: try v0
+  var s2 = document.createElement('script');
+  s2.src = 'https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@0.6.10/lib/three-vrm.js';
+  s2.onload = function() { _vrmReady = true; onReady(); };
+  s2.onerror = function() { document.getElementById('msg').textContent = 'VRM SDK unavailable'; };
+  document.head.appendChild(s2);
+};
+document.head.appendChild(script);
 
 // QWebChannel
-let pybridge = null;
+var pybridge = null;
 try {
-  new QWebChannel(qt.webChannelTransport, c => { pybridge = c.objects.pybridge; });
+  new QWebChannel(qt.webChannelTransport, function(c) { pybridge = c.objects.pybridge; });
 } catch(e) {}
 
-// Three.js setup
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setClearColor(0x000000, 0);
-document.body.appendChild(renderer.domElement);
+// Three.js setup (global THREE from CDN)
+var renderer, scene, camera, currentVrm, lastTime = Date.now();
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
-camera.position.set(0, 1.3, 3);
+function init3D() {
+  renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(0x000000, 0);
+  document.body.appendChild(renderer.domElement);
 
-// Lighting
-scene.add(new THREE.DirectionalLight(0xffffff, 2));
-scene.add(new THREE.AmbientLight(0xffffff, 1));
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
+  camera.position.set(0, 1.3, 3);
 
-let currentVrm = null;
-let lastTime = Date.now();
+  scene.add(new THREE.DirectionalLight(0xffffff, 2));
+  scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+  resize();
+  window.addEventListener('resize', resize);
+  animate();
+}
 
 function resize() {
-  const w = window.innerWidth || 640;
-  const h = window.innerHeight || 480;
-  renderer.setSize(w, h);
-  camera.aspect = w / Math.max(h, 1);
-  camera.updateProjectionMatrix();
+  var w = window.innerWidth || 640;
+  var h = window.innerHeight || 480;
+  if (renderer) { renderer.setSize(w, h); }
+  if (camera) { camera.aspect = w / Math.max(h, 1); camera.updateProjectionMatrix(); }
 }
-resize();
-window.addEventListener('resize', resize);
+
+function onReady() {
+  if (!_vrmReady || !window.THREE) return;
+  init3D();
+  document.getElementById('msg').style.display = 'none';
+  // Auto-load if URL set
+  if (window._pendingUrl) loadVRM(window._pendingUrl);
+}
 
 // Load VRM
-async function loadVRM(url) {
-  const loader = new GLTFLoader();
-  loader.register(parser => new VRMLoaderPlugin(parser));
-  const gltf = await loader.loadAsync(url);
-  currentVrm = gltf.userData.vrm;
-  scene.add(currentVrm.scene);
-
-  if (pybridge) pybridge.onModelLoaded('vrm_model');
+function loadVRM(url) {
+  if (!_vrmReady || !THREE) { window._pendingUrl = url; return; }
+  if (!THREE.VRM || !THREE.VRM.VRMLoaderPlugin) { setTimeout(function(){ loadVRM(url); }, 500); return; }
+  
+  var loader = new THREE.GLTFLoader();
+  loader.crossOrigin = 'anonymous';
+  var plugin = new THREE.VRM.VRMLoaderPlugin();
+  THREE.GLTFLoader.register(function(parser) { return plugin; });
+  
+  loader.load(url, function(gltf) {
+    currentVrm = gltf.userData.vrm;
+    if (currentVrm && currentVrm.scene) {
+      scene.add(currentVrm.scene);
+      document.getElementById('msg').style.display = 'none';
+      if (pybridge) pybridge.onModelLoaded('vrm_model');
+    }
+  }, undefined, function(err) {
+    document.getElementById('msg').textContent = 'VRM load error: ' + (err.message || err);
+  });
 }
 
-// Animation loop
 function animate() {
   requestAnimationFrame(animate);
-  const now = Date.now();
-  const delta = now - lastTime;
+  var now = Date.now();
+  var delta = now - lastTime;
   lastTime = now;
-  if (currentVrm) currentVrm.update(delta);
-  renderer.render(scene, camera);
+  if (currentVrm && currentVrm.update) currentVrm.update(delta);
+  if (renderer && scene && camera) renderer.render(scene, camera);
 }
-animate();
 
 // API
 window.loadVRM = loadVRM;
-window.setMouthOpen = v => { if(currentVrm) currentVrm.expressionManager.setValue('aa', v); };
-window.setExpression = (name, v=1) => { if(currentVrm) currentVrm.expressionManager.setValue(name, v||1); };
+window.setMouthOpen = function(v) {
+  if (currentVrm && currentVrm.expressionManager) currentVrm.expressionManager.setValue('aa', v);
+};
+window.setExpression = function(name, v) {
+  if (currentVrm && currentVrm.expressionManager) currentVrm.expressionManager.setValue(name, v||1);
+};
 </script>
 </body>
 </html>'''
