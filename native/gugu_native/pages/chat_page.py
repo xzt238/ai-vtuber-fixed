@@ -423,6 +423,42 @@ class ChatPage(QWidget):
             }
         """)
         self._live2d_placeholder.setMinimumSize(380, 480)
+        # ★ 模型类型切换栏（Live2D / VRM 3D）
+        self._model_toggle_bar = QWidget()
+        toggle_layout = QHBoxLayout(self._model_toggle_bar)
+        toggle_layout.setContentsMargins(4, 2, 4, 2)
+        toggle_layout.setSpacing(4)
+        
+        self._btn_live2d = QPushButton("🐱 Live2D")
+        self._btn_live2d.setCheckable(True)
+        self._btn_live2d.setChecked(True)
+        self._btn_live2d.setStyleSheet(f"""
+            QPushButton {{ background: {c['primary']}; color: #fff; border: none; 
+                border-radius: 4px; padding: 4px 12px; font-size: 12px; font-weight: bold; }}
+            QPushButton:checked {{ background: {c['primary']}; }}
+            QPushButton:!checked {{ background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }}
+            QPushButton:hover {{ background: {c['primary_hover']}; }}
+        """)
+        self._btn_live2d.clicked.connect(lambda: self.switch_model_type("live2d"))
+        
+        self._btn_vrm = QPushButton("🧊 VRM 3D")
+        self._btn_vrm.setCheckable(True)
+        self._btn_vrm.setStyleSheet(f"""
+            QPushButton {{ background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); border: none;
+                border-radius: 4px; padding: 4px 12px; font-size: 12px; }}
+            QPushButton:checked {{ background: {c['primary']}; color: #fff; font-weight: bold; }}
+            QPushButton:!checked {{ background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }}
+            QPushButton:hover {{ background: rgba(255,255,255,0.2); }}
+        """)
+        self._btn_vrm.clicked.connect(lambda: self.switch_model_type("vrm"))
+        
+        toggle_layout.addWidget(self._btn_live2d)
+        toggle_layout.addWidget(self._btn_vrm)
+        toggle_layout.addStretch()
+        self._model_toggle_bar.setFixedHeight(32)
+        self._model_toggle_bar.hide()  # VRM 创建完成前隐藏
+        self._live2d_layout.addWidget(self._model_toggle_bar)
+        
         self._live2d_layout.addWidget(self._live2d_placeholder, stretch=1)
 
         # 主动画控制器 — 将在 _lazy_init_live2d() 中创建
@@ -822,6 +858,8 @@ class ChatPage(QWidget):
             self._vrm_widget.hide()
             # 加载默认 VRM 模型（如果存在）
             self._load_default_vrm_model()
+            # 显示模型切换按钮
+            self._model_toggle_bar.show()
             print("[ChatPage] VRM widget 已创建（隐藏）")
         else:
             print("[ChatPage] VRMWidget 不可用，跳过 VRM 支持")
@@ -869,11 +907,7 @@ class ChatPage(QWidget):
             print(f"[ChatPage] VRM 默认模型不存在: {vrm_path}")
 
     def switch_model_type(self, model_type: str):
-        """切换 Live2D / VRM 模型显示
-
-        Args:
-            model_type: "live2d" 或 "vrm"
-        """
+        """切换 Live2D / VRM 模型显示"""
         if model_type == self._current_model_type:
             return
 
@@ -882,26 +916,26 @@ class ChatPage(QWidget):
             return
 
         if model_type == "vrm":
-            # 切换到 VRM：隐藏 Live2D，显示 VRM
             if self.live2d_widget:
                 self.live2d_widget.hide()
             if self._vrm_widget:
                 self._vrm_widget.show()
-                # 重定向 AnimationController 到 VRM widget
                 if self._animation_controller:
                     self._animation_controller._widget = self._vrm_widget
             self._current_model_type = "vrm"
+            self._btn_live2d.setChecked(False)
+            self._btn_vrm.setChecked(True)
             print("[ChatPage] 已切换到 VRM 模型")
         else:
-            # 切换到 Live2D：隐藏 VRM，显示 Live2D
             if self._vrm_widget:
                 self._vrm_widget.hide()
             if self.live2d_widget:
                 self.live2d_widget.show()
-                # 重定向 AnimationController 到 Live2D widget
                 if self._animation_controller:
                     self._animation_controller._widget = self.live2d_widget
             self._current_model_type = "live2d"
+            self._btn_live2d.setChecked(True)
+            self._btn_vrm.setChecked(False)
             print("[ChatPage] 已切换到 Live2D 模型")
 
     @property
