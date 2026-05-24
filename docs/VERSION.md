@@ -37,6 +37,17 @@
 |🟢 STABLE|稳定版|
 
 
+## 🟢 v1.10.4 (2026-05-23) ✅ STABLE
+
+**VRM 3D 修复：GLTFLoader 404 + three-vrm API 适配**
+
+### 🔧 修复
+- **[vrm] 修复 GLTFLoader 404**：three.js 0.150.1 已删除 `examples/js/` 目录，降级至 0.136 + 从本地加载静态文件
+- **[vrm] 修复 three-vrm API 不兼容**：适配 three-vrm 0.6.10（VRM 0.x），使用 `VRM.from()` + `blendShapeProxy` 替代 1.x 的 `VRMLoaderPlugin`
+- **[vrm] 重写 HTML 模板**：加载失败时显示详细错误信息（依赖缺失 / GLTF 加载失败 / VRM 解析失败）
+- **[vrm] 重生成 test model**：VRM 0.x 格式（`VRM` 扩展），含 BlendShape 'A'
+- **[version] v1.10.4**（9 处同步更新）
+
 ## 🟢 v1.10.3 (2026-05-22) ✅ STABLE
 
 **LLM 补齐 + VRM 3D 实验性支持**

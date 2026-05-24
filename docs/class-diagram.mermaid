@@ -1,0 +1,96 @@
+classDiagram
+    class VRMSettingsPage {
+        -_backend: AIVTuber
+        -_vrm_widget: VRMWidget
+        -_preview_loaded: bool
+        -_slider_arm_angle: Slider
+        -_slider_model_scale: Slider
+        -_slider_camera_dist: Slider
+        -_slider_light_intensity: Slider
+        -_spin_arm_angle: SpinBox
+        -_spin_model_scale: SpinBox
+        -_spin_camera_dist: SpinBox
+        -_spin_light_intensity: SpinBox
+        +__init__(parent)
+        +on_backend_ready()
+        +refresh_theme()
+        -_init_ui()
+        -_init_preview()
+        -_create_slider_group(label, icon, min, max, default, step) QWidget
+        -_on_slider_changed(value, param_name)
+        -_apply_to_preview(param_name, value)
+        -_apply_all_to_preview()
+        -_save_config()
+        -_load_config() dict
+        -_load_from_cache() dict
+        -_save_to_cache(config)
+        -_reset_defaults()
+    }
+
+    class VRMWidget {
+        +model: bool
+        +model_path: str
+        +model_loaded: Signal(str)
+        -_web_view: QWebEngineView
+        -_web_page: QWebEnginePage
+        -_channel: QWebChannel
+        -_bridge: _VRMBridge
+        -_page_ready: bool
+        -_pending_config: dict
+        +load_model(path) bool
+        +set_mouth_open(value: float)
+        +set_expression(name: str, value: float)
+        +set_arm_angle(value: float)
+        +set_model_scale(value: float)
+        +set_camera_distance(value: float)
+        +set_light_intensity(value: float)
+        +apply_display_config(config: dict)
+        -_force_canvas_resize()
+        -_on_page_ready()
+        -_on_model_loaded(name)
+    }
+
+    class _VRMBridge {
+        +model_loaded_signal: Signal(str)
+        +page_ready_signal: Signal()
+        +model_error_signal: Signal(str)
+        +onModelLoaded(name: str)
+        +onPageReady()
+        +onModelError(msg: str)
+    }
+
+    class ChatPage {
+        -_vrm_widget: VRMWidget
+        -_current_model_type: str
+        +switch_model_type(type: str)
+        +_load_default_vrm_model()
+        +_apply_vrm_display_config()
+        -_load_vrm_display_config() dict
+    }
+
+    class AnimationController {
+        -_widget: Live2DWidget | VRMWidget
+        +set_mouth_open(value: float)
+        +trigger_emotion(name: str)
+        +trigger_emotion_from_text(text: str)
+        +start()
+        +stop()
+    }
+
+    class GuguGagaApp {
+        +vrm_settings_page: VRMSettingsPage
+        +chat_page: ChatPage
+        +backend: AIVTuber
+        +_create_pages()
+        +_on_backend_ready()
+        +addSubInterface(widget, icon, text, position)
+    }
+
+    VRMSettingsPage --> VRMWidget : 左侧预览
+    ChatPage --> VRMWidget : 模型显示
+    ChatPage --> AnimationController : 口型/表情同步
+    GuguGagaApp --> VRMSettingsPage : 导航注册
+    GuguGagaApp --> ChatPage : 导航注册
+    VRMWidget --> _VRMBridge : QWebChannel
+    VRMWidget ..|> AnimationController : set_mouth_open
+    VRMWidget ..|> AnimationController : set_expression

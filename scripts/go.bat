@@ -6,7 +6,7 @@ REM 閸掑洦宕查崚浼淬€嶉惄顔界壌閻╊喖缍嶉敍鍧哸t 閺傚�
 echo.
 echo ========================================
 echo    GuguGaga AI VTuber - Browser Mode
-echo    version: 1.10.3
+echo    version: 1.10.4
 echo ========================================
 echo.
 

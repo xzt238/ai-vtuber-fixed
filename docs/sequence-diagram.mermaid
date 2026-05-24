@@ -1,0 +1,78 @@
+sequenceDiagram
+    actor User
+    participant SP as VRMSettingsPage
+    participant Slider as Slider (QFluentWidgets)
+    participant Spin as SpinBox
+    participant VRM as VRMWidget
+    participant Web as QWebEngineView
+    participant JS as Three.js Scene
+    participant FS as File System
+
+    Note over User,FS: === 场景1: 滑块实时预览（高频路径） ===
+
+    User->>Slider: 拖拽"手臂角度"滑块
+    Slider->>SP: valueChanged(int_value)
+    SP->>SP: _on_slider_changed(int_value, "arm_angle")
+    SP->>SP: float_val = int_value / 100.0
+    SP->>Spin: setValue(float_val)
+    SP->>VRM: set_arm_angle(1.5)
+    VRM->>Web: runJavaScript("window.setArmAngle(1.5)")
+    Web->>JS: setArmAngle(1.5)
+    JS->>JS: leftUpperArm.rotation.z = 1.5
+    JS->>JS: rightUpperArm.rotation.z = -1.5
+    Note over JS: animate() 60fps 自动渲染
+
+    Note over User,FS: === 场景2: 保存配置 ===
+
+    User->>SP: 点击"保存配置"
+    SP->>SP: _save_config()
+    SP->>SP: config = {arm_angle, model_scale, camera_distance, light_intensity}
+    SP->>FS: 写入 config.yaml (vrm_display段)
+    Note over FS: 使用 backend.config 或直接 YAML 操作
+    SP->>FS: 写入 app/cache/vrm_display.json
+    Note over FS: json.dump with indent=2
+    SP->>SP: InfoBar.success("VRM 显示配置已保存")
+
+    Note over User,FS: === 场景3: 页面初始化加载配置 ===
+
+    SP->>VRM: load_model("default.vrm")
+    Note over VRM: 异步加载，触发 model_loaded 信号
+    SP->>FS: 读取 app/cache/vrm_display.json
+    alt 缓存存在
+        FS-->>SP: {"arm_angle": 1.0, "model_scale": 1.0, ...}
+    else 缓存不存在
+        SP->>FS: 读取 config.yaml → vrm_display
+        FS-->>SP: {"arm_angle": 1.0, ...} (默认值)
+    end
+    SP->>SP: 设置4个 slider/spinbox 初始值
+    VRM-->>SP: model_loaded 信号
+    SP->>SP: _apply_all_to_preview()
+    SP->>VRM: apply_display_config({arm_angle:1.0, ...})
+    VRM->>Web: runJavaScript × 4 (逐项应用)
+
+    Note over User,FS: === 场景4: 聊天页切换VRM联动 ===
+
+    User->>SP: 在设置页修改参数并保存
+    User->>SP: 切换到聊天页
+    User->>SP: 点击 "VRM 3D" 按钮
+    Note over SP: ChatPage.switch_model_type("vrm")
+    SP->>SP: live2d_widget.hide()
+    SP->>VRM: vrm_widget.show()
+    SP->>SP: _apply_vrm_display_config()
+    SP->>FS: 读取 app/cache/vrm_display.json
+    FS-->>SP: {"arm_angle": 1.5, "camera_distance": 4.0, ...}
+    SP->>VRM: apply_display_config(config)
+    VRM->>Web: runJavaScript("window.setArmAngle(1.5)")
+    VRM->>Web: runJavaScript("window.setModelScale(1.0)")
+    VRM->>Web: runJavaScript("window.setCameraDistance(4.0)")
+    VRM->>Web: runJavaScript("window.setLightIntensity(2.5)")
+    Note over JS: VRM 模型以用户设定的参数渲染
+
+    Note over User,FS: === 场景5: 重置默认 ===
+
+    User->>SP: 点击"重置默认"
+    SP->>SP: _reset_defaults()
+    SP->>SP: 所有 slider → 默认值
+    SP->>SP: _apply_all_to_preview()
+    SP->>VRM: apply_display_config(defaults)
+    SP->>SP: InfoBar.info("已恢复默认设置")

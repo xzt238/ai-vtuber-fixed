@@ -458,7 +458,34 @@ class ChatPage(QWidget):
         self._model_toggle_bar.setFixedHeight(32)
         self._model_toggle_bar.hide()  # VRM 创建完成前隐藏
         self._live2d_layout.addWidget(self._model_toggle_bar)
-        
+
+        # ★ VRM 变体切换栏（AU / cow / jacket / swim）
+        self._vrm_variant_bar = QWidget()
+        variant_layout = QHBoxLayout(self._vrm_variant_bar)
+        variant_layout.setContentsMargins(4, 1, 4, 1)
+        variant_layout.setSpacing(3)
+        self._btn_vrm_variants = {}
+        for name, label in [("default", "AU"), ("cow", "🐄"), ("jacket", "🧥"), ("swim", "🏊")]:
+            btn = QPushButton(label)
+            btn.setCheckable(True)
+            btn.setStyleSheet("""
+                QPushButton { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6);
+                    border: 1px solid rgba(255,255,255,0.1); border-radius: 3px;
+                    padding: 2px 8px; font-size: 11px; }
+                QPushButton:checked { background: #7c3aed; color: #fff; border-color: #7c3aed; font-weight: bold; }
+                QPushButton:hover { background: rgba(255,255,255,0.15); }
+            """)
+            btn.clicked.connect(lambda checked, n=name: self._switch_vrm_variant(n))
+            variant_layout.addWidget(btn)
+            self._btn_vrm_variants[name] = btn
+        variant_layout.addStretch()
+        # 默认选中 AU
+        if "default" in self._btn_vrm_variants:
+            self._btn_vrm_variants["default"].setChecked(True)
+        self._vrm_variant_bar.setFixedHeight(26)
+        self._vrm_variant_bar.hide()
+        self._live2d_layout.addWidget(self._vrm_variant_bar)
+
         self._live2d_layout.addWidget(self._live2d_placeholder, stretch=1)
 
         # 主动画控制器 — 将在 _lazy_init_live2d() 中创建
@@ -853,6 +880,7 @@ class ChatPage(QWidget):
         # ★ VRM 3D 模型支持 — 延迟创建（与 Live2D 共用布局位置）
         if VRMWidget is not None:
             self._vrm_widget = VRMWidget()
+            self._vrm_widget.model_loaded.connect(lambda _: self._apply_vrm_display_config())
             # 添加到布局末尾（与 Live2D widget 同一层级），默认隐藏
             self._live2d_layout.addWidget(self._vrm_widget, stretch=1)
             self._vrm_widget.hide()
@@ -925,6 +953,7 @@ class ChatPage(QWidget):
             self._current_model_type = "vrm"
             self._btn_live2d.setChecked(False)
             self._btn_vrm.setChecked(True)
+            self._vrm_variant_bar.show()
             print("[ChatPage] 已切换到 VRM 模型")
         else:
             if self._vrm_widget:
@@ -936,7 +965,45 @@ class ChatPage(QWidget):
             self._current_model_type = "live2d"
             self._btn_live2d.setChecked(True)
             self._btn_vrm.setChecked(False)
+            self._vrm_variant_bar.hide()
             print("[ChatPage] 已切换到 Live2D 模型")
+
+    def _switch_vrm_variant(self, variant: str):
+        """切换 VRM 变体"""
+        if not self._vrm_widget:
+            return
+        variant_files = {
+            "default": "default.vrm",
+            "cow": "Asmodeus_cow.vrm",
+            "jacket": "Asmodeus_jacket.vrm",
+            "swim": "Asmodeus_swim.vrm",
+        }
+        filename = variant_files.get(variant)
+        if not filename:
+            return
+        vrm_path = os.path.join(PROJECT_DIR, "app", "web", "static", "assets", "model", filename)
+        if os.path.exists(vrm_path):
+            self._vrm_widget.load_model(vrm_path)
+            # 更新按钮选中状态
+            for name, btn in self._btn_vrm_variants.items():
+                btn.setChecked(name == variant)
+            print(f"[ChatPage] 切换 VRM 变体: {variant} → {filename}")
+
+    def _apply_vrm_display_config(self):
+        """读取保存的 VRM 显示配置并应用到当前模型"""
+        if not self._vrm_widget:
+            return
+        import json
+        cache_path = os.path.join(PROJECT_DIR, "app", "cache", "vrm_display.json")
+        config = {}
+        if os.path.exists(cache_path):
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+            except Exception:
+                pass
+        if config:
+            self._vrm_widget.apply_display_config(config)
 
     @property
     def backend(self):

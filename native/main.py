@@ -71,6 +71,10 @@ from gugu_native.pages.train_page import TrainPage
 from gugu_native.pages.memory_page import MemoryPage
 from gugu_native.pages.model_download_page import ModelDownloadPage
 from gugu_native.pages.settings_page import SettingsPage
+try:
+    from gugu_native.pages.vrm_settings_page import VRMSettingsPage
+except ImportError:
+    VRMSettingsPage = None
 from gugu_native.widgets.tray_manager import TrayManager
 from gugu_native.widgets.voice_manager import RealtimeVoiceManager
 from gugu_native.widgets.hotkey_manager import HotkeyManager
@@ -86,7 +90,7 @@ def _get_version():
         from app.version import VERSION
         return VERSION
     except ImportError:
-        return "1.10.3"  # fallback
+        return "1.10.4"  # fallback
 
 # 配置日志 — 强制 UTF-8 编码避免 Windows 中文乱码
 # 注意: sys.stderr 本身已是文本流，不能用 io.TextIOWrapper 二次包装（会导致 flush 写 bytes 崩溃）
@@ -263,6 +267,15 @@ class GuguGagaApp(FluentWindow):
             FluentIcon.DOWNLOAD,
             "模型下载"
         )
+
+        # VRM 设置页面
+        if VRMSettingsPage is not None:
+            self.vrm_settings_page = VRMSettingsPage(self)
+            self.addSubInterface(
+                self.vrm_settings_page,
+                FluentIcon.VIEW,
+                "VRM 设置"
+            )
 
         # 设置页面（放在底部）
         self.settings_page = SettingsPage(self)

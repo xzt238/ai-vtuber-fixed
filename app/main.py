@@ -1072,6 +1072,37 @@ class AIVTuber:
         return self._lazy_modules['proactive']
 
     @property
+    def diary(self):
+        """
+        AI 每日日记系统 - 懒加载 (v1.10.5)
+
+        延迟导入: from diary import DiaryManager
+        配置来源: config["diary"]
+
+        功能: 每天固定时间自动回顾当天对话，生成反思日记。
+        - start(): 启动定时器
+        - stop(): 停止定时器
+        - get_diary(date_str): 读取指定日期日记
+        - list_diaries(): 列出所有日记日期
+        - summarize_week(): 周度总结
+
+        返回值:
+            DiaryManager 实例
+        """
+        if 'diary' not in self._lazy_modules:
+            try:
+                from diary import DiaryManager
+                self._lazy_modules['diary'] = DiaryManager(self)
+                if self._lazy_modules['diary'].enabled:
+                    game_ok("每日日记", f"每日 {self._lazy_modules['diary'].diary_time} 自动写日记")
+                else:
+                    game_skip("每日日记", "未启用 (config.yaml → diary.enabled)")
+            except Exception as e:
+                self._lazy_modules['diary'] = None
+                game_fail("每日日记", f"初始化失败: {e}")
+        return self._lazy_modules['diary']
+
+    @property
     def mcp(self):
         """
         MCP 工具桥接器 - 懒加载
@@ -1592,6 +1623,14 @@ class AIVTuber:
         except Exception as e:
             game_warn("主动说话", str(e))
 
+        # v1.10.5: 启动 AI 日记系统
+        try:
+            diary = self.diary
+            if diary and diary.enabled:
+                diary.start()
+        except Exception as e:
+            game_warn("日记系统", str(e))
+
         # v1.9.52: 启动 MCP 工具桥接器（如果已启用）
         try:
             mcp = self.mcp
@@ -1758,6 +1797,14 @@ class AIVTuber:
                 self.logger.info("主动说话管理器已停止")
             except Exception as e:
                 self.logger.error(f"主动说话管理器停止失败: {e}")
+
+        # v1.10.5: 停止日记系统
+        if 'diary' in self._lazy_modules and self._lazy_modules.get('diary'):
+            try:
+                self._lazy_modules['diary'].stop()
+                self.logger.info("日记系统已停止")
+            except Exception as e:
+                self.logger.error(f"日记系统停止失败: {e}")
 
         # v1.9.52: 停止 MCP 工具桥接器
         if 'mcp' in self._lazy_modules and self._lazy_modules.get('mcp'):

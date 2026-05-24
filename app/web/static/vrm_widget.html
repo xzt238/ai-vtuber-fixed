@@ -5,82 +5,386 @@
 <style>
 *{margin:0;padding:0}html,body{overflow:hidden;background:transparent}
 canvas{display:block}
+#msg{color:rgba(255,255,255,0.4);font-family:sans-serif;text-align:center;padding-top:40px}
+#error{color:rgba(255,100,100,0.8);font-family:monospace;font-size:11px;text-align:center;padding:10px;display:none}
 </style>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
+<script src="./three.min.js"></script>
+<script src="./GLTFLoader.js"></script>
+<script src="./three-vrm.js"></script>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 </head>
 <body>
-<script type="module">
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { VRMLoaderPlugin } from 'https://unpkg.com/@pixiv/three-vrm@3/lib/three-vrm.module.js';
+<div id="msg">Loading VRM...</div>
+<div id="error"></div>
+<script>
+// ---- 全局状态 ----
+var pybridge = null;       // QWebChannel bridge
+var _pendingUrl = null;    // 待加载的模型 URL
+var _initDone = false;     // init3D 是否完成
+var _bridgeConnected = false;  // QWebChannel 是否已连接
+var renderer, scene, camera, currentVrm, lastTime = Date.now();
+var _keyLight, _breathTime = 0;
+window._vrmState = {
+  spherical: null,
+  orbitTarget: new THREE.Vector3(0, 1, 0)
+};
 
-// QWebChannel
-let pybridge = null;
+// ---- 工具函数 ----
+
+function showError(msg) {
+  var el = document.getElementById('error');
+  el.textContent = msg;
+  el.style.display = 'block';
+  console.error('[VRM]', msg);
+  if (pybridge && pybridge.onModelError) pybridge.onModelError(msg);
+}
+
+function trySignalReady() {
+  // 两边都就绪后通知 Python
+  if (_initDone && _bridgeConnected && pybridge && pybridge.onPageReady) {
+    pybridge.onPageReady();
+  }
+}
+
+function tryLoadPending() {
+  // 两边都就绪 + 有待加载模型时触发
+  if (_initDone && _pendingUrl && THREE && THREE.GLTFLoader) {
+    _doLoadVRM(_pendingUrl);
+  }
+}
+
+// ---- 依赖检查 ----
+
+(function() {
+  if (typeof THREE === 'undefined') { showError('THREE: not loaded'); }
+  else if (typeof THREE.GLTFLoader === 'undefined') { showError('GLTFLoader: not loaded'); }
+  else if (typeof THREE.VRM === 'undefined') { showError('THREE.VRM: not loaded'); }
+})();
+
+// ---- QWebChannel ----
+
 try {
-  new QWebChannel(qt.webChannelTransport, c => { pybridge = c.objects.pybridge; });
-} catch(e) {}
-
-// Three.js setup
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setClearColor(0x000000, 0);
-document.body.appendChild(renderer.domElement);
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
-camera.position.set(0, 1.3, 3);
-
-// Lighting
-scene.add(new THREE.DirectionalLight(0xffffff, 2));
-scene.add(new THREE.AmbientLight(0xffffff, 1));
-
-let currentVrm = null;
-let lastTime = Date.now();
-
-function resize() {
-  const w = window.innerWidth || 640;
-  const h = window.innerHeight || 480;
-  renderer.setSize(w, h);
-  camera.aspect = w / Math.max(h, 1);
-  camera.updateProjectionMatrix();
-}
-resize();
-window.addEventListener('resize', resize);
-
-// Load VRM
-async function loadVRM(url) {
-  const loader = new GLTFLoader();
-  loader.register(parser => new VRMLoaderPlugin(parser));
-  const gltf = await loader.loadAsync(url);
-  currentVrm = gltf.userData.vrm;
-  scene.add(currentVrm.scene);
-
-  if (pybridge) pybridge.onModelLoaded('vrm_model');
+  new QWebChannel(qt.webChannelTransport, function(c) {
+    pybridge = c.objects.pybridge;
+    _bridgeConnected = true;
+    console.log('[VRM] QWebChannel connected');
+    trySignalReady();
+    tryLoadPending();
+  });
+} catch(e) {
+  console.error('[VRM] QWebChannel failed:', e);
+  // 即使没有 bridge，也标记为已连接（降级模式，无回调）
+  _bridgeConnected = true;
 }
 
-// Animation loop
+// ---- Three.js 初始化 ----
+
+function init3D() {
+  try {
+    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setClearColor(0x000000, 0);
+    document.body.appendChild(renderer.domElement);
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
+    camera.position.set(0, 1.3, 3);
+
+    // 多光源：半球光（天空+地面）+ 正面主光 + 背面补光
+    scene.add(new THREE.HemisphereLight(0xffeedd, 0x443322, 1.2));
+    _keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    _keyLight.position.set(0, 1.8, 3);
+    scene.add(_keyLight);
+    var _fillLight = new THREE.DirectionalLight(0x6666aa, 1.0);
+    _fillLight.position.set(-1, 0.8, -2);
+    scene.add(_fillLight);
+    scene.add(new THREE.AmbientLight(0x444444, 0.8));
+
+    _breathTime = 0;
+
+    forceResize();
+    window.addEventListener('resize', forceResize);
+
+    // 鼠标拖拽旋转（绕模型中心 Y 轴 + X 轴）
+    var _dragging = false, _lastX = 0, _lastY = 0;
+    var _orbitTarget = window._vrmState.orbitTarget;
+    var _spherical = new THREE.Spherical().setFromVector3(
+      camera.position.clone().sub(_orbitTarget)
+    );
+    window._vrmState.spherical = _spherical;
+    renderer.domElement.addEventListener('pointerdown', function(e) {
+      _dragging = true; _lastX = e.clientX; _lastY = e.clientY;
+    });
+    window.addEventListener('pointermove', function(e) {
+      if (!_dragging) return;
+      var dx = e.clientX - _lastX, dy = e.clientY - _lastY;
+      _lastX = e.clientX; _lastY = e.clientY;
+      _spherical.theta -= dx * 0.005;
+      _spherical.phi   -= dy * 0.005;
+      _spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, _spherical.phi));
+      camera.position.copy(_orbitTarget).add(
+        new THREE.Vector3().setFromSpherical(_spherical)
+      );
+      camera.lookAt(_orbitTarget);
+    });
+    window.addEventListener('pointerup', function() { _dragging = false; });
+
+    // 滚轮缩放
+    renderer.domElement.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      _spherical.radius *= 1 + e.deltaY * 0.001;
+      _spherical.radius = Math.max(0.5, Math.min(10, _spherical.radius));
+      camera.position.copy(_orbitTarget).add(
+        new THREE.Vector3().setFromSpherical(_spherical)
+      );
+      camera.lookAt(_orbitTarget);
+    }, { passive: false });
+
+    animate();
+
+    _initDone = true;
+    document.getElementById('msg').style.display = 'none';
+    document.getElementById('error').style.display = 'none';
+    console.log('[VRM] init3D complete, canvas=', renderer.domElement.width, 'x', renderer.domElement.height);
+
+    trySignalReady();
+    tryLoadPending();
+  } catch(e) {
+    showError('init3D error: ' + e.message);
+  }
+}
+
+function forceResize() {
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+  if (!w || !h || w < 10 || h < 10) {
+    w = renderer && renderer.domElement.parentElement ? renderer.domElement.parentElement.offsetWidth : 380;
+    h = renderer && renderer.domElement.parentElement ? renderer.domElement.parentElement.offsetHeight : 480;
+  }
+  if (w < 10 || h < 10) return;
+  if (renderer) { renderer.setSize(w, h); }
+  if (camera) { camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  console.log('[VRM] resize:', w, 'x', h);
+}
+
+// ---- VRM 加载 ----
+
+function _unloadVRM() {
+  // 从场景移除旧模型及其所有子对象
+  if (currentVrm && currentVrm.scene) {
+    scene.remove(currentVrm.scene);
+  }
+  currentVrm = null;
+}
+
+function _doLoadVRM(url) {
+  _unloadVRM();  // 先卸载旧模型
+  // URL 和 loading 状态...
+  _pendingUrl = null;
+  document.getElementById('error').style.display = 'none';
+  document.getElementById('msg').textContent = 'Loading model...';
+  document.getElementById('msg').style.display = 'block';
+
+  var loader = new THREE.GLTFLoader();
+  loader.crossOrigin = 'anonymous';
+
+  loader.load(url,
+    function(gltf) {
+      // ★ 抢救原始 glTF 材质贴图（three-vrm 的 VRM_USE_GLTFSHADER 会丢失贴图）
+      var texMap = {};  // mesh_name → {map, emissiveMap, ...}
+      gltf.scene.traverse(function(node) {
+        if (node.isMesh && node.material) {
+          var mat = Array.isArray(node.material) ? node.material[0] : node.material;
+          var tex = {};
+          if (mat.map) tex.map = mat.map;
+          if (mat.emissiveMap) tex.emissive = mat.emissiveMap;
+          if (mat.normalMap) tex.normal = mat.normalMap;
+          if (Object.keys(tex).length > 0) texMap[node.name] = tex;
+        }
+      });
+      console.log('[VRM] Original glTF textured meshes:', Object.keys(texMap).length, Object.keys(texMap).slice(0,5));
+
+      THREE.VRM.from(gltf).then(function(vrm) {
+        currentVrm = vrm;
+        scene.add(vrm.scene);
+
+        // 把抢救的贴图装回 VRM 材质
+        var fixedTex = 0, fixedColor = 0;
+        vrm.scene.traverse(function(node) {
+          if (node.isMesh) {
+            node.frustumCulled = false;
+            if (node.material) {
+              var mats = Array.isArray(node.material) ? node.material : [node.material];
+              mats.forEach(function(m) {
+                // 1) 尝试从 texMap 恢复贴图
+                var saved = texMap[node.name];
+                if (saved && saved.map) {
+                  m.map = saved.map;
+                  if (m.uniforms && m.uniforms._MainTex) m.uniforms._MainTex.value = saved.map;
+                  fixedTex++;
+                }
+                // 2) 检查是否仍无贴图 → 给肉色
+                var hasTex = !!(m.map) || !!(m.uniforms && m.uniforms._MainTex && m.uniforms._MainTex.value);
+                if (!hasTex) {
+                  if (m.uniforms && m.uniforms._Color) {
+                    m.uniforms._Color.value.set(0.95, 0.8, 0.7);
+                  } else if (m.color) {
+                    m.color.set(0xf5ccbb);
+                  }
+                  fixedColor++;
+                }
+                m.needsUpdate = true;
+              });
+            }
+          }
+        });
+        console.log('[VRM] Fixed textures:', fixedTex, '| Fixed colors:', fixedColor);
+
+        // 放大模型使其可见（如果太小）
+        var box = new THREE.Box3().setFromObject(vrm.scene);
+        var size = box.getSize(new THREE.Vector3());
+        console.log('[VRM] Bounding box size:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2));
+        if (size.y < 0.5) {
+          var s = 2.0;
+          vrm.scene.scale.set(s, s, s);
+          console.log('[VRM] Scaled up by', s);
+        }
+
+        // 修复 T-pose：上臂 Z 轴旋转使手臂自然下垂（不用 X 轴，避免内翻）
+        if (currentVrm.humanoid && currentVrm.humanoid.getBoneNode) {
+          var lArm = currentVrm.humanoid.getBoneNode('leftUpperArm');
+          if (lArm) lArm.rotation.z = 1.0;
+          var rArm = currentVrm.humanoid.getBoneNode('rightUpperArm');
+          if (rArm) rArm.rotation.z = -1.0;
+        }
+
+        // 修复材质：透明/眼部渲染问题
+        vrm.scene.traverse(function(node) {
+          if (node.isMesh && node.material) {
+            var mats = Array.isArray(node.material) ? node.material : [node.material];
+            mats.forEach(function(m) {
+              if (m.alphaTest === 0 || m.transparent) m.alphaTest = 0.1;
+              if (m.depthWrite === false) m.depthWrite = true;
+              m.needsUpdate = true;
+            });
+          }
+        });
+
+        document.getElementById('msg').style.display = 'none';
+        document.getElementById('error').style.display = 'none';
+        if (pybridge && pybridge.onModelLoaded) pybridge.onModelLoaded('vrm_model');
+      }).catch(function(err) {
+        showError('VRM parse: ' + (err.message || err));
+      });
+    },
+    function(progress) {
+      if (progress.total > 0) {
+        document.getElementById('msg').textContent = 'Loading... ' + Math.round(progress.loaded/progress.total*100) + '%';
+      }
+    },
+    function(err) {
+      showError('GLTF load: ' + (err ? (err.message || err) : 'unknown'));
+    }
+  );
+}
+
+// ---- 动画循环 ----
+
 function animate() {
   requestAnimationFrame(animate);
-  const now = Date.now();
-  const delta = now - lastTime;
+  var now = Date.now();
+  var delta = now - lastTime;
   lastTime = now;
-  if (currentVrm) currentVrm.update(delta);
-  renderer.render(scene, camera);
-}
-animate();
 
-// API
-window.loadVRM = loadVRM;
-window.setMouthOpen = v => { if(currentVrm) currentVrm.expressionManager.setValue('aa', v); };
-window.setExpression = (name, v=1) => { if(currentVrm) currentVrm.expressionManager.setValue(name, v||1); };
+  // VRM 更新（spring bones + blend shapes）
+  if (currentVrm && currentVrm.update) currentVrm.update(delta);
+
+  // 程序化待机动画：正弦驱动骨骼旋转
+  if (currentVrm && currentVrm.humanoid && currentVrm.humanoid.getBoneNode) {
+    var t = now * 0.001;
+    try {
+      var spine = currentVrm.humanoid.getBoneNode('spine');
+      if (spine) spine.rotation.z = Math.sin(t * 0.6) * 0.03;
+      var head = currentVrm.humanoid.getBoneNode('head');
+      if (head) { head.rotation.z = Math.sin(t * 0.7 + 0.5) * 0.04; head.rotation.x = Math.sin(t * 0.5) * 0.02; }
+      var lArm = currentVrm.humanoid.getBoneNode('leftUpperArm');
+      if (lArm) lArm.rotation.x = Math.sin(t * 0.4 + 2) * 0.05;
+      var rArm = currentVrm.humanoid.getBoneNode('rightUpperArm');
+      if (rArm) rArm.rotation.x = Math.sin(t * 0.4 + 0.5) * 0.05;
+      var chest = currentVrm.humanoid.getBoneNode('chest');
+      if (chest) chest.rotation.x = Math.sin(t * 0.8) * 0.015;
+    } catch(e) {}
+  }
+
+  // 主光跟踪相机 + 距离补偿亮度
+  if (_keyLight && camera) {
+    var dist = camera.position.distanceTo(window._vrmState.orbitTarget);
+    _keyLight.position.copy(camera.position);
+    _keyLight.intensity = 2.5 * Math.max(0.5, dist / 3);  // 距离越远光越强
+  }
+
+  if (renderer && scene && camera) renderer.render(scene, camera);
+}
+
+// ---- Display Settings API ----
+
+window.setArmAngle = function(v) {
+  var angle = Number(v);
+  if (isNaN(angle)) return;
+  if (currentVrm && currentVrm.humanoid && currentVrm.humanoid.getBoneNode) {
+    var lArm = currentVrm.humanoid.getBoneNode('leftUpperArm');
+    if (lArm) lArm.rotation.z = angle;
+    var rArm = currentVrm.humanoid.getBoneNode('rightUpperArm');
+    if (rArm) rArm.rotation.z = -angle;
+  }
+};
+window.setModelScale = function(v) {
+  var s = Number(v);
+  if (isNaN(s) || s <= 0) return;
+  if (currentVrm && currentVrm.scene) currentVrm.scene.scale.set(s, s, s);
+};
+window.setCameraDistance = function(v) {
+  var dist = Number(v);
+  if (isNaN(dist) || dist <= 0) return;
+  if (window._vrmState.spherical && camera) {
+    window._vrmState.spherical.radius = dist;
+    camera.position.copy(window._vrmState.orbitTarget).add(
+      new THREE.Vector3().setFromSpherical(window._vrmState.spherical)
+    );
+    camera.lookAt(window._vrmState.orbitTarget);
+  }
+};
+window.setLightIntensity = function(v) {
+  var intensity = Number(v);
+  if (isNaN(intensity) || intensity < 0) return;
+  if (_keyLight) _keyLight.intensity = intensity;
+};
+
+// ---- Public API (Python runJavaScript 调用) ----
+
+window.loadVRM = function(url) {
+  // 总是先存到 _pendingUrl，无论当前状态
+  _pendingUrl = url;
+  tryLoadPending();
+};
+
+window.unloadVRM = _unloadVRM;
+
+window.setMouthOpen = function(v) {
+  if (currentVrm && currentVrm.blendShapeProxy)
+    currentVrm.blendShapeProxy.setValue('A', Number(v) || 0);
+};
+
+window.setExpression = function(name, v) {
+  if (currentVrm && currentVrm.blendShapeProxy)
+    currentVrm.blendShapeProxy.setValue(name, Number(v) || 1);
+};
+
+window.forceResize = forceResize;
+
+// ---- 启动 ----
+// 延迟一帧确保 DOM 尺寸已确定
+setTimeout(init3D, 10);
 </script>
 </body>
 </html>
