@@ -90,7 +90,7 @@ def _get_version():
         from app.version import VERSION
         return VERSION
     except ImportError:
-        return "1.11.0"  # fallback
+        return "1.11.1"  # fallback
 
 # 配置日志 — 强制 UTF-8 编码避免 Windows 中文乱码
 # 注意: sys.stderr 本身已是文本流，不能用 io.TextIOWrapper 二次包装（会导致 flush 写 bytes 崩溃）

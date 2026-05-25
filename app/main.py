@@ -1074,7 +1074,7 @@ class AIVTuber:
     @property
     def diary(self):
         """
-        AI 每日日记系统 - 懒加载 (v1.11.0)
+        AI 每日日记系统 - 懒加载 (v1.11.1)
 
         延迟导入: from diary import DiaryManager
         配置来源: config["diary"]
@@ -1623,7 +1623,7 @@ class AIVTuber:
         except Exception as e:
             game_warn("主动说话", str(e))
 
-        # v1.11.0: 启动 AI 日记系统
+        # v1.11.1: 启动 AI 日记系统
         try:
             diary = self.diary
             if diary and diary.enabled:
@@ -1798,7 +1798,7 @@ class AIVTuber:
             except Exception as e:
                 self.logger.error(f"主动说话管理器停止失败: {e}")
 
-        # v1.11.0: 停止日记系统
+        # v1.11.1: 停止日记系统
         if 'diary' in self._lazy_modules and self._lazy_modules.get('diary'):
             try:
                 self._lazy_modules['diary'].stop()

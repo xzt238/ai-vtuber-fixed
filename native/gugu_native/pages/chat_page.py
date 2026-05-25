@@ -27,6 +27,7 @@ v1.9.86: 完全重构
 """
 
 import os
+import shutil
 import sys
 import json
 import time
@@ -46,7 +47,7 @@ from PySide6.QtCore import QUrl
 
 from qfluentwidgets import (
     PushButton, ToolButton, FluentIcon, CaptionLabel,
-    TogglePushButton, Slider
+    TogglePushButton, Slider, InfoBar
 )
 from PySide6.QtWidgets import QFileDialog
 
@@ -485,6 +486,34 @@ class ChatPage(QWidget):
         self._vrm_variant_bar.setFixedHeight(26)
         self._vrm_variant_bar.hide()
         self._live2d_layout.addWidget(self._vrm_variant_bar)
+
+        # ★ 模型导入栏（加载VRM / 加载Live2D）
+        self._model_import_bar = QWidget()
+        import_layout = QHBoxLayout(self._model_import_bar)
+        import_layout.setContentsMargins(4, 1, 4, 1)
+        import_layout.setSpacing(3)
+        btn_vrm = QPushButton("📁 加载VRM模型")
+        btn_vrm.setStyleSheet("""
+            QPushButton { background: rgba(124,58,237,0.15); color: rgba(255,255,255,0.7);
+                border: 1px solid rgba(124,58,237,0.3); border-radius: 3px;
+                padding: 2px 10px; font-size: 11px; }
+            QPushButton:hover { background: rgba(124,58,237,0.3); }
+        """)
+        btn_vrm.clicked.connect(self._import_vrm_model)
+        import_layout.addWidget(btn_vrm)
+
+        btn_l2d = QPushButton("📁 加载Live2D模型")
+        btn_l2d.setStyleSheet("""
+            QPushButton { background: rgba(59,130,246,0.15); color: rgba(255,255,255,0.7);
+                border: 1px solid rgba(59,130,246,0.3); border-radius: 3px;
+                padding: 2px 10px; font-size: 11px; }
+            QPushButton:hover { background: rgba(59,130,246,0.3); }
+        """)
+        btn_l2d.clicked.connect(self._import_live2d_model)
+        import_layout.addWidget(btn_l2d)
+        import_layout.addStretch()
+        self._model_import_bar.setFixedHeight(26)
+        self._live2d_layout.addWidget(self._model_import_bar)
 
         self._live2d_layout.addWidget(self._live2d_placeholder, stretch=1)
 
@@ -988,6 +1017,46 @@ class ChatPage(QWidget):
             for name, btn in self._btn_vrm_variants.items():
                 btn.setChecked(name == variant)
             print(f"[ChatPage] 切换 VRM 变体: {variant} → {filename}")
+
+    def _import_vrm_model(self):
+        """导入新的 VRM 模型文件"""
+        path, _ = QFileDialog.getOpenFileName(
+            self, "选择 VRM 模型文件",
+            os.path.expanduser("~"), "VRM 模型 (*.vrm)"
+        )
+        if not path:
+            return
+        model_name = os.path.splitext(os.path.basename(path))[0]
+        dest_dir = os.path.join(PROJECT_DIR, "app", "web", "static", "assets", "model")
+        dest = os.path.join(dest_dir, f"user_{model_name}.vrm")
+        shutil.copy2(path, dest)
+        # 如果当前是 VRM 模式，直接加载
+        if self._vrm_widget and self._current_model_type == "vrm":
+            self._vrm_widget.load_model(dest)
+        InfoBar.success("导入成功", f"VRM 模型已导入: {model_name}", parent=self)
+        print(f"[ChatPage] 导入 VRM: {path} → {dest}")
+
+    def _import_live2d_model(self):
+        """导入新的 Live2D 模型文件夹"""
+        path = QFileDialog.getExistingDirectory(
+            self, "选择 Live2D 模型文件夹"
+        )
+        if not path:
+            return
+        model_name = os.path.basename(path)
+        dest_dir = os.path.join(PROJECT_DIR, "app", "web", "static", "assets", "model", f"l2d_{model_name}")
+        if os.path.exists(dest_dir):
+            shutil.rmtree(dest_dir)
+        shutil.copytree(path, dest_dir)
+        # 找到 .model3.json 文件并加载
+        for f in os.listdir(dest_dir):
+            if f.endswith(".model3.json"):
+                model_json = os.path.join(dest_dir, f)
+                if self.live2d_widget:
+                    self.live2d_widget.load_model(model_json)
+                break
+        InfoBar.success("导入成功", f"Live2D 模型已导入: {model_name}", parent=self)
+        print(f"[ChatPage] 导入 Live2D: {path} → {dest_dir}")
 
     def _apply_vrm_display_config(self):
         """读取保存的 VRM 显示配置并应用到当前模型"""
