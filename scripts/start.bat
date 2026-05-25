@@ -29,21 +29,11 @@ if exist "%~dp0..\python\python.exe" (
     echo [OK] Using system Python: py -3.11
 )
 
-REM -- Check PySide6 --
-%PYTHON_CMD% -c "import PySide6" >nul 2>&1
-if errorlevel 1 (
-    echo [INFO] PySide6 not installed, installing...
-    %PYTHON_CMD% -m pip install PySide6 PySide6-Fluent-Widgets -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
-)
-
-REM -- Check PySide6-WebEngine --
+REM -- Check PySide6 + WebEngine (one shot, avoid double import) --
 %PYTHON_CMD% -c "from PySide6.QtWebEngineWidgets import QWebEngineView" >nul 2>&1
 if errorlevel 1 (
-    echo [INFO] PySide6-WebEngine not installed, installing...
-    %PYTHON_CMD% -m pip install PySide6-WebEngine -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
-    if errorlevel 1 (
-        echo [WARN] PySide6-WebEngine install failed. Live2D will use fallback mode.
-    )
+    echo [INFO] PySide6 not installed, installing...
+    %PYTHON_CMD% -m pip install PySide6 PySide6-Fluent-Widgets PySide6-WebEngine -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
 )
 
 echo.

@@ -167,19 +167,19 @@ vrm_display:
   ambient_light: 0.8
   anim_amplitude: 1.0
   anim_speed: 1.0
-  arm_angle: 0.0
-  bg_opacity: 0.0
+  arm_angle: 1.0
+  bg_opacity: 0.15
   breath_amp: 0.01
   camera_distance: 3.0
-  fill_light: 1.0
+  fill_light: 0.4
   fov: 30.0
-  head_tilt: 0.0
+  head_tilt: 0.02
   light_intensity: 2.5
-  model_rotation: 0.0
+  model_rotation: -25.0
   model_scale: 1.0
   model_x: 0.0
   model_y: 0.0
-  target_height: 1.0
+  target_height: 0.85
 web:
   port: 12393
   ws_port: 12394
