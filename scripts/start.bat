@@ -5,7 +5,7 @@ cd /d "%~dp0.."
 echo.
 echo ========================================
 echo    GuguGaga AI VTuber
-echo    version: 1.11.1
+echo    version: 1.11.2
 echo ========================================
 echo.
 

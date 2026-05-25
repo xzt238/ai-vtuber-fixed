@@ -28,6 +28,13 @@ window._vrmState = {
   spherical: null,
   orbitTarget: new THREE.Vector3(0, 1, 0)
 };
+// 动画可调参数（全局配置，setAnimXxx 修改）
+window._vrmAnimConfig = {
+  speed: 1.0,       // 速度倍率
+  amplitude: 1.0,   // 幅度倍率
+  headTilt: 0.0,    // 头部倾斜偏移
+  breathAmp: 0.015  // 呼吸幅度
+};
 
 // ---- 工具函数 ----
 
@@ -299,20 +306,23 @@ function animate() {
   // VRM 更新（spring bones + blend shapes）
   if (currentVrm && currentVrm.update) currentVrm.update(delta);
 
-  // 程序化待机动画：正弦驱动骨骼旋转
+  // 程序化待机动画：正弦驱动骨骼旋转（参数可调）
   if (currentVrm && currentVrm.humanoid && currentVrm.humanoid.getBoneNode) {
-    var t = now * 0.001;
+    var ac = window._vrmAnimConfig || {};
+    var s = ac.speed || 1.0;
+    var a = ac.amplitude || 1.0;
+    var t = now * 0.001 * s;
     try {
       var spine = currentVrm.humanoid.getBoneNode('spine');
-      if (spine) spine.rotation.z = Math.sin(t * 0.6) * 0.03;
+      if (spine) spine.rotation.z = Math.sin(t * 0.6) * 0.03 * a;
       var head = currentVrm.humanoid.getBoneNode('head');
-      if (head) { head.rotation.z = Math.sin(t * 0.7 + 0.5) * 0.04; head.rotation.x = Math.sin(t * 0.5) * 0.02; }
+      if (head) { head.rotation.z = (ac.headTilt || 0) + Math.sin(t * 0.7 + 0.5) * 0.04 * a; head.rotation.x = Math.sin(t * 0.5) * 0.02 * a; }
       var lArm = currentVrm.humanoid.getBoneNode('leftUpperArm');
-      if (lArm) lArm.rotation.x = Math.sin(t * 0.4 + 2) * 0.05;
+      if (lArm) lArm.rotation.x = Math.sin(t * 0.4 + 2) * 0.05 * a;
       var rArm = currentVrm.humanoid.getBoneNode('rightUpperArm');
-      if (rArm) rArm.rotation.x = Math.sin(t * 0.4 + 0.5) * 0.05;
+      if (rArm) rArm.rotation.x = Math.sin(t * 0.4 + 0.5) * 0.05 * a;
       var chest = currentVrm.humanoid.getBoneNode('chest');
-      if (chest) chest.rotation.x = Math.sin(t * 0.8) * 0.015;
+      if (chest) chest.rotation.x = Math.sin(t * 0.8) * (ac.breathAmp || 0.015) * a;
     } catch(e) {}
   }
 
@@ -380,6 +390,77 @@ window.setFOV = function(v) {
   var fov = Number(v);
   if (isNaN(fov) || fov <= 0) return;
   if (camera) { camera.fov = fov; camera.updateProjectionMatrix(); }
+};
+
+// 8. 模型水平偏移
+window.setModelX = function(v) {
+  var x = Number(v);
+  if (isNaN(x)) return;
+  if (currentVrm && currentVrm.scene) currentVrm.scene.position.x = x;
+};
+
+// 9. 模型 Y 轴旋转
+window.setModelRotation = function(v) {
+  var deg = Number(v);
+  if (isNaN(deg)) return;
+  if (currentVrm && currentVrm.scene) currentVrm.scene.rotation.y = deg * Math.PI / 180;
+};
+
+// 10. 背景透明度
+window.setBgOpacity = function(v) {
+  var a = Number(v);
+  if (isNaN(a)) return;
+  if (renderer) renderer.setClearColor(0x000000, a);
+  // 同时控制 body 背景
+  document.body.style.background = a < 0.01 ? 'transparent' : 'rgba(0,0,0,' + a + ')';
+};
+
+// 11. 环境光强度
+window.setAmbientLight = function(v) {
+  var intensity = Number(v);
+  if (isNaN(intensity) || intensity < 0) return;
+  // 找到第一个 AmbientLight 并修改
+  scene.traverse(function(o) { if (o.isAmbientLight) o.intensity = intensity; });
+};
+
+// 12. 补光强度（找到第一个非 keyLight 的 DirectionalLight）
+window.setFillLight = function(v) {
+  var intensity = Number(v);
+  if (isNaN(intensity) || intensity < 0) return;
+  var found = false;
+  scene.traverse(function(o) {
+    if (o.isDirectionalLight && o !== _keyLight && !found) {
+      o.intensity = intensity; found = true;
+    }
+  });
+};
+
+// 13. 动画速度
+window.setAnimSpeed = function(v) {
+  var s = Number(v);
+  if (isNaN(s) || s < 0) return;
+  window._vrmAnimConfig.speed = s;
+};
+
+// 14. 动画幅度
+window.setAnimAmplitude = function(v) {
+  var a = Number(v);
+  if (isNaN(a) || a < 0) return;
+  window._vrmAnimConfig.amplitude = a;
+};
+
+// 15. 头部倾斜
+window.setHeadTilt = function(v) {
+  var tilt = Number(v);
+  if (isNaN(tilt)) return;
+  window._vrmAnimConfig.headTilt = tilt;
+};
+
+// 16. 呼吸幅度
+window.setBreathAmp = function(v) {
+  var amp = Number(v);
+  if (isNaN(amp) || amp < 0) return;
+  window._vrmAnimConfig.breathAmp = amp;
 };
 
 // ---- Public API (Python runJavaScript 调用) ----
