@@ -1418,34 +1418,33 @@ class ChatPage(QWidget):
     # ========== TTS/录音 ==========
 
     def _on_tts_audio_ready(self, audio_path: str, seq: int = 0):
-        """TTS 合成完成回调 — 按句子序号排序播放
-
-        v14 FIX: 实现排序播放逻辑
-        - 只有当音频的序号等于下一个预期序号时才播放
-        - 否则暂存到排序缓冲区 _tts_pending
-        - 每次播放后检查缓冲区是否有连续的下一个序号可用
-        """
+        """TTS 合成完成回调 — 统一排队，不中断当前播放"""
         if not audio_path or not os.path.exists(audio_path):
             return
 
-        # v14 FIX: 序号为 0 表示非流式 TTS（如主动说话），直接播放
-        if seq == 0:
-            if self._media_player and self._media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+        playing = (self._media_player and
+                   self._media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState)
+
+        # 流式 TTS：先入排序缓冲区，再按序释放到播放队列
+        if seq > 0:
+            self._tts_pending[seq] = audio_path
+            if playing:
+                return  # 正在播放，等 _on_playback_state_changed 取下一首时再释放
+            # 释放所有连续的序号
+            while self._tts_next_play_seq in self._tts_pending:
+                na = self._tts_pending.pop(self._tts_next_play_seq)
+                self._tts_next_play_seq += 1
+                if na not in self._audio_queue:
+                    self._audio_queue.append(na)
+        else:
+            # 非流式（主动说话等）：直接排队
+            if audio_path not in self._audio_queue:
                 self._audio_queue.append(audio_path)
-            else:
-                self._play_audio(audio_path)
-            return
 
-        # 流式 TTS：按序号排序播放
-        self._tts_pending[seq] = audio_path
-
-        # 检查是否有连续的序号可以播放
-        while self._tts_next_play_seq in self._tts_pending:
-            next_audio = self._tts_pending.pop(self._tts_next_play_seq)
-            self._tts_next_play_seq += 1
-            if self._media_player and self._media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
-                self._audio_queue.append(next_audio)
-            else:
+        # 如果空闲，立即播放
+        if not playing and self._audio_queue:
+            next_audio = self._audio_queue.pop(0)
+            if os.path.exists(next_audio):
                 self._play_audio(next_audio)
 
     def _cleanup_tts_worker(self, worker):
@@ -1500,16 +1499,20 @@ class ChatPage(QWidget):
         self._animation_controller.set_mouth_open(mouth_open)
 
     def _on_playback_state_changed(self, state):
-        """音频播放状态变化 — 结束时停止口型同步并播放队列中的下一首"""
+        """播放结束 → 释放排序缓冲区 + 播队首"""
         if state != QMediaPlayer.PlaybackState.PlayingState:
-            # 播放结束，关闭嘴巴
             if self._animation_controller:
                 self._animation_controller.set_mouth_open(0.0)
-            # 停止口型同步定时器
             if hasattr(self, '_lipsync_timer') and self._lipsync_timer:
                 self._lipsync_timer.stop()
                 self._lipsync_timer = None
-            # 从队列中取下一首播放
+            # v1.11.3: 释放新的连续序号到播放队列
+            while self._tts_next_play_seq in self._tts_pending:
+                na = self._tts_pending.pop(self._tts_next_play_seq)
+                self._tts_next_play_seq += 1
+                if na not in self._audio_queue:
+                    self._audio_queue.append(na)
+            # 播放下一首
             if self._audio_queue:
                 next_audio = self._audio_queue.pop(0)
                 if os.path.exists(next_audio):
