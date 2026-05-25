@@ -63,8 +63,8 @@ _MODELS_CACHE.mkdir(parents=True, exist_ok=True)
 os.environ["MODELSCOPE_CACHE"] = str(_MODELS_CACHE)
 os.environ["HF_HOME"] = str(_MODELS_CACHE / "hf")
 
-# Python 解释器
-PYTHON = r"C:\Users\x\AppData\Local\Programs\Python\Python311\python.exe"
+# Python 解释器（动态获取，跨平台兼容）
+PYTHON = sys.executable
 
 # 支持的音频格式
 SUPPORTED_AUDIO_EXTS = ("*.wav", "*.mp3", "*.flac", "*.m4a", "*.ogg")

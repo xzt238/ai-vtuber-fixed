@@ -458,7 +458,10 @@ class FunASRASR(ASREngine):
             from funasr import AutoModel
             
             model_name = self.config.get("model", "paraformer-zh")
-            device = self.config.get("device", "cuda")
+            device = self.config.get("device", "auto")
+            if device == "auto":
+                from app.device_manager import DeviceManager
+                device = DeviceManager.get_best_device()
             
             print(f" 加载 FunASR 模型: {model_name}...")
             print(f" 缓存目录: {models_cache}")

@@ -624,9 +624,9 @@ class MiniCPMProvider(VisionProvider):
 
             if quantization_config:
                 load_kwargs["quantization_config"] = quantization_config
-                # 使用 {"": "cuda"} 而不是 "auto"，避免 accelerate 将部分层分配到 CPU
-                # 导致 validate_environment 报错
-                load_kwargs["device_map"] = {"": "cuda"}
+                from app.device_manager import DeviceManager
+                dev = DeviceManager.get_best_device()
+                load_kwargs["device_map"] = {"": dev}
 
                 # ========== 关键兼容性修复 ==========
                 # transformers 4.44.2 的 PreTrainedModel.to() 无条件禁止
@@ -665,7 +665,8 @@ class MiniCPMProvider(VisionProvider):
             else:
                 # 非量化模式：直接加载并移到 GPU
                 self._model = AutoModel.from_pretrained(model_local_path, **load_kwargs)
-                self._model = self._model.to("cuda")
+                from app.device_manager import DeviceManager
+                self._model = self._model.to(DeviceManager.get_best_device())
 
             self._model.eval()
 
@@ -704,12 +705,13 @@ class MiniCPMProvider(VisionProvider):
                 # 恢复 VPM（Vision Transformer）
                 print("[Vision] 正在反量化 VPM...")
                 _dequantize_module(self._model.vpm)
-                self._model.vpm = self._model.vpm.to(target_dtype).cuda()
+                self._model.vpm = self._model.vpm.to(target_dtype).to(self._model.device)
+                # ... (repeats for resampler) ...
                 
                 # 恢复 Resampler
                 print("[Vision] 正在反量化 Resampler...")
                 _dequantize_module(self._model.resampler)
-                self._model.resampler = self._model.resampler.to(target_dtype).cuda()
+                self._model.resampler = self._model.resampler.to(target_dtype).to(self._model.device)
                 
                 print(f"[Vision] VPM + Resampler 已恢复为 {target_dtype}（去除量化）")
 

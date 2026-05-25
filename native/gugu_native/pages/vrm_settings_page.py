@@ -24,23 +24,41 @@ from gugu_native.widgets.vrm_widget import VRMWidget
 
 
 _DEFAULTS = {
-    "arm_angle": 1.0,
-    "model_scale": 1.0,
-    "camera_distance": 3.0,
-    "light_intensity": 2.5,
-    "target_height": 1.0,
-    "model_y": 0.0,
-    "fov": 30.0,
+    # 姿态
+    "arm_angle": 1.0,       "head_tilt": 0.0,       "model_rotation": 0.0,
+    # 位置/缩放
+    "model_scale": 1.0,     "model_x": 0.0,         "model_y": 0.0,
+    "camera_distance": 3.0, "target_height": 1.0,   "fov": 30.0,
+    # 光照
+    "light_intensity": 2.5, "ambient_light": 0.8,   "fill_light": 1.0,
+    # 背景
+    "bg_opacity": 0.0,
+    # 动画
+    "anim_speed": 1.0,      "anim_amplitude": 1.0,  "breath_amp": 0.015,
 }
 
 _PARAMS = [
-    ("arm_angle",       "🎯 手臂角度",    0.0, 2.0,  1.0,  0.05),
-    ("model_scale",     "📏 模型缩放",    0.5, 3.0,  1.0,  0.05),
-    ("camera_distance", "📷 相机距离",    0.5, 10.0, 3.0,  0.1),
-    ("light_intensity", "💡 光照强度",    0.5, 5.0,  2.5,  0.1),
-    ("target_height",   "👁️ 视角高度",    0.0, 2.5,  1.0,  0.05),
-    ("model_y",         "⬆️ 模型纵移",   -1.0, 1.0,  0.0,  0.05),
-    ("fov",             "🔍 视场角度",    15.0,60.0, 30.0, 1.0),
+    # ---- 姿态 ----
+    ("arm_angle",       "🎯 手臂角度",        0.0,  2.0,   1.0,  0.05),
+    ("head_tilt",       "🗿 头部倾斜",        0.0,  0.5,   0.0,  0.02),
+    ("model_rotation",  "🔄 模型旋转(°)",     -180, 180,  0.0,  5.0),
+    # ---- 位置/缩放 ----
+    ("model_scale",     "📏 模型缩放",        0.5,  3.0,   1.0,  0.05),
+    ("model_x",         "↔️ 模型横移",        -1.0, 1.0,   0.0,  0.05),
+    ("model_y",         "⬆️ 模型纵移",        -1.0, 1.0,   0.0,  0.05),
+    ("camera_distance", "📷 相机距离",        0.5,  10.0,  3.0,  0.1),
+    ("target_height",   "👁️ 视角高度",        0.0,  2.5,   1.0,  0.05),
+    ("fov",             "🔍 视场角度",        15.0, 60.0,  30.0, 1.0),
+    # ---- 光照 ----
+    ("light_intensity", "💡 主光强度",        0.5,  5.0,   2.5,  0.1),
+    ("ambient_light",   "🌐 环境光",          0.0,  3.0,   0.8,  0.1),
+    ("fill_light",      "🔦 补光强度",        0.0,  3.0,   1.0,  0.1),
+    # ---- 背景 ----
+    ("bg_opacity",      "🖤 背景不透明",      0.0,  1.0,   0.0,  0.05),
+    # ---- 动画 ----
+    ("anim_speed",      "⏩ 动画速度",        0.0,  3.0,   1.0,  0.1),
+    ("anim_amplitude",  "📳 动画幅度",        0.0,  2.0,   1.0,  0.05),
+    ("breath_amp",      "🫁 呼吸幅度",        0.0,  0.1,   0.015,0.005),
 ]
 
 
@@ -85,12 +103,24 @@ class VRMSettingsPage(QWidget):
         card_layout.setSpacing(12)
         card_layout.setContentsMargins(16, 16, 16, 16)
 
-        card_layout.addWidget(SubtitleLabel("VRM 显示设置"))
+        card_layout.addWidget(SubtitleLabel("VRM 模型设置"))
 
-        # 4 个参数滑块
-        for name, label, vmin, vmax, default, step in _PARAMS:
-            group = self._create_slider_group(label, name, vmin, vmax, default, step)
-            card_layout.addWidget(group)
+        # 按分组显示参数
+        groups = {
+            "🎭 姿态": ["arm_angle", "head_tilt", "model_rotation"],
+            "📐 位置 & 缩放": ["model_scale", "model_x", "model_y", "camera_distance", "target_height", "fov"],
+            "💡 光照": ["light_intensity", "ambient_light", "fill_light"],
+            "🖤 背景": ["bg_opacity"],
+            "🎬 动画": ["anim_speed", "anim_amplitude", "breath_amp"],
+        }
+        param_lookup = {p[0]: p for p in _PARAMS}
+        for group_name, keys in groups.items():
+            card_layout.addWidget(CaptionLabel(group_name))
+            for key in keys:
+                spec = param_lookup.get(key)
+                if spec:
+                    group = self._create_slider_group(spec[1], spec[0], spec[2], spec[3], spec[4], spec[5])
+                    card_layout.addWidget(group)
 
         # 按钮行
         btn_layout = QHBoxLayout()
@@ -205,12 +235,21 @@ class VRMSettingsPage(QWidget):
             return
         method_map = {
             "arm_angle":       self._vrm_widget.set_arm_angle,
+            "head_tilt":       self._vrm_widget.set_head_tilt,
+            "model_rotation":  self._vrm_widget.set_model_rotation,
             "model_scale":     self._vrm_widget.set_model_scale,
-            "camera_distance": self._vrm_widget.set_camera_distance,
-            "light_intensity": self._vrm_widget.set_light_intensity,
-            "target_height":   self._vrm_widget.set_target_height,
+            "model_x":         self._vrm_widget.set_model_x,
             "model_y":         self._vrm_widget.set_model_y,
+            "camera_distance": self._vrm_widget.set_camera_distance,
+            "target_height":   self._vrm_widget.set_target_height,
             "fov":             self._vrm_widget.set_fov,
+            "light_intensity": self._vrm_widget.set_light_intensity,
+            "ambient_light":   self._vrm_widget.set_ambient_light,
+            "fill_light":      self._vrm_widget.set_fill_light,
+            "bg_opacity":      self._vrm_widget.set_bg_opacity,
+            "anim_speed":      self._vrm_widget.set_anim_speed,
+            "anim_amplitude":  self._vrm_widget.set_anim_amplitude,
+            "breath_amp":      self._vrm_widget.set_breath_amp,
         }
         fn = method_map.get(param_name)
         if fn:

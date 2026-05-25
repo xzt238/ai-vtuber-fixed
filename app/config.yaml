@@ -165,12 +165,21 @@ voice_input:
   provider: web
 vrm_display:
   arm_angle: 1.05
+  head_tilt: 0.0
+  model_rotation: 0.0
   model_scale: 1.0
-  camera_distance: 3.8
-  light_intensity: 2.5
-  target_height: 1.0
+  model_x: 0.0
   model_y: 0.0
+  camera_distance: 3.8
+  target_height: 1.0
   fov: 30.0
+  light_intensity: 2.5
+  ambient_light: 0.8
+  fill_light: 1.0
+  bg_opacity: 0.0
+  anim_speed: 1.0
+  anim_amplitude: 1.0
+  breath_amp: 0.015
 web:
   port: 12393
   ws_port: 12394

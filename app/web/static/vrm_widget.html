@@ -360,6 +360,28 @@ window.setLightIntensity = function(v) {
   if (_keyLight) _keyLight.intensity = intensity;
 };
 
+// 5. 视角高度（调整注视点 Y 坐标）
+window.setTargetHeight = function(v) {
+  var y = Number(v);
+  if (isNaN(y)) return;
+  window._vrmState.orbitTarget.y = y;
+  if (camera) camera.lookAt(window._vrmState.orbitTarget);
+};
+
+// 6. 模型垂直偏移
+window.setModelY = function(v) {
+  var y = Number(v);
+  if (isNaN(y)) return;
+  if (currentVrm && currentVrm.scene) currentVrm.scene.position.y = y;
+};
+
+// 7. 视场角 FOV
+window.setFOV = function(v) {
+  var fov = Number(v);
+  if (isNaN(fov) || fov <= 0) return;
+  if (camera) { camera.fov = fov; camera.updateProjectionMatrix(); }
+};
+
 // ---- Public API (Python runJavaScript 调用) ----
 
 window.loadVRM = function(url) {
