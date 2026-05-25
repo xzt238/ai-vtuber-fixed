@@ -37,6 +37,45 @@
 |🟢 STABLE|稳定版|
 
 
+## 🟢 v1.11.0 (2026-05-25) ✅ STABLE
+
+**跨平台适配 Phase 1：macOS/Linux 基础设施**
+
+### 🔧 新增
+- **[platform] 新建 `app/device_manager.py`**：GPU 自动检测（CUDA→MPS→CPU），消除全项目 `"cuda"` 硬编码
+- **[platform] 新建 `app/platform_abstraction.py`**：封装互斥锁/进程终止/子进程/开机自启/消息弹窗的平台差异
+- **[platform] Unix 启动/安装脚本**：`scripts/go.sh` + `scripts/setup.sh`
+- **[vrm] VRM 设置页**：16 参数实时调节面板（姿态/位置/光照/背景/动画），分组滑块
+- **[vrm] 变体切换**：4 种 VRM 形态按钮（AU/cow/jacket/swim），加载新模型前自动卸载旧模型
+- **[docs] 竞品分析报告**：37 功能×9 竞品对比矩阵 + 差距分析 + 优势分析
+- **[docs] 移动端可行性分析**：iOS/Android 适配方案（82% 可行）
+
+### 🔧 修复
+- **[platform] 修复 `trainer/manager.py`**：硬编码 `C:\Users\x\...` 路径 → `sys.executable`
+- **[platform] 修复 `vision/__init__.py`**：4 处 `.cuda()` / `device_map` → `DeviceManager`
+- **[platform] 修复 `asr/__init__.py`**：默认 device `"cuda"` → `"auto"` 动态检测
+- **[platform] 修复 `autostart_manager.py`**：winreg → platform_abstraction 跨平台
+- **[vrm] 修复手臂 T-pose**：加载后自动下垂至自然位置
+- **[vrm] 修复材质全白**：从原始 glTF 抢救贴图到 VRM 材质
+- **[vrm] 修复缩放变暗**：主光亮度随距离等比补偿
+- **[version] v1.11.0**
+
+## 🟢 v1.10.5 (2026-05-24) ✅ STABLE
+
+**AI 日记 + VRM 渲染管线完善**
+
+### 🔧 新增
+- **[diary] AI 每日日记系统**：`app/diary.py`，每天 23:00 自动回顾当日对话写反思日记
+- **[vrm] VRM 渲染管线全通**：three.js + three-vrm 0.6.10 本地化 + 透明背景
+- **[vrm] 鼠标拖拽旋转 + 滚轮缩放**：VRM 模型交互
+- **[vrm] 程序化待机动画**：正弦驱动骨骼（脊柱/头/手臂/胸部），速度/幅度/呼吸可调
+- **[vrm] 实时参数调节面板**：保存后聊天模式自动加载
+
+### 🔧 修复
+- **[vrm] 修复 QWebChannel 时序竞争**：双标志模式保证 bridge 就绪后加载模型
+- **[vrm] 修复 canvas 0x0**：init3D 延迟一帧确保 DOM 尺寸确定
+- **[version] v1.10.5**
+
 ## 🟢 v1.10.4 (2026-05-23) ✅ STABLE
 
 **VRM 3D 修复：GLTFLoader 404 + three-vrm API 适配**

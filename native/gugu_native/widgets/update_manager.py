@@ -177,7 +177,7 @@ class UpdateManager(QObject):
                 from app.version import VERSION
                 current_version = VERSION
             except ImportError:
-                current_version = "1.10.4"
+                current_version = "1.11.0"
         self.repo = repo
         self.current_version = current_version
         self._check_worker = None
