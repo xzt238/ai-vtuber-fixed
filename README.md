@@ -4,7 +4,7 @@
 
 # 🐧 咕咕嘎嘎 AI VTuber
 
-**GPT-SoVITS 声音克隆 · Live2D 虚拟形象 · 三层记忆 · Function Calling · 三种运行模式**
+**GPT-SoVITS 声音克隆 · Live2D/VRM 双模型 · 四层记忆 · 视觉理解 · Function Calling · 10 主题 · 原生桌面**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Version](https://img.shields.io/badge/version-v1.11.19-yellow.svg)](docs/VERSION.md)
@@ -25,14 +25,16 @@
 
 | ✨ 亮点 | 说明 |
 |---------|------|
-| 🎤 **GPT-SoVITS 声音克隆** | 内置训练面板，录制音频→一键训练→即用，无需命令行操作 |
-| 🧠 **三层记忆系统** | 工作记忆（对话上下文）+ 情景记忆（摘要压缩）+ 语义记忆（向量检索 + 遗忘机制） |
-| 🔧 **Function Calling** | 支持 LLM 工具调用，内置 7 个伴侣工具（时间/天气/搜索/股票/新闻/计算器/随机） |
-| 👁️ **视觉理解** | 支持 OCR 文字识别、图片理解、屏幕感知 |
-| 🗣️ **5 种 TTS 引擎** | GPT-SoVITS（音色克隆）/ ChatTTS / CosyVoice / Edge TTS / 文本增强器 |
-| 🖥️ **三种运行模式** | 浏览器模式（WebUI）+ 桌面模式（pywebview）+ 原生模式（PySide6/Qt6） |
+| 🎭 **Live2D + VRM 双模型** | 2D 虚拟形象 + 3D VRM 模型切换，桌面宠物模式，变体换装 |
+| 🎤 **GPT-SoVITS 声音克隆** | 内置训练面板，录制音频→一键训练→即用，支持流式 TTS 逐句合成 |
+| 🧠 **四层记忆系统** | 工作记忆（对话上下文）+ 情景记忆（摘要压缩）+ 语义记忆（向量检索）+ 事实库（持久知识） |
+| 👁️ **视觉理解** | 区域截图 OCR、图片描述、屏幕文字识别，支持 4 种视觉引擎 |
+| 🔧 **Function Calling** | LLM 工具调用，内置 7 个伴侣工具（时间/天气/搜索/股票/新闻/计算器/随机） |
+| 🎨 **10 种主题** | 暗色/亮色/海洋/森林/樱花/日落/北极/薰衣草/VSCode/Discord，动态切换无闪烁 |
+| 🗣️ **实时语音对话** | VAD 智能断句 + 实时 ASR + 流式 LLM + 流式 TTS，800ms 级响应 |
+| 🖥️ **原生桌面应用** | PySide6/Qt6 原生窗口，无 CMD 窗口启动，系统托盘，全局快捷键 |
 | 🌐 **12 个 LLM 供应商** | DeepSeek / Kimi / 智谱 / 千问 / MiniMax / OpenAI / Anthropic / Ollama / 豆包 / MiMo / Gemini / OpenRouter |
-| 🔌 **嵌入式 Python** | 桌面版包含独立 Python，拷贝即用无需预装 |
+| 🔌 **嵌入式 Python** | 内置独立 Python，拷贝即用无需预装 |
 | 🌍 **国内镜像加速** | 全程使用清华/阿里云/HuggingFace 镜像源，无需科学上网 |
 
 ---
@@ -41,16 +43,17 @@
 
 | 模块 | 功能 | 技术选型 |
 |------|------|----------|
-| **ASR 语音识别** | 实时语音输入，VAD 智能断句 | FunASR / faster-whisper |
-| **LLM 大语言模型** | 10 个供应商，RAG 记忆注入，Function Calling | DeepSeek / Kimi / 智谱GLM / 通义千问 / MiniMax / OpenAI / Anthropic / Ollama 等 |
-| **TTS 语音合成** | 音色克隆 + 多引擎 + 文本增强 | GPT-SoVITS v3（音色克隆）/ ChatTTS / CosyVoice / Edge TTS（备用）/ text_enhancer |
-| **声音训练** | WebUI 一键训练 LoRA | GPT-SoVITS v3 |
-| **视觉理解** | 图片理解 + 文字识别 + 屏幕感知 | MiniMax VL / MiniCPM-V2 / RapidOCR |
-| **记忆系统** | 工作/情景/语义三层 | 向量检索 + 时间衰减 + 遗忘机制 + 摘要压缩 |
-| **Live2D** | 可自定义模型，表情切换，动画控制器 | WebUI: oh-my-live2d + pixi.js · 原生: live2d-py + QOpenGLWidget |
+| **ASR 语音识别** | 实时语音输入，VAD 智能断句 | FunASR / faster-whisper / MiMo ASR |
+| **LLM 大语言模型** | 12 个供应商，RAG 记忆注入，Function Calling | DeepSeek / Kimi / 智谱GLM / 通义千问 / MiniMax / OpenAI / Anthropic / Ollama 等 |
+| **TTS 语音合成** | 音色克隆 + 多引擎 + 流式逐句合成 | GPT-SoVITS v3（音色克隆）/ ChatTTS / CosyVoice / Edge TTS（备用） |
+| **声音训练** | 原生桌面内置训练面板，录制时长可调 | GPT-SoVITS v3 + LoRA |
+| **视觉理解** | 区域截图 OCR + 图片描述 + 屏幕识别 | RapidOCR / MiniMax VL / MiniCPM-V2 / MiMo Vision |
+| **记忆系统** | 四层架构：工作/情景/语义/事实 | 向量检索 + 时间衰减 + 遗忘机制 + 摘要压缩 |
+| **Live2D/VRM** | 双模型切换 + 变体换装 + 桌面宠物 | Live2D: live2d-py + OpenGL · VRM: three.js + QWebEngineView |
+| **主题系统** | 10 种预设 + 5 维个性化（圆角/间距/阴影/字体/控件） | PySide6 QSS v5 动态模板 |
 | **工具系统** | Function Calling + 沙箱执行 + 伴侣工具 | fc_executor + companion（7 个内置工具） |
-| **VAD** | AI 语音活动检测 | Silero VAD (WASM) |
-| **桌面端** | 三种模式：浏览器/pywebview/PySide6 原生 | PySide6 + QWebEngineView + 系统托盘 |
+| **VAD** | AI 语音活动检测 | Silero VAD |
+| **桌面端** | PySide6 原生窗口 + 无 CMD 启动 + 系统托盘 | PySide6/Qt6 + QWebEngineView + QOpenGLWidget |
 
 ---
 
@@ -102,7 +105,9 @@ cd ai-vtuber-fixed
 ```bash
 scripts\go.bat          # 浏览器模式（推荐首次使用）
 scripts\desktop.bat     # 桌面模式（pywebview 原生窗口）
-scripts\start.bat       # 原生模式（PySide6/Qt6 桌面应用）
+scripts\start.bat       # 原生模式（PySide6/Qt6，CMD 一闪即没）
+GuguGaga.vbs            # 原生模式（双击无声启动，无 CMD 窗口）
+scripts\start_debug.bat # 原生调试模式（CMD 保留查看日志）
 ```
 
 浏览器访问 `http://localhost:12393` 即可。
@@ -146,12 +151,13 @@ scripts\start.bat       # 原生模式（PySide6/Qt6 桌面应用）
 
 ## 🧠 记忆系统
 
-三层记忆架构，模拟人类记忆过程：
+四层记忆架构（v3.0），模拟人类记忆过程：
 
 | 层级 | 名称 | 说明 |
 |------|------|------|
-| L1 | 工作记忆 | 当前对话上下文（滑动窗口，上限 20 条） |
-| L2 | 情景记忆 | 对话摘要（超出阈值触发压缩，5 条一批） |
+| L0 | 事实库 | 持久化知识条目（用户教过的事实，不会遗忘） |
+| L1 | 工作记忆 | 当前对话上下文（滑动窗口，上限 30 条） |
+| L2 | 情景记忆 | 对话摘要（超出阈值触发压缩） |
 | L3 | 语义记忆 | 长期知识（向量检索 + 时间衰减 + 遗忘机制） |
 
 **检索权重可配置：**
@@ -259,28 +265,48 @@ ai-vtuber-fixed/
 │   ├── launcher.py             # pywebview 原生窗口 + 启动画面
 │   └── splash.html             # 启动画面（进度条 + 状态）
 ├── native/                     # PySide6 原生桌面模式
-│   ├── main.py                 # 原生模式入口
+│   ├── main.py                 # 原生模式入口（惰加载 + 启动画面 + 进度提示）
 │   ├── build.bat               # PyInstaller 打包脚本
 │   └── gugu_native/
-│       ├── pages/              # 页面组件
-│       │   ├── chat_page.py    # 聊天页（QWebEngineView）
-│       │   ├── settings_page.py # 设置页
+│       ├── pages/              # 5 个页面组件
+│       │   ├── chat_page.py    # 聊天页（Live2D/VRM + 实时语音 + 视觉理解）
+│       │   ├── settings_page.py # 设置页（LLM/TTS/ASR/Vision/主题/关于）
+│       │   ├── train_page.py   # 声音训练页（录制+上传+训练+状态监控）
+│       │   ├── memory_page.py  # 记忆管理页（四层架构可视化）
 │       │   └── model_download_page.py # 模型下载页
-│       └── widgets/            # 功能组件
-│           ├── animation_controller.py # Live2D 动画控制器
-│           ├── chat_web_display.py # 聊天渲染
-│           ├── voice_manager.py # 语音管理
-│           ├── live2d_widget.py # Live2D 原生渲染（live2d-py + OpenGL）
-│           ├── desktop_pet.py  # 桌面宠物
-│           ├── update_manager.py # 自动更新
-│           └── ...             # 其他组件
+│       ├── widgets/            # 20+ 功能组件
+│       │   ├── chat_web_display.py   # 聊天 Markdown 渲染
+│       │   ├── voice_manager.py      # 实时语音管理（VAD+ASR）
+│       │   ├── live2d_widget.py      # Live2D OpenGL 渲染
+│       │   ├── vrm_widget.py         # VRM 3D Web 渲染
+│       │   ├── splash_debug_window.py # 启动画面（进度提示+调试窗口）
+│       │   ├── screenshot_selector.py # 区域截图选择器
+│       │   ├── theme_selector.py     # 主题选择器（10 主题卡片）
+│       │   ├── session_manager.py    # 多会话管理
+│       │   ├── desktop_pet.py        # 桌面宠物
+│       │   ├── tray_manager.py       # 系统托盘
+│       │   ├── update_manager.py     # 自动更新
+│       │   └── ...                   # 更多组件
+│       ├── themes/             # 主题系统 v5
+│       │   ├── definitions.py  # 主题定义（AppTheme + 5 维风格）
+│       │   ├── manager.py      # 主题管理器
+│       │   ├── preset/         # 10 个预设主题
+│       │   └── style_types.py  # 风格类型 dataclass
+│       ├── workers/            # 后台 Worker 线程
+│       │   ├── chat_workers.py # StreamChatWorker / TTSWorker / ASRWorker
+│       │   └── vision_workers.py # OCRWorker / VisionWorker
+│       ├── theme.py            # 全局 QSS 生成器 + 颜色系统
+│       └── utils.py            # 共享工具函数
 ├── scripts/                    # 启动和安装脚本
 │   ├── setup.bat               # ⭐ 一键全安装（新用户首选）
 │   ├── go.bat                  # 浏览器模式启动
 │   ├── desktop.bat             # 桌面模式启动
-│   ├── start.bat               # 原生模式启动
-│   ├── install_deps.bat        # 依赖安装器（高级用户单独使用）
-│   └── download_models.bat     # 模型下载（高级用户单独使用）
+│   ├── start.bat               # 原生模式启动（CMD 一闪即没）
+│   ├── start.vbs               # 原生模式 VBS 启动器（无窗口）
+│   ├── start_debug.bat         # 原生调试模式（CMD 保留）
+│   ├── install_deps.bat        # 依赖安装器
+│   └── download_models.bat     # 模型下载
+├── GuguGaga.vbs                # 项目根目录无声启动
 ├── python/                     # 嵌入式 Python 3.11（不包含在 Git 中，通过脚本下载）
 ├── docs/                       # 文档
 │   ├── README.md               # 文档导航中心
