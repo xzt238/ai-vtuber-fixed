@@ -1,6 +1,6 @@
 # 🐛 已知问题 & 技术债务 (KNOWN_ISSUES)
 
-> **最后更新**: 2026-05-07 | **当前版本**: v1.9.90
+> **最后更新**: 2026-05-31 | **当前版本**: v1.11.19
 
 本文档集中记录项目中所有已知的 Bug、技术债务和架构问题。每个条目包含唯一 ID、严重度、影响组件、当前状态、描述和变通方案。
 
@@ -48,20 +48,15 @@
 - **描述**: 6 个模型的 URL、路径、大小阈值在 2 个文件中完全相同地维护，手动同步。
 - **参见**: `CHANGE_IMPACT_MAP.md` 第 8 节
 
-### KI-005: PROJECT_DIR 路径计算 18+ 处
-- **严重度**: 🟢 低（目录结构不变时无影响） → 🔴 高（目录结构变化时）
-- **组件**: 多个文件
-- **状态**: OPEN
-- **描述**: 18+ 个文件使用 `os.path.dirname(os.path.dirname(...))` 多层嵌套计算项目根目录。如果目录结构变化需要修改所有文件。
-- **变通方案**: `app/shared_config.py` 中定义了 `PROJECT_DIR` 常量，但尚未被所有文件采用。
-- **参见**: `CHANGE_IMPACT_MAP.md` 第 9 节
+### KI-005: PROJECT_DIR 路径计算 18+ 处 ✅ (v1.11.19)
+- **严重度**: 🟢 低（目录结构不变时无影响）
+- **原问题**: 18+ 个文件手动计算路径，目录结构变动需全改
+- **修复**: 统一为 `from app.shared_config import PROJECT_DIR`，tray/perf/update/hotkey/theme 等 5 个 Widget 全部切换
 
-### KI-006: 重复代码模式
+### KI-006: 重复代码模式 🔄 (v1.11.19 部分修复)
 - **严重度**: 🟢 低
-- **组件**: 多个
-- **状态**: OPEN
-- **描述**: 多处重复代码模式：DLL 解锁逻辑（2 处）、TTS 引擎重建逻辑（2 处）、ASR Worker 类（2 处）、工具调用过滤（3 处）、LLM 偏好设置保存/加载（3 处）。
-- **参见**: `CHANGE_IMPACT_MAP.md` 第 11-14 节
+- **状态**: 部分修复
+- **描述**: 已修复：TTS 引擎重建（统一 `rebuild_tts()`）、ASR Worker（提取至 `workers/`）、LLM 偏好保存/加载（部分统一）。剩余：DLL 解锁（2 处）、工具调用过滤（3 处）
 
 ### KI-007: WebSocket 客户端状态字典内存泄漏
 - **严重度**: 🔴 高
@@ -89,11 +84,9 @@
 - **状态**: OPEN
 - **描述**: `_stream_openai` 方法中，如果流无有效行则 `choice`/`chunk` 未定义，会导致 `NameError`。
 
-### KI-011: _sentence_buffer 竞态条件
-- **严重度**: 🔴 高
-- **组件**: `native/gugu_native/pages/chat_page.py` L92-197
-- **状态**: OPEN
-- **描述**: `StreamChatWorker` 中 `_buffer` 在两线程间访问，`_mutex` 只保护 `_stop_requested`，不保护 `_buffer`。
+### KI-011: _sentence_buffer 竞态条件 ✅ (v1.11.19)
+- **原问题**: StreamChatWorker 中 `_buffer` 在两线程间访问无锁
+- **修复**: Worker 类已独立至 `gugu_native/workers/chat_workers.py`，`_mutex` 统一保护所有缓冲区操作
 
 ### KI-012: _asr_workers 列表无锁
 - **严重度**: 🟡 中
@@ -101,17 +94,13 @@
 - **状态**: OPEN
 - **描述**: 录音线程 append、主线程 remove `_asr_workers` 列表，存在竞态条件。
 
-### KI-013: _lazy_modules 从后台线程访问
-- **严重度**: 🟡 中
-- **组件**: `native/gugu_native/pages/settings_page.py` L702
-- **状态**: OPEN
-- **描述**: LLM/TTS RebuildWorker 访问 `backend._lazy_modules`，主线程也在读写，存在竞态。
+### KI-013: _lazy_modules 从后台线程访问 ✅ (v1.11.19)
+- **原问题**: LLM/TTS RebuildWorker 访问 `backend._lazy_modules` 存在竞态
+- **修复**: ChatPage 改用线程安全的 `backend.rebuild_tts()`，SettingsPage 使用 `_TTSRebuildWorker`
 
-### KI-014: Vision/OCR 调用阻塞主线程
-- **严重度**: 🟡 中
-- **组件**: `native/gugu_native/pages/chat_page.py` L1338-1346
-- **状态**: OPEN
-- **描述**: `_process_pending_image` 同步调用 vision，UI 冻结数秒。
+### KI-014: Vision/OCR 调用阻塞主线程 ✅ (v1.11.19)
+- **原问题**: `_process_pending_image` 同步调用 vision，UI 冻结
+- **修复**: `_VisionWorker` / `_OCRWorker` 改为独立 QThread 异步执行，已提取至 `gugu_native/workers/vision_workers.py`
 
 ### KI-015: config.yaml 加载不完整
 - **严重度**: 🟡 中

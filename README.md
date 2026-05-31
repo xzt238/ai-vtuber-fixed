@@ -9,7 +9,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Version](https://img.shields.io/badge/version-v1.11.19-yellow.svg)](docs/VERSION.md)
 [![Python](https://img.shields.io/badge/python-3.11-yellow.svg)](https://www.python.org/downloads/release/python-3119/)
-[![Known Issues](https://img.shields.io/badge/known%20issues-15-orange.svg)](docs/KNOWN_ISSUES.md)
+[![Known Issues](https://img.shields.io/badge/known%20issues-11-orange.svg)](docs/KNOWN_ISSUES.md)
 
 [功能特性](#-功能特性) · [快速开始](#-快速开始) · [训练声音克隆](#-声音克隆训练) · [配置说明](#-配置说明) · [项目架构](#-项目架构) · [常见问题](#-常见问题) · [贡献指南](#-贡献指南)
 
