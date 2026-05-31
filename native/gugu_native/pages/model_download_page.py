@@ -41,7 +41,7 @@ from app.shared_config import PROJECT_DIR, GPT_SOVITS_MODELS
 # 国内 HuggingFace 镜像
 HF_MIRROR = 'https://hf-mirror.com'
 
-from gugu_native.theme import get_colors
+from gugu_native.theme import get_colors, register_theme_callback
 
 
 # ===== 模型下载列表配置 =====
@@ -573,10 +573,10 @@ class ModelDownloadPage(ScrollArea):
         # 状态标签
         status_label = CaptionLabel("已下载" if is_downloaded else "未下载")
         status_label.setStyleSheet(f"""
-            color: {'#37b24d' if is_downloaded else '#f03e3e'};
+            color: {c.success if is_downloaded else c.error};
             font-weight: 500;
             padding: 3px 12px;
-            background-color: {'#1a3a2a' if is_downloaded else '#3a1a1a'};
+            background-color: {c.success_bg if is_downloaded else c.error_bg};
             border-radius: 10px;
         """)
         row1.addWidget(status_label)
@@ -592,8 +592,8 @@ class ModelDownloadPage(ScrollArea):
             dl_btn.setStyleSheet(f"""
                 PushButton {{
                     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #37b24d, stop:1 #2f9e44);
-                    color: white;
+                        stop:0 {c.success}, stop:1 {c.success_hover});
+                    color: {c.text_on_accent};
                     border: none;
                     border-radius: 6px;
                     padding: 6px 16px;
@@ -601,7 +601,7 @@ class ModelDownloadPage(ScrollArea):
                 }}
                 PushButton:hover {{
                     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #2f9e44, stop:1 #2b8a3e);
+                        stop:0 {c.success_hover}, stop:1 {c.success_pressed});
                 }}
             """)
         dl_btn.clicked.connect(lambda checked, m=mdl: self._on_download_model(m))
@@ -649,7 +649,7 @@ class ModelDownloadPage(ScrollArea):
         status.setText("下载中...")
         c = get_colors()
         status.setStyleSheet(f"""
-            color: #f59f00;
+            color: {c.warning};
             font-weight: 500;
             padding: 3px 12px;
             background-color: {c.warning_bg};
@@ -687,10 +687,10 @@ class ModelDownloadPage(ScrollArea):
         if success:
             status.setText("已下载")
             status.setStyleSheet(f"""
-                color: #37b24d;
+                color: {c.success};
                 font-weight: 500;
                 padding: 3px 12px;
-                background-color: #1a3a2a;
+                background-color: {c.success_bg};
                 border-radius: 10px;
             """)
             btn.setText("已就绪")
@@ -706,10 +706,10 @@ class ModelDownloadPage(ScrollArea):
         else:
             status.setText("下载失败")
             status.setStyleSheet(f"""
-                color: #f03e3e;
+                color: {c.error};
                 font-weight: 500;
                 padding: 3px 12px;
-                background-color: #3a1a1a;
+                background-color: {c.error_bg};
                 border-radius: 10px;
             """)
             btn.setText("重试")
@@ -717,8 +717,8 @@ class ModelDownloadPage(ScrollArea):
             btn.setStyleSheet(f"""
                 PushButton {{
                     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #f03e3e, stop:1 #e03131);
-                    color: white;
+                        stop:0 {c.error}, stop:1 #e03131);
+                    color: {c.text_on_accent};
                     border: none;
                     border-radius: 6px;
                     padding: 6px 16px;
@@ -750,10 +750,10 @@ class ModelDownloadPage(ScrollArea):
             if is_downloaded:
                 status.setText("已下载")
                 status.setStyleSheet(f"""
-                    color: #37b24d;
+                    color: {c.success};
                     font-weight: 500;
                     padding: 3px 12px;
-                    background-color: #1a3a2a;
+                    background-color: {c.success_bg};
                     border-radius: 10px;
                 """)
                 btn.setText("已就绪")
@@ -762,10 +762,10 @@ class ModelDownloadPage(ScrollArea):
             else:
                 status.setText("未下载")
                 status.setStyleSheet(f"""
-                    color: #f03e3e;
+                    color: {c.error};
                     font-weight: 500;
                     padding: 3px 12px;
-                    background-color: #3a1a1a;
+                    background-color: {c.error_bg};
                     border-radius: 10px;
                 """)
                 btn.setText("下载")
@@ -773,8 +773,8 @@ class ModelDownloadPage(ScrollArea):
                 btn.setStyleSheet(f"""
                     PushButton {{
                         background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                            stop:0 #37b24d, stop:1 #2f9e44);
-                        color: white;
+                            stop:0 {c.success}, stop:1 {c.success_hover});
+                        color: {c.text_on_accent};
                         border: none;
                         border-radius: 6px;
                         padding: 6px 16px;
@@ -782,7 +782,7 @@ class ModelDownloadPage(ScrollArea):
                     }}
                     PushButton:hover {{
                         background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                            stop:0 #2f9e44, stop:1 #2b8a3e);
+                            stop:0 {c.success_hover}, stop:1 {c.success_pressed});
                     }}
                 """)
 

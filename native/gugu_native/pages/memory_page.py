@@ -34,6 +34,8 @@ from qfluentwidgets import (
 # 项目根目录 — KI-005: 从 shared_config 统一引用
 from app.shared_config import PROJECT_DIR
 
+from gugu_native.theme import get_colors, register_theme_callback
+
 
 class MemorySearchWorker(QThread):
     """记忆搜索线程"""
@@ -109,21 +111,23 @@ class MemoryItemWidget(QTreeWidgetItem):
         self.importance = importance
 
         # 根据重要性设置颜色
+        from gugu_native.theme import get_colors
+        theme_c = get_colors()
         if importance >= 4:
-            self.setForeground(0, QColor("#ff6b6b"))  # 关键记忆 - 红
+            self.setForeground(0, QColor(theme_c.error))  # 关键记忆 - 红
             self.setForeground(2, QColor("#ffaaaa"))
         elif importance >= 3:
-            self.setForeground(0, QColor("#ffd93d"))  # 重要记忆 - 黄
+            self.setForeground(0, QColor(theme_c.warning))  # 重要记忆 - 黄
             self.setForeground(2, QColor("#ffe0a0"))
         elif importance >= 1:
-            self.setForeground(0, QColor("#6bcb77"))  # 一般 - 绿
+            self.setForeground(0, QColor(theme_c.success))  # 一般 - 绿
             self.setForeground(2, QColor("#b0b0b0"))
         else:
-            self.setForeground(2, QColor("#808080"))  # 闲聊 - 灰
+            self.setForeground(2, QColor(theme_c.text_muted))  # 闲聊 - 灰
 
         # 摘要标记
         if data.get("is_summary"):
-            self.setForeground(2, QColor("#a0c4ff"))
+            self.setForeground(2, QColor(theme_c.info))
             self.setText(1, f"[摘要] {role}")
 
 
@@ -143,6 +147,21 @@ class MemoryPage(QWidget):
         self._stats_timer.setInterval(10000)  # 10秒刷新
         self._stats_timer.timeout.connect(self._refresh_stats)
         self._stats_timer.start()
+        # 注册主题变更回调
+        register_theme_callback(self.refresh_theme)
+
+    def showEvent(self, event):
+        """页面可见时恢复定时刷新"""
+        super().showEvent(event)
+        if hasattr(self, '_stats_timer') and self._stats_timer:
+            self._stats_timer.start()
+            self._refresh_stats()
+
+    def hideEvent(self, event):
+        """页面不可见时暂停刷新（节省资源）"""
+        super().hideEvent(event)
+        if hasattr(self, '_stats_timer') and self._stats_timer:
+            self._stats_timer.stop()
 
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -184,22 +203,23 @@ class MemoryPage(QWidget):
         main_layout.addLayout(top_layout)
 
         # === 统计面板 ===
+        c = get_colors()
         stats_layout = QHBoxLayout()
         stats_layout.setSpacing(8)
 
-        self.stat_working, self._stat_working_val = self._create_stat_card("工作记忆", "0", "#4dabf7")
+        self.stat_working, self._stat_working_val = self._create_stat_card("工作记忆", "0", c.stat_working)
         stats_layout.addWidget(self.stat_working)
 
-        self.stat_episodic, self._stat_episodic_val = self._create_stat_card("情景记忆", "0", "#69db7c")
+        self.stat_episodic, self._stat_episodic_val = self._create_stat_card("情景记忆", "0", c.stat_episodic)
         stats_layout.addWidget(self.stat_episodic)
 
-        self.stat_semantic, self._stat_semantic_val = self._create_stat_card("语义记忆", "0", "#da77f2")
+        self.stat_semantic, self._stat_semantic_val = self._create_stat_card("语义记忆", "0", c.stat_semantic)
         stats_layout.addWidget(self.stat_semantic)
 
-        self.stat_facts, self._stat_facts_val = self._create_stat_card("事实记忆", "0", "#ffd43b")
+        self.stat_facts, self._stat_facts_val = self._create_stat_card("事实记忆", "0", c.stat_facts)
         stats_layout.addWidget(self.stat_facts)
 
-        self.stat_forgotten, self._stat_forgotten_val = self._create_stat_card("已遗忘", "0", "#868e96")
+        self.stat_forgotten, self._stat_forgotten_val = self._create_stat_card("已遗忘", "0", c.stat_forgotten)
         stats_layout.addWidget(self.stat_forgotten)
 
         main_layout.addLayout(stats_layout)
@@ -274,12 +294,16 @@ class MemoryPage(QWidget):
         QTimer.singleShot(800, self._refresh_all)
 
     def _create_stat_card(self, label: str, value: str, color: str) -> CardWidget:
-        """创建统计卡片 — 返回 (card, value_label) 元组"""
-        from gugu_native.theme import get_colors
+        """创建统计卡片 — 紧凑布局（v1.11.16 缩小尺寸放5个）"""
         c = get_colors()
         card = CardWidget()
-        card.setFixedHeight(72)
-        card.setMinimumWidth(140)
+        card.setFixedHeight(52)
+        card.setMinimumWidth(100)
+        card._stat_color = color  # 保存颜色用于主题刷新
+        card._stat_bg = c.card_bg
+        card._stat_border = c.card_border
+        card._stat_bg_hover = c.card_bg_hover
+        card._stat_border_hover = c.card_border_hover
         card.setStyleSheet(f"""
             CardWidget {{
                 background-color: {c.card_bg};
@@ -295,10 +319,9 @@ class MemoryPage(QWidget):
         """)
 
         layout = QHBoxLayout(card)
-        layout.setContentsMargins(16, 8, 16, 8)
-        layout.setSpacing(10)
+        layout.setContentsMargins(12, 6, 12, 6)
+        layout.setSpacing(8)
 
-        # 左侧: 图标圆点
         dot = QLabel()
         dot.setFixedSize(10, 10)
         dot.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
@@ -314,6 +337,12 @@ class MemoryPage(QWidget):
         val_label = QLabel(value)
         val_label.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: bold;")
         info_layout.addWidget(val_label)
+
+        # 保存子组件引用用于主题刷新
+        card._dot = dot
+        card._name_label = name_label
+        card._val_label = val_label
+        card._text_muted = c.text_muted
 
         layout.addLayout(info_layout)
 
@@ -333,21 +362,22 @@ class MemoryPage(QWidget):
         self.memory_tree.setColumnWidth(3, 100)
 
         # 四层记忆分类节点
+        c = get_colors()
         self.working_root = QTreeWidgetItem(self.memory_tree, ["工作记忆", "", "", "", ""])
         self.working_root.setExpanded(True)
-        self.working_root.setForeground(0, QColor("#4dabf7"))
+        self.working_root.setForeground(0, QColor(c.stat_working))
 
         self.episodic_root = QTreeWidgetItem(self.memory_tree, ["情景记忆", "", "", "", ""])
         self.episodic_root.setExpanded(True)
-        self.episodic_root.setForeground(0, QColor("#69db7c"))
+        self.episodic_root.setForeground(0, QColor(c.stat_episodic))
 
         self.semantic_root = QTreeWidgetItem(self.memory_tree, ["语义记忆", "", "", "", ""])
-        self.semantic_root.setExpanded(False)
-        self.semantic_root.setForeground(0, QColor("#da77f2"))
+        self.semantic_root.setExpanded(True)  # 默认展开，与其他记忆类型一致
+        self.semantic_root.setForeground(0, QColor(c.stat_semantic))
 
         self.facts_root = QTreeWidgetItem(self.memory_tree, ["事实记忆", "", "", "", ""])
         self.facts_root.setExpanded(True)
-        self.facts_root.setForeground(0, QColor("#ffd43b"))
+        self.facts_root.setForeground(0, QColor(c.stat_facts))
 
         # 右键菜单
         self.memory_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -623,6 +653,7 @@ class MemoryPage(QWidget):
     @Slot(list)
     def _on_search_results(self, results: list):
         """搜索结果返回"""
+        c = get_colors()
         self.search_results_tree.clear()
         for r in results:
             layer = r.get("layer", "")
@@ -635,11 +666,11 @@ class MemoryPage(QWidget):
             item = QTreeWidgetItem(self.search_results_tree,
                                    [stars, layer_map.get(layer, layer), text, f"{score:.2f}"])
             if score > 0.8:
-                item.setForeground(2, QColor("#ffaaaa"))
+                item.setForeground(2, QColor(c.error))
             elif score > 0.5:
-                item.setForeground(2, QColor("#ffe0a0"))
+                item.setForeground(2, QColor(c.warning))
             else:
-                item.setForeground(2, QColor("#b0b0b0"))
+                item.setForeground(2, QColor(c.text_muted))
 
         self.detail_tabs.setCurrentIndex(1)
 
@@ -721,16 +752,27 @@ class MemoryPage(QWidget):
             return
 
         self.consolidate_btn.setEnabled(False)
-        self.consolidate_btn.setText("重整中...")
+        self._consolidate_dots = 0
+        self._consolidate_timer = QTimer(self)
+        self._consolidate_timer.timeout.connect(self._animate_consolidate)
+        self._consolidate_timer.start(400)
 
         self._consolidate_worker = ConsolidateWorker(mem)
         self._consolidate_worker.done.connect(self._on_consolidate_done)
         self._consolidate_worker.error.connect(lambda e: self._on_consolidate_done({"error": e}))
         self._consolidate_worker.start()
 
+    def _animate_consolidate(self):
+        """重整按钮的 loading 动画"""
+        self._consolidate_dots = (self._consolidate_dots + 1) % 4
+        dots = "." * self._consolidate_dots
+        self.consolidate_btn.setText(f"重整中{dots}")
+
     @Slot(dict)
     def _on_consolidate_done(self, result: dict):
         """重整完成"""
+        if hasattr(self, '_consolidate_timer') and self._consolidate_timer:
+            self._consolidate_timer.stop()
         self.consolidate_btn.setEnabled(True)
         self.consolidate_btn.setText("重整记忆")
 
@@ -780,16 +822,15 @@ class MemoryPage(QWidget):
 
     def refresh_theme(self):
         """主题切换时刷新统计卡片等硬编码样式"""
+        c = get_colors()
         # 重建统计卡片样式
         stat_colors = {
-            "stat_working": ("工作记忆", "#4dabf7"),
-            "stat_episodic": ("情景记忆", "#69db7c"),
-            "stat_semantic": ("语义记忆", "#da77f2"),
-            "stat_facts": ("事实记忆", "#ffd43b"),
-            "stat_forgotten": ("已遗忘", "#868e96"),
+            "stat_working": ("工作记忆", c.stat_working),
+            "stat_episodic": ("情景记忆", c.stat_episodic),
+            "stat_semantic": ("语义记忆", c.stat_semantic),
+            "stat_facts": ("事实记忆", c.stat_facts),
+            "stat_forgotten": ("已遗忘", c.stat_forgotten),
         }
-        from gugu_native.theme import get_colors
-        c = get_colors()
 
         for attr, (label, color) in stat_colors.items():
             card_widget = getattr(self, attr, None)
@@ -807,9 +848,20 @@ class MemoryPage(QWidget):
                         border-top: 3px solid {color};
                     }}
                 """)
+                # 刷新内部组件
+                if hasattr(card_widget, '_dot'):
+                    card_widget._dot.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
+                if hasattr(card_widget, '_name_label'):
+                    card_widget._name_label.setStyleSheet(f"color: {c.text_muted}; font-size: 12px;")
+                if hasattr(card_widget, '_val_label'):
+                    card_widget._val_label.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: bold;")
 
         # 刷新记忆树根节点颜色
-        self.working_root.setForeground(0, QColor("#4dabf7"))
-        self.episodic_root.setForeground(0, QColor("#69db7c"))
-        self.semantic_root.setForeground(0, QColor("#da77f2"))
-        self.facts_root.setForeground(0, QColor("#ffd43b"))
+        self.working_root.setForeground(0, QColor(c.stat_working))
+        self.episodic_root.setForeground(0, QColor(c.stat_episodic))
+        self.semantic_root.setForeground(0, QColor(c.stat_semantic))
+        self.facts_root.setForeground(0, QColor(c.stat_facts))
+
+        # 刷新当前选中项的详情（颜色随主题变化）
+        if hasattr(self, '_selected_item') and self._selected_item:
+            self._on_item_clicked(self._selected_item, 0)

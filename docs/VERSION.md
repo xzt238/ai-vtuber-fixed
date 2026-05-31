@@ -37,6 +37,236 @@
 |🟢 STABLE|稳定版|
 
 
+
+## 🟢 v1.11.19 (2026-05-31) ✅ STABLE
+
+### 🔧 修复
+- **[startup] start.bat 修复**：CMD 不再滞留——改用 `start /B` 后台启动，窗口闪即没
+- **[startup] 跳过等待硬退出**：`QApplication.quit()` → `os._exit(0)`，点击跳过不再残留僵尸进程
+- **[startup] 启动进度提示**：启动画面新增 6 阶段进度（加载界面→应用主题→语音引擎→AI引擎→语音合成→语音识别），SplashDebugWindow 新增 `set_progress()` 和 `mark_backend_ready()` 方法
+- **[ux] 按钮图标重叠**：保存/检查更新按钮去掉 FluentIcon，改用 emoji（💾/🔄），文字不再与图标挤压
+- **[startup] pydub FFmpeg 扫描加速**：`subprocess.check_output` 拦截补丁前置到 `main.py` 顶部（Qt 初始化前），ASR 导入从 10-20s → 0.06s
+- **[theme] QSS `font-weight: 500` → `bold`**：Qt 不支持数值 font-weight，消除 "Could not parse stylesheet" 警告
+
+### 📝 文件变更
+- **修改**: `scripts/start.bat` (CMD 无滞留)、`main.py` (补丁前置+进度提示+惰加载)、`splash_debug_window.py` (硬退出+进度)、`app/asr/__init__.py` (ffmpeg 补丁)、`theme.py` (font-weight 修复)、`settings_page.py` (emoji 按钮)
+
+
+## 🟢 v1.11.18 (2026-05-31) ✅ STABLE
+
+### ⚡ 性能
+- **[startup] ASR 模块导入提速 200x**：pydub（torchaudio 传递依赖）在 Windows 上用 `subprocess.check_output` 扫描系统 PATH 找 ffmpeg，每个子进程耗时 2-5s，累计 10-20s。新增 `subprocess.check_output` 拦截补丁，毫秒级跳过扫描，ASR 导入从 10-20s → 0.06s
+- **[startup] 惰加载优化**：ChatPage + 7 个重量 Widget（TrayManager / VoiceManager / HotkeyManager / DesktopPet / AutoStartManager / UpdateManager / PerfManager）从模块级导入改为方法内按需导入，减少 ~3s 冷启动时间
+
+### 🔧 修复
+- **[ux] 设置页脏标记优化**：文字追加 "●" → 橙色边框（`PushButton[dirty="true"]`），不占文字空间无重叠
+- **[theme] 全局 QLabel 透明背景**：解决 Qt QSS 继承丢失导致亮色主题下标签黑底
+
+### 🧹 代码清理
+- **[workers] 5 个 Worker 类拆分**：`StreamChatWorker / TTSWorker / ASRWorker / OCRWorker / VisionWorker` 从 chat_page.py（2401→2092 行）移至独立 `gugu_native/workers/` 包
+- **[shared] 新建 utils.py 共享模块**：`show_info / show_warning / show_error / deferred_call` 统一封装修复重复代码
+- **[dead] 删除 25 项冗余**：废弃 live2d_web_widget.py、4 个旧测试文件、14 个空日志、5 个空目录、29 个 TTS 临时 wav、rebuild_tts_engine() 死代码、sys/QMutex 未用导入
+- **[path] 统一 PROJECT_DIR**：5 个 Widget 文件（tray / perf / update / hotkey / theme）的手动 `os.path.dirname(...)` 链式调用统一切换到 `from app.shared_config import PROJECT_DIR`
+- **[imports] 清理冗余 sys.path**：chat_page / settings_page 的 `_LOCAL_PROJECT_DIR` + `sys.path.insert` 冗余代码移除
+- **[models] 释放 130MB**：删除与 `app/web/static/assets/model/` 重复的 `VRM/Asmodeus_*.vrm` × 3
+- **[mutex] 互斥锁重试**：进程被杀后 3 秒自动重试，避免启动卡死
+- **[vision] RapidOCR 包名兼容 + MiMo is_available() 补全 + Provider 自动降级**
+- **[voice] 实时语音 Worker 身份校验**：防止旧 worker 信号污染新流导致闪退
+
+### 📝 文件变更
+- **新建**: `gugu_native/workers/__init__.py`、`chat_workers.py`、`vision_workers.py`、`gugu_native/utils.py`、`gugu_native/widgets/screenshot_selector.py`
+- **修改**: `app/main.py` (ffmpeg warning 抑制)、`app/asr/__init__.py` (subprocess 补丁 + 启动提速)、`app/vision/__init__.py` (RapidOCR 兼容 + MiMo 降级)、`native/main.py` (惰加载)、`gugu_native/theme.py` (QLabel 透明)、`chat_page.py` (Worker 提取)、`settings_page.py` (脏标记边框)、`tray_manager.py` / `perf_manager.py` / `update_manager.py` / `hotkey_manager.py` (PROJECT_DIR 统一)、`session_manager.py` (日志补全)、`model_download_page.py` (主题颜色)、`desktop_pet.py` (QMenu 主题)
+- **删除**: `live2d_web_widget.py`、4 个旧测试文件、`VRM/Asmodeus_*.vrm` × 3
+
+
+## 🟢 v1.11.17 (2026-05-29) ✅ STABLE
+
+### 🔧 修复
+- **[vision] RapidOCR 包名兼容**：`_get_engine()` 增加 `rapidocr_onnxruntime` 降级导入，OCR 不再"未识别到文字"
+- **[vision] MiMoVisionProvider 补全 `is_available()`**：修复 `set_provider("mimo_vision")` 抛 `AttributeError` 导致视觉模块加载失败
+- **[vision] OCR/Vision Worker 错误提示增强**：显示具体失败原因（Provider未配置/API不可用/OCR无文字等），而非静默失败
+- **[theme] 全局 QLabel 透明背景**：全局 QSS 增加 `QLabel { background-color: transparent }` 规则，解决单个 widget `setStyleSheet` 后丢失背景继承导致黑底
+- **[theme] model_download_page + desktop_pet 硬编码暗色清理**：所有 `#37b24d`、`#1a3a2a` 等替换为主题变量
+- **[startup] 互斥锁重试机制**：进程被杀后 Windows 互斥锁有延迟清理，增加 3 秒重试避免启动卡死
+
+### ✨ 新增
+- **[ocr] 区域截图选择器**：替代全屏截图（`grabWindow(0)`），拖拽选择区域后 OCR，右键或 Esc 取消。新建 `ScreenshotSelector` 组件（半透明遮罩 + 紫色选框 + 尺寸提示）
+- **[voice] 实时语音闪退修复**：`_on_stream_finished` 增加 worker 身份校验（`self.sender() is self._worker`），防止旧 worker 信号污染新流状态导致崩溃
+
+### 📝 文件变更
+- **修改**: `app/vision/__init__.py`（RapidOCR兼容 + is_available补全）
+- **修改**: `native/gugu_native/pages/chat_page.py`（worker身份校验 + OCR/Vision错误提示增强）
+- **修改**: `native/gugu_native/pages/model_download_page.py`（硬编码颜色→主题变量）
+
+
+## 🟢 v1.11.16 (2026-05-28) ✅ STABLE
+
+### ✨ 新增
+- **[startup] CMD 隐藏 + 启动画面内嵌运行调试窗口**：`start.bat` 改用 `pythonw.exe` 无窗口启动，全程无 CMD 黑窗口。新建 `SplashDebugWindow` 替代 `QSplashScreen`，启动画面内嵌实时运行调试窗口（stdout 重定向），日志行自动着色。启动完成后自动隐藏，可从系统托盘菜单重新打开。支持 Escape 关闭、10s 自动显示跳过按钮、错误时显示完整 traceback
+- **[theme] 主题系统 v5 多维度升级**：10 个主题各具独立风格——圆角(rounded/soft/sharp)、间距(compact/comfortable/spacious)、阴影(flat/material/neumorphic/glow)、字体(msyh/inter/jetbrains)、控件(solid/outline/ghost)。新增 vscode_dark 和 discord 两个展示型主题
+- **[theme] QSS v5 动态生成器**：`build_global_qss_v5()` 使用 `%(var)s` 模板变量，`apply_theme()` 自动重刷全局样式。ThemeManager 新增 `get_theme()` 返回 `AppTheme`
+- **[theme] 主题选择器升级**：色卡底部显示风格标签（如"圆润 · 舒适 · 霓虹"），选中态增加 accent 色 √ 标记。新增"恢复默认主题"按钮
+- **[scripts] 新增 start_debug.bat**：保留原始 CMD 启动模式供开发者调试
+
+### 🔧 修复
+- **[ux] 设置页统一保存**：4 个独立"保存 XX 配置"按钮 → 1 个"保存所有设置"按钮 + 脏标记（●），防止用户丢失修改
+- **[ux] API Key 显隐切换**：`FluentIcon.VIEW` ↔ `FluentIcon.HIDE` 状态反馈
+- **[ux] 发送/停止按钮同位置变色**：蓝→红平滑切换（参考 ChatGPT），消除 setVisible() 抖动
+- **[ux] 录音/实时语音按钮区分**：🎤"录音" vs 🎙"实时对话"，不同图标和标签
+- **[ux] 清空按钮加间距+警告色**：12px 间距 + hover 变红防误触
+- **[ux] TTS 卡片背景统一**：`sidebar_bg` → `card_bg`
+- **[ux] Live2D 工具栏 3→1 行**：模型切换 + 导入按钮 + 宠物按钮合并到一行，省 ~60px
+- **[ux] 宠物按钮归位**：从 TTS 工具栏移到 Live2D 工具栏
+- **[ux] VRM 变体标签清晰化**："AU"→"默认" + emoji 配中文
+- **[ux] 训练页改进**：日志字体 9→11px、工作流引导提示、录音时长 3~30s 可调、上传默认目录、状态轮询 2s→1s
+- **[ux] 记忆页改进**：统计卡片缩小、语义默认展开、重整按钮 loading 动画、详情面板主题刷新、不可见时暂停刷新
+- **[ux] 聊天卡片内边距 3→8px、输入框快捷键提示、最小窗口 1100→960**
+- **[ux] 重置项目按钮警告色 + DELETE 图标**
+- **[ux] QProgressBar `font-size:0px` hack → `color:transparent`**
+- **[theme] memory_page refresh_theme() 致命 Bug：缺少 `c=get_colors()` 导致切主题崩溃**
+- **[theme] model_download_page 未注册主题回调，硬件状态使用硬编码暗色值**
+- **[theme] settings_page reset_theme_btn 未保存为属性，无法跟随主题刷新**
+- **[bug] Live2D 导入栏 hex+alpha 语法错误**：`#7c3aed22` → `rgba(124,58,237,0.13)`（QSS 不支持 8 位 hex）
+- **[bug] FluentIcon.HEADSET 不存在**：改用 emoji 🎙 图标
+
+### 📝 文件变更
+- **新建**: `native/gugu_native/themes/style_types.py` (6 dataclass)、`themes/presets/vscode_dark.py`、`themes/presets/discord.py`
+- **新建**: `native/gugu_native/widgets/splash_debug_window.py`
+- **新建**: `scripts/start_debug.bat`
+- **修改**: `native/main.py`、`native/gugu_native/theme.py`、`themes/definitions.py`、`themes/manager.py`、`themes/presets/__init__.py`、8 个预设主题、`theme_selector.py`、`theme_card.py`、`tray_manager.py`、`chat_page.py`、`settings_page.py`、`train_page.py`、`memory_page.py`、`model_download_page.py`、`scripts/start.bat`
+- **修改**: `app/version.py`、`docs/VERSION.md`、`README.md`
+
+
+## 🟢 v1.11.15 (2026-05-27) ✅ STABLE
+
+### 🔧 修复
+- **[chat] TTS 音频播放打断**：句子间存在竞态条件，新句子可能在前一句未播完时开始播放。统一播放调度到 `_try_play_next()` 方法，消除 `_on_tts_audio_ready` 和 `_on_playback_state_changed` 中的重复释放逻辑
+- **[settings] TTS 引擎重建冗余**：`_TTSRebuildWorker` 重建后又调用 `set_voice()/set_project()`，导致 GPT-SoVITS 的 pipeline 被重置。移除冗余调用，rebuild 时已从更新后的 config 创建正确配置的引擎
+- **[bat] start.bat UTF-8 BOM 问题**：每次编辑后都会出现 BOM（`锘緻echo off`）。改用 Python 以 ASCII 编码写入，彻底消除 BOM
+- **[bat] 启动输出美化**：模块化分步输出 [1/4]~[4/4]，用户可直观了解启动进度
+- **[perf] 内存清理阈值调整**：GPT-SoVITS 本地推理模式下内存自然占用 ~4.2GB，原阈值 4000MB 频繁误触发清理。提高至 WARNING=3500MB / CRITICAL=5500MB
+
+### 🔧 修复（v1.11.14 遗留）
+- **[settings] LLM 模型持久化 Bug**：`on_backend_ready` 使用 `Config.get()` 扁平查找获取嵌套字典返回空值，导致后端就绪时覆盖用户保存的 LLM 配置。改用 `backend.config.config`（原始 dict）访问，并统一所有模块优先使用偏好文件
+- **[settings] TTS 音色持久化**：`_save_tts_config` 只保存 MiMo 的 `provider_configs`，Edge TTS / GPT-SoVITS 的音色不保存。改为所有引擎都保存音色到 `provider_configs`，并合并保留其他引擎的配置
+- **[settings] TTS 音色恢复**：GPT-SoVITS 音色列表异步加载完成前 `_load_tts_prefs` 无法设置音色。新增 `_pending_tts_voice` 机制和 `_restore_tts_voice_after_populate` 方法，在异步加载回调中恢复音色
+- **[config] TTS 偏好恢复遗漏 voice 字段**：`Config._load()` 从 `tts_preferences.json` 恢复时只恢复了 `base_url` 和 `model`，遗漏了 `voice` 和 `project`。已补全
+
+## 🟢 v1.11.13 (2026-05-27) ✅ STABLE
+- **[scripts] 移除 start.bat 中的 MiMo 配置菜单**：配置应在 GUI 内完成，不需要 CMD 交互
+- **[scripts] mimo_config.py 不再由 start.bat 调用**：保留文件供高级用户命令行使用
+
+## 🟢 v1.11.12 (2026-05-27) ✅ STABLE
+
+**新增 start.bat MiMo 配置菜单 + 偏好持久化**
+
+### ✨ 新增
+- **[scripts] 新增 MiMo Token Plan 配置菜单**：`start.bat` 启动时显示交互式菜单，可选择 MiMo 模块组合（LLM/TTS/ASR/Vision），无需手动修改 config.yaml
+- **[scripts] 新增 `scripts/mimo_config.py`**：MiMo 配置写入器，根据用户选择写入偏好文件
+- **[config] 新增 ASR/TTS/Vision 偏好持久化**：`Config._load()` 现在也读取 `asr_preferences.json`、`tts_preferences.json`、`vision_preferences.json`，与 LLM 偏好机制一致
+
+### 🔧 修复
+- **[config] MiMo API Key 分发**：`api_keys.json` 中的 `mimo` key 现在会自动分发到 `asr.mimo`、`tts.mimo`、`vision.mimo_vision`，不再需要单独配置
+- **[config] config.yaml 恢复默认值**：MiMo 相关 base_url 恢复为 `api.xiaomimimo.com`，由偏好文件覆盖为 `token-plan-cn.xiaomimimo.com`
+
+### 🐛 优化
+- **[llm] OpenAILLM 初始化日志增强**：打印 base_url 以便调试认证头问题
+
+## 🟢 v1.11.11 (2026-05-27) ✅ STABLE
+
+**修复 MiMo LLM 401 Unauthorized 认证头错误**
+
+### 🔧 修复
+- **[llm] 修复 MiMo LLM 认证头错误**：`OpenAILLM.__init__` 中硬编码 `Authorization: Bearer` 头，导致 MiMo API 返回 401 Unauthorized。现根据 base_url 动态选择：包含 `xiaomimimo.com` 时使用 `api-key` 头，其他 OpenAI 兼容提供商使用 `Authorization: Bearer` 头。
+
+## 🟢 v1.11.10 (2026-05-27) ✅ STABLE
+
+**修复 settings_page.py 中的 FluentIcon.VIEW_OFF 错误**
+
+### 🔧 修复
+- **[settings] 修复 FluentIcon.VIEW_OFF 不存在错误**：`settings_page.py` 第388行使用不存在的 `FluentIcon.VIEW_OFF`，导致启动时 `AttributeError`。已替换为 `FluentIcon.VIEW`，图标状态切换逻辑保持不变。
+
+## 🟢 v1.11.9 (2026-05-27) ✅ STABLE
+
+**新增小米 MiMo 云端全链路接入（ASR + TTS + Vision）**
+
+### ✨ 新功能
+- **[tts] MiMo TTS 云端引擎**：新增 `MimoTTS` 引擎，通过 `/v1/chat/completions` + `audio` 参数调用
+  - 支持三种模型：`mimo-v2.5-tts`（预置音色）/ `mimo-v2.5-tts-voicedesign`（音色设计）/ `mimo-v2.5-tts-voiceclone`（音色复刻）
+  - 支持预置音色：冰糖、茉莉、苏打、白桦、Mia、Chloe、Milo、Dean
+  - 支持风格指令（通过 user 角色消息控制语气/语速/情感）
+- **[asr] MiMo ASR 云端引擎**：新增 `MimoASR` 引擎，通过 `input_audio` 内容块调用 MiMo 音频理解
+  - 支持 WAV/MP3/FLAC/M4A/OGG 格式
+  - 自动从 `llm.mimo.api_key` 读取密钥
+- **[vision] MiMo Vision 云端引擎**：新增 `MimoVisionProvider`，通过 `image_url` 内容块调用 MiMo 视觉理解
+  - 支持 `mimo-v2.5` 和 `mimo-v2.5-pro` 模型
+  - 自动 JPEG 压缩 + Base64 编码
+
+### 📝 文档
+- **[config] 新增**：`asr.mimo`、`tts.mimo`、`vision.mimo_vision` 配置节
+- **[version] v1.11.9**
+
+
+## 🟢 v1.11.8 (2026-05-26) ✅ STABLE
+
+**启动性能优化（冷启动时间 6-8s → 2-3s）**
+
+### ⚡ 性能
+- **[startup] PySide6 检测加速**：`start.bat` 用 `pip show` 替代 `import QWebEngineView`，检查耗时 3-5s → 50ms
+- **[startup] 模块懒导入**：非首屏页面（Settings/Train/Memory/Model/VRM）改为函数内延迟导入，省 ~1.5s
+- **[version] v1.11.8**
+
+
+## 🟢 v1.11.7 (2026-05-26) ✅ STABLE
+
+**代码质量优化第二波（纯重构 + 性能提升）**
+
+### 🔄 重构
+- **[main] 模块抽取**：游戏风格日志函数（LogStyle + 15 个 game_* 函数）移至新文件 `app/log_style.py`
+
+### ⚡ 性能
+- **[memory] 缓存扩容**：embedding 缓存从 200 扩到 1000 条，提高重复查询命中率
+
+### 🔧 修复
+- **[web] 深拷贝**：`_get_tts_for_client` 中 Config 浅拷贝改为 `copy.deepcopy`，防止子字典被意外修改
+- **[tools] 温度参数**：`fc_executor` 的 temperature 改为可配置参数（默认 0.7），不再硬编码
+
+### 📝 文档
+- **[version] v1.11.7**
+
+
+## 🟢 v1.11.6 (2026-05-26) ✅ STABLE
+
+**代码质量优化（纯重构，零行为变更）**
+
+### 🔄 重构
+- **[llm] 去重**：合并 `_strip_thinking` + `_parse_action` 7 处重复调用为统一 `_clean_response` 函数
+- **[config] 加速**：`Config.get()` 改为惰性预展开扁平字典，热路径 O(n)→O(1)
+- **[web] 清理**：`TTSFactory` 导入移到模块顶部，消除 `_get_tts_for_client` 内 2 处重复 import
+
+### 📝 文档
+- **[version] v1.11.6**
+
+
+## 🟢 v1.11.5 (2026-05-26) ✅ STABLE
+
+**PyInstaller 打包修复**
+
+### 🔧 修复
+- **[build] jaraco 兼容**：适配 setuptools 81，修复 PyInstaller 打包依赖冲突
+- **[version] v1.11.5**
+
+
+## 🟢 v1.11.4 (2026-05-25) ✅ STABLE
+
+**打包优化 + 启动性能**
+
+### ⚡ 性能
+- **[core] 启动加速**：优化懒加载初始化流程，缩短冷启动时间
+- **[build] 打包成功**：PyInstaller 打包为 65MB 单 EXE 启动器
+- **[version] v1.11.4**
+
+
 ## 🟢 v1.11.3 (2026-05-25) ✅ STABLE
 
 **修复 TTS 播放不完整/交替/中断**

@@ -78,19 +78,7 @@ class DesktopPetWindow(QWidget):
     def _init_menu(self):
         """初始化右键菜单"""
         self._menu = QMenu(self)
-        self._menu.setStyleSheet("""
-            QMenu {
-                background-color: #2a2a3e;
-                color: #e0e0e0;
-                border: 1px solid #444;
-                border-radius: 8px;
-                padding: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #3d3d5c;
-                border-radius: 4px;
-            }
-        """)
+        # 菜单样式由全局 QSS 管理，跟随主题切换
 
         # 切回主窗口
         switch_action = QAction("返回主窗口", self)

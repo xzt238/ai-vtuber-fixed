@@ -80,6 +80,7 @@ def handle_tool_calls_stream(
     model: str,
     api_key: str,
     max_tokens: int = 2048,
+    temperature: float = 0.7,
     on_chunk: Optional[Callable] = None,
     chunk_size: int = 10,
     on_tool_call: Optional[Callable] = None,
@@ -163,7 +164,7 @@ def handle_tool_calls_stream(
     data = {
         "model": model,
         "messages": messages,
-        "temperature": 0.7,
+        "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": bool(on_chunk),
     }
@@ -240,6 +241,7 @@ def handle_tool_calls_non_stream(
     model: str,
     api_key: str,
     max_tokens: int = 2048,
+    temperature: float = 0.7,
 ) -> Dict[str, Any]:
     """
     非流式处理 tool_calls（简化版）
@@ -248,5 +250,5 @@ def handle_tool_calls_non_stream(
     """
     return handle_tool_calls_stream(
         tool_calls, messages, session, base_url, model, api_key,
-        max_tokens=max_tokens, on_chunk=None, chunk_size=10
+        max_tokens=max_tokens, temperature=temperature, on_chunk=None, chunk_size=10
     )

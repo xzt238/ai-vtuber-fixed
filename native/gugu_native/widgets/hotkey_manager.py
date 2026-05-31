@@ -62,8 +62,8 @@ class HotkeyManager(QObject):
         self._hotkeys = dict(DEFAULT_HOTKEYS)
 
         # 缓存路径（4层 dirname: widgets → gugu_native → native → project_root）
-        project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        self._config_path = os.path.join(project_dir, "app", "cache", "hotkeys.json")
+        from app.shared_config import PROJECT_DIR
+        self._config_path = os.path.join(PROJECT_DIR, "app", "cache", "hotkeys.json")
 
         # 加载保存的配置
         self._load_config()

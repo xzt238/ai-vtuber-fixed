@@ -1,11 +1,11 @@
-@echo off
+﻿@echo off
 title GuguGaga AI VTuber
 cd /d "%~dp0.."
 
 echo.
 echo ========================================
 echo    GuguGaga AI VTuber - Browser Mode
-echo    version: 1.11.1
+echo    version: 1.11.15
 echo ========================================
 echo.
 

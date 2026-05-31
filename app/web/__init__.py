@@ -95,6 +95,7 @@ import re
 import tempfile
 import uuid
 import mimetypes
+import copy
 from queue import Queue
 
 # 注册 .mjs / .wasm MIME 类型（Python 3.11 默认不识别 .mjs）
@@ -119,6 +120,12 @@ try:
     WEBSOCKET_AVAILABLE = True
 except ImportError:
     WEBSOCKET_AVAILABLE = False
+
+# 延迟导入：运行时按需使用，避免模块级循环依赖
+try:
+    from tts import TTSFactory
+except ImportError:
+    TTSFactory = None
 
 
 # =============================================================================
@@ -2228,8 +2235,7 @@ class WebSocketServer:
         if engine == 'edge':
             # Edge TTS 是无状态的,每次创建新实例即可
             try:
-                from tts import TTSFactory
-                tts_config = self.app.config.config.get("tts", {}).copy()
+                tts_config = copy.deepcopy(self.app.config.config.get("tts", {}))
                 tts_config['provider'] = 'edge'
                 # v1.7.5 修复: voice='default' 时从 config 读取实际语音名,而非传 'default' 导致 Invalid voice 错误
                 default_voice = self.app.config.config.get("tts", {}).get("edge", {}).get("voice", "zh-CN-XiaoxiaoNeural")
@@ -2268,9 +2274,8 @@ class WebSocketServer:
 
             # 缓存未命中：创建新引擎（仍在锁内，防止重复创建）
             try:
-                from tts import TTSFactory
 
-                tts_config = self.app.config.config.get("tts", {}).copy()
+                tts_config = copy.deepcopy(self.app.config.config.get("tts", {}))
                 tts_config['provider'] = 'gptsovits'
                 tts_config['gptsovits'] = {
                     'device': 'cuda',

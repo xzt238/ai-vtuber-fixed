@@ -1,25 +1,25 @@
 """
-GuguGaga AI-VTuber — 品牌资源生成器
+GuguGaga AI-VTuber �� Ʒ����Դ������
 
-生成:
-  - app.ico (多尺寸 ICO)
+����:
+  - app.ico (��ߴ� ICO)
   - app.png (256x256 PNG)
-  - splash.png (启动画面 600x300)
-  - tray_icon.png (系统托盘 32x32)
+  - splash.png (������� 600x300)
+  - tray_icon.png (ϵͳ���� 32x32)
 
-依赖: Pillow (PIL)
+����: Pillow (PIL)
 """
 
 import os
 import struct
 
-# 资源输出目录
+# ��Դ���Ŀ¼
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-RESOURCES_DIR = SCRIPT_DIR  # 就在 resources/ 下
+RESOURCES_DIR = SCRIPT_DIR  # ���� resources/ ��
 
 
 def create_app_icon_png():
-    """生成应用图标 PNG (256x256) — AI科技风格"""
+    """����Ӧ��ͼ�� PNG (256x256) �� AI�Ƽ����"""
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
@@ -30,18 +30,18 @@ def create_app_icon_png():
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # 背景 — 圆角矩形
+    # ���� �� Բ�Ǿ���
     margin = 8
     radius = 40
     draw.rounded_rectangle(
         [margin, margin, size - margin, size - margin],
         radius=radius,
-        fill=(30, 30, 46, 255),  # 深紫蓝底色
-        outline=(88, 166, 255, 255),  # 亮蓝描边
+        fill=(30, 30, 46, 255),  # ��������ɫ
+        outline=(88, 166, 255, 255),  # �������
         width=3
     )
 
-    # 中心六边形 — AI节点
+    # ���������� �� AI�ڵ�
     cx, cy = size // 2, size // 2 - 10
     hex_r = 60
     import math
@@ -54,17 +54,17 @@ def create_app_icon_png():
         ))
     draw.polygon(hex_points, fill=(45, 45, 70, 255), outline=(88, 166, 255, 255))
 
-    # 节点连线 — 神经网络
+    # �ڵ����� �� ������
     node_positions = [
-        (cx - 40, cy - 35),  # 左上
-        (cx + 40, cy - 35),  # 右上
-        (cx - 50, cy + 15),  # 左中
-        (cx + 50, cy + 15),  # 右中
-        (cx - 30, cy + 40),  # 左下
-        (cx + 30, cy + 40),  # 右下
-        (cx, cy - 50),       # 顶
+        (cx - 40, cy - 35),  # ����
+        (cx + 40, cy - 35),  # ����
+        (cx - 50, cy + 15),  # ����
+        (cx + 50, cy + 15),  # ����
+        (cx - 30, cy + 40),  # ����
+        (cx + 30, cy + 40),  # ����
+        (cx, cy - 50),       # ��
     ]
-    # 连线
+    # ����
     connections = [
         (0, 1), (0, 2), (0, 6), (1, 3), (1, 6),
         (2, 4), (3, 5), (2, 3), (4, 5)
@@ -72,7 +72,7 @@ def create_app_icon_png():
     for i, j in connections:
         draw.line([node_positions[i], node_positions[j]], fill=(88, 166, 255, 180), width=2)
 
-    # 节点圆点
+    # �ڵ�Բ��
     for pos in node_positions:
         draw.ellipse(
             [pos[0] - 5, pos[1] - 5, pos[0] + 5, pos[1] + 5],
@@ -80,14 +80,14 @@ def create_app_icon_png():
             outline=(200, 230, 255, 255)
         )
 
-    # 中心节点 — 大圆
+    # ���Ľڵ� �� ��Բ
     draw.ellipse(
         [cx - 10, cy - 10, cx + 10, cy + 10],
-        fill=(255, 200, 80, 255),  # 金色中心
+        fill=(255, 200, 80, 255),  # ��ɫ����
         outline=(255, 230, 150, 255)
     )
 
-    # 底部文字 "GG"
+    # �ײ����� "GG"
     try:
         font = ImageFont.truetype("arial.ttf", 42)
     except (IOError, OSError):
@@ -98,7 +98,7 @@ def create_app_icon_png():
 
 
 def create_splash_image():
-    """生成启动画面 (600x300)"""
+    """����������� (600x300)"""
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
@@ -108,14 +108,14 @@ def create_splash_image():
     img = Image.new('RGBA', (width, height), (18, 18, 30, 255))
     draw = ImageDraw.Draw(img)
 
-    # 渐变底色条
+    # �����ɫ��
     for x in range(width):
         r = int(30 + 20 * (x / width))
         g = int(30 + 30 * (x / width))
         b = int(50 + 50 * (x / width))
         draw.line([(x, 0), (x, height)], fill=(r, g, b, 255))
 
-    # 标题
+    # ����
     try:
         title_font = ImageFont.truetype("arial.ttf", 36)
         sub_font = ImageFont.truetype("arial.ttf", 16)
@@ -125,12 +125,12 @@ def create_splash_image():
 
     draw.text((width // 2, 100), "GuguGaga AI-VTuber",
               fill=(255, 255, 255, 255), font=title_font, anchor="mm")
-    draw.text((width // 2, 150), "v1.11.0 — Native Desktop",
+    draw.text((width // 2, 150), "v1.11.19 - Native Desktop",
               fill=(136, 204, 255, 255), font=sub_font, anchor="mm")
     draw.text((width // 2, 250), "Loading...",
               fill=(150, 150, 170, 255), font=sub_font, anchor="mm")
 
-    # 底部进度条背景
+    # �ײ�����������
     draw.rounded_rectangle(
         [100, 270, 500, 280],
         radius=5,
@@ -141,7 +141,7 @@ def create_splash_image():
 
 
 def create_tray_icon():
-    """生成系统托盘图标 (32x32)"""
+    """����ϵͳ����ͼ�� (32x32)"""
     try:
         from PIL import Image, ImageDraw
     except ImportError:
@@ -151,17 +151,17 @@ def create_tray_icon():
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # 简化版 — 圆形 + GG
+    # �򻯰� �� Բ�� + GG
     draw.ellipse([2, 2, 30, 30], fill=(30, 30, 46, 255), outline=(88, 166, 255, 255), width=2)
 
-    # 中心点
+    # ���ĵ�
     draw.ellipse([12, 12, 20, 20], fill=(255, 200, 80, 255))
 
     return img
 
 
 def save_ico(img, path):
-    """保存为 ICO (多尺寸)"""
+    """����Ϊ ICO (��ߴ�)"""
     from PIL import Image
     sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
     ico_images = []
@@ -169,35 +169,35 @@ def save_ico(img, path):
         resized = img.resize(s, Image.LANCZOS)
         ico_images.append(resized)
 
-    # ICO 保存
+    # ICO ����
     img.save(path, format='ICO', sizes=[(i.width, i.height) for i in ico_images])
     print(f"  Saved: {path}")
 
 
 def generate_all():
-    """生成所有资源"""
+    """����������Դ"""
     print("Generating brand resources...")
 
-    # 应用图标
+    # Ӧ��ͼ��
     app_icon = create_app_icon_png()
     if app_icon:
         save_ico(app_icon, os.path.join(RESOURCES_DIR, 'app.ico'))
         app_icon.save(os.path.join(RESOURCES_DIR, 'app.png'), format='PNG')
         print(f"  Saved: {os.path.join(RESOURCES_DIR, 'app.png')}")
 
-    # 启动画面
+    # �������
     splash = create_splash_image()
     if splash:
         splash.save(os.path.join(RESOURCES_DIR, 'splash.png'), format='PNG')
         print(f"  Saved: {os.path.join(RESOURCES_DIR, 'splash.png')}")
 
-    # 托盘图标
+    # ����ͼ��
     tray = create_tray_icon()
     if tray:
         tray.save(os.path.join(RESOURCES_DIR, 'tray_icon.png'), format='PNG')
         print(f"  Saved: {os.path.join(RESOURCES_DIR, 'tray_icon.png')}")
 
-    # 如果 Pillow 不可用，生成 SVG 回退
+    # ��� Pillow �����ã����� SVG ����
     if not app_icon:
         svg_path = os.path.join(RESOURCES_DIR, 'app.svg')
         with open(svg_path, 'w', encoding='utf-8') as f:
@@ -207,7 +207,7 @@ def generate_all():
     print("Done!")
 
 
-# SVG 回退 — 如果 Pillow 不可用
+# SVG ���� �� ��� Pillow ������
 APP_ICON_SVG = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">

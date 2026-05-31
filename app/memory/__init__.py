@@ -557,7 +557,7 @@ class VectorStore:
         self.metadatas = {}
         self._norms = {}
         
-        self._embedding_cache = LRUCache(200)
+        self._embedding_cache = LRUCache(1000)  # 从 200 扩到 1000，提高缓存命中率（~3MB 内存）
         self._search_cache = LRUCache(50)
         self.embedding_model = None
         self._model_loaded = False
@@ -840,7 +840,7 @@ class VectorStore:
         self.texts.clear()
         self.metadatas.clear()
         self._norms.clear()
-        self._embedding_cache = LRUCache(200)
+        self._embedding_cache = LRUCache(1000)  # 从 200 扩到 1000，提高缓存命中率（~3MB 内存）
         self._search_cache = LRUCache(50)
         if self._persist_file.exists():
             self._persist_file.unlink()

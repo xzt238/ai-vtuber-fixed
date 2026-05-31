@@ -7,7 +7,7 @@
 **GPT-SoVITS 声音克隆 · Live2D 虚拟形象 · 三层记忆 · Function Calling · 三种运行模式**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-v1.11.0-yellow.svg)](docs/VERSION.md)
+[![Version](https://img.shields.io/badge/version-v1.11.19-yellow.svg)](docs/VERSION.md)
 [![Python](https://img.shields.io/badge/python-3.11-yellow.svg)](https://www.python.org/downloads/release/python-3119/)
 [![Known Issues](https://img.shields.io/badge/known%20issues-15-orange.svg)](docs/KNOWN_ISSUES.md)
 

@@ -1,8 +1,8 @@
 """
-咕咕嘎嘎 AI-VTuber — 统一主题管理 v3.0
+咕咕嘎嘎 AI-VTuber — 统一主题管理 v4.0
 
 职责:
-1. 集中定义颜色常量（暗色/亮色两套方案）
+1. 集中定义颜色常量（AppColors dataclass）
 2. 生成全局 QSS 样式表
 3. 一键切换主题并通知所有页面
 4. 消除各页面散落的硬编码颜色
@@ -12,14 +12,42 @@
 8. 对话气泡 HTML 生成（微信级消息分组+条件头像+条件时间戳）
 9. SVG 内联头像（AI 机器人 + 用户轮廓）
 
+v4.0 变更:
+- 删除 LightColors 子类，主题数据由 ThemeDefinition 管理
+- 删除全局 _colors/_current_theme 变量，委托给 ThemeManager
+- 新增 apply_theme_by_id() / get_all_themes() / get_current_theme_id() 函数
+- AppColors 新增 from_definition() 工厂方法
+- get_user_avatar_svg() / get_ai_avatar_svg() 改为动态获取颜色
+
 参考: 微信 / QQ / Telegram / ChatGPT Desktop / Discord 暗色设计规范
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, Callable, List
+import os
+from dataclasses import dataclass, fields
+from typing import Callable, List
 
 from qfluentwidgets import setTheme, Theme, isDarkTheme, setThemeColor
 from PySide6.QtGui import QColor
+
+
+# 主题管理器（延迟初始化）
+_theme_manager: 'ThemeManager | None' = None
+
+
+def _ensure_manager():
+    """确保 ThemeManager 已初始化，未初始化时自动创建"""
+    global _theme_manager
+    if _theme_manager is None:
+        from gugu_native.themes import ThemeManager, ThemeRegistry
+        from gugu_native.themes.presets import register_all_presets
+        registry = ThemeRegistry()
+        register_all_presets(registry)
+        prefs_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            'app', 'cache', 'theme_preferences.json'
+        )
+        _theme_manager = ThemeManager.initialize(registry, prefs_path)
+    return _theme_manager
 
 
 # 主题变更回调列表 — 各页面注册后主题切换时自动通知
@@ -29,6 +57,9 @@ _theme_change_callbacks: List[Callable] = []
 def register_theme_callback(callback: Callable):
     """注册主题变更回调 — 页面在 __init__ 中调用"""
     _theme_change_callbacks.append(callback)
+    # 同时注册到 ThemeManager
+    manager = _ensure_manager()
+    manager.register_callback(callback)
 
 
 def unregister_theme_callback(callback: Callable):
@@ -36,6 +67,12 @@ def unregister_theme_callback(callback: Callable):
     try:
         _theme_change_callbacks.remove(callback)
     except ValueError:
+        pass
+    # 同时从 ThemeManager 反注册
+    try:
+        manager = _ensure_manager()
+        manager.unregister_callback(callback)
+    except Exception:
         pass
 
 
@@ -88,10 +125,14 @@ class AppColors:
     accent_gradient_start: str = "#5c7cfa"
     accent_gradient_end: str = "#4263eb"
     success: str = "#37b24d"
+    success_hover: str = "#2f9e44"
+    success_pressed: str = "#2b8a3e"
     success_bg: str = "#1a3a2a"
     warning: str = "#f59f00"
     warning_bg: str = "#3a331a"
     error: str = "#f03e3e"
+    error_hover: str = "#e03131"
+    error_pressed: str = "#c92a2a"
     error_bg: str = "#3a1a1a"
     info: str = "#4263eb"
     info_bg: str = "#1a2238"
@@ -133,304 +174,361 @@ class AppColors:
     # === 分割线 ===
     divider: str = "#2e2f48"
 
+    @classmethod
+    def from_definition(cls, definition) -> 'AppColors':
+        """从 ThemeDefinition 创建 AppColors 实例
 
-@dataclass
-class LightColors(AppColors):
-    """亮色方案"""
-    window_bg: str = "#f0f2f5"
-    sidebar_bg: str = "#e8eaed"
-    card_bg: str = "#ffffff"
-    card_bg_hover: str = "#f8f9fa"
-    card_border: str = "#e0e2e8"
-    card_border_hover: str = "#c8cad2"
+        Args:
+            definition: ThemeDefinition 实例
 
-    chat_bg: str = "#f0f2f5"
-    ai_bubble_bg: str = "#ffffff"
-    ai_bubble_border: str = "#dee2e6"
-    ai_bubble_accent: str = "#7c3aed"
-    user_bubble_bg: str = "#4263eb"
-    user_bubble_border: str = "#5c7cfa"
-    user_bubble_accent: str = "#5c7cfa"
-    user_text_color: str = "#ffffff"
-    system_msg_color: str = "#868e96"
-    skeleton_color: str = "#e9ecef"
-    skeleton_shimmer: str = "#f1f3f5"
-    # 对话分组（亮色）
-    chat_timestamp_bg: str = "#e9ecef"
-    chat_timestamp_border: str = "#dee2e6"
-    chat_typing_cursor_color: str = "#4263eb"
-
-    text_primary: str = "#1a1a2e"
-    text_secondary: str = "#555566"
-    text_muted: str = "#9a9aaa"
-    text_on_accent: str = "#ffffff"
-
-    input_bg: str = "#ffffff"
-    input_border: str = "#d0d2d8"
-    input_focus_border: str = "#4263eb"
-    input_focus_shadow: str = "rgba(66,99,235,0.15)"
-
-    log_bg: str = "#f8f9fa"
-    log_text: str = "#212529"
-    log_timestamp: str = "#868e96"
-
-    timestamp_color: str = "#868e96"
-    divider: str = "#e0e2e8"
-
-    shadow_sm: str = "rgba(0,0,0,0.06)"
-    shadow_md: str = "rgba(0,0,0,0.10)"
-    shadow_lg: str = "rgba(0,0,0,0.15)"
-    shadow_xl: str = "rgba(0,0,0,0.20)"
+        Returns:
+            AppColors 实例，未指定的字段使用默认值
+        """
+        kwargs = {}
+        for f in fields(cls):
+            value = definition.colors.get(f.name)
+            if value is not None:
+                # 处理 int 类型字段（如 chat_avatar_size）
+                if f.type == "int" or (hasattr(f, 'type') and 'int' in str(f.type)):
+                    try:
+                        kwargs[f.name] = int(value)
+                    except (ValueError, TypeError):
+                        pass
+                else:
+                    kwargs[f.name] = value
+            # 如果 definition 中没有该字段，使用 AppColors 的默认值
+        return cls(**kwargs)
 
 
-# === 全局单例 ===
-_colors: AppColors = AppColors()
-_current_theme: Theme = Theme.DARK
-
+# === 公共 API — 委托给 ThemeManager ===
 
 def get_colors() -> AppColors:
     """获取当前颜色方案"""
-    return _colors
+    manager = _ensure_manager()
+    return manager.get_colors()
 
 
 def is_dark() -> bool:
     """当前是否为暗色主题"""
-    return _current_theme == Theme.DARK
+    manager = _ensure_manager()
+    return manager.is_dark()
 
 
 def apply_theme(theme: Theme):
-    """应用主题"""
-    global _colors, _current_theme
+    """应用主题（兼容旧接口，内部映射为 theme_id）
 
-    _current_theme = theme
-    setTheme(theme)
+    Args:
+        theme: qfluentwidgets.Theme 枚举值
+    """
+    theme_id = "dark" if theme == Theme.DARK else "light"
+    apply_theme_by_id(theme_id)
 
-    if theme == Theme.DARK:
-        _colors = AppColors()
-    else:
-        _colors = LightColors()
 
-    # 设置 qfluentwidgets 主题色
-    setThemeColor(QColor(_colors.accent))
+def apply_theme_by_id(theme_id: str):
+    """通过主题 ID 应用主题 + 重新生成 QSS
 
-    # 通知所有注册的页面刷新主题
-    for callback in _theme_change_callbacks:
-        try:
-            callback()
-        except Exception:
-            pass
+    Args:
+        theme_id: 主题唯一标识，如 "dark", "ocean"
+    """
+    manager = _ensure_manager()
+    manager.apply(theme_id)
+    # v5.0: 切换主题后重新应用全局 QSS（圆角/间距/阴影/字体会变化）
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    if app:
+        app.setStyleSheet(build_global_qss_v5(manager.get_theme()))
+
+
+def get_all_themes() -> list:
+    """获取所有可用主题列表
+
+    Returns:
+        ThemeDefinition 实例列表
+    """
+    manager = _ensure_manager()
+    return manager.get_registry().list_all()
+
+
+def get_current_theme_id() -> str:
+    """获取当前主题 ID
+
+    Returns:
+        当前主题唯一标识，如 "dark"
+    """
+    manager = _ensure_manager()
+    return manager.get_current_id()
 
 
 def get_global_qss() -> str:
-    """生成全局 QSS 样式表（基于当前颜色方案）— v2.0 增强版"""
-    c = _colors
-    return f"""
-        /* === 全局字体与基础 === */
-        QWidget {{
-            font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
-        }}
+    """生成全局 QSS 样式表 — v5 多维度升级版
+    
+    基于当前主题的 AppTheme 自动调整颜色、圆角、间距、阴影、字体。
+    兼容旧 API：内部调用 build_global_qss_v5()。
+    """
+    return build_global_qss_v5()
 
-        /* === 对话区 — 更大圆角 + 无边框（内联样式优先，此处为兜底） === */
-        QTextEdit[objectName="chatDisplay"] {{
-            background-color: {c.chat_bg};
-            color: {c.text_primary};
+
+def build_global_qss_v5(theme=None) -> str:
+    """v5 多维度 QSS 生成器
+    
+    基于 AppTheme.to_qss_vars() 的变量字典，
+    使用 Python %(var)s 模板替换生成完整 QSS。
+    
+    Args:
+        theme: AppTheme 实例，None 时使用当前主题
+        
+    Returns:
+        完整的 QSS 样式表字符串
+    """
+    if theme is None:
+        from gugu_native.themes.manager import ThemeManager
+        manager = ThemeManager.get_instance()
+        if manager:
+            theme = manager.get_theme()
+    
+    if theme is None:
+        return get_global_qss.__wrapped__() if hasattr(get_global_qss, '__wrapped__') else ""
+    
+    v = theme.to_qss_vars()
+    
+    # 如果有缺失的颜色变量，用 safe fallback
+    v.setdefault('accent', '#4263eb')
+    v.setdefault('window_bg', '#1a1b2e')
+    v.setdefault('card_bg', '#232438')
+    v.setdefault('card_border', '#2e2f48')
+    v.setdefault('text_primary', '#e8e8f0')
+    v.setdefault('text_secondary', '#9a9ab0')
+    v.setdefault('text_muted', '#5c5c72')
+    v.setdefault('input_bg', '#1e1f34')
+    v.setdefault('input_border', '#2e2f48')
+    v.setdefault('input_focus_border', '#4263eb')
+    v.setdefault('divider', '#2e2f48')
+    
+    # 构建完整的 QSS
+    return _QSS_BASE_TEMPLATE % v
+
+
+# ============================================================
+# v5.0 QSS 基础模板（使用 %(var)s 占位符）
+# ============================================================
+
+_QSS_BASE_TEMPLATE = """\
+        /* === v5.0 多维度全局 QSS === */
+        * {
+            font-family: "%(font_family)s", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+        }
+
+        /* === 全局容器 — 统一背景色 === */
+        QWidget {
+            background-color: %(window_bg)s;
+            color: %(text_primary)s;
+        }
+        /* QLabel 默认透明背景，避免被 QWidget 的 background 覆盖后出现黑底 */
+        QLabel {
+            background-color: transparent;
+            color: %(text_primary)s;
+        }
+
+        /* === 对话区 === */
+        QTextEdit[objectName="chatDisplay"] {
+            background-color: %(chat_bg)s;
+            color: %(text_primary)s;
             border: none;
-            border-radius: 13px;
-            padding: 14px 16px;
-            selection-background-color: {c.accent};
+            border-radius: %(br_card)dpx;
+            padding: %(sp_card)dpx %(sp_global)dpx;
+            selection-background-color: %(accent)s;
             selection-color: white;
-        }}
+        }
 
-        /* === 卡片容器 — 避免全局 QWidget 样式污染 === */
+        /* === 卡片容器 === */
         QFrame[objectName="chatCard"],
         QFrame[objectName="inputCard"],
-        QFrame[objectName="ttsCard"] {{
+        QFrame[objectName="ttsCard"] {
             border: none;
-        }}
+        }
 
-        /* === 输入框 — 聚焦发光（排除对话区） === */
-        QLineEdit, QTextEdit:not([objectName="chatDisplay"]) {{
-            background-color: {c.input_bg};
-            color: {c.text_primary};
-            border: 1.5px solid {c.input_border};
-            border-radius: 8px;
+        /* === 输入框 === */
+        QLineEdit, QTextEdit:not([objectName="chatDisplay"]) {
+            background-color: %(input_bg)s;
+            color: %(text_primary)s;
+            border: 1.5px solid %(input_border)s;
+            border-radius: %(br_input)dpx;
             padding: 6px 12px;
-        }}
-        QLineEdit:focus, QTextEdit:not([objectName="chatDisplay"]):focus {{
-            border-color: {c.input_focus_border};
-        }}
-        QLineEdit[echoMode="2"] {{
+        }
+        QLineEdit:focus, QTextEdit:not([objectName="chatDisplay"]):focus {
+            border-color: %(input_focus_border)s;
+        }
+        QLineEdit[echoMode="2"] {
             letter-spacing: 3px;
-        }}
+        }
 
-        /* === 分组框 — 柔和阴影 === */
-        QGroupBox {{
-            background-color: {c.card_bg};
-            color: {c.text_primary};
-            border: 1px solid {c.card_border};
-            border-radius: 10px;
+        /* === 分组框 === */
+        QGroupBox {
+            background-color: %(card_bg)s;
+            color: %(text_primary)s;
+            border: 1px solid %(card_border)s;
+            border-radius: %(br_card)dpx;
             margin-top: 14px;
             padding-top: 18px;
-        }}
-        QGroupBox::title {{
-            color: {c.text_primary};
+        }
+        QGroupBox::title {
+            color: %(text_primary)s;
             subcontrol-origin: margin;
             left: 14px;
             padding: 0 8px;
-            font-weight: 500;
-        }}
+            font-weight: bold;
+        }
 
-        /* === 标签页 — 圆润设计 === */
-        QTabWidget::pane {{
-            background-color: {c.card_bg};
-            border: 1px solid {c.card_border};
-            border-radius: 8px;
+        /* === 标签页 === */
+        QTabWidget::pane {
+            background-color: %(card_bg)s;
+            border: 1px solid %(card_border)s;
+            border-radius: %(br_widget)dpx;
             top: -1px;
-        }}
-        QTabBar::tab {{
+        }
+        QTabBar::tab {
             background-color: transparent;
-            color: {c.text_muted};
+            color: %(text_muted)s;
             border: none;
             border-bottom: 2px solid transparent;
             padding: 8px 20px;
             margin-right: 4px;
-            font-weight: 500;
-        }}
-        QTabBar::tab:hover {{
-            color: {c.text_secondary};
-            border-bottom-color: {c.card_border};
-        }}
-        QTabBar::tab:selected {{
-            color: {c.accent};
-            border-bottom-color: {c.accent};
-        }}
+            font-weight: bold;
+        }
+        QTabBar::tab:hover {
+            color: %(text_secondary)s;
+            border-bottom-color: %(card_border)s;
+        }
+        QTabBar::tab:selected {
+            color: %(accent)s;
+            border-bottom-color: %(accent)s;
+        }
 
-        /* === 列表 — 更柔和的交互 === */
-        QListWidget, QTreeWidget {{
-            background-color: {c.input_bg};
-            color: {c.text_primary};
-            border: 1px solid {c.card_border};
-            border-radius: 8px;
+        /* === 列表 === */
+        QListWidget, QTreeWidget {
+            background-color: %(input_bg)s;
+            color: %(text_primary)s;
+            border: 1px solid %(card_border)s;
+            border-radius: %(br_widget)dpx;
             outline: none;
             padding: 2px;
-        }}
-        QListWidget::item, QTreeWidget::item {{
-            border-radius: 6px;
+        }
+        QListWidget::item, QTreeWidget::item {
+            border-radius: %(br_widget)dpx;
             padding: 4px 8px;
             margin: 1px 2px;
-        }}
-        QListWidget::item:selected, QTreeWidget::item:selected {{
-            background-color: {c.accent};
+        }
+        QListWidget::item:selected, QTreeWidget::item:selected {
+            background-color: %(accent)s;
             color: white;
-        }}
-        QListWidget::item:hover:!selected, QTreeWidget::item:hover:!selected {{
-            background-color: {c.card_bg_hover};
-        }}
+        }
+        QListWidget::item:hover:!selected, QTreeWidget::item:hover:!selected {
+            background-color: %(card_bg_hover)s;
+        }
 
-        /* === 进度条 — 圆润渐变 === */
-        QProgressBar {{
-            background-color: {c.input_bg};
+        /* === 进度条 === */
+        QProgressBar {
+            background-color: %(input_bg)s;
             border: none;
-            border-radius: 6px;
+            border-radius: %(br_widget)dpx;
             text-align: center;
-            color: {c.text_primary};
+            color: transparent;
             height: 8px;
-            font-size: 0px;
-        }}
-        QProgressBar::chunk {{
+        }
+        QProgressBar::chunk {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                stop:0 {c.progress_start}, stop:1 {c.progress_end});
-            border-radius: 6px;
-        }}
+                stop:0 %(progress_start)s, stop:1 %(progress_end)s);
+            border-radius: %(br_widget)dpx;
+        }
 
-        /* === 右键菜单 — 圆润 + 阴影感 === */
-        QMenu {{
-            background-color: {c.card_bg};
-            color: {c.text_primary};
-            border: 1px solid {c.card_border};
-            border-radius: 10px;
+        /* === 右键菜单 === */
+        QMenu {
+            background-color: %(card_bg)s;
+            color: %(text_primary)s;
+            border: 1px solid %(card_border)s;
+            border-radius: %(br_menu)dpx;
             padding: 6px;
-        }}
-        QMenu::item {{
-            border-radius: 6px;
+        }
+        QMenu::item {
+            border-radius: %(br_widget)dpx;
             padding: 6px 24px;
             margin: 1px 4px;
-        }}
-        QMenu::item:selected {{
-            background-color: {c.accent};
+        }
+        QMenu::item:selected {
+            background-color: %(accent)s;
             color: white;
-        }}
-        QMenu::separator {{
+        }
+        QMenu::separator {
             height: 1px;
-            background-color: {c.divider};
+            background-color: %(divider)s;
             margin: 4px 12px;
-        }}
+        }
 
-        /* === 滚动条 — 极简 === */
-        QScrollBar:vertical {{
+        /* === 滚动条 === */
+        QScrollBar:vertical {
             background-color: transparent;
             width: 6px;
             margin: 4px 2px;
-        }}
-        QScrollBar::handle:vertical {{
-            background-color: {c.text_muted};
+        }
+        QScrollBar::handle:vertical {
+            background-color: %(text_muted)s;
             border-radius: 3px;
             min-height: 30px;
-        }}
-        QScrollBar::handle:vertical:hover {{
-            background-color: {c.text_secondary};
-        }}
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        }
+        QScrollBar::handle:vertical:hover {
+            background-color: %(text_secondary)s;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
             height: 0;
-        }}
-        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+        }
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
             background: none;
-        }}
-        QScrollBar:horizontal {{
+        }
+        QScrollBar:horizontal {
             background-color: transparent;
             height: 6px;
             margin: 2px 4px;
-        }}
-        QScrollBar::handle:horizontal {{
-            background-color: {c.text_muted};
+        }
+        QScrollBar::handle:horizontal {
+            background-color: %(text_muted)s;
             border-radius: 3px;
             min-width: 30px;
-        }}
-        QScrollBar::handle:horizontal:hover {{
-            background-color: {c.text_secondary};
-        }}
-        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
+        }
+        QScrollBar::handle:horizontal:hover {
+            background-color: %(text_secondary)s;
+        }
+        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
             background: none;
-        }}
+        }
 
         /* === 工具提示 === */
-        QToolTip {{
-            background-color: {c.card_bg};
-            color: {c.text_primary};
-            border: 1px solid {c.card_border};
-            border-radius: 6px;
+        QToolTip {
+            background-color: %(card_bg)s;
+            color: %(text_primary)s;
+            border: 1px solid %(card_border)s;
+            border-radius: %(br_widget)dpx;
             padding: 6px 10px;
             font-size: 12px;
-        }}
+        }
 
         /* === Splitter === */
-        QSplitter::handle {{
-            background-color: {c.divider};
-        }}
-        QSplitter::handle:horizontal {{
+        QSplitter::handle {
+            background-color: %(divider)s;
+        }
+        QSplitter::handle:horizontal {
             width: 1px;
             margin: 8px 4px;
-        }}
-        QSplitter::handle:vertical {{
+        }
+        QSplitter::handle:vertical {
             height: 1px;
             margin: 4px 8px;
-        }}
-    """
+        }
+"""
 
 
 def get_skeleton_css() -> str:
     """骨架屏动画 CSS（用于 QTextEdit HTML 内嵌）"""
-    c = _colors
+    c = get_colors()
     return f"""
         @keyframes skeletonShimmer {{
             0% {{ background-position: -200px 0; }}
@@ -458,7 +556,7 @@ def get_chat_bubble_css() -> str:
       font-*, text-align, vertical-align, width/height
     - 气泡定位用 <div align="left/right"> + margin 控制
     """
-    c = _colors
+    c = get_colors()
     return f"""
         .ai-bubble {{
             background-color: {c.ai_bubble_bg};
@@ -494,8 +592,8 @@ def get_chat_bubble_css() -> str:
 
 
 def get_ai_avatar_svg(size: int = 36) -> str:
-    """生成 AI 头像 — 实心紫色圆 + 白色文字 'AI'（QTextEdit兼容，不用qlineargradient）"""
-    c = _colors
+    """生成 AI 头像 — 实心圆 + 白色文字 'AI'（QTextEdit兼容，不用qlineargradient）"""
+    c = get_colors()
     font_size = max(int(size * 0.38), 10)
     return (
         f'<div style="width:{size}px;height:{size}px;border-radius:50%;'
@@ -506,11 +604,12 @@ def get_ai_avatar_svg(size: int = 36) -> str:
 
 
 def get_user_avatar_svg(size: int = 36) -> str:
-    """生成用户头像 — 实心蓝色圆 + 白色文字 'Me'（QTextEdit兼容，不用qlineargradient）"""
+    """生成用户头像 — 实心圆 + 白色文字 'Me'（QTextEdit兼容，动态获取颜色）"""
+    c = get_colors()
     font_size = max(int(size * 0.35), 10)
     return (
         f'<div style="width:{size}px;height:{size}px;border-radius:50%;'
-        f'background-color:#4263eb;'
+        f'background-color:{c.user_bubble_bg};'
         f'color:white;text-align:center;'
         f'font-size:{font_size}px;font-weight:bold;line-height:{size}px;">Me</div>'
     )
@@ -525,7 +624,7 @@ def get_avatar_placeholder(size: int = 36) -> str:
 
 def get_timestamp_html(ts_text: str) -> str:
     """生成居中胶囊时间标签 HTML（微信风格 — 仅在时间间隔>3分钟时调用）"""
-    c = _colors
+    c = get_colors()
     return (
         f'<div style="margin:12px 0 8px 0;text-align:center;">'
         f'<span style="font-size:12px;color:{c.timestamp_color};'
@@ -538,7 +637,7 @@ def get_timestamp_html(ts_text: str) -> str:
 
 def get_system_msg_html(text: str) -> str:
     """生成系统消息 HTML（居中胶囊样式，替代旧版纯文字）"""
-    c = _colors
+    c = get_colors()
     escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     return (
         f'<div style="margin:8px 0;text-align:center;">'
@@ -578,7 +677,7 @@ def get_web_theme_vars() -> dict:
 
     返回 CSS 变量名到颜色值的映射，与 chat_web_display.html 中的 CSS 变量对应。
     """
-    c = _colors
+    c = get_colors()
     return {
         "bg": c.chat_bg,
         "text-primary": c.text_primary,

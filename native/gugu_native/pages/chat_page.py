@@ -28,7 +28,6 @@ v1.9.86: 完全重构
 
 import os
 import shutil
-import sys
 import json
 import time
 import random  # 优化 #5: 移到顶层，避免 _lipsync_tick 每 50ms 重复导入
@@ -40,7 +39,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QComboBox,
     QGroupBox, QApplication, QFrame, QSplitter
 )
-from PySide6.QtCore import Qt, Signal, Slot, QThread, QMutex, Q_ARG, QTimer
+from PySide6.QtCore import Qt, Signal, Slot, QThread, Q_ARG, QTimer
 from PySide6.QtGui import QTextCursor, QFont, QDragEnterEvent, QDropEvent
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtCore import QUrl
@@ -51,15 +50,18 @@ from qfluentwidgets import (
 )
 from PySide6.QtWidgets import QFileDialog
 
-# 项目根目录 — KI-005: 先本地计算用于 sys.path，再从 shared_config 统一引用
-_LOCAL_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-if _LOCAL_PROJECT_DIR not in sys.path:
-    sys.path.insert(0, _LOCAL_PROJECT_DIR)
-
-from app.shared_config import PROJECT_DIR  # KI-005: 统一引用
+from app.shared_config import PROJECT_DIR
 
 # TTS 偏好文件路径
 _TTS_PREFS_FILE = os.path.join(PROJECT_DIR, "app", "cache", "tts_preferences.json")
+
+# hex 颜色 → rgba() 转换工具（QSS 不支持 8位 hex 如 #rrggbbaa）
+def _hex_to_rgba(hex_color: str, alpha: float) -> str:
+    """将 hex 颜色转为 rgba() 格式，如 #7c3aed + 0.13 → rgba(124,58,237,0.13)"""
+    h = hex_color.lstrip('#')
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha:.2f})"
+
 
 from gugu_native.widgets.live2d_widget import Live2DWidget
 from gugu_native.widgets.chat_web_display import ChatWebDisplay
@@ -68,6 +70,9 @@ from gugu_native.widgets.session_manager import SessionManager, ChatSession
 from gugu_native.widgets.message_search import MessageSearchBar
 from gugu_native.widgets.animation_controller import AnimationController
 
+# 主题回调注册
+from gugu_native.theme import register_theme_callback
+
 # VRM 3D 模型支持（可选依赖，优雅降级）
 try:
     from gugu_native.widgets.vrm_widget import VRMWidget
@@ -75,284 +80,16 @@ except ImportError:
     VRMWidget = None
 
 
-class StreamChatWorker(QThread):
-    """流式对话线程 — 调用 backend.llm.stream_chat() 并逐 chunk 更新 UI
-
-    支持两种 TTS 模式：
-    - streaming_tts=True: 流式分句，检测到句子结束立即发出 sentence_ready 信号
-    - streaming_tts=False: 整段合成，等待完整回复后一次性合成 TTS
-    """
-    chunk_received = Signal(str)      # 每个文本片段
-    sentence_ready = Signal(str)      # 流式模式：检测到完整句子
-    finished_stream = Signal(dict)    # 完整结果
-    error = Signal(str)               # 错误
-    tool_call_status = Signal(str)    # FC 工具调用状态提示（如"🌤 正在查询天气…"）
-
-    # 句子结束标点
-    _SENTENCE_ENDS = set('。！？.!?')
-
-    def __init__(self, backend, text, history, streaming_tts=False):
-        super().__init__()
-        self.backend = backend
-        self.text = text
-        self.history = history
-        self.streaming_tts = streaming_tts
-        self._stop_requested = False
-        self._mutex = QMutex()
-        self._sentence_buffer = ""  # 流式模式：句子缓冲区
-
-    def stop_stream(self):
-        """请求停止流式对话"""
-        self._mutex.lock()
-        self._stop_requested = True
-        self._mutex.unlock()
-
-    def is_stop_requested(self):
-        self._mutex.lock()
-        val = self._stop_requested
-        self._mutex.unlock()
-        return val
-
-    def _extract_sentences(self, chunk_text: str):
-        """流式模式：从 chunk 中提取完整句子（线程安全）"""
-        # KI-011 FIX: 使用互斥锁保护 buffer 操作
-        self._mutex.lock()
-        try:
-            self._sentence_buffer += chunk_text
-            sentences = []
-            i = 0
-            while i < len(self._sentence_buffer):
-                if self._sentence_buffer[i] in self._SENTENCE_ENDS:
-                    # 找到句子结束点
-                    end = i + 1
-                    # 包含连续的结束标点（如 ！！！）
-                    while end < len(self._sentence_buffer) and self._sentence_buffer[end] in self._SENTENCE_ENDS:
-                        end += 1
-                    sentence = self._sentence_buffer[:end].strip()
-                    if sentence:
-                        sentences.append(sentence)
-                    self._sentence_buffer = self._sentence_buffer[end:]
-                    i = 0  # 重置索引（buffer 已截断）
-                else:
-                    i += 1
-            return sentences
-        finally:
-            self._mutex.unlock()
-
-    def _get_and_clear_remaining_buffer(self):
-        """获取并清空缓冲区中剩余的未完结文本（线程安全）"""
-        self._mutex.lock()
-        try:
-            remaining = self._sentence_buffer.strip()
-            self._sentence_buffer = ""
-            return remaining
-        finally:
-            self._mutex.unlock()
-
-    def run(self):
-        try:
-            # 获取记忆上下文
-            relevant_memories = self.backend.memory.search(self.text, top_k=3)
-            context = ""
-            if relevant_memories:
-                context = "\n\n相关记忆:\n" + "\n".join(
-                    [m.get("content") or m.get("text", "") for m in relevant_memories]
-                )
-
-            full_prompt = self.text
-            if context:
-                full_prompt = f"用户问题: {self.text}{context}"
-
-            # 流式回调 — 在工作线程中触发信号
-            def on_chunk(chunk_text: str):
-                if self.is_stop_requested():
-                    return
-                self.chunk_received.emit(chunk_text)
-                # 流式分句 TTS：检测句子结束
-                if self.streaming_tts and chunk_text:
-                    sentences = self._extract_sentences(chunk_text)
-                    for s in sentences:
-                        self.sentence_ready.emit(s)
-
-            # FC 工具调用状态回调 — 通知 UI 显示工具调用提示
-            def on_tool_call(tool_name: str, display_text: str, tool_args: dict):
-                self.tool_call_status.emit(display_text)
-
-            # 调用 LLM 的 stream_chat
-            result = self.backend.llm.stream_chat(
-                full_prompt,
-                list(self.history),
-                callback=on_chunk,
-                on_tool_call=on_tool_call
-            )
-
-            # 处理结果
-            reply = result.get("text", "")
-            action = result.get("action")
-            stream_error = result.get("_stream_error")
-
-            # v14 FIX: LLM 返回空文本时自动重试一次
-            if not reply and not stream_error:
-                print("[ChatPage] LLM 返回空回复，自动重试一次...")
-                # 重试时清空之前的累积文本
-                result = self.backend.llm.stream_chat(
-                    full_prompt,
-                    list(self.history),
-                    callback=on_chunk,
-                    on_tool_call=on_tool_call
-                )
-                reply = result.get("text", "")
-                action = result.get("action")
-                stream_error = result.get("_stream_error")
-
-            # LLM 返回空文本 + 有流式错误 → 给用户明确提示
-            if not reply and stream_error:
-                reply = f"LLM 请求失败: {stream_error}"
-            elif not reply:
-                reply = "（LLM 未返回内容）"
-
-            if action and isinstance(action, dict) and action.get("type") == "execute":
-                cmd = action.get("command", "")
-                exec_result = self.backend.executor.execute(cmd)
-                if exec_result["success"]:
-                    output = exec_result.get("stdout", "") or exec_result.get("stderr", "")
-                    reply = f"命令执行完成！\n{output}"
-                else:
-                    reply = f"命令执行失败: {exec_result.get('error', '未知错误')}"
-
-            if "BASH:" in reply or "READ:" in reply or "WRITE:" in reply or "EDIT:" in reply:
-                tool_result = self.backend._handle_local_tool(reply)
-                if tool_result:
-                    reply = f"{reply}\n\n本地工具结果:\n{tool_result}"
-
-            # 记录交互
-            self.backend.record_interaction(self.text, reply)
-
-            # 流式模式：处理缓冲区中剩余的未完结文本
-            if self.streaming_tts:
-                remaining = self._get_and_clear_remaining_buffer()
-                if remaining:
-                    self.sentence_ready.emit(remaining)
-
-            # TTS 合成（整段模式在此时合成；流式模式已在 sentence_ready 中逐句合成）
-            audio_path = None
-            if not self.streaming_tts:
-                try:
-                    audio_path = self.backend.speak(reply)
-                except Exception as e:
-                    print(f"[ChatPage] TTS 合成失败: {e}")
-
-            self.finished_stream.emit({
-                "text": reply,
-                "audio_path": audio_path
-            })
-
-        except Exception as e:
-            if not self.is_stop_requested():
-                self.error.emit(str(e))
+from gugu_native.workers.chat_workers import StreamChatWorker, TTSWorker, ASRWorker
+from gugu_native.workers.vision_workers import OCRWorker, VisionWorker
 
 
-class TTSWorker(QThread):
-    """TTS 合成线程 — 在后台线程调用 backend.speak()，避免阻塞 UI
-
-    流式 TTS 和主动说话都通过此 Worker 合成音频，
-    合成完成后通过 audio_ready 信号将音频路径传回主线程播放。
-    """
-    audio_ready = Signal(str)   # 合成完成的音频文件路径
-    error = Signal(str)         # 合成失败信息
-
-    def __init__(self, backend, text, parent=None):
-        super().__init__(parent)
-        self.backend = backend
-        self.text = text
-
-    def run(self):
-        try:
-            audio_path = self.backend.speak(self.text)
-            if audio_path and os.path.exists(audio_path):
-                self.audio_ready.emit(audio_path)
-        except Exception as e:
-            self.error.emit(str(e))
-
-
-class ASRWorker(QThread):
-    """ASR 识别线程 — 录音结束后调用 backend.asr 识别"""
-    finished = Signal(str)  # 识别文本
-    error = Signal(str)
-
-    def __init__(self, backend, audio_path):
-        super().__init__()
-        self.backend = backend
-        self.audio_path = audio_path
-
-    def run(self):
-        try:
-            text = self.backend.asr.recognize(self.audio_path)
-            self.finished.emit(text or "")
-        except Exception as e:
-            self.error.emit(str(e))
-
-
-class _OCRWorker(QThread):
-    """OCR 识别线程 — 截图后调用 backend.vision 识别文字"""
-    finished = Signal(str)  # OCR 文本
-    error = Signal(str)
-
-    def __init__(self, backend, image_path):
-        super().__init__()
-        self.backend = backend
-        self.image_path = image_path
-
-    def run(self):
-        try:
-            if hasattr(self.backend, 'vision'):
-                vision = self.backend.vision
-                text = vision.recognize_text(self.image_path)
-                self.finished.emit(text or "")
-            else:
-                self.error.emit("视觉模块未初始化")
-        except Exception as e:
-            self.error.emit(str(e))
-
-
-class _VisionWorker(QThread):
-    """KI-014 FIX: 异步视觉理解工作线程，避免阻塞主线程"""
-    result_ready = Signal(str)   # 处理后的用户文本
-    error_occurred = Signal(str)
-
-    def __init__(self, backend, image_path, user_text):
-        super().__init__()
-        self.backend = backend
-        self.image_path = image_path
-        self.user_text = user_text
-
-    def run(self):
-        try:
-            if not self.user_text.strip():
-                # 无用户文本 → 纯 OCR
-                if hasattr(self.backend, 'vision'):
-                    vision = self.backend.vision
-                    ocr_result = vision.recognize_text(self.image_path)
-                    if ocr_result:
-                        self.result_ready.emit(
-                            f"请根据以下OCR识别结果回答：\n{ocr_result}"
-                        )
-                        return
-                self.result_ready.emit(self.user_text)
-            else:
-                # 有用户文本 → 视觉理解
-                if hasattr(self.backend, 'vision'):
-                    vision = self.backend.vision
-                    description = vision.understand(self.image_path, self.user_text)
-                    if description:
-                        self.result_ready.emit(
-                            f"[用户上传了一张图片，AI描述: {description}]\n用户问题: {self.user_text}"
-                        )
-                        return
-                self.result_ready.emit(self.user_text)
-        except Exception as e:
-            self.error_occurred.emit(str(e))
-
+# ============================================================================
+# ChatPage — 对话页面主控件
+# ============================================================================
+# ============================================================================
+# ChatPage — 对话页面主控件
+# ============================================================================
 
 class ChatPage(QWidget):
     """对话页面 v2.0 — 完全重构版"""
@@ -390,6 +127,8 @@ class ChatPage(QWidget):
         self._init_ui()
         self._load_chat_history()
         self.setAcceptDrops(True)  # 启用拖拽
+        # 注册主题变更回调
+        register_theme_callback(self.refresh_theme)
 
     def _init_ui(self):
         """初始化 UI — v2.0 完全重构"""
@@ -414,14 +153,15 @@ class ChatPage(QWidget):
         self.live2d_widget = None  # 将在 _lazy_init_live2d() 中创建
         self._vrm_widget = None    # VRM 3D 模型 widget（延迟创建）
         self._current_model_type = "live2d"  # "live2d" | "vrm"
-        self._live2d_placeholder = QLabel("🐱 正在加载 Live2D...")
+        self._live2d_placeholder = QLabel("⏳ 正在加载 Live2D...")
         self._live2d_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._live2d_placeholder.setStyleSheet("""
-            QLabel {
-                color: rgba(255,255,255,0.4);
-                font-size: 16px;
+        self._live2d_placeholder.setStyleSheet(f"""
+            QLabel {{
+                color: {c.text_muted};
+                font-size: 14px;
                 background: transparent;
-            }
+                padding: 20px;
+            }}
         """)
         self._live2d_placeholder.setMinimumSize(380, 480)
         # ★ 模型类型切换栏（Live2D / VRM 3D）
@@ -433,31 +173,72 @@ class ChatPage(QWidget):
         self._btn_live2d = QPushButton("🐱 Live2D")
         self._btn_live2d.setCheckable(True)
         self._btn_live2d.setChecked(True)
-        self._btn_live2d.setStyleSheet("""
-            QPushButton { background: #4263eb; color: #fff; border: none; 
-                border-radius: 4px; padding: 4px 12px; font-size: 12px; font-weight: bold; }
-            QPushButton:checked { background: #4263eb; color: #fff; }
-            QPushButton:!checked { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
-            QPushButton:hover { background: #5c7cfa; }
+        self._btn_live2d.setStyleSheet(f"""
+            QPushButton {{ background: {c.accent}; color: {c.text_on_accent}; border: none; 
+                border-radius: 4px; padding: 4px 12px; font-size: 12px; font-weight: bold; }}
+            QPushButton:checked {{ background: {c.accent}; color: {c.text_on_accent}; }}
+            QPushButton:!checked {{ background: {c.card_bg}; color: {c.text_muted}; }}
+            QPushButton:hover {{ background: {c.accent_hover}; }}
         """)
         self._btn_live2d.clicked.connect(lambda: self.switch_model_type("live2d"))
         
         self._btn_vrm = QPushButton("🧊 VRM 3D")
         self._btn_vrm.setCheckable(True)
-        self._btn_vrm.setStyleSheet("""
-            QPushButton { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); border: none;
-                border-radius: 4px; padding: 4px 12px; font-size: 12px; }
-            QPushButton:checked { background: #7c3aed; color: #fff; font-weight: bold; }
-            QPushButton:!checked { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
-            QPushButton:hover { background: rgba(255,255,255,0.2); }
+        self._btn_vrm.setStyleSheet(f"""
+            QPushButton {{ background: {c.card_bg}; color: {c.text_muted}; border: none;
+                border-radius: 4px; padding: 4px 12px; font-size: 12px; }}
+            QPushButton:checked {{ background: {c.ai_bubble_accent}; color: {c.text_on_accent}; font-weight: bold; }}
+            QPushButton:!checked {{ background: {c.card_bg}; color: {c.text_muted}; }}
+            QPushButton:hover {{ background: {c.card_bg_hover}; }}
         """)
         self._btn_vrm.clicked.connect(lambda: self.switch_model_type("vrm"))
         
         toggle_layout.addWidget(self._btn_live2d)
         toggle_layout.addWidget(self._btn_vrm)
+        
+        # 竖分隔线
+        sep = QFrame()
+        sep.setFixedWidth(1)
+        sep.setStyleSheet(f"background-color: {c.card_border};")
+        toggle_layout.addWidget(sep)
+        
+        # ★ 模型导入按钮（合并到同一行）
+        btn_vrm = QPushButton("📁 加载VRM")
+        _vrm_bg = _hex_to_rgba(c.ai_bubble_accent, 0.13)
+        _vrm_border = _hex_to_rgba(c.ai_bubble_accent, 0.27)
+        btn_vrm.setStyleSheet(f"""
+            QPushButton {{ background: {_vrm_bg}; color: {c.text_secondary};
+                border: 1px solid {_vrm_border}; border-radius: 3px;
+                padding: 2px 8px; font-size: 11px; }}
+            QPushButton:hover {{ background: {_vrm_border}; }}
+        """)
+        btn_vrm.clicked.connect(self._import_vrm_model)
+        toggle_layout.addWidget(btn_vrm)
+
+        btn_l2d = QPushButton("📁 加载Live2D")
+        _l2d_bg = _hex_to_rgba(c.accent, 0.13)
+        _l2d_border = _hex_to_rgba(c.accent, 0.27)
+        btn_l2d.setStyleSheet(f"""
+            QPushButton {{ background: {_l2d_bg}; color: {c.text_secondary};
+                border: 1px solid {_l2d_border}; border-radius: 3px;
+                padding: 2px 8px; font-size: 11px; }}
+            QPushButton:hover {{ background: {_l2d_border}; }}
+        """)
+        btn_l2d.clicked.connect(self._import_live2d_model)
+        toggle_layout.addWidget(btn_l2d)
+        
         toggle_layout.addStretch()
-        self._model_toggle_bar.setFixedHeight(32)
-        self._model_toggle_bar.hide()  # VRM 创建完成前隐藏
+
+        # 桌面宠物按钮
+        self.pet_btn = ToolButton(FluentIcon.HEART)
+        self.pet_btn.setFixedSize(26, 26)
+        self.pet_btn.setToolTip("桌面宠物")
+        self.pet_btn.clicked.connect(self._toggle_pet)
+        toggle_layout.addWidget(self.pet_btn)
+        
+        self._model_toggle_bar.setFixedHeight(34)
+        # 默认可见（导入按钮+宠物按钮始终可用），VRM 切换按钮按需显示
+        self._btn_vrm.hide()
         self._live2d_layout.addWidget(self._model_toggle_bar)
 
         # ★ VRM 变体切换栏（AU / cow / jacket / swim）
@@ -466,15 +247,15 @@ class ChatPage(QWidget):
         variant_layout.setContentsMargins(4, 1, 4, 1)
         variant_layout.setSpacing(3)
         self._btn_vrm_variants = {}
-        for name, label in [("default", "AU"), ("cow", "🐄"), ("jacket", "🧥"), ("swim", "🏊")]:
+        for name, label in [("default", "默认"), ("cow", "🐄 奶牛"), ("jacket", "🧥 外套"), ("swim", "🏊 泳装")]:
             btn = QPushButton(label)
             btn.setCheckable(True)
-            btn.setStyleSheet("""
-                QPushButton { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6);
-                    border: 1px solid rgba(255,255,255,0.1); border-radius: 3px;
-                    padding: 2px 8px; font-size: 11px; }
-                QPushButton:checked { background: #7c3aed; color: #fff; border-color: #7c3aed; font-weight: bold; }
-                QPushButton:hover { background: rgba(255,255,255,0.15); }
+            btn.setStyleSheet(f"""
+                QPushButton {{ background: {c.card_bg}; color: {c.text_muted};
+                    border: 1px solid {c.card_border}; border-radius: 3px;
+                    padding: 2px 8px; font-size: 11px; }}
+                QPushButton:checked {{ background: {c.ai_bubble_accent}; color: {c.text_on_accent}; border-color: {c.ai_bubble_accent}; font-weight: bold; }}
+                QPushButton:hover {{ background: {c.card_bg_hover}; }}
             """)
             btn.clicked.connect(lambda checked, n=name: self._switch_vrm_variant(n))
             variant_layout.addWidget(btn)
@@ -486,34 +267,6 @@ class ChatPage(QWidget):
         self._vrm_variant_bar.setFixedHeight(26)
         self._vrm_variant_bar.hide()
         self._live2d_layout.addWidget(self._vrm_variant_bar)
-
-        # ★ 模型导入栏（加载VRM / 加载Live2D）
-        self._model_import_bar = QWidget()
-        import_layout = QHBoxLayout(self._model_import_bar)
-        import_layout.setContentsMargins(4, 1, 4, 1)
-        import_layout.setSpacing(3)
-        btn_vrm = QPushButton("📁 加载VRM模型")
-        btn_vrm.setStyleSheet("""
-            QPushButton { background: rgba(124,58,237,0.15); color: rgba(255,255,255,0.7);
-                border: 1px solid rgba(124,58,237,0.3); border-radius: 3px;
-                padding: 2px 10px; font-size: 11px; }
-            QPushButton:hover { background: rgba(124,58,237,0.3); }
-        """)
-        btn_vrm.clicked.connect(self._import_vrm_model)
-        import_layout.addWidget(btn_vrm)
-
-        btn_l2d = QPushButton("📁 加载Live2D模型")
-        btn_l2d.setStyleSheet("""
-            QPushButton { background: rgba(59,130,246,0.15); color: rgba(255,255,255,0.7);
-                border: 1px solid rgba(59,130,246,0.3); border-radius: 3px;
-                padding: 2px 10px; font-size: 11px; }
-            QPushButton:hover { background: rgba(59,130,246,0.3); }
-        """)
-        btn_l2d.clicked.connect(self._import_live2d_model)
-        import_layout.addWidget(btn_l2d)
-        import_layout.addStretch()
-        self._model_import_bar.setFixedHeight(26)
-        self._live2d_layout.addWidget(self._model_import_bar)
 
         self._live2d_layout.addWidget(self._live2d_placeholder, stretch=1)
 
@@ -550,7 +303,7 @@ class ChatPage(QWidget):
             }}
         """)
         chat_card_layout = QVBoxLayout(self._chat_card)
-        chat_card_layout.setContentsMargins(3, 3, 3, 3)
+        chat_card_layout.setContentsMargins(8, 8, 8, 8)
         chat_card_layout.setSpacing(0)
 
         # QWebEngineView 聊天显示（带 QTextEdit 降级）
@@ -606,15 +359,15 @@ class ChatPage(QWidget):
 
         toolbar_layout.addStretch()
 
-        # 发送按钮 — 渐变 + 圆润
+        # 发送/停止按钮 — 同位置切换（参考 ChatGPT/微信设计）
         self.send_btn = PushButton(" 发送")
         self.send_btn.setIcon(FluentIcon.SEND)
-        self.send_btn.clicked.connect(self._send_message)
-        self.send_btn.setStyleSheet(f"""
+        self.send_btn.clicked.connect(self._on_send_or_stop)
+        self._send_style = f"""
             PushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 {c.accent_gradient_start}, stop:1 {c.accent_gradient_end});
-                color: white;
+                color: {c.text_on_accent};
                 border: none;
                 border-radius: 10px;
                 padding: 7px 18px;
@@ -625,27 +378,12 @@ class ChatPage(QWidget):
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 {c.accent}, stop:1 {c.accent_hover});
             }}
-            PushButton:pressed {{
-                background: {c.accent_pressed};
-            }}
-            PushButton:disabled {{
-                background: {c.card_border};
-                color: {c.text_muted};
-            }}
-        """)
-        toolbar_layout.addWidget(self.send_btn)
-
-        # 停止按钮 — 红色渐变
-        self.stop_btn = PushButton(" 停止")
-        self.stop_btn.setIcon(FluentIcon.CANCEL)
-        self.stop_btn.clicked.connect(self._stop_streaming)
-        self.stop_btn.setEnabled(False)
-        self.stop_btn.setVisible(False)
-        self.stop_btn.setStyleSheet(f"""
+        """
+        self._stop_style = f"""
             PushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {c.error}, stop:1 #e03131);
-                color: white;
+                    stop:0 {c.error}, stop:1 {c.error_hover});
+                color: {c.text_on_accent};
                 border: none;
                 border-radius: 10px;
                 padding: 7px 18px;
@@ -654,19 +392,29 @@ class ChatPage(QWidget):
             }}
             PushButton:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #e03131, stop:1 #c92a2a);
+                    stop:0 {c.error_hover}, stop:1 {c.error_pressed});
             }}
-            PushButton:pressed {{
-                background: #c92a2a;
+        """
+        self.send_btn.setStyleSheet(self._send_style)
+        toolbar_layout.addWidget(self.send_btn)
+
+        toolbar_layout.addSpacing(12)
+
+        # 清空按钮 — 间距加大 + 警告色防误触
+        self.clear_btn = ToolButton(FluentIcon.DELETE)
+        self.clear_btn.setFixedSize(32, 32)
+        self.clear_btn.setToolTip("清空对话 (需确认)")
+        self.clear_btn.clicked.connect(self._on_clear_chat)
+        self.clear_btn.setStyleSheet(f"""
+            ToolButton {{
+                color: {c.text_muted};
+                border-radius: 6px;
+            }}
+            ToolButton:hover {{
+                color: {c.error};
+                background-color: {c.error_bg};
             }}
         """)
-        toolbar_layout.addWidget(self.stop_btn)
-
-        # 清空按钮
-        self.clear_btn = ToolButton(FluentIcon.DELETE)
-        self.clear_btn.setFixedSize(28, 28)
-        self.clear_btn.setToolTip("清空对话")
-        self.clear_btn.clicked.connect(self._on_clear_chat)
         toolbar_layout.addWidget(self.clear_btn)
 
         input_card_layout.addLayout(toolbar_layout)
@@ -683,7 +431,7 @@ class ChatPage(QWidget):
         self._tts_card.setObjectName("ttsCard")
         self._tts_card.setStyleSheet(f"""
             QFrame#ttsCard {{
-                background-color: {c.sidebar_bg};
+                background-color: {c.card_bg};
                 border: 1px solid {c.card_border};
                 border-radius: 12px;
             }}
@@ -739,9 +487,8 @@ class ChatPage(QWidget):
         """)
         tts_row1.addWidget(self.record_btn)
 
-        # 实时语音按钮
-        self.realtime_btn = TogglePushButton("实时语音")
-        self.realtime_btn.setIcon(FluentIcon.MICROPHONE)
+        # 实时语音按钮 — 耳麦图标区分于录音的麦克风
+        self.realtime_btn = TogglePushButton("🎙 实时对话")
         self.realtime_btn.toggled.connect(self._toggle_realtime_voice)
         self.realtime_btn.setStyleSheet(f"""
             TogglePushButton {{
@@ -777,13 +524,6 @@ class ChatPage(QWidget):
         """)
         self.tts_mode_btn.toggled.connect(self._on_tts_mode_toggled)
         tts_row1.addWidget(self.tts_mode_btn)
-
-        # 桌面宠物按钮
-        self.pet_btn = ToolButton(FluentIcon.HEART)
-        self.pet_btn.setFixedSize(28, 28)
-        self.pet_btn.setToolTip("桌面宠物")
-        self.pet_btn.clicked.connect(self._toggle_pet)
-        tts_row1.addWidget(self.pet_btn)
 
         tts_row1.addStretch()
         tts_card_outer.addLayout(tts_row1)
@@ -913,10 +653,9 @@ class ChatPage(QWidget):
             # 添加到布局末尾（与 Live2D widget 同一层级），默认隐藏
             self._live2d_layout.addWidget(self._vrm_widget, stretch=1)
             self._vrm_widget.hide()
-            # 加载默认 VRM 模型（如果存在）
             self._load_default_vrm_model()
-            # 显示模型切换按钮
-            self._model_toggle_bar.show()
+            # 显示 VRM 切换按钮
+            self._btn_vrm.show()
             print("[ChatPage] VRM widget 已创建（隐藏）")
         else:
             print("[ChatPage] VRMWidget 不可用，跳过 VRM 支持")
@@ -1153,8 +892,8 @@ class ChatPage(QWidget):
                         "time": time_str
                     })
                 self._save_chat_history()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[ChatPage] 从后端加载历史失败: {e}")
 
     # ========== 发送/流式对话 ==========
 
@@ -1211,13 +950,15 @@ class ChatPage(QWidget):
 
         # 启动流式对话线程
         streaming_tts = self.tts_mode_btn.isChecked()
-        self._worker = StreamChatWorker(self.backend, text, history, streaming_tts=streaming_tts)
-        self._worker.chunk_received.connect(self._on_chunk)
-        self._worker.sentence_ready.connect(self._on_sentence_ready)
-        self._worker.finished_stream.connect(self._on_stream_finished)
-        self._worker.error.connect(self._on_error)
-        self._worker.tool_call_status.connect(self._on_tool_call_status)
-        self._worker.start()
+        worker = StreamChatWorker(self.backend, text, history, streaming_tts=streaming_tts)
+        self._worker = worker
+        self._active_worker_id = id(worker)  # 追踪当前 worker 身份
+        worker.chunk_received.connect(self._on_chunk)
+        worker.sentence_ready.connect(self._on_sentence_ready)
+        worker.finished_stream.connect(self._on_stream_finished)
+        worker.error.connect(self._on_error)
+        worker.tool_call_status.connect(self._on_tool_call_status)
+        worker.start()
 
     def _stop_streaming(self):
         """停止流式对话"""
@@ -1244,13 +985,24 @@ class ChatPage(QWidget):
                     w.wait(500)
             self._tts_workers.clear()
 
+    def _on_send_or_stop(self):
+        """发送/停止按钮点击——根据当前状态路由"""
+        if self._is_streaming:
+            self._stop_streaming()
+        else:
+            self._send_message()
+
     def _set_streaming_state(self, streaming: bool):
-        """切换发送/停止按钮状态"""
+        """流式状态切换——同按钮变色不消失（参考 ChatGPT 设计）"""
         self._is_streaming = streaming
-        self.send_btn.setEnabled(not streaming)
-        self.send_btn.setVisible(not streaming)
-        self.stop_btn.setEnabled(streaming)
-        self.stop_btn.setVisible(streaming)
+        if streaming:
+            self.send_btn.setText(" 停止")
+            self.send_btn.setIcon(FluentIcon.CANCEL)
+            self.send_btn.setStyleSheet(self._stop_style)
+        else:
+            self.send_btn.setText(" 发送")
+            self.send_btn.setIcon(FluentIcon.SEND)
+            self.send_btn.setStyleSheet(self._send_style)
         self.input_field.setEnabled(not streaming)
 
     @Slot(str)
@@ -1289,8 +1041,12 @@ class ChatPage(QWidget):
     @Slot(dict)
     def _on_stream_finished(self, result: dict):
         """流式对话完成"""
-        # 如果已经被 _stop_streaming 提前终结，跳过重复处理
+        # 守卫1: 流已停止
         if not self._is_streaming:
+            return
+        # 守卫2: 忽略旧 worker 的信号（防止实时语音中断时的竞态崩溃）
+        sender = self.sender()
+        if sender is not None and sender is not self._worker:
             return
 
         reply_text = result.get("text", "")
@@ -1418,34 +1174,65 @@ class ChatPage(QWidget):
     # ========== TTS/录音 ==========
 
     def _on_tts_audio_ready(self, audio_path: str, seq: int = 0):
-        """TTS 合成完成回调 — 统一排队，不中断当前播放"""
+        """TTS 合成完成回调 — 统一排队，不中断当前播放
+
+        排序缓冲区机制（seq > 0 时生效）：
+        - TTS 句子可能乱序完成（并行合成），用 seq 序号保证播放顺序
+        - 新音频先入 _tts_pending 缓冲区，按序释放到 _audio_queue
+        - 播放决策统一由 _try_play_next() 处理，避免竞态条件
+
+        v1.11.15 FIX: 解决句子打断问题 —
+        1) 不在 _on_tts_audio_ready 中直接 _play_audio，统一走 _try_play_next
+        2) 释放排序缓冲区只在一个地方（_try_play_next），不重复释放
+        3) _is_playing 标志位替代 QMediaPlayer 实时状态检查，避免信号延迟导致的竞态
+        """
         if not audio_path or not os.path.exists(audio_path):
             return
 
-        playing = (self._media_player and
-                   self._media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState)
-
-        # 流式 TTS：先入排序缓冲区，再按序释放到播放队列
+        # 流式 TTS：先入排序缓冲区
         if seq > 0:
             self._tts_pending[seq] = audio_path
-            if playing:
-                return  # 正在播放，等 _on_playback_state_changed 取下一首时再释放
-            # 释放所有连续的序号
-            while self._tts_next_play_seq in self._tts_pending:
-                na = self._tts_pending.pop(self._tts_next_play_seq)
-                self._tts_next_play_seq += 1
-                if na not in self._audio_queue:
-                    self._audio_queue.append(na)
         else:
             # 非流式（主动说话等）：直接排队
             if audio_path not in self._audio_queue:
                 self._audio_queue.append(audio_path)
 
-        # 如果空闲，立即播放
-        if not playing and self._audio_queue:
+        # 尝试释放连续的排序序号并播放
+        self._try_play_next()
+
+    def _try_play_next(self):
+        """统一的播放调度 — 释放排序缓冲区 + 播放下一首
+
+        所有播放决策集中在此方法，避免多处重复释放导致竞态条件。
+        """
+        # 1. 释放所有连续的排序序号到播放队列
+        while self._tts_next_play_seq in self._tts_pending:
+            na = self._tts_pending.pop(self._tts_next_play_seq)
+            self._tts_next_play_seq += 1
+            if na not in self._audio_queue:
+                self._audio_queue.append(na)
+
+        # 2. 检查是否正在播放（用标志位而非 QMediaPlayer 实时状态）
+        if self._is_audio_playing():
+            return  # 正在播放，等 _on_playback_state_changed 回调时再调度
+
+        # 3. 空闲状态：播放队列头
+        if self._audio_queue:
             next_audio = self._audio_queue.pop(0)
             if os.path.exists(next_audio):
                 self._play_audio(next_audio)
+
+    def _is_audio_playing(self) -> bool:
+        """检查音频是否正在播放（比直接检查 QMediaPlayer 更可靠）
+
+        优先使用 QMediaPlayer 的状态，但增加保护：
+        - StoppedState + 队列非空 = 不算播放中（可能刚播完）
+        - 检查 source 是否有效，避免误判
+        """
+        if not self._media_player:
+            return False
+        state = self._media_player.playbackState()
+        return state == QMediaPlayer.PlaybackState.PlayingState
 
     def _cleanup_tts_worker(self, worker):
         """清理已完成的 TTSWorker"""
@@ -1499,24 +1286,19 @@ class ChatPage(QWidget):
         self._animation_controller.set_mouth_open(mouth_open)
 
     def _on_playback_state_changed(self, state):
-        """播放结束 → 释放排序缓冲区 + 播队首"""
+        """播放结束 → 播队首（排序缓冲区释放统一由 _try_play_next 处理）
+
+        v1.11.15 FIX: 不再在此处释放排序缓冲区，避免与 _on_tts_audio_ready 的重复释放。
+        只需调用 _try_play_next()，它会统一处理缓冲区释放 + 播放下一首。
+        """
         if state != QMediaPlayer.PlaybackState.PlayingState:
             if self._animation_controller:
                 self._animation_controller.set_mouth_open(0.0)
             if hasattr(self, '_lipsync_timer') and self._lipsync_timer:
                 self._lipsync_timer.stop()
                 self._lipsync_timer = None
-            # v1.11.3: 释放新的连续序号到播放队列
-            while self._tts_next_play_seq in self._tts_pending:
-                na = self._tts_pending.pop(self._tts_next_play_seq)
-                self._tts_next_play_seq += 1
-                if na not in self._audio_queue:
-                    self._audio_queue.append(na)
-            # 播放下一首
-            if self._audio_queue:
-                next_audio = self._audio_queue.pop(0)
-                if os.path.exists(next_audio):
-                    self._play_audio(next_audio)
+            # 统一走 _try_play_next（包含释放排序缓冲区 + 播放下一首）
+            self._try_play_next()
 
     def _toggle_recording(self, checked: bool):
         """切换录音状态"""
@@ -1754,26 +1536,25 @@ class ChatPage(QWidget):
         self.input_field.setPlaceholderText("输入关于图片的问题，或直接按回车进行OCR识别...")
 
     def _screenshot_ocr(self):
-        """截图OCR"""
+        """截图OCR — 区域选择截图后识别文字"""
         if not self.backend:
             self.chat_display.append_system_msg("后端未初始化，无法使用OCR")
             return
         try:
-            from PySide6.QtWidgets import QApplication
-            screen = QApplication.primaryScreen()
-            if not screen:
-                self.chat_display.append_system_msg("无法获取屏幕")
-                return
-            screenshot = screen.grabWindow(0)
-            tmp_path = os.path.join(tempfile.gettempdir(), f"gugu_screenshot_{int(time.time())}.png")
-            screenshot.save(tmp_path, "PNG")
-            self.chat_display.append_system_msg("正在识别屏幕文字...")
-            self._ocr_worker = _OCRWorker(self.backend, tmp_path)
-            self._ocr_worker.finished.connect(self._on_ocr_result)
-            self._ocr_worker.error.connect(self._on_ocr_error)
-            self._ocr_worker.start()
+            from gugu_native.widgets.screenshot_selector import ScreenshotSelector
+            self._screenshot_selector = ScreenshotSelector()
+            self._screenshot_selector.region_selected.connect(self._on_screenshot_ready)
+            self._screenshot_selector.start()
         except Exception as e:
             self.chat_display.append_system_msg(f"截图OCR失败: {e}")
+
+    def _on_screenshot_ready(self, tmp_path: str):
+        """截图区域保存完成，开始 OCR"""
+        self.chat_display.append_system_msg("正在识别屏幕文字...")
+        self._ocr_worker = OCRWorker(self.backend, tmp_path)
+        self._ocr_worker.finished.connect(self._on_ocr_result)
+        self._ocr_worker.error.connect(self._on_ocr_error)
+        self._ocr_worker.start()
 
     @Slot(str)
     def _on_ocr_result(self, text: str):
@@ -1804,7 +1585,7 @@ class ChatPage(QWidget):
         self.input_field.setPlaceholderText("正在分析图片...")
         self.input_field.setEnabled(False)
 
-        self._vision_worker = _VisionWorker(self.backend, image_path, user_text)
+        self._vision_worker = VisionWorker(self.backend, image_path, user_text)
         self._vision_worker.result_ready.connect(self._on_vision_result)
         self._vision_worker.error_occurred.connect(self._on_vision_error)
         self._vision_worker.finished.connect(lambda: self.input_field.setEnabled(True))
@@ -1814,7 +1595,7 @@ class ChatPage(QWidget):
     @Slot(str)
     def _on_vision_result(self, enriched_text: str):
         """视觉理解完成，发送消息"""
-        self.input_field.setPlaceholderText("输入消息，按 Enter 发送...")
+        self.input_field.setPlaceholderText("输入消息，Enter 发送 · Ctrl+F 搜索")
         if enriched_text:
             self._send_message(enriched_text)
 
@@ -1822,7 +1603,7 @@ class ChatPage(QWidget):
     def _on_vision_error(self, error_msg: str):
         """视觉理解失败"""
         self.chat_display.append_system_msg(f"视觉理解失败: {error_msg}")
-        self.input_field.setPlaceholderText("输入消息，按 Enter 发送...")
+        self.input_field.setPlaceholderText("输入消息，Enter 发送 · Ctrl+F 搜索")
 
     # ========== 多会话管理 ==========
 
@@ -1875,7 +1656,7 @@ class ChatPage(QWidget):
 
     def _populate_edge_voices_chat(self):
         """填充 Edge TTS 音色列表"""
-        from gugu_native.pages.settings_page import EDGE_VOICES
+        from app.shared_config import EDGE_VOICES
         self.voice_combo.clear()
         for voice_id, label in EDGE_VOICES:
             self.voice_combo.addItem(f"{label}", userData=voice_id)
@@ -1950,7 +1731,7 @@ class ChatPage(QWidget):
         return self.voice_combo.currentText()
 
     def _apply_tts_to_backend(self):
-        """将当前 TTS 选择应用到后端"""
+        """将当前 TTS 选择应用到后端 — 使用线程安全的 rebuild_tts()"""
         if not self.backend:
             return
         engine = self.tts_combo.currentText()
@@ -1966,20 +1747,12 @@ class ChatPage(QWidget):
             if provider == "gptsovits":
                 sub["project"] = voice_id
 
-        # 重建 TTS 引擎
-        if hasattr(self.backend, '_lazy_modules') and 'tts' in self.backend._lazy_modules:
-            old_tts = self.backend._lazy_modules.pop('tts', None)
-            if old_tts and hasattr(old_tts, 'cleanup'):
-                try:
-                    old_tts.cleanup()
-                except Exception:
-                    pass
-            try:
-                _ = self.backend.tts
-                if provider == "gptsovits" and hasattr(self.backend.tts, 'set_project'):
-                    self.backend.tts.set_project(voice_id)
-            except Exception as e:
-                print(f"[ChatPage] TTS 引擎重建失败: {e}")
+        # 使用线程安全的重建方法（替代直接 pop _lazy_modules）
+        self.backend.rebuild_tts()
+
+        # GPT-SoVITS 项目设置
+        if provider == "gptsovits" and hasattr(self.backend.tts, 'set_project'):
+            self.backend.tts.set_project(voice_id)
 
         # 持久化
         try:
@@ -1988,8 +1761,8 @@ class ChatPage(QWidget):
             os.makedirs(cache_dir, exist_ok=True)
             with open(_TTS_PREFS_FILE, "w", encoding="utf-8") as f:
                 json.dump(tts_prefs, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[ChatPage] TTS 偏好保存失败: {e}")
 
     def sync_tts_from_settings(self, engine: str, voice_id: str):
         """从设置页同步 TTS 配置到 Chat 页"""
@@ -2139,7 +1912,7 @@ class ChatPage(QWidget):
             PushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 {c.accent_gradient_start}, stop:1 {c.accent_gradient_end});
-                color: white;
+                color: {c.text_on_accent};
                 border: none;
                 border-radius: 10px;
                 padding: 7px 18px;
@@ -2163,8 +1936,8 @@ class ChatPage(QWidget):
         self.stop_btn.setStyleSheet(f"""
             PushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {c.error}, stop:1 #e03131);
-                color: white;
+                    stop:0 {c.error}, stop:1 {c.error_hover});
+                color: {c.text_on_accent};
                 border: none;
                 border-radius: 10px;
                 padding: 7px 18px;
@@ -2173,17 +1946,17 @@ class ChatPage(QWidget):
             }}
             PushButton:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #e03131, stop:1 #c92a2a);
+                    stop:0 {c.error_hover}, stop:1 {c.error_pressed});
             }}
             PushButton:pressed {{
-                background: #c92a2a;
+                background: {c.error_pressed};
             }}
         """)
 
         # 刷新TTS工具栏卡片
         self._tts_card.setStyleSheet(f"""
             QFrame#ttsCard {{
-                background-color: {c.sidebar_bg};
+                background-color: {c.card_bg};
                 border: 1px solid {c.card_border};
                 border-radius: 12px;
             }}
@@ -2203,7 +1976,7 @@ class ChatPage(QWidget):
             }}
             TogglePushButton:checked {{
                 background-color: {c.error};
-                color: white;
+                color: {c.text_on_accent};
                 border: none;
             }}
         """)
@@ -2216,7 +1989,7 @@ class ChatPage(QWidget):
             }}
             TogglePushButton:checked {{
                 background-color: {c.success};
-                color: white;
+                color: {c.text_on_accent};
                 border: none;
             }}
         """)
@@ -2226,6 +1999,57 @@ class ChatPage(QWidget):
 
         # 刷新会话管理器
         self.session_manager.refresh_theme()
+
+        # 刷新 Live2D/VRM 切换按钮
+        self._btn_live2d.setStyleSheet(f"""
+            QPushButton {{ background: {c.accent}; color: {c.text_on_accent}; border: none; 
+                border-radius: 4px; padding: 4px 12px; font-size: 12px; font-weight: bold; }}
+            QPushButton:checked {{ background: {c.accent}; color: {c.text_on_accent}; }}
+            QPushButton:!checked {{ background: {c.card_bg}; color: {c.text_muted}; }}
+            QPushButton:hover {{ background: {c.accent_hover}; }}
+        """)
+        self._btn_vrm.setStyleSheet(f"""
+            QPushButton {{ background: {c.card_bg}; color: {c.text_muted}; border: none;
+                border-radius: 4px; padding: 4px 12px; font-size: 12px; }}
+            QPushButton:checked {{ background: {c.ai_bubble_accent}; color: {c.text_on_accent}; font-weight: bold; }}
+            QPushButton:!checked {{ background: {c.card_bg}; color: {c.text_muted}; }}
+            QPushButton:hover {{ background: {c.card_bg_hover}; }}
+        """)
+
+        # 刷新 VRM 变体按钮
+        for name, btn in self._btn_vrm_variants.items():
+            btn.setStyleSheet(f"""
+                QPushButton {{ background: {c.card_bg}; color: {c.text_muted};
+                    border: 1px solid {c.card_border}; border-radius: 3px;
+                    padding: 2px 8px; font-size: 11px; }}
+                QPushButton:checked {{ background: {c.ai_bubble_accent}; color: {c.text_on_accent}; border-color: {c.ai_bubble_accent}; font-weight: bold; }}
+                QPushButton:hover {{ background: {c.card_bg_hover}; }}
+            """)
+
+        # 刷新 Live2D 占位符
+        if self._live2d_placeholder:
+            self._live2d_placeholder.setStyleSheet(f"""
+                QLabel {{
+                    color: {c.text_muted};
+                    font-size: 16px;
+                    background: transparent;
+                }}
+            """)
+
+        # 刷新 TTS 模式按钮
+        self.tts_mode_btn.setStyleSheet(f"""
+            TogglePushButton {{
+                border-radius: 12px;
+                padding: 3px 10px;
+                border: 1px solid {c.card_border};
+                font-size: 12px;
+            }}
+            TogglePushButton:checked {{
+                background-color: {c.accent};
+                color: {c.text_on_accent};
+                border: none;
+            }}
+        """)
 
     @staticmethod
     def _style_qcombobox(combo: QComboBox, c):
@@ -2260,7 +2084,7 @@ class ChatPage(QWidget):
                 border: 1px solid {c.card_border};
                 border-radius: 6px;
                 selection-background-color: {c.accent};
-                selection-color: white;
+                selection-color: {c.text_on_accent};
                 padding: 4px;
                 outline: none;
             }}

@@ -35,7 +35,7 @@ from qfluentwidgets import (
 # 项目根目录 — KI-005: 从 shared_config 统一引用
 from app.shared_config import PROJECT_DIR
 
-from gugu_native.theme import get_colors
+from gugu_native.theme import get_colors, register_theme_callback
 
 
 class ProjectListWorker(QThread):
@@ -117,8 +117,10 @@ class TrainPage(QWidget):
 
         # 训练进度轮询
         self._progress_timer = QTimer(self)
-        self._progress_timer.setInterval(2000)  # 2秒轮询
+        self._progress_timer.setInterval(1000)  # 1秒轮询
         self._progress_timer.timeout.connect(self._poll_training_status)
+        # 注册主题变更回调
+        register_theme_callback(self.refresh_theme)
 
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -156,6 +158,12 @@ class TrainPage(QWidget):
 
         main_layout.addLayout(top_layout)
 
+        # 工作流引导提示
+        c2 = get_colors()
+        workflow_hint = CaptionLabel("💡 操作流程：① 录制/上传音频 → ② 选择参考音频 → ③ 填写参考文本 → ④ 开始训练")
+        workflow_hint.setStyleSheet(f"color: {c2.info}; font-size: 11px; padding: 4px 8px; background-color: {c2.info_bg}; border-radius: 6px;")
+        main_layout.addWidget(workflow_hint)
+
         # === 主内容区: 分割面板 ===
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
@@ -182,7 +190,7 @@ class TrainPage(QWidget):
         info_layout.addRow("有检查点:", self.info_has_checkpoint)
 
         self.info_trained = CaptionLabel("否")
-        self.info_trained.setStyleSheet("color: #868e96;")
+        self.info_trained.setStyleSheet(f"color: {c.text_muted};")
         info_layout.addRow("已训练:", self.info_trained)
 
         left_layout.addWidget(self.project_info_group)
@@ -208,6 +216,16 @@ class TrainPage(QWidget):
         self.record_audio_btn.setIcon(FluentIcon.MICROPHONE)
         self.record_audio_btn.clicked.connect(self._record_audio)
         audio_btn_layout.addWidget(self.record_audio_btn)
+
+        # 录音时长选择
+        dur_label = CaptionLabel("时长:")
+        audio_btn_layout.addWidget(dur_label)
+        self.record_duration = SpinBox()
+        self.record_duration.setRange(3, 30)
+        self.record_duration.setValue(5)
+        self.record_duration.setSuffix(" 秒")
+        self.record_duration.setFixedWidth(80)
+        audio_btn_layout.addWidget(self.record_duration)
 
         self.delete_audio_btn = PushButton("删除")
         self.delete_audio_btn.setIcon(FluentIcon.DELETE)
@@ -333,72 +351,72 @@ class TrainPage(QWidget):
 
         self.start_s1_btn = PushButton("开始 S1 训练")
         self.start_s1_btn.setIcon(FluentIcon.PLAY)
-        self.start_s1_btn.setStyleSheet("""
-            PushButton {
+        self.start_s1_btn.setStyleSheet(f"""
+            PushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #40c057, stop:1 #2f9e44);
-                color: white;
+                    stop:0 {c.success}, stop:1 {c.success_hover});
+                color: {c.text_on_accent};
                 border: none;
                 border-radius: 8px;
                 padding: 6px 18px;
                 font-weight: 500;
-            }
-            PushButton:hover {
+            }}
+            PushButton:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #2f9e44, stop:1 #2b8a3e);
-            }
-            PushButton:disabled {
-                background: #3d3d5c;
-                color: #666;
-            }
+                    stop:0 {c.success_hover}, stop:1 {c.success_pressed});
+            }}
+            PushButton:disabled {{
+                background: {c.card_border};
+                color: {c.text_muted};
+            }}
         """)
         self.start_s1_btn.clicked.connect(lambda: self._start_training("s1"))
         train_ctrl_layout.addWidget(self.start_s1_btn)
 
         self.start_s2_btn = PushButton("开始 S2 训练")
         self.start_s2_btn.setIcon(FluentIcon.PLAY)
-        self.start_s2_btn.setStyleSheet("""
-            PushButton {
+        self.start_s2_btn.setStyleSheet(f"""
+            PushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #7950f2, stop:1 #6741d9);
-                color: white;
+                    stop:0 {c.progress_start}, stop:1 {c.progress_end});
+                color: {c.text_on_accent};
                 border: none;
                 border-radius: 8px;
                 padding: 6px 18px;
                 font-weight: 500;
-            }
-            PushButton:hover {
+            }}
+            PushButton:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #6741d9, stop:1 #5f3dc4);
-            }
-            PushButton:disabled {
-                background: #3d3d5c;
-                color: #666;
-            }
+                    stop:0 {c.accent_hover}, stop:1 {c.accent_pressed});
+            }}
+            PushButton:disabled {{
+                background: {c.card_border};
+                color: {c.text_muted};
+            }}
         """)
         self.start_s2_btn.clicked.connect(lambda: self._start_training("s2"))
         train_ctrl_layout.addWidget(self.start_s2_btn)
 
         self.stop_train_btn = PushButton("停止训练")
         self.stop_train_btn.setIcon(FluentIcon.CANCEL)
-        self.stop_train_btn.setStyleSheet("""
-            PushButton {
+        self.stop_train_btn.setStyleSheet(f"""
+            PushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #f03e3e, stop:1 #e03131);
-                color: white;
+                    stop:0 {c.error}, stop:1 {c.error_hover});
+                color: {c.text_on_accent};
                 border: none;
                 border-radius: 8px;
                 padding: 6px 18px;
                 font-weight: 500;
-            }
-            PushButton:hover {
+            }}
+            PushButton:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #e03131, stop:1 #c92a2a);
-            }
-            PushButton:disabled {
-                background: #3d3d5c;
-                color: #666;
-            }
+                    stop:0 {c.error_hover}, stop:1 {c.error_pressed});
+            }}
+            PushButton:disabled {{
+                background: {c.card_border};
+                color: {c.text_muted};
+            }}
         """)
         self.stop_train_btn.clicked.connect(self._stop_training)
         self.stop_train_btn.setEnabled(False)
@@ -424,17 +442,17 @@ class TrainPage(QWidget):
 
         self.train_log = QTextEdit()
         self.train_log.setReadOnly(True)
-        self.train_log.setFont(QFont("Cascadia Code", 9))
+        self.train_log.setFont(QFont("Cascadia Code", 11))
         self.train_log.setPlaceholderText("训练日志将显示在这里...")
-        self.train_log.setStyleSheet("""
-            QTextEdit {
-                background-color: #0d0e1a;
-                color: #c9d1d9;
-                border: 1px solid #1e1f34;
+        self.train_log.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {c.log_bg};
+                color: {c.log_text};
+                border: 1px solid {c.card_border};
                 border-radius: 8px;
                 padding: 8px;
                 font-family: "Cascadia Code", "Consolas", monospace;
-            }
+            }}
         """)
         prog_layout.addWidget(self.train_log, stretch=1)
 
@@ -442,8 +460,24 @@ class TrainPage(QWidget):
         action_layout = QHBoxLayout()
 
         self.reset_btn = PushButton("重置项目")
-        self.reset_btn.setIcon(FluentIcon.ROTATE)
+        self.reset_btn.setIcon(FluentIcon.DELETE)
         self.reset_btn.clicked.connect(self._reset_project)
+        c3 = get_colors()
+        self.reset_btn.setStyleSheet(f"""
+            PushButton {{
+                background: transparent;
+                color: {c3.warning};
+                border: 1px solid {c3.warning};
+                border-radius: 8px;
+                padding: 6px 16px;
+                font-weight: 500;
+            }}
+            PushButton:hover {{
+                background: {c3.error};
+                color: white;
+                border-color: {c3.error};
+            }}
+        """)
         action_layout.addWidget(self.reset_btn)
 
         action_layout.addStretch()
@@ -598,8 +632,11 @@ class TrainPage(QWidget):
             self._show_info("提示", "请先选择项目")
             return
 
+        # 默认打开用户音乐/录音目录
+        import os as _os
+        _default_dir = _os.path.expanduser("~/Music") if _os.path.exists(_os.path.expanduser("~/Music")) else _os.path.expanduser("~")
         file_paths, _ = QFileDialog.getOpenFileNames(
-            self, "选择音频文件", "",
+            self, "选择音频文件", _default_dir,
             "音频文件 (*.wav *.mp3 *.flac *.m4a *.ogg);;所有文件 (*)"
         )
 
@@ -635,7 +672,7 @@ class TrainPage(QWidget):
         self.record_audio_btn.setEnabled(False)
         self.record_audio_btn.setText("录音中...")
 
-        self._record_worker = _RecordWorker(duration=5, sample_rate=16000)
+        self._record_worker = _RecordWorker(duration=self.record_duration.value(), sample_rate=16000)
         self._record_worker.finished.connect(self._on_record_done)
         self._record_worker.error.connect(self._on_record_error)
         self._record_worker.start()
@@ -644,7 +681,7 @@ class TrainPage(QWidget):
     def _on_record_done(self, recording):
         """录音完成回调"""
         self.record_audio_btn.setEnabled(True)
-        self.record_audio_btn.setText("录制音频")
+        self.record_audio_btn.setText("录制")
 
         if recording is None:
             return
@@ -686,7 +723,7 @@ class TrainPage(QWidget):
     def _on_record_error(self, error_msg: str):
         """录音失败回调"""
         self.record_audio_btn.setEnabled(True)
-        self.record_audio_btn.setText("录制音频")
+        self.record_audio_btn.setText("录制")
         self._show_info("录音失败", error_msg)
 
     def _delete_audio(self):
@@ -972,7 +1009,7 @@ class TrainPage(QWidget):
 
     def _append_log(self, text: str):
         """追加训练日志"""
-        from gugu_native.theme import get_colors
+        from gugu_native.theme import get_colors, register_theme_callback
         c = get_colors()
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.train_log.append(f'<span style="color: {c.log_timestamp};">[{timestamp}]</span> {text}')
@@ -989,7 +1026,7 @@ class TrainPage(QWidget):
 
     def refresh_theme(self):
         """主题切换时刷新硬编码样式"""
-        from gugu_native.theme import get_colors
+        from gugu_native.theme import get_colors, register_theme_callback
         c = get_colors()
 
         # 训练日志
@@ -1006,16 +1043,16 @@ class TrainPage(QWidget):
 
         # 训练按钮样式
         btn_styles = {
-            self.start_s1_btn: ("#40c057", "#2f9e44", "#2b8a3e"),
-            self.start_s2_btn: ("#7950f2", "#6741d9", "#5f3dc4"),
-            self.stop_train_btn: ("#f03e3e", "#e03131", "#c92a2a"),
+            self.start_s1_btn: (c.success, c.success_hover, c.success_pressed),
+            self.start_s2_btn: (c.progress_start, c.progress_end, c.accent_pressed),
+            self.stop_train_btn: (c.error, c.error_hover, c.error_pressed),
         }
         for btn, (c1, c2, c3) in btn_styles.items():
             btn.setStyleSheet(f"""
                 PushButton {{
                     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                         stop:0 {c1}, stop:1 {c2});
-                    color: white;
+                    color: {c.text_on_accent};
                     border: none;
                     border-radius: 8px;
                     padding: 6px 18px;

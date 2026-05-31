@@ -32,13 +32,13 @@ class TrayManager(QObject):
 
     def setup(self):
         """初始化托盘图标和菜单"""
-        # 托盘图标 — 多路径回退
-        project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from app.shared_config import PROJECT_DIR
+        _native_dir = os.path.join(PROJECT_DIR, "native")
         icon_candidates = [
-            os.path.join(project_dir, "gugu_native", "resources", "app.ico"),  # native/gugu_native/resources/
-            os.path.join(project_dir, "resources", "app.ico"),                  # native/resources/
-            os.path.join(os.path.dirname(project_dir), "assets", "gugugaga_logo.ico"),  # 项目根/assets/
-            os.path.join(os.path.dirname(project_dir), "assets", "icon.ico"),   # 项目根/assets/icon.ico (旧名)
+            os.path.join(_native_dir, "gugu_native", "resources", "app.ico"),
+            os.path.join(_native_dir, "resources", "app.ico"),
+            os.path.join(PROJECT_DIR, "assets", "gugugaga_logo.ico"),  # 项目根/assets/
+            os.path.join(PROJECT_DIR, "assets", "icon.ico"),   # 项目根/assets/icon.ico (旧名)
         ]
         # PyInstaller 打包后，图标在 _internal/resources/ 或 exe 同级目录
         if getattr(sys, 'frozen', False):
@@ -67,6 +67,12 @@ class TrayManager(QObject):
         self._hide_action = QAction("隐藏到托盘", self.main_window)
         self._hide_action.triggered.connect(self._hide_window)
         self._menu.addAction(self._hide_action)
+
+        self._menu.addSeparator()
+
+        self._debug_action = QAction("运行日志", self.main_window)
+        self._debug_action.triggered.connect(self._show_debug)
+        self._menu.addAction(self._debug_action)
 
         self._menu.addSeparator()
 
@@ -106,6 +112,11 @@ class TrayManager(QObject):
     def _hide_window(self):
         """隐藏主窗口到托盘"""
         self.main_window.hide()
+
+    def _show_debug(self):
+        """显示运行调试窗口"""
+        if hasattr(self.main_window, 'show_debug_window'):
+            self.main_window.show_debug_window()
 
     def _on_quit(self):
         """用户请求退出"""

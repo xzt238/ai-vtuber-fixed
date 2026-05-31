@@ -28,9 +28,10 @@ class PerformanceManager(QObject):
 
     # 内存阈值（MB）
     # 注意: ASR(FunASR/Paraformer) + TTS(GPT-SoVITS双模型) + LLM + 语义向量(bge-base)
-    # 自然内存占用 2-3GB，阈值必须高于此基线才不会误触发清理
-    MEMORY_WARNING_THRESHOLD = 2500
-    MEMORY_CRITICAL_THRESHOLD = 4000
+    # 自然内存占用 2-3GB（MiMo ASR/TTS 轻量）到 4-5GB（GPT-SoVITS 本地推理）
+    # 阈值必须高于此基线才不会误触发清理
+    MEMORY_WARNING_THRESHOLD = 3500
+    MEMORY_CRITICAL_THRESHOLD = 5500
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -186,8 +187,8 @@ class PerformanceManager(QObject):
 
         # 清理 TTS 缓存的临时音频文件
         try:
-            cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
-                os.path.dirname(os.path.abspath(__file__))))), "app", "cache")
+            from app.shared_config import PROJECT_DIR
+            cache_dir = os.path.join(PROJECT_DIR, "app", "cache")
             if os.path.isdir(cache_dir):
                 import time
                 now = time.time()

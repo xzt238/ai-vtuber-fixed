@@ -43,6 +43,24 @@
 日期: 2026-04-01
 """
 
+# ===== Win32 FFmpeg 扫描加速 =====
+# pydub（torchaudio 的传递依赖）在导入时用 subprocess 扫描 PATH 找 ffmpeg
+# Windows 上每个 subprocess.check_output 耗时 2-5 秒，累计 10-20 秒
+# 此处拦截 ffmpeg/avconv 的 version 检查，让 pydub 瞬间跳过扫描
+import subprocess as _sp
+import os as _os
+if _os.name == 'nt':
+    _SP_ORIG = _sp.check_output
+    def _sp_patched(cmd, **kw):
+        try:
+            prog = (cmd[0] if isinstance(cmd, (list, tuple)) else str(cmd).split()[0]).lower()
+        except Exception:
+            return _SP_ORIG(cmd, **kw)
+        if prog in ('ffmpeg', 'ffmpeg.exe', 'avconv', 'avconv.exe', 'ffprobe', 'ffprobe.exe'):
+            raise FileNotFoundError(f"[ASR] {prog} not needed, skipping PATH scan")
+        return _SP_ORIG(cmd, **kw)
+    _sp.check_output = _sp_patched
+
 import os
 import tempfile
 from abc import ABC, abstractmethod
@@ -555,6 +573,177 @@ class FunASRASR(ASREngine):
 
 
 
+class MimoASR(ASREngine):
+    """
+    【云端引擎】小米 MiMo V2.5 ASR 语音识别
+
+    通过 MiMo API 的 /v1/chat/completions 端点，使用 input_audio 内容块
+    实现语音识别。支持 WAV/MP3/FLAC/M4A/OGG 格式。
+
+    【工作原理】
+    将音频文件以 Base64 编码通过 input_audio 类型传入 MiMo V2.5 的
+    chat completions 接口，模型会返回音频的文字转录结果。
+
+    【配置参数】
+        api_key: MiMo API Key（必需）
+        base_url: API 基础 URL，默认 https://api.xiaomimimo.com/v1
+        model: 模型名称，默认 mimo-v2.5
+        language: 提示语言（auto/zh/en/ja/ko），默认 auto
+    """
+
+    def __init__(self, config: Dict[str, Any]):
+        """
+        【构造函数】初始化 MiMo ASR 引擎
+
+        【参数说明】
+            config (Dict[str, Any]): 引擎配置字典
+        """
+        self.config = config
+        self.api_key = config.get("api_key", "") or os.getenv("MIMO_API_KEY", "")
+        self.base_url = config.get("base_url", "https://api.xiaomimimo.com/v1")
+        self.model = config.get("model", "mimo-v2.5")
+        self.language = config.get("language", "auto")
+        self.timeout = config.get("timeout", 60)
+
+        # 如果没有直接配置 api_key，尝试从 config.yaml 的 llm.mimo 读取
+        if not self.api_key:
+            self._try_load_api_key_from_config()
+
+    def _try_load_api_key_from_config(self):
+        """尝试从 config.yaml 的 llm.mimo 配置中读取 API Key"""
+        try:
+            import yaml
+            config_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "config.yaml"
+            )
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f)
+                self.api_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
+        except Exception:
+            pass
+
+    def recognize(self, audio_path: str) -> Optional[str]:
+        """
+        【核心方法】通过 MiMo 音频理解 API 识别音频
+
+        【参数说明】
+            audio_path (str): 音频文件路径
+
+        【返回值】
+            Optional[str]: 识别文本；失败时返回 None
+
+        【实现细节】
+            1. 读取音频文件并 Base64 编码
+            2. 构建 input_audio 类型的消息发送到 MiMo API
+            3. 解析返回的文本结果
+        """
+        if not self.api_key:
+            print("⚠️ 请配置 MiMo API Key")
+            return None
+
+        if not os.path.exists(audio_path):
+            print(f"⚠️ 音频文件不存在: {audio_path}")
+            return None
+
+        try:
+            import requests
+            import base64
+
+            # 读取并 Base64 编码音频文件
+            with open(audio_path, "rb") as f:
+                audio_bytes = f.read()
+
+            # 检测 MIME 类型
+            ext = os.path.splitext(audio_path)[1].lower()
+            mime_map = {
+                ".wav": "audio/wav",
+                ".mp3": "audio/mpeg",
+                ".flac": "audio/flac",
+                ".m4a": "audio/mp4",
+                ".ogg": "audio/ogg",
+            }
+            mime_type = mime_map.get(ext, "audio/wav")
+            audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+            data_uri = f"data:{mime_type};base64,{audio_b64}"
+
+            # 根据语言设置提示
+            lang_hint = ""
+            if self.language and self.language != "auto":
+                lang_names = {"zh": "中文", "en": "英文", "ja": "日文", "ko": "韩文"}
+                lang_name = lang_names.get(self.language, self.language)
+                lang_hint = f"请用{lang_name}转录以下音频内容，只输出转录文本。"
+            else:
+                lang_hint = "请转录以下音频内容，只输出转录文本。"
+
+            headers = {
+                "api-key": self.api_key,
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_audio",
+                                "input_audio": {
+                                    "data": data_uri
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": lang_hint
+                            }
+                        ]
+                    }
+                ],
+                "max_completion_tokens": 1024
+            }
+
+            print(f"[MiMo ASR] 识别: {os.path.basename(audio_path)} ({len(audio_bytes)} bytes)")
+
+            response = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=self.timeout
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                choices = result.get("choices", [])
+                if choices:
+                    content = choices[0].get("message", {}).get("content", "")
+                    # 同时检查 reasoning_content（MiMo 会把思考过程放在这里）
+                    reasoning = choices[0].get("message", {}).get("reasoning_content", "")
+                    # 优先使用正式 content，如果为空则尝试 reasoning
+                    text = content if content else reasoning
+                    if text:
+                        text = text.strip()
+                        print(f"[MiMo ASR] 识别成功: {text[:50]}...")
+                        return text
+                    else:
+                        print("[MiMo ASR] API 返回成功但无文本内容")
+                        return None
+                else:
+                    print(f"[MiMo ASR] API 响应无 choices: {result}")
+                    return None
+            else:
+                print(f"[MiMo ASR] API 错误: {response.status_code} - {response.text[:200]}")
+                return None
+
+        except Exception as e:
+            print(f"[MiMo ASR] 识别失败: {e}")
+            return None
+
+    def is_available(self) -> bool:
+        """检查 API Key 是否已配置"""
+        return bool(self.api_key)
+
+
 # =====================================================================
 # 第3层：工厂类
 # =====================================================================
@@ -602,6 +791,26 @@ class ASRFactory:
         elif provider == "funasr":
             # 创建 FunASR 引擎
             return FunASRASR(config.get("funasr", {}))
+        elif provider == "mimo":
+            # 创建 MiMo ASR 云端引擎
+            mimo_config = config.get("mimo", {})
+            # 自动从 llm.mimo 读取 API Key
+            if not mimo_config.get("api_key"):
+                try:
+                    import yaml
+                    config_path = os.path.join(
+                        os.path.dirname(os.path.dirname(__file__)), "config.yaml"
+                    )
+                    if os.path.exists(config_path):
+                        with open(config_path, "r", encoding="utf-8") as f:
+                            cfg = yaml.safe_load(f)
+                        llm_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
+                        if llm_key:
+                            mimo_config = dict(mimo_config)
+                            mimo_config["api_key"] = llm_key
+                except Exception:
+                    pass
+            return MimoASR(mimo_config)
         else:
             # 未知 provider：警告并回退到 Faster-Whisper
             print(f"️ 未知的ASR provider: {provider}，使用Faster-Whisper")
@@ -634,7 +843,7 @@ class ASRManager:
     """
     
     # 支持的 Provider 列表（预加载时按此顺序尝试）
-    SUPPORTED_PROVIDERS = ["funasr", "faster_whisper", "whisper"]
+    SUPPORTED_PROVIDERS = ["funasr", "faster_whisper", "whisper", "mimo"]
     
     def __init__(self, config: Dict[str, Any]):
         """

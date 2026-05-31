@@ -101,114 +101,19 @@ os.environ.setdefault("TORCH_HOME", str(MODELS_CACHE / "torch"))
 os.environ.setdefault("HUGGINGFACE_HUB_CACHE", str(MODELS_CACHE / "hf"))
 
 # ============ 游戏风格日志系统 ============
-import time
-import datetime
-import warnings
+# 已抽取到 app/log_style.py，此处导入以保持兼容
+from log_style import (
+    LogStyle, game_header, game_box, game_loading,
+    game_ok, game_skip, game_fail, game_info, game_warn,
+    game_debug, game_progress, game_section, game_separator,
+)
 
+import warnings
 # 抑制常见警告（让 CMD 输出更干净）
 warnings.filterwarnings("ignore", category=UserWarning, message=".*pkg_resources.*")
 warnings.filterwarnings("ignore", message=".*ffmpeg is not installed.*")
-
-# ANSI 颜色码（Windows 10+ 支持）
-class LogStyle:
-    RESET = "\033[0m"
-    BOLD = "\033[1m"
-    DIM = "\033[2m"
-    
-    # 颜色
-    RED = "\033[91m"
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    BLUE = "\033[94m"
-    MAGENTA = "\033[95m"
-    CYAN = "\033[96m"
-    WHITE = "\033[97m"
-    
-    # 背景
-    BG_DARK = "\033[40m"
-    BG_BLUE = "\033[44m"
-    
-    @staticmethod
-    def is_supported():
-        return sys.platform != "win32" or os.getenv("TERM") or True
-
-def _color(text, color):
-    """给文本添加颜色"""
-    return f"{color}{text}{LogStyle.RESET}"
-
-def _timestamp():
-    """获取时间戳"""
-    return datetime.datetime.now().strftime("%H:%M:%S")
-
-def game_header(title=""):
-    """游戏风格标题"""
-    print()
-    print(_color("╔" + "═" * 58 + "╗", LogStyle.CYAN))
-    if title:
-        print(_color(f"║  {title.center(54)}  ║", LogStyle.CYAN))
-    print(_color("╚" + "═" * 58 + "╝", LogStyle.CYAN))
-
-def game_box(lines):
-    """游戏风格信息框"""
-    print(_color("┌" + "─" * 58 + "┐", LogStyle.BLUE))
-    for line in lines:
-        print(_color(f"│  {line:<54}  │", LogStyle.BLUE))
-    print(_color("└" + "─" * 58 + "┘", LogStyle.BLUE))
-
-def game_loading(module, status="Loading", color=LogStyle.YELLOW):
-    """游戏风格加载提示"""
-    dots = "." * ((int(time.time() * 2) % 3) + 1)
-    print(f"\r  [{_color('LOAD', LogStyle.DIM)}] {_color(f'{module} {status}{dots}', color)}", end="", flush=True)
-
-def game_ok(module, msg=""):
-    """游戏风格成功"""
-    msg_part = f" {_color(msg, LogStyle.DIM)}" if msg else ""
-    print(f"\r  [{_color('  OK  ', LogStyle.GREEN)}] {_color(module, LogStyle.WHITE)}{msg_part}")
-
-def game_skip(module, msg=""):
-    """游戏风格跳过"""
-    msg_part = f" {_color(msg, LogStyle.DIM)}" if msg else ""
-    print(f"\r  [{_color(' SKIP ', LogStyle.YELLOW)}] {_color(module, LogStyle.DIM)}{msg_part}")
-
-def game_fail(module, msg=""):
-    """游戏风格失败"""
-    msg_part = f" {_color(msg, LogStyle.RED)}" if msg else ""
-    print(f"\r  [{_color(' FAIL ', LogStyle.RED)}] {_color(module, LogStyle.WHITE)}{msg_part}")
-
-def game_info(module, msg=""):
-    """游戏风格信息"""
-    msg_part = f" {_color(msg, LogStyle.CYAN)}" if msg else ""
-    print(f"  [{_color('INFO', LogStyle.CYAN)}] {_color(module, LogStyle.WHITE)}{msg_part}")
-
-def game_warn(module, msg=""):
-    """游戏风格警告"""
-    msg_part = f" {_color(msg, LogStyle.YELLOW)}" if msg else ""
-    print(f"  [{_color('WARN', LogStyle.YELLOW)}] {_color(module, LogStyle.WHITE)}{msg_part}")
-
-def game_debug(module, msg=""):
-    """游戏风格调试"""
-    msg_part = f" {_color(msg, LogStyle.DIM)}" if msg else ""
-    print(f"  [{_color('DEBUG', LogStyle.DIM)}] {_color(module, LogStyle.DIM)}{msg_part}")
-
-def game_progress(current, total, module=""):
-    """游戏风格进度条"""
-    bar_len = 30
-    filled = int(bar_len * current / total) if total > 0 else 0
-    bar = "█" * filled + "░" * (bar_len - filled)
-    percent = int(100 * current / total) if total > 0 else 0
-    module_part = f" {_color(module, LogStyle.CYAN)}" if module else ""
-    print(f"\r  [{bar}] {percent:3d}%{module_part}", end="", flush=True)
-    if current >= total:
-        print()
-
-def game_section(title):
-    """游戏风格分节标题"""
-    print()
-    print(_color(f"  ▸ {title}", LogStyle.MAGENTA))
-
-def game_separator():
-    """游戏风格分隔线"""
-    print(_color("  " + "─" * 56, LogStyle.DIM))
+warnings.filterwarnings("ignore", message=".*Couldn.t find ffmpeg.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*ffmpeg.*")
 
 # 模型目录（静默设置，不打印）
 # MODELS_CACHE: {MODELS_CACHE}
@@ -364,6 +269,14 @@ class Config:
                             vision_minimax = config.setdefault("vision", {}).setdefault("minimax_vl", {})
                             if key_value:
                                 vision_minimax["api_key"] = key_value
+                        # MiMo Key 分发: 一个 key 同时供 LLM/TTS/ASR/Vision 使用
+                        if provider_name == "mimo" and key_value:
+                            asr_mimo = config.setdefault("asr", {}).setdefault("mimo", {})
+                            asr_mimo["api_key"] = key_value
+                            tts_mimo = config.setdefault("tts", {}).setdefault("mimo", {})
+                            tts_mimo["api_key"] = key_value
+                            vision_mimo = config.setdefault("vision", {}).setdefault("mimo_vision", {})
+                            vision_mimo["api_key"] = key_value
                     print(f"[Config] 从 api_keys.json 加载了 {len(saved_keys)} 个API Key")
             except Exception as e:
                 print(f"[Config] 加载 api_keys.json 失败(不影响使用): {e}")
@@ -398,6 +311,84 @@ class Config:
                     print(f"[Config] 从 llm_preferences.json 恢复了 LLM 配置")
             except Exception as e:
                 print(f"[Config] 加载 llm_preferences.json 失败(不影响使用): {e}")
+
+            # ASR 偏好持久化: 从 app/cache/asr_preferences.json 加载
+            # 优先级: asr_preferences.json > config.yaml
+            # start.bat 的 MiMo 配置菜单会写入此文件
+            try:
+                asr_prefs_file = cache_dir / "asr_preferences.json"
+                if asr_prefs_file.exists():
+                    with open(asr_prefs_file, "r", encoding="utf-8") as pf:
+                        asr_prefs = json.load(pf)
+                    asr_cfg = config.setdefault("asr", {})
+                    if "provider" in asr_prefs:
+                        asr_cfg["provider"] = asr_prefs["provider"]
+                        print(f"[Config] 恢复 ASR provider: {asr_prefs['provider']}")
+                    # 恢复 ASR 子配置 (如 mimo 的 base_url)
+                    if "provider_configs" in asr_prefs:
+                        for pname, pcfg in asr_prefs["provider_configs"].items():
+                            existing_sub = asr_cfg.setdefault(pname, {})
+                            if "base_url" in pcfg:
+                                existing_sub["base_url"] = pcfg["base_url"]
+                            if "model" in pcfg:
+                                existing_sub["model"] = pcfg["model"]
+                    print(f"[Config] 从 asr_preferences.json 恢复了 ASR 配置")
+            except Exception as e:
+                print(f"[Config] 加载 asr_preferences.json 失败(不影响使用): {e}")
+
+            # TTS 偏好持久化: 从 app/cache/tts_preferences.json 加载
+            # 优先级: tts_preferences.json > config.yaml
+            try:
+                tts_prefs_file = cache_dir / "tts_preferences.json"
+                if tts_prefs_file.exists():
+                    with open(tts_prefs_file, "r", encoding="utf-8") as pf:
+                        tts_prefs = json.load(pf)
+                    tts_cfg = config.setdefault("tts", {})
+                    if "provider" in tts_prefs:
+                        tts_cfg["provider"] = tts_prefs["provider"]
+                        print(f"[Config] 恢复 TTS provider: {tts_prefs['provider']}")
+                    # 恢复顶层 voice（当前引擎的音色）
+                    if "voice" in tts_prefs:
+                        tts_cfg["voice"] = tts_prefs["voice"]
+                    # 恢复 TTS 子配置（各引擎的 voice/base_url/model 等）
+                    if "provider_configs" in tts_prefs:
+                        for pname, pcfg in tts_prefs["provider_configs"].items():
+                            existing_sub = tts_cfg.setdefault(pname, {})
+                            if "base_url" in pcfg:
+                                existing_sub["base_url"] = pcfg["base_url"]
+                            if "model" in pcfg:
+                                existing_sub["model"] = pcfg["model"]
+                            if "voice" in pcfg:
+                                existing_sub["voice"] = pcfg["voice"]
+                            if "project" in pcfg:
+                                existing_sub["project"] = pcfg["project"]
+                    print(f"[Config] 从 tts_preferences.json 恢复了 TTS 配置")
+            except Exception as e:
+                print(f"[Config] 加载 tts_preferences.json 失败(不影响使用): {e}")
+
+            # Vision 偏好持久化: 从 app/cache/vision_preferences.json 加载
+            # 优先级: vision_preferences.json > config.yaml
+            # start.bat 的 MiMo 配置菜单会写入此文件
+            try:
+                vision_prefs_file = cache_dir / "vision_preferences.json"
+                if vision_prefs_file.exists():
+                    with open(vision_prefs_file, "r", encoding="utf-8") as pf:
+                        vision_prefs = json.load(pf)
+                    vision_cfg = config.setdefault("vision", {})
+                    if "default_provider" in vision_prefs:
+                        vision_cfg["default_provider"] = vision_prefs["default_provider"]
+                        print(f"[Config] 恢复 Vision provider: {vision_prefs['default_provider']}")
+                    # 恢复 Vision 子配置 (如 mimo_vision 的 base_url)
+                    if "provider_configs" in vision_prefs:
+                        for pname, pcfg in vision_prefs["provider_configs"].items():
+                            existing_sub = vision_cfg.setdefault(pname, {})
+                            if "base_url" in pcfg:
+                                existing_sub["base_url"] = pcfg["base_url"]
+                            if "model" in pcfg:
+                                existing_sub["model"] = pcfg["model"]
+                    print(f"[Config] 从 vision_preferences.json 恢复了 Vision 配置")
+            except Exception as e:
+                print(f"[Config] 加载 vision_preferences.json 失败(不影响使用): {e}")
 
             return config
         except ImportError:
@@ -441,7 +432,7 @@ class Config:
 
     def get(self, key: str, default: Any = None) -> Any:
         """
-        按点号分隔路径获取嵌套配置值
+        按点号分隔路径获取嵌套配置值（带扁平缓存加速）
 
         参数说明:
             key: 配置键路径，如 "llm.minimax.model" → config["llm"]["minimax"]["model"]
@@ -453,16 +444,36 @@ class Config:
         示例:
             config.get("web.port", 12393) → 12393
             config.get("llm.minimax.api_key") → "sk-xxx"
+
+        性能说明:
+            首次调用 _flatten() 将嵌套字典预展开为扁平字典 {"a.b.c": value}，
+            后续所有 get() 调用都是 O(1) 的 dict 查找，不再做 split + 深度遍历。
         """
-        keys = key.split(".")
-        value = self.config
-        for k in keys:
-            if isinstance(value, dict):
-                value = value.get(k)
-            else:
-                return default
-        # 值为 None 也返回 default（避免 YAML 中的 null 误判为有效值）
+        # 首次访问时预计算扁平字典（惰性初始化）
+        if not hasattr(self, '_flat_config'):
+            self._flat_config = self._flatten(self.config)
+
+        # O(1) 查找
+        value = self._flat_config.get(key, _SENTINEL)
+        if value is _SENTINEL:
+            return default
         return value if value is not None else default
+
+    @staticmethod
+    def _flatten(d: dict, parent_key: str = "", sep: str = ".") -> dict:
+        """递归展开嵌套字典为扁平键值对，如 {"a": {"b": 1}} → {"a.b": 1}"""
+        items = {}
+        for k, v in d.items():
+            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            if isinstance(v, dict):
+                items.update(Config._flatten(v, new_key, sep))
+            else:
+                items[new_key] = v
+        return items
+
+
+# 用于区分"键不存在"与"值为 None"的哨兵
+_SENTINEL = object()
 
 
 class ToolExecutor:
@@ -1963,35 +1974,6 @@ class AIVTuber:
             bool: True=重建成功, False=重建失败
         """
         with self._lazy_modules_lock:
-            if 'tts' in self._lazy_modules:
-                old_tts = self._lazy_modules.pop('tts')
-                if old_tts and hasattr(old_tts, 'cleanup') and callable(old_tts.cleanup):
-                    try:
-                        old_tts.cleanup()
-                    except Exception:
-                        pass
-            try:
-                _ = self.tts  # 触发懒加载重建
-                self.logger.info(f"TTS 引擎重建成功: {type(self._lazy_modules.get('tts')).__name__}")
-                return True
-            except Exception as e:
-                self.logger.error(f"TTS 引擎重建失败: {e}")
-                return False
-
-    def rebuild_tts_engine(self, new_config: dict = None):
-        """线程安全地重建 TTS 引擎（带可选配置更新）
-
-        KI-006b: 统一的 TTS 引擎重建逻辑，消除 settings_page.py 中的重复代码。
-
-        Args:
-            new_config: 可选的新 TTS 配置字典，会合并到当前配置中
-
-        Returns:
-            bool: True=重建成功, False=重建失败
-        """
-        with self._lazy_modules_lock:
-            if new_config:
-                self.config.config['tts'].update(new_config)
             if 'tts' in self._lazy_modules:
                 old_tts = self._lazy_modules.pop('tts')
                 if old_tts and hasattr(old_tts, 'cleanup') and callable(old_tts.cleanup):

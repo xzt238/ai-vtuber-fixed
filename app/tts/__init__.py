@@ -564,6 +564,219 @@ def _get_gptsovits_model_dir() -> str:
 
 
 # =====================================================================
+# MiMo TTS 云端引擎
+# =====================================================================
+
+class MimoTTS(TTSEngine):
+    """
+    【云端引擎】小米 MiMo V2.5 TTS 语音合成
+
+    通过 MiMo API 的 /v1/chat/completions 端点调用，使用 audio 参数控制语音合成。
+    支持三种模型和多种预置音色。
+
+    【三种模型】
+    - mimo-v2.5-tts: 预置精品音色合成（默认）
+    - mimo-v2.5-tts-voicedesign: 通过文本描述设计音色
+    - mimo-v2.5-tts-voiceclone: 基于音频样本复刻音色
+
+    【预置音色】
+    - mimo_default: 默认音色（中文集群为冰糖）
+    - 冰糖: 中文女声
+    - 茉莉: 中文女声
+    - 苏打: 中文男声
+    - 白桦: 中文男声
+    - Mia: 英文女声
+    - Chloe: 英文女声
+    - Milo: 英文男声
+    - Dean: 英文男声
+
+    【配置参数】
+        api_key: MiMo API Key（必需）
+        base_url: API 基础 URL，默认 https://api.xiaomimimo.com/v1
+        model: 模型名称，默认 mimo-v2.5-tts
+        voice: 音色 ID，默认 mimo_default
+        audio_format: 输出音频格式，wav/mp3/pcm16，默认 wav
+        style: 风格指令（user 角色消息），可选
+    """
+
+    # 预置音色映射
+    VOICES = {
+        "zh-CN": {
+            "mimo_default": "默认音色 (冰糖)",
+            "冰糖": "中文女声 (冰糖)",
+            "茉莉": "中文女声 (茉莉)",
+            "苏打": "中文男声 (苏打)",
+            "白桦": "中文男声 (白桦)",
+        },
+        "en-US": {
+            "Mia": "英文女声 (Mia)",
+            "Chloe": "英文女声 (Chloe)",
+            "Milo": "英文男声 (Milo)",
+            "Dean": "英文男声 (Dean)",
+        }
+    }
+
+    def __init__(self, config: Dict[str, Any]):
+        """
+        【构造函数】初始化 MiMo TTS 引擎
+
+        【参数说明】
+            config (Dict[str, Any]): 引擎配置字典
+        """
+        self.config = config
+        self.api_key = config.get("api_key", "") or os.getenv("MIMO_API_KEY", "")
+        self.base_url = config.get("base_url", "https://api.xiaomimimo.com/v1")
+        self.model = config.get("model", "mimo-v2.5-tts")
+        self.voice = config.get("voice", "mimo_default")
+        self.audio_format = config.get("audio_format", "wav")
+        self.style = config.get("style", "")  # 风格指令（如"温柔、慢速"）
+        self.timeout = config.get("timeout", 60)
+
+        # 如果没有直接配置 api_key，尝试从 config.yaml 的 llm.mimo 读取
+        if not self.api_key:
+            self._try_load_api_key_from_config()
+
+        # 音频输出目录
+        self._max_audio_files = 50
+
+    def _try_load_api_key_from_config(self):
+        """尝试从 config.yaml 的 llm.mimo 配置中读取 API Key"""
+        try:
+            import yaml
+            config_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "config.yaml"
+            )
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f)
+                self.api_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
+        except Exception:
+            pass
+
+    def _get_output_path(self) -> str:
+        """生成输出音频文件路径"""
+        tts_file = os.path.abspath(__file__)
+        app_dir = os.path.dirname(os.path.dirname(tts_file))
+        audio_dir = os.path.join(app_dir, "web", "static", "audio")
+        os.makedirs(audio_dir, exist_ok=True)
+        return os.path.join(audio_dir, f'response_{int(time.time()*1000)}.wav')
+
+    def speak(self, text: str, output_path: str = None, **kwargs) -> Optional[str]:
+        """
+        【核心方法】通过 MiMo TTS API 合成语音
+
+        【参数说明】
+            text (str): 要合成的文本
+            output_path (str, optional): 输出路径
+            **kwargs: 额外参数（voice 可动态覆盖）
+
+        【返回值】
+            Optional[str]: 生成的音频文件路径；失败时返回 None 或错误信息字符串
+        """
+        if not self.api_key:
+            return "合成错误: 请配置 MiMo API Key"
+
+        # 打断当前播放
+        if self._is_playing and self._current_process:
+            try:
+                self._current_process.terminate()
+                self._current_process = None
+            except:
+                pass
+            self._is_playing = False
+
+        if output_path is None:
+            output_path = self._get_output_path()
+
+        # v1.9.89: 文本增强（统一处理 [laugh] 等标记）
+        try:
+            from app.tts.text_enhancer import enhance_text
+            text = enhance_text(text)
+        except Exception:
+            pass
+
+        # 允许通过 kwargs 动态覆盖音色
+        voice = kwargs.get("voice", self.voice)
+        style = kwargs.get("style", self.style)
+
+        try:
+            import requests
+
+            # 构建 messages — MiMo TTS 要求文本放在 assistant 角色中
+            messages = []
+
+            # user 消息：风格指令（可选）
+            user_content = style if style else ""
+            if user_content:
+                messages.append({"role": "user", "content": user_content})
+
+            # assistant 消息：待合成的文本（必须）
+            messages.append({"role": "assistant", "content": text})
+
+            headers = {
+                "api-key": self.api_key,
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "model": self.model,
+                "messages": messages,
+                "audio": {
+                    "format": self.audio_format,
+                    "voice": voice
+                }
+            }
+
+            print(f"[MiMo TTS] 调用: model={self.model}, voice={voice}, text={text[:30]}...")
+
+            response = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=self.timeout
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+
+                # 提取音频数据
+                choices = result.get("choices", [])
+                if choices:
+                    message = choices[0].get("message", {})
+                    audio_data = message.get("audio", {}).get("data", "")
+
+                    if audio_data:
+                        # Base64 解码写入文件
+                        import base64
+                        audio_bytes = base64.b64decode(audio_data)
+                        with open(output_path, "wb") as f:
+                            f.write(audio_bytes)
+                        print(f"[MiMo TTS] 合成成功: {output_path} ({len(audio_bytes)} bytes)")
+                        return output_path
+                    else:
+                        print("[MiMo TTS] API 返回成功但无音频数据")
+                        return None
+                else:
+                    print(f"[MiMo TTS] API 响应无 choices: {result}")
+                    return None
+            else:
+                print(f"[MiMo TTS] API 错误: {response.status_code} - {response.text[:200]}")
+                return None
+
+        except Exception as e:
+            print(f"[MiMo TTS] 合成失败: {e}")
+            return f"合成错误: {str(e)}"
+
+    def is_available(self) -> bool:
+        """检查 API Key 是否已配置"""
+        return bool(self.api_key)
+
+    def get_voices(self) -> dict:
+        """获取预置音色列表"""
+        return self.VOICES
+
+
+# =====================================================================
 # 第3层：工厂类
 # =====================================================================
 
@@ -647,5 +860,24 @@ class TTSFactory:
             provider_config = dict(provider_config)  # 避免修改原始配置
             provider_config.setdefault("root_dir", _get_gptsovits_model_dir())
             return GPTSoVITSEngine(provider_config)
+        elif provider == "mimo":
+            # 小米 MiMo V2.5 TTS 云端引擎
+            # 自动从 llm.mimo 配置读取 API Key（如果 TTS 配置未单独指定）
+            if not provider_config.get("api_key"):
+                try:
+                    import yaml
+                    config_path = os.path.join(
+                        os.path.dirname(os.path.dirname(__file__)), "config.yaml"
+                    )
+                    if os.path.exists(config_path):
+                        with open(config_path, "r", encoding="utf-8") as f:
+                            cfg = yaml.safe_load(f)
+                        llm_mimo_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
+                        if llm_mimo_key:
+                            provider_config = dict(provider_config)
+                            provider_config["api_key"] = llm_mimo_key
+                except Exception:
+                    pass
+            return MimoTTS(provider_config)
         else:
             raise ValueError(f"未知 TTS 提供商: {provider}")

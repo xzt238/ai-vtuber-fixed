@@ -445,6 +445,29 @@ def _strip_thinking(text: str) -> str:
     return cleaned if cleaned else text  # 如果清理后为空，返回原文
 
 
+def _clean_response(text: str):
+    """
+    【功能说明】统一清理 LLM 回复：去除 thinking 标签 + 解析动作指令
+
+    将 _strip_thinking 和 _parse_action 合并为一个调用，消除 7 处重复代码。
+
+    【参数说明】
+        text (str): LLM 原始输出文本
+
+    【返回值】
+        tuple: (clean_text, action_str_or_None)
+            - clean_text: 清理后的文本
+            - action_str: JSON 字符串或 None（由调用方决定是否 json.loads）
+
+    【设计意图】
+    之前每个 chat/stream 方法都独立调用 _strip_thinking + _parse_action，
+    产生大量重复代码。统一为单次调用，降低维护成本，保证行为一致。
+    """
+    clean_text = _strip_thinking(text)
+    action_str = _parse_action(clean_text)
+    return clean_text, action_str
+
+
 # ==================== 速率限制 & 重试 =====================
 
 class RateLimiter:
@@ -1266,7 +1289,7 @@ class MiniMaxLLM(LLMEngine):
                 return {"text": f"工具调用执行出错: {str(e)}", "action": None}
 
         # 流结束后兜底清理
-        full_text = _strip_thinking(full_text)
+        full_text, action_str = _clean_response(full_text)
 
         # v14 FIX: 检查流式结果是否为空
         if not full_text:
@@ -1280,7 +1303,6 @@ class MiniMaxLLM(LLMEngine):
         if buffer and callback:
             callback(buffer)
 
-        action_str = _parse_action(full_text)
         action = json.loads(action_str) if action_str else None
         return {"text": full_text, "action": action}
 
@@ -1370,7 +1392,7 @@ class MiniMaxLLM(LLMEngine):
                 continue
         
         # 流结束后兜底清理
-        full_text = _strip_thinking(full_text)
+        full_text, action_str = _clean_response(full_text)
 
         # v14 FIX: 检查流式结果是否为空
         if not full_text:
@@ -1383,7 +1405,6 @@ class MiniMaxLLM(LLMEngine):
         if buffer and callback:
             callback(buffer)
         
-        action_str = _parse_action(full_text)
         action = json.loads(action_str) if action_str else None
         return {"text": full_text, "action": action}
 
@@ -1449,17 +1470,24 @@ class OpenAILLM(LLMEngine):
         # 创建带认证头的 HTTP Session
         import requests
         self._session = requests.Session()
-        self._session.headers.update({
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        })
+        # MiMo 使用 api-key 头，其他 OpenAI 兼容提供商使用 Authorization: Bearer
+        if "xiaomimimo.com" in self.base_url:
+            self._session.headers.update({
+                "api-key": self.api_key,
+                "Content-Type": "application/json",
+            })
+        else:
+            self._session.headers.update({
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            })
         
         self._rate_limiter = RateLimiter(max_requests=config.get("rate_limit", 60))
         self._cache = {}
         self._cache_ttl = 300
         self._cache_lock = threading.Lock()  # v1.8: 缓存线程安全
         
-        print(f"  OpenAI LLM v2.0 初始化: max_tokens={self.max_tokens}, ollama={self._is_ollama}")
+        print(f"  OpenAI LLM v2.0 初始化: base_url={self.base_url}, max_tokens={self.max_tokens}, ollama={self._is_ollama}")
 
     def chat(self, message: str, history: List[Dict] = None,
              memory_system = None) -> Dict[str, Any]:
@@ -1536,8 +1564,7 @@ class OpenAILLM(LLMEngine):
             else:
                 text = str(raw_content)
             # 兜底清理：<think >...</think > 标签（部分 Qwen3 版本会输出到 content 中）
-            text = _strip_thinking(text)
-            action = _parse_action(text)
+            text, action = _clean_response(text)
             # 统一返回格式：action 始终为解析后的 dict 或 None（与 MiniMax 等一致）
             if isinstance(action, str):
                 try:
@@ -1605,8 +1632,7 @@ class OpenAILLM(LLMEngine):
                 text = raw_content.get("text", str(raw_content))
             else:
                 text = str(raw_content)
-            text = _strip_thinking(text)
-            action_str = _parse_action(text)
+            text, action_str = _clean_response(text)
             # v1.9.95 修复：action 始终返回解析后的 dict 或 None（与其他方法一致）
             action = json.loads(action_str) if action_str else None
             ret = {"text": text, "action": action}
@@ -1666,7 +1692,7 @@ class OpenAILLM(LLMEngine):
                 except:
                     continue
 
-            full_text = _strip_thinking(full_text)
+            full_text, action_str = _clean_response(full_text)
 
             # v14 FIX: 检查流式结果是否为空
             if not full_text:
@@ -1674,7 +1700,6 @@ class OpenAILLM(LLMEngine):
 
             if buffer and callback:
                 callback(buffer)
-            action_str = _parse_action(full_text)
             action = json.loads(action_str) if action_str else None
             return {"text": full_text, "action": action}
         except Exception as e:
@@ -1853,7 +1878,7 @@ class OpenAILLM(LLMEngine):
                     return {"text": f"工具调用执行出错: {str(e)}", "action": None}
 
             # 流结束后兜底清理 thinking 标签
-            full_text = _strip_thinking(full_text)
+            full_text, action_str = _clean_response(full_text)
 
             # v14 FIX: 检查流式结果是否为空
             if not full_text:
@@ -1866,7 +1891,6 @@ class OpenAILLM(LLMEngine):
             if buffer and callback:
                 callback(buffer)
 
-            action_str = _parse_action(full_text)
             action = json.loads(action_str) if action_str else None
             return {"text": full_text, "action": action}
         except Exception as e:
@@ -2019,8 +2043,7 @@ class AnthropicLLM(LLMEngine):
                 if isinstance(block, dict) and block.get("type") == "text":
                     text += block.get("text", "")
             # 清理 <think/> 标签（部分 Anthropic 模型会泄漏思维链标签）
-            text = _strip_thinking(text)
-            action = _parse_action(text)
+            text, action = _clean_response(text)
             
             ret = {"text": text, "action": action}
             # v1.8: 缓存写入加锁

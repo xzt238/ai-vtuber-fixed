@@ -104,9 +104,10 @@ class DualModeCompat:
             False = 已有实例在运行
         """
         if sys.platform != "win32":
-            return True  # 非 Windows 平台跳过互斥体
+            return True
         try:
             import ctypes
+            import time as _time
             kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
             mutex_name = _MUTEX_NATIVE
 
@@ -115,7 +116,12 @@ class DualModeCompat:
 
             if last_error == 183:  # ERROR_ALREADY_EXISTS
                 logger.warning("Another native instance is already running")
-                return False
+                # 等待 3 秒后重试（进程被杀后 Windows 互斥锁可能有延迟清理）
+                _time.sleep(3)
+                handle = kernel32.CreateMutexW(None, False, mutex_name)
+                last_error = ctypes.get_last_error()
+                if last_error == 183:
+                    return False
 
             self._mutex_handle = handle
             return True

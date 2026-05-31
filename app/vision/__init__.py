@@ -190,15 +190,19 @@ class RapidOCRProvider(VisionProvider):
         return "RapidOCR（本地 OCR，仅识别文字）"
 
     def _get_engine(self):
-        """懒加载引擎"""
+        """懒加载引擎 — 兼容 rapidocr 和 rapidocr_onnxruntime 两个包名"""
         if self._engine is None:
             try:
                 from rapidocr import RapidOCR
                 self._engine = RapidOCR()
-                print("[Vision] RapidOCR 引擎已加载")
             except ImportError:
-                print("[Vision] ⚠️ RapidOCR 未安装: pip install rapidocr-onnxruntime")
-                return None
+                try:
+                    from rapidocr_onnxruntime import RapidOCR
+                    self._engine = RapidOCR()
+                except ImportError:
+                    print("[Vision] ⚠️ RapidOCR 未安装: pip install rapidocr-onnxruntime")
+                    return None
+            print("[Vision] RapidOCR 引擎已加载")
         return self._engine
 
     def recognize_text(self, image_path: str) -> Optional[str]:
@@ -868,6 +872,193 @@ class MiniCPMProvider(VisionProvider):
         print("[Vision] MiniCPM 资源已释放")
 
 
+# ==================== MiMo Vision Provider ====================
+
+class MimoVisionProvider(VisionProvider):
+    """
+    MiMo V2.5 视觉理解 - 通过 /v1/chat/completions + image_url 调用
+
+    MiMo V2.5 是原生全模态模型，支持图像、视频和音频理解。
+    图像通过 OpenAI 兼容的 image_url 格式传入。
+
+    支持模型：
+    - mimo-v2.5: 标准多模态模型
+    - mimo-v2.5-pro: 增强推理能力
+    """
+
+    def __init__(self, config: Dict[str, Any] = None):
+        """
+        【功能说明】初始化 MiMo Vision Provider
+
+        【参数说明】
+            config (Dict[str, Any], optional): 配置字典，包含 api_key、base_url、model 等
+        """
+        super().__init__(config)
+        self.name = "mimo_vision"
+        self.api_key = config.get("api_key", "") or os.getenv("MIMO_API_KEY", "")
+        self.base_url = config.get("base_url", "https://api.xiaomimimo.com/v1")
+        self.model = config.get("model", "mimo-v2.5")
+        # JPEG 压缩质量（降低 base64 体积）
+        self.jpeg_quality = config.get("jpeg_quality", 50)
+        self.timeout = config.get("timeout", 120)
+
+        # 如果没有直接配置 api_key，尝试从 config.yaml 读取
+        if not self.api_key:
+            self._try_load_api_key_from_config()
+
+    def _try_load_api_key_from_config(self):
+        """尝试从 config.yaml 的 llm.mimo 配置中读取 API Key"""
+        try:
+            import yaml
+            config_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "config.yaml"
+            )
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f)
+                self.api_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
+        except Exception:
+            pass
+
+    @property
+    def provider_type(self) -> VisionProviderType:
+        """MiMo Vision 使用独立的枚举值（动态注册）"""
+        # 复用 MINIMAX_VL 的类型（都是云端视觉API），但 description 会区分
+        return VisionProviderType.MINIMAX_VL
+
+    @property
+    def supports_understanding(self) -> bool:
+        """MiMo V2.5 支持完整图像理解"""
+        return True
+
+    @property
+    def description(self) -> str:
+        return f"MiMo Vision（{self.model}，云端多模态）"
+
+    def is_available(self) -> bool:
+        """MiMo Vision 是否可用（检查 API Key 是否已配置）"""
+        return bool(self.api_key)
+
+    def recognize_text(self, image_path: str) -> Optional[str]:
+        """MiMo Vision 文字识别"""
+        return self.understand(image_path, "请仔细识别图中所有文字，原文输出，不要总结。")
+
+    def understand(self, image_path: str, prompt: str = None) -> Optional[str]:
+        """
+        MiMo V2.5 图像理解
+
+        通过 /v1/chat/completions + image_url 调用 MiMo 视觉理解能力。
+        """
+        if not self.api_key:
+            print("[Vision] 请配置 MiMo API Key")
+            return None
+
+        if not os.path.exists(image_path):
+            print(f"[Vision] 图片不存在: {image_path}")
+            return None
+
+        # 编码图片为 data URI
+        data_uri = self._encode_image_data_uri(image_path)
+        if not data_uri:
+            return None
+
+        default_prompt = "请描述这张图片的内容，包括所有可见的物体、场景、文字等。"
+        full_prompt = prompt or default_prompt
+        full_prompt = full_prompt.replace("<image>", "").strip()
+
+        try:
+            import requests
+
+            headers = {
+                "api-key": self.api_key,
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": data_uri
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": full_prompt
+                            }
+                        ]
+                    }
+                ],
+                "max_completion_tokens": 1024
+            }
+
+            url = f"{self.base_url}/chat/completions"
+            print(f"[Vision] MiMo Vision 调用: {url} (prompt: {full_prompt[:30]}...)")
+
+            response = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
+
+            if response.status_code == 200:
+                result = response.json()
+                choices = result.get("choices", [])
+                if choices:
+                    content = choices[0].get("message", {}).get("content", "")
+                    if content:
+                        print(f"[Vision] MiMo Vision 结果: {content[:80]}...")
+                        return content
+                    else:
+                        print("[Vision] MiMo Vision API 返回成功但无内容")
+                        return None
+                else:
+                    print(f"[Vision] MiMo Vision API 响应无 choices: {result}")
+                    return None
+            else:
+                print(f"[Vision] MiMo Vision HTTP 错误: {response.status_code} - {response.text[:200]}")
+                return None
+
+        except Exception as e:
+            print(f"[Vision] MiMo Vision 理解失败: {e}")
+            return None
+
+    def _encode_image_data_uri(self, image_path: str) -> Optional[str]:
+        """将图片编码为 data URI 格式（与 MiniMax VL 类似，自动压缩为 JPEG）"""
+        try:
+            from PIL import Image as PILImage
+            from io import BytesIO
+
+            img = PILImage.open(image_path)
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+
+            buffer = BytesIO()
+            img.save(buffer, format="JPEG", quality=self.jpeg_quality)
+            img_bytes = buffer.getvalue()
+            b64 = base64.b64encode(img_bytes).decode("utf-8")
+
+            data_uri = f"data:image/jpeg;base64,{b64}"
+            print(f"[Vision] MiMo 图片编码: {os.path.getsize(image_path)} -> {len(img_bytes)} bytes (JPEG q={self.jpeg_quality})")
+            return data_uri
+        except ImportError:
+            # 没有 Pillow，回退到原始 base64
+            b64 = self._encode_image_base64(image_path)
+            if b64:
+                ext = os.path.splitext(image_path)[1].lower()
+                media_type = {
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".webp": "image/webp",
+                }.get(ext, "image/png")
+                return f"data:{media_type};base64,{b64}"
+            return None
+        except Exception as e:
+            print(f"[Vision] MiMo 图片编码失败: {e}")
+            return None
+
+
 # ==================== Vision Manager ====================
 
 class VisionManager:
@@ -921,19 +1112,40 @@ class VisionManager:
             self.config.get("minicpm", {})
         )
 
+        # MiMo Vision（云端多模态）
+        # 使用独立的字符串键 "mimo_vision" 区分 MiniMax VL
+        self._mimo_vision_provider = MimoVisionProvider(
+            self.config.get("mimo_vision", {})
+        )
+
     def set_provider(self, provider: str):
         """
         切换 Provider
 
         Args:
-            provider: Provider 名称 ("rapidocr", "minimax_vl", "minicpm", "auto")
+            provider: Provider 名称 ("rapidocr", "minimax_vl", "minicpm", "mimo_vision", "auto")
         """
         if provider == "auto":
-            # 自动选择：有 MiniMax API 用它，否则用 RapidOCR
-            if self._providers[VisionProviderType.MINIMAX_VL].api_key:
+            # 自动选择：优先 MiMo > MiniMax > RapidOCR
+            if hasattr(self, '_mimo_vision_provider') and self._mimo_vision_provider.api_key:
+                provider = "mimo_vision"
+            elif self._providers[VisionProviderType.MINIMAX_VL].api_key:
                 provider = "minimax_vl"
             else:
                 provider = "rapidocr"
+
+        # MiMo Vision 使用独立实例（不走 _providers 字典）
+        if provider == "mimo_vision":
+            if hasattr(self, '_mimo_vision_provider') and self._mimo_vision_provider.is_available():
+                self._current_provider_type = VisionProviderType.MINIMAX_VL
+                self._current_provider = self._mimo_vision_provider
+                print(f"[Vision] Provider 切换: {self._current_provider.description}")
+                return
+            else:
+                print("[Vision] ⚠️ MiMo Vision 不可用（未配置 API Key），自动降级")
+                # 降级到下一个可用 Provider
+                provider = "auto"
+                return self.set_provider(provider)
 
         provider_map = {
             "rapidocr": VisionProviderType.RAPIDOCR,
@@ -985,6 +1197,13 @@ class VisionManager:
                 "type": pt.value,
                 "name": provider.description,
                 "supports_understanding": provider.supports_understanding
+            })
+        # MiMo Vision 独立实例
+        if hasattr(self, '_mimo_vision_provider'):
+            result.append({
+                "type": "mimo_vision",
+                "name": self._mimo_vision_provider.description,
+                "supports_understanding": self._mimo_vision_provider.supports_understanding
             })
         return result
 

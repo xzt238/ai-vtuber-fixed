@@ -1,0 +1,128 @@
+classDiagram
+    class ThemeDefinition {
+        +str id
+        +str name
+        +str description
+        +str base_mode
+        +list~str~ preview_colors
+        +dict~str,str~ colors
+        +get_color(field: str) str
+        +to_dict() dict
+        +from_dict(data: dict) ThemeDefinition
+    }
+
+    class ThemeRegistry {
+        -dict~str,ThemeDefinition~ _themes
+        +__init__()
+        +register(definition: ThemeDefinition) void
+        +unregister(theme_id: str) void
+        +get(theme_id: str) ThemeDefinition
+        +list_all() list~ThemeDefinition~
+        +list_by_base_mode(mode: str) list~ThemeDefinition~
+        +get_default_dark() ThemeDefinition
+        +get_default_light() ThemeDefinition
+    }
+
+    class ThemeManager {
+        -str _current_id
+        -AppColors _colors
+        -ThemeRegistry _registry
+        -list~Callable~ _callbacks
+        -str _prefs_path
+        +__init__(registry: ThemeRegistry, prefs_path: str)
+        +apply(theme_id: str) void
+        +get_colors() AppColors
+        +get_current_id() str
+        +get_current_definition() ThemeDefinition
+        +is_dark() bool
+        +register_callback(callback: Callable) void
+        +unregister_callback(callback: Callable) void
+        +save_preferences() void
+        +load_preferences() str
+        +get_global_qss() str
+        +get_web_theme_vars() dict
+        +get_chat_bubble_css() str
+    }
+
+    class AppColors {
+        +str window_bg
+        +str sidebar_bg
+        +str card_bg
+        +str card_bg_hover
+        +str card_border
+        +str card_border_hover
+        +str chat_bg
+        +str ai_bubble_bg
+        +str ai_bubble_border
+        +str ai_bubble_accent
+        +str user_bubble_bg
+        +str user_bubble_border
+        +str user_bubble_accent
+        +str user_text_color
+        +str accent
+        +str accent_hover
+        +str accent_pressed
+        +str accent_gradient_start
+        +str accent_gradient_end
+        +str success
+        +str success_bg
+        +str warning
+        +str warning_bg
+        +str error
+        +str error_bg
+        +str text_primary
+        +str text_secondary
+        +str text_muted
+        +str text_on_accent
+        +str input_bg
+        +str input_border
+        +str input_focus_border
+        +str input_focus_shadow
+        +str progress_start
+        +str progress_end
+        +str shadow_sm
+        +str shadow_md
+        +str shadow_lg
+        +str shadow_xl
+        +str divider
+        +str timestamp_color
+        +from_definition(def_: ThemeDefinition) AppColors
+    }
+
+    class ColorDeriver {
+        +derive_accent_variants(accent_hex: str)$ dict
+        +derive_base_colors(accent_hex: str, base_mode: str)$ dict
+        +blend_colors(color1: str, color2: str, ratio: float)$ str
+        +lighten(hex: str, amount: float)$ str
+        +darken(hex: str, amount: float)$ str
+        +to_hex(r: float, g: float, b: float)$ str
+    }
+
+    class ThemeSelector {
+        +Signal theme_selected(str)
+        -dict~str,ThemeDefinition~ _themes
+        -str _current_id
+        +__init__(parent: QWidget)
+        +set_themes(themes: list~ThemeDefinition~) void
+        +set_current(theme_id: str) void
+        +refresh_theme() void
+    }
+
+    class ThemeCardWidget {
+        +Signal clicked(str)
+        -str _theme_id
+        -str _name
+        -list~str~ _preview_colors
+        -bool _selected
+        +__init__(theme_id: str, name: str, colors: list~str~, parent: QWidget)
+        +set_selected(selected: bool) void
+        +refresh_theme() void
+    }
+
+    ThemeManager --> ThemeRegistry : uses
+    ThemeManager --> AppColors : creates/holds
+    ThemeRegistry --> ThemeDefinition : stores
+    AppColors --> ThemeDefinition : from_definition()
+    ThemeDefinition --> ColorDeriver : uses
+    ThemeSelector --> ThemeDefinition : displays
+    ThemeSelector --> ThemeCardWidget : contains

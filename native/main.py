@@ -31,6 +31,26 @@ import sys
 import os
 import logging
 
+# ===== Win32 FFmpeg 扫描加速（必须在前 3 行，Qt 初始化前执行）=====
+# pydub（torchaudio 传递依赖）导入时用 subprocess 扫描 PATH 找 ffmpeg
+# Windows 每个子进程 2-5s，累计 10-20s。拦截并毫秒跳过
+if os.name == 'nt':
+    import subprocess as _sp_main
+    _SP_MAIN_ORIG = _sp_main.check_output
+    def _sp_main_patched(cmd, **kw):
+        try:
+            prog = (cmd[0] if isinstance(cmd, (list, tuple)) else str(cmd).split()[0]).lower()
+        except Exception:
+            return _SP_MAIN_ORIG(cmd, **kw)
+        if prog in ('ffmpeg', 'ffmpeg.exe', 'avconv', 'avconv.exe', 'ffprobe', 'ffprobe.exe'):
+            raise FileNotFoundError("patched")
+        return _SP_MAIN_ORIG(cmd, **kw)
+    _sp_main.check_output = _sp_main_patched
+    # 同时抑制 pydub RuntimeWarning
+    import warnings as _w
+    _w.filterwarnings("ignore", message=".*Couldn.t find ffmpeg.*")
+    _w.filterwarnings("ignore", message=".*ffmpeg is not installed.*")
+
 # native 目录本身（包含 gugu_native 包）
 NATIVE_DIR = os.path.dirname(os.path.abspath(__file__))
 if NATIVE_DIR not in sys.path:
@@ -59,30 +79,16 @@ except ImportError:
     pass  # live2d-py 可选，不影响 Web 渲染方案
 
 from PySide6.QtCore import Qt, QTimer, QThread
-from PySide6.QtWidgets import QApplication, QSplashScreen, QWidget
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtGui import QIcon
 
 from qfluentwidgets import FluentWindow, NavigationItemPosition, setTheme, Theme, FluentIcon
 
-from gugu_native.theme import apply_theme, get_global_qss, get_colors
+from gugu_native.theme import apply_theme, get_global_qss, get_colors, apply_theme_by_id, _ensure_manager
 
-from gugu_native.pages.chat_page import ChatPage
-from gugu_native.pages.train_page import TrainPage
-from gugu_native.pages.memory_page import MemoryPage
-from gugu_native.pages.model_download_page import ModelDownloadPage
-from gugu_native.pages.settings_page import SettingsPage
-try:
-    from gugu_native.pages.vrm_settings_page import VRMSettingsPage
-except ImportError:
-    VRMSettingsPage = None
-from gugu_native.widgets.tray_manager import TrayManager
-from gugu_native.widgets.voice_manager import RealtimeVoiceManager
-from gugu_native.widgets.hotkey_manager import HotkeyManager
-from gugu_native.widgets.desktop_pet import DesktopPetWindow
-from gugu_native.widgets.autostart_manager import AutoStartManager
-from gugu_native.widgets.update_manager import UpdateManager
-from gugu_native.widgets.perf_manager import PerformanceManager
-from gugu_native.widgets.dual_mode_compat import DualModeCompat
+# 延迟导入 — 所有重量级模块在 _create_pages() 内按需加载，节省 ~5s 冷启动时间
+# ChatPage / TrainPage / MemoryPage / SettingsPage / ModelDownloadPage
+# TrayManager / VoiceManager / HotkeyManager / DesktopPet / AutoStart / Update / Perf / DualMode
 
 # 统一版本号（从 app/version.py 读取）
 def _get_version():
@@ -90,7 +96,7 @@ def _get_version():
         from app.version import VERSION
         return VERSION
     except ImportError:
-        return "1.11.1"  # fallback
+        return "1.11.19"  # fallback
 
 # 配置日志 — 强制 UTF-8 编码避免 Windows 中文乱码
 # 注意: sys.stderr 本身已是文本流，不能用 io.TextIOWrapper 二次包装（会导致 flush 写 bytes 崩溃）
@@ -110,12 +116,13 @@ logger = logging.getLogger('GuguGagaApp')
 class GuguGagaApp(FluentWindow):
     """咕咕嘎嘎 AI-VTuber 主窗口"""
 
-    def __init__(self, start_time=None):
+    def __init__(self, start_time=None, splash=None):
         super().__init__()
         import time as _time
         self._init_start_time = start_time or _time.time()
+        self._splash = splash  # 保存启动画面引用，用于后续重开调试窗口
         self.setWindowTitle(f"咕咕嘎嘎 AI-VTuber v{_get_version()}")
-        self.setMinimumSize(1100, 700)
+        self.setMinimumSize(960, 600)
         self.resize(1280, 800)
         self.setObjectName("guguGagaApp")
 
@@ -134,6 +141,15 @@ class GuguGagaApp(FluentWindow):
         # 后端引用（延迟初始化）
         self._backend = None
         self._backend_ready = False
+
+        # === 延迟导入（按需加载，节省 ~5s 冷启动）===
+        from gugu_native.widgets.dual_mode_compat import DualModeCompat
+        from gugu_native.widgets.autostart_manager import AutoStartManager
+        from gugu_native.widgets.perf_manager import PerformanceManager
+        from gugu_native.widgets.tray_manager import TrayManager
+        from gugu_native.widgets.voice_manager import RealtimeVoiceManager
+        from gugu_native.widgets.hotkey_manager import HotkeyManager
+        from gugu_native.widgets.update_manager import UpdateManager
 
         # === 双模式兼容 ===
         self.dual_mode = DualModeCompat(PROJECT_DIR)
@@ -156,10 +172,14 @@ class GuguGagaApp(FluentWindow):
         self.autostart_manager = AutoStartManager(self)
 
         # === 创建各页面 ===
+        if self._splash: self._splash.set_progress("正在加载界面...")
         self._create_pages()
 
-        # === 设置主题 ===
-        apply_theme(Theme.DARK)
+        # === 设置主题（从持久化偏好恢复）===
+        if self._splash: self._splash.set_progress("正在应用主题...")
+        manager = _ensure_manager()
+        theme_id = manager.load_preferences()
+        apply_theme_by_id(theme_id)
         self.setStyleSheet(get_global_qss())
 
         # === 性能管理器 ===
@@ -171,6 +191,7 @@ class GuguGagaApp(FluentWindow):
         self.tray_manager.quit_requested.connect(self._on_quit_requested)
 
         # === 实时语音管理器 ===
+        if self._splash: self._splash.set_progress("正在初始化语音引擎...")
         self.voice_manager = RealtimeVoiceManager(parent=self)
         self.voice_manager.vad_state_changed.connect(self._on_vad_state_changed)
         self.voice_manager.error_occurred.connect(self._on_voice_error)
@@ -234,9 +255,10 @@ class GuguGagaApp(FluentWindow):
             self._webui_check_thread.wait(2000)
 
     def _create_pages(self):
-        """创建导航页面"""
+        """创建导航页面 — 非首屏页面延迟导入以加速冷启动"""
 
-        # 对话页面（含 Live2D）
+        # 对话页面（首屏，立即创建）
+        from gugu_native.pages.chat_page import ChatPage
         self.chat_page = ChatPage(self)
         self.addSubInterface(
             self.chat_page,
@@ -244,7 +266,8 @@ class GuguGagaApp(FluentWindow):
             "对话"
         )
 
-        # 音色训练页面
+        # 音色训练页面（延迟导入）
+        from gugu_native.pages.train_page import TrainPage
         self.train_page = TrainPage(self)
         self.addSubInterface(
             self.train_page,
@@ -252,7 +275,8 @@ class GuguGagaApp(FluentWindow):
             "音色训练"
         )
 
-        # 记忆页面
+        # 记忆页面（延迟导入）
+        from gugu_native.pages.memory_page import MemoryPage
         self.memory_page = MemoryPage(self)
         self.addSubInterface(
             self.memory_page,
@@ -260,7 +284,8 @@ class GuguGagaApp(FluentWindow):
             "记忆"
         )
 
-        # 模型下载页面
+        # 模型下载页面（延迟导入）
+        from gugu_native.pages.model_download_page import ModelDownloadPage
         self.model_download_page = ModelDownloadPage(self)
         self.addSubInterface(
             self.model_download_page,
@@ -268,16 +293,20 @@ class GuguGagaApp(FluentWindow):
             "模型下载"
         )
 
-        # VRM 设置页面
-        if VRMSettingsPage is not None:
+        # VRM 设置页面（延迟导入）
+        try:
+            from gugu_native.pages.vrm_settings_page import VRMSettingsPage
             self.vrm_settings_page = VRMSettingsPage(self)
             self.addSubInterface(
                 self.vrm_settings_page,
                 FluentIcon.VIEW,
                 "VRM 设置"
             )
+        except ImportError:
+            pass
 
-        # 设置页面（放在底部）
+        # 设置页面（延迟导入）
+        from gugu_native.pages.settings_page import SettingsPage
         self.settings_page = SettingsPage(self)
         # 绑定开机自启开关到 AutoStartManager
         if hasattr(self.settings_page, 'autostart_switch'):
@@ -306,6 +335,7 @@ class GuguGagaApp(FluentWindow):
         """延迟初始化后端"""
         if self._backend is None:
             self.tray_manager.update_progress("正在初始化后端...")
+            if self._splash: self._splash.set_progress("正在连接 AI 引擎...")
             try:
                 # 确保 CWD 在项目根目录，使 AIVTuber 的相对路径("./memory"等)正确解析
                 # native.bat 从 native/ 目录启动，CWD 不在项目根会导致记忆/缓存路径错误
@@ -316,6 +346,7 @@ class GuguGagaApp(FluentWindow):
                 # 连接语音管理器到后端
                 self.voice_manager.backend = self._backend
                 self._backend_ready = True
+                if self._splash: self._splash.mark_backend_ready()
                 self.tray_manager.notify_backend_ready()
                 logger.info("Backend initialized")
             except Exception as e:
@@ -329,6 +360,12 @@ class GuguGagaApp(FluentWindow):
         import time as _time
         elapsed = _time.time() - self._init_start_time if hasattr(self, '_init_start_time') else 0
         logger.info(f"Backend ready — total startup: {elapsed:.1f}s (from process entry)")
+
+        # 关闭启动画面（隐藏但不销毁，日志内容保留供后续查看）
+        if self._splash:
+            print(f"✓ 后端全部就绪 (耗时 {elapsed:.1f}s)")
+            self._splash.set_progress("启动完成!")
+            self._splash.fade_out_and_close()
         # 通知各页面后端已就绪
         for page in [self.chat_page, self.train_page, self.memory_page, self.model_download_page, self.settings_page]:
             if page and hasattr(page, 'on_backend_ready'):
@@ -345,11 +382,12 @@ class GuguGagaApp(FluentWindow):
         except Exception as e:
             logger.warning(f"Failed to register proactive callback: {e}")
 
-        # TTS 预热: 加载上次使用的音色项目,避免 ref_audio_path 为空
-        # 参考 WebUI 模式的 _prewarm_tts() 逻辑
+        # TTS 预热
+        if self._splash: self._splash.set_progress("正在预热语音合成...")
         self._prewarm_tts()
 
-        # ASR 预加载: 在后台线程触发懒加载,避免首次语音识别时等待
+        # ASR 预加载
+        if self._splash: self._splash.set_progress("正在预加载语音识别...")
         import threading
         def _preload_asr():
             try:
@@ -484,6 +522,7 @@ class GuguGagaApp(FluentWindow):
             self._resume_main_live2d()
         else:
             if self._pet_window is None:
+                from gugu_native.widgets.desktop_pet import DesktopPetWindow
                 self._pet_window = DesktopPetWindow(self)
                 self._pet_window.switch_to_main.connect(self._on_pet_switch_to_main)
                 self._pet_window.pet_closed.connect(self._on_pet_closed)
@@ -500,6 +539,15 @@ class GuguGagaApp(FluentWindow):
                 self.chat_page._animation_controller.stop()
         except Exception as e:
             logger.debug(f"Pause main Live2D failed: {e}")
+
+    # ========== 运行调试窗口 ==========
+
+    def show_debug_window(self):
+        """显示运行调试窗口（启动后已隐藏，可重新打开查看历史日志）"""
+        if self._splash:
+            self._splash.show()
+            self._splash.raise_()
+            self._splash.activateWindow()
 
     def _resume_main_live2d(self):
         """恢复主窗口的 Live2D 渲染"""
@@ -640,7 +688,25 @@ class GuguGagaApp(FluentWindow):
         logger.info("Cleanup completed")
 
 
+def _check_dependencies():
+    """检查关键依赖（PySide6），失败时弹出 Windows 消息框"""
+    try:
+        import PySide6  # noqa: F401
+    except ImportError:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(
+            0,
+            "PySide6 未安装!\n请先运行 scripts\\install_deps.bat 安装依赖。",
+            "咕咕嘎嘎 - 启动失败",
+            0x10  # MB_ICONERROR
+        )
+        sys.exit(1)
+
+
 def main():
+    # ★ 依赖检查（在 QApplication 之前，避免创建窗口后才发现依赖缺失）
+    _check_dependencies()
+
     # v9: 全局启动计时 — 从 main() 入口开始，而非 __init__()
     # 之前放在 __init__ 里测量的是"构造函数→后端就绪"的耗时，
     # 但用户感知的"启动慢"是从双击 start.bat 到 UI 可用的总时间。
@@ -690,23 +756,38 @@ def main():
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
 
-    # 启动画面
+    # 启动画面 — 自定义 SplashDebugWindow（含运行调试窗口）
     splash_path = os.path.join(NATIVE_DIR, "gugu_native", "resources", "splash.png")
-    splash = None
-    if os.path.exists(splash_path):
-        splash_pix = QPixmap(splash_path)
-        splash = QSplashScreen(splash_pix)
-        splash.show()
-        splash.showMessage("正在启动...", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
-                          Qt.GlobalColor.white)
-        app.processEvents()  # 确保 splash 立即渲染
+    from gugu_native.widgets.splash_debug_window import SplashDebugWindow, StdoutRedirector
 
-    window = GuguGagaApp(start_time=_PROCESS_START)
-    window.show()
+    splash = SplashDebugWindow(logo_path=splash_path if os.path.exists(splash_path) else None)
+    splash.set_progress("正在初始化界面...")
+    splash.show()
+    app.processEvents()  # 确保 splash 立即渲染
 
-    # 关闭启动画面
-    if splash:
-        splash.finish(window)
+    # 重定向 stdout 到启动画面的调试窗口（stderr 不重定向，避免破坏 logging handler）
+    _stdout_redirector = StdoutRedirector()
+    _stdout_redirector.text_written.connect(splash.append_log)
+    sys.stdout = _stdout_redirector
+
+    splash.append_log("✓ Python 环境就绪")
+    splash.set_progress("正在初始化界面组件...")
+
+    try:
+        window = GuguGagaApp(start_time=_PROCESS_START, splash=splash)
+        window.show()
+    except Exception as e:
+        splash.append_log(f"[ERROR] 界面初始化失败: {e}")
+        splash.set_progress("初始化失败 - 按 Esc 关闭")
+        import traceback
+        for line in traceback.format_exc().split('\n'):
+            if line.strip():
+                splash.append_log(line)
+        # 保持 splash 显示，不退出——让用户看到错误日志
+        exit_code = app.exec()
+        sys.exit(1)
+
+    # 启动画面由 _on_backend_ready 中关闭（不再使用 splash.finish）
 
     # v9: 记录 UI 显示耗时（从 main() 入口到 window.show()）
     import time as _time2

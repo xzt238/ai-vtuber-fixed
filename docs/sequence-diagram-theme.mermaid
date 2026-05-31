@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant User as 用户
+    participant TS as ThemeSelector
+    participant SP as SettingsPage
+    participant TM as ThemeManager
+    participant TR as ThemeRegistry
+    participant TD as ThemeDefinition
+    participant AC as AppColors
+    participant QFW as qfluentwidgets
+    participant MW as MainWindow
+    participant Pages as 各页面
+
+    User->>TS: 点击"海洋蓝"色卡
+    TS->>TS: theme_selected("ocean")
+    TS->>SP: _on_theme_selected("ocean")
+    SP->>TM: apply("ocean")
+    
+    TM->>TR: get("ocean")
+    TR-->>TM: ThemeDefinition(ocean)
+    
+    TM->>TD: 获取 base_mode="dark"
+    TM->>QFW: setTheme(Theme.DARK)
+    TM->>QFW: setThemeColor(QColor(accent))
+    
+    TM->>AC: AppColors.from_definition(ocean_def)
+    AC-->>TM: colors 实例
+    TM->>TM: _colors = colors
+    
+    TM->>TM: save_preferences()
+    Note over TM: 写入 theme_preferences.json
+    
+    TM->>MW: callback → setStyleSheet(get_global_qss())
+    
+    loop 每个注册的回调
+        TM->>Pages: refresh_theme()
+        Pages->>TM: get_colors()
+        TM-->>Pages: 当前 AppColors
+        Pages->>Pages: 用 c.xxx 替换硬编码样式
+    end
+    
+    Note over Pages: 所有页面即时刷新

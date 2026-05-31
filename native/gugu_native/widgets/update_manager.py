@@ -177,16 +177,15 @@ class UpdateManager(QObject):
                 from app.version import VERSION
                 current_version = VERSION
             except ImportError:
-                current_version = "1.11.1"
+                current_version = "1.11.19"
         self.repo = repo
         self.current_version = current_version
         self._check_worker = None
         self._download_worker = None
         self._skipped_version = None
 
-        # 跳过版本缓存
-        project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        self._skip_file = os.path.join(project_dir, "app", "cache", "skip_update.json")
+        from app.shared_config import PROJECT_DIR
+        self._skip_file = os.path.join(PROJECT_DIR, "app", "cache", "skip_update.json")
         self._load_skip_version()
 
     def _load_skip_version(self):
