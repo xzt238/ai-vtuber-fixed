@@ -6,9 +6,13 @@
 v1.11.24 优化:
 - 新增 LazyPageMixin，支持骨架屏 + 延迟初始化
 - ensure_initialized 增加异常安全（try/finally）
+
+v1.12.0 优化:
+- ensure_initialized 添加 processEvents() 防止 UI 冻结
+- 在 lazy_init() 前后各处理一次事件队列，保持界面响应
 """
 from PySide6.QtCore import QObject
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget, QApplication
 
 
 class LazyPageMixin:
@@ -27,17 +31,24 @@ class LazyPageMixin:
         self._is_loading = False
 
     def ensure_initialized(self):
-        """由 GuguGagaApp.switchTo() 调用，确保页面已初始化"""
+        """由 GuguGagaApp.switchTo() 调用，确保页面已初始化
+
+        v1.12.0: 在初始化前后处理事件队列，防止 UI 冻结
+        """
         if self._is_initialized or self._is_loading:
             return
         self._is_loading = True
         try:
             self.show_skeleton()
+            # v1.12.0: 让骨架屏先渲染出来
+            QApplication.processEvents()
             self.lazy_init()
             self._is_initialized = True
         finally:
             self._is_loading = False
             self.hide_skeleton()
+            # v1.12.0: 初始化完成后处理积压事件
+            QApplication.processEvents()
 
     def lazy_init(self):
         """子类重写：完成实际的 UI 构造和控件填充"""
