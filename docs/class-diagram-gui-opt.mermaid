@@ -1,0 +1,82 @@
+classDiagram
+    class BackendInitWorker {
+        -object _backend_instance
+        +backend_ready: Signal~object~
+        +init_failed: Signal~str~
+        +init_progress: Signal~str~
+        +__init__()
+        +do_work() void
+    }
+
+    class PageInitWorker {
+        +page_name: str
+        +init_done: Signal~str~
+        +init_failed: Signal~str, str~
+        -callable _init_fn
+        +__init__(page_name: str, init_fn: callable)
+        +run() void
+    }
+
+    class StatsResultWorker {
+        +stats_ready: Signal~dict~
+        +error: Signal~str~
+        -object _memory_system
+        +__init__(memory_system: object)
+        +run() void
+    }
+
+    class AsyncJobManager {
+        -Dict~str, object~ _active_jobs
+        -QThreadPool _thread_pool
+        +job_started: Signal~str~
+        +job_finished: Signal~str~
+        +job_failed: Signal~str, str~
+        +__init__(parent: QObject)
+        +submit(job_id: str, worker: QRunnable) void
+        +cancel(job_id: str) bool
+        +active_jobs: List~str~ %% property
+        +shutdown() void
+    }
+
+    class PerformanceManager {
+        -QTimer _gc_gen0_timer
+        -QTimer _gc_gen1_timer
+        -QTimer _gc_gen2_timer
+        -bool _gc_disabled
+        -BackendInitWorker _init_worker
+        -QThread _init_thread
+        +schedule_backend_init(callback: callable, delay_ms: int) void
+        +schedule_backend_init_async(callback: callable, delay_ms: int) void
+        +_setup_incremental_gc() void
+        +_run_gc_gen(generation: int) void
+        +_on_backend_init_done(backend: object) void
+        +_on_backend_init_failed(error: str) void
+        +cleanup() void
+    }
+
+    class GuguGagaApp {
+        -AsyncJobManager _job_manager
+        +_start_async_init() void
+        +_on_backend_ready_async() void
+        +_on_page_init_done(page_name: str) void
+        +_update_init_progress() void
+    }
+
+    class MemoryPage {
+        -StatsResultWorker _stats_worker
+        +_refresh_stats_async() void
+        +_on_stats_ready(stats: dict) void
+    }
+
+    BackendInitWorker --|> QObject : inherits
+    PageInitWorker --|> QRunnable : inherits
+    StatsResultWorker --|> QRunnable : inherits
+    AsyncJobManager --|> QObject : inherits
+    PerformanceManager --|> QObject : inherits
+
+    GuguGagaApp *-- AsyncJobManager : owns
+    GuguGagaApp *-- PerformanceManager : owns
+    PerformanceManager *-- BackendInitWorker : owns
+    AsyncJobManager o-- PageInitWorker : manages
+    AsyncJobManager o-- StatsResultWorker : manages
+    MemoryPage ..> StatsResultWorker : creates

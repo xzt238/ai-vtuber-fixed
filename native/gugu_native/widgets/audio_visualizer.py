@@ -158,6 +158,10 @@ class AudioVisualizer(QWidget):
         visualizer.spectrum.set_bands(data)
     """
 
+    # 定时器帧率常量（毫秒）
+    FFT_ACTIVE_MS: int = 33   # ~30 fps
+    FFT_IDLE_MS: int = 200    # ~5 fps
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._media_player = None
@@ -201,7 +205,7 @@ class AudioVisualizer(QWidget):
 
         # FFT 定时器
         self._fft_timer = QTimer(self)
-        self._fft_timer.setInterval(33)  # ~30 FPS
+        self._fft_timer.setInterval(self.FFT_ACTIVE_MS)  # ~30 FPS
         self._fft_timer.timeout.connect(self._do_fft)
 
         # 主题循环列表
@@ -332,3 +336,28 @@ class AudioVisualizer(QWidget):
         self.spectrum.set_color_theme(theme)
         self._theme_label.setText(theme)
         self.spectrum.update()
+
+    def showEvent(self, event):
+        """控件变为可见时，若已激活则启动 FFT 定时器"""
+        super().showEvent(event)
+        if self._is_active:
+            self._fft_timer.start(self.FFT_ACTIVE_MS)
+
+    def hideEvent(self, event):
+        """控件变为不可见时停止 FFT 定时器，避免后台空转"""
+        super().hideEvent(event)
+        self._fft_timer.stop()
+
+    def set_audio_active(self, active: bool):
+        """设置音频活跃度状态，用于静默降频
+
+        Args:
+            active: True 表示有音频输入，恢复到活跃帧率；
+                    False 表示音频静默，切换到 idle 帧率。
+        """
+        if not self.isVisible() or not self._is_active:
+            return
+        if active:
+            self._fft_timer.setInterval(self.FFT_ACTIVE_MS)
+        else:
+            self._fft_timer.setInterval(self.FFT_IDLE_MS)

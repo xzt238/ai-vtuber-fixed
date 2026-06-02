@@ -146,13 +146,66 @@ class TTSEngine(ABC):
             try:
                 self._current_process.terminate()  # 终止播放子进程
                 self._current_process = None
-            except:
+            except Exception:
                 pass
         self._is_playing = False
 
     def get_voices(self) -> list:
         """获取可用音色列表（子类可重写）"""
         return []
+
+    def _get_output_path(self) -> str:
+        """
+        【公共方法】生成统一的音频输出路径
+
+        【返回值】
+            str: 音频文件完整路径，格式为 app/web/static/audio/response_{timestamp}.wav
+
+        【设计意图】
+            EdgeTTS 和 MimoTTS 都使用相同的输出路径逻辑，提取到基类消除重复。
+            使用毫秒级时间戳作为文件名，确保唯一性。
+        """
+        tts_file = os.path.abspath(__file__)
+        app_dir = os.path.dirname(os.path.dirname(tts_file))
+        audio_dir = os.path.join(app_dir, "web", "static", "audio")
+        os.makedirs(audio_dir, exist_ok=True)
+        return os.path.join(audio_dir, f'response_{int(time.time()*1000)}.wav')
+
+    def _interrupt_current(self):
+        """
+        【公共方法】打断当前正在播放的音频
+
+        【设计意图】
+            EdgeTTS 和 MimoTTS 的 speak() 方法开头都有相同的打断逻辑，
+            提取到基类消除重复。新请求到来时终止上一个音频的播放。
+        """
+        if self._is_playing and self._current_process:
+            try:
+                self._current_process.terminate()
+                self._current_process = None
+            except Exception:
+                pass
+            self._is_playing = False
+
+    def _enhance_text(self, text: str) -> str:
+        """
+        【公共方法】文本增强：处理 [laugh] 等 TTS 标记
+
+        【参数说明】
+            text (str): 原始文本
+
+        【返回值】
+            str: 增强后的文本；增强失败时返回原文
+
+        【设计意图】
+            EdgeTTS 和 MimoTTS 都需要在合成前调用 text_enhancer，
+            提取到基类消除重复。
+        """
+        try:
+            from app.tts.text_enhancer import enhance_text
+            return enhance_text(text)
+        except Exception:
+            return text
 
 
 # =====================================================================
@@ -386,22 +439,6 @@ class EdgeTTS(TTSEngine):
         except Exception:
             pass
 
-    def _get_output_path(self) -> str:
-        """
-        【内部方法】生成统一的音频输出路径
-
-        【返回值】
-            str: 音频文件完整路径，格式为 app/web/static/audio/response_{timestamp}.wav
-
-        【命名规则】
-            使用毫秒级时间戳作为文件名，确保唯一性。
-        """
-        tts_file = os.path.abspath(__file__)
-        app_dir = os.path.dirname(os.path.dirname(tts_file))
-        audio_dir = os.path.join(app_dir, "web", "static", "audio")
-        os.makedirs(audio_dir, exist_ok=True)
-        return os.path.join(audio_dir, f'response_{int(time.time()*1000)}.wav')
-
     def speak(self, text: str, output_path: str = None, **kwargs) -> Optional[str]:
         """
         【核心方法】合成语音 —— 带缓存、打断和重试机制
@@ -426,13 +463,7 @@ class EdgeTTS(TTSEngine):
             接受 **kwargs 忽略未知参数，使接口兼容 GPT-SoVITS 等引擎的专有参数。
         """
         # 1. 打断当前播放 —— 新请求到来时终止上一个音频
-        if self._is_playing and self._current_process:
-            try:
-                self._current_process.terminate()
-                self._current_process = None
-            except:
-                pass
-            self._is_playing = False
+        self._interrupt_current()
 
         # 2. 检查缓存（仅在未指定输出路径时才查缓存）
         if not output_path:
@@ -446,11 +477,7 @@ class EdgeTTS(TTSEngine):
 
         # v1.9.89: 文本增强（与 GPT-SoVITS 统一处理）
         # Edge TTS 不理解 [laugh] 等标记，需要先转为纯文本
-        try:
-            from app.tts.text_enhancer import enhance_text
-            text = enhance_text(text)
-        except Exception:
-            pass
+        text = self._enhance_text(text)
 
         # 4. 重试循环
         last_error = None
@@ -653,14 +680,6 @@ class MimoTTS(TTSEngine):
         except Exception:
             pass
 
-    def _get_output_path(self) -> str:
-        """生成输出音频文件路径"""
-        tts_file = os.path.abspath(__file__)
-        app_dir = os.path.dirname(os.path.dirname(tts_file))
-        audio_dir = os.path.join(app_dir, "web", "static", "audio")
-        os.makedirs(audio_dir, exist_ok=True)
-        return os.path.join(audio_dir, f'response_{int(time.time()*1000)}.wav')
-
     def speak(self, text: str, output_path: str = None, **kwargs) -> Optional[str]:
         """
         【核心方法】通过 MiMo TTS API 合成语音
@@ -677,23 +696,13 @@ class MimoTTS(TTSEngine):
             return "合成错误: 请配置 MiMo API Key"
 
         # 打断当前播放
-        if self._is_playing and self._current_process:
-            try:
-                self._current_process.terminate()
-                self._current_process = None
-            except:
-                pass
-            self._is_playing = False
+        self._interrupt_current()
 
         if output_path is None:
             output_path = self._get_output_path()
 
         # v1.9.89: 文本增强（统一处理 [laugh] 等标记）
-        try:
-            from app.tts.text_enhancer import enhance_text
-            text = enhance_text(text)
-        except Exception:
-            pass
+        text = self._enhance_text(text)
 
         # 允许通过 kwargs 动态覆盖音色
         voice = kwargs.get("voice", self.voice)

@@ -1,0 +1,42 @@
+sequenceDiagram
+    participant main as main()
+    participant App as GuguGagaApp
+    participant CP as ChatPage
+    participant PM as PerformanceManager
+    participant VM as VoiceManager
+    participant HM as HotkeyManager
+
+    main->>App: GuguGagaApp.__init__()
+    Note over App: T1: perf_counter 记录
+
+    App->>CP: ChatPage(self)
+    Note over CP: T2: perf_counter 记录
+    CP->>CP: _init_ui_shell()
+    Note over CP: 创建主布局 + 占位符 (~50行)
+    CP->>CP: QTimer.singleShot(0, _init_ui_content)
+    Note over CP: T3: perf_counter 记录
+
+    App->>App: 设置主题 / 创建 PerfManager / TrayManager
+
+    Note over App: voice_manager = None (延迟)
+    Note over App: hotkey_manager = None (延迟)
+    App->>App: QTimer.singleShot(500, _init_backend_managers)
+
+    App->>PM: schedule_backend_init_async(callback)
+    App->>App: show()
+
+    Note over CP: [事件循环] _init_ui_content() 执行
+    CP->>CP: 创建 SessionManager / MessageSearchBar
+    CP->>CP: 创建 ChatWebDisplay (QLabel 占位符)
+    CP->>CP: 创建 MultiLineInputV2 / TTS 控件
+    Note over CP: T4: perf_counter 记录
+
+    Note over App: [500ms 后] _init_backend_managers()
+    App->>VM: RealtimeVoiceManager(parent=self)
+    App->>HM: HotkeyManager(self)
+    Note over App: T5: perf_counter 记录
+
+    Note over PM: [后端就绪] _on_backend_ready_async()
+    PM->>CP: on_backend_ready()
+    Note over App: T6: perf_counter 记录
+    App->>App: 输出 [PERF] 埋点汇总日志

@@ -206,7 +206,7 @@ def handle_tool_calls_stream(
                         if len(buffer) >= chunk_size:
                             on_chunk(buffer)
                             buffer = ""
-                except:
+                except Exception:
                     continue
 
             if buffer and on_chunk:

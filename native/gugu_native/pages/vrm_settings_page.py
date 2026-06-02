@@ -3,6 +3,9 @@ VRM 模型设置页
 
 左侧实时预览 VRM 模型，右侧滑块调节显示参数。
 参数保存到 config.yaml + app/cache/vrm_display.json。
+
+v1.11.24 优化:
+- 继承 LazyPageMixin，首次可见时才创建完整 UI，缩短冷启动时间
 """
 
 import os
@@ -21,6 +24,8 @@ from qfluentwidgets import (
 
 from app.shared_config import PROJECT_DIR
 from gugu_native.widgets.vrm_widget import VRMWidget
+from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
+from gugu_native.widgets.skeleton_container import SkeletonContainer
 
 
 _DEFAULTS = {
@@ -62,20 +67,50 @@ _PARAMS = [
 ]
 
 
-class VRMSettingsPage(QWidget):
-    """VRM 模型设置页面"""
+class VRMSettingsPage(QWidget, LazyPageMixin):
+    """VRM 模型设置页面 — 支持懒加载，首次可见时才创建 VRMWidget"""
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        QWidget.__init__(self, parent)
+        LazyPageMixin.__init__(self)
         self.setObjectName("vrmSettingsPage")
         self._vrm_widget: VRMWidget | None = None
         self._vrm_loaded = False
         self._sliders = {}  # param_name → (slider, spinbox)
+        # 骨架屏占位 — 作为独立浮动 widget，不设置 self 的 layout
+        # （lazy_init() 中会创建 layout，避免重复设置）
+        self._skeleton = SkeletonContainer("正在加载 VRM 设置...", self)
+        self._skeleton.hide_skeleton()
+
+    def show_skeleton(self):
+        self._skeleton.show_skeleton()
+
+    def hide_skeleton(self):
+        self._skeleton.hide_skeleton()
+
+    def lazy_init(self):
+        """首次切换到该页时调用 — 构建完整 UI"""
+        if self._is_initialized:
+            return
+        self._skeleton.hide_skeleton()
+        # 骨架屏不再需要，从 parent 分离并释放
+        self._skeleton.setParent(None)
+        self._skeleton.deleteLater()
         self._init_ui()
 
     # ========== UI 构建 ==========
 
     def _init_ui(self):
+        # 清除 __init__ 中创建的占位 layout，避免重复设置
+        old_layout = self.layout()
+        if old_layout:
+            while old_layout.count():
+                item = old_layout.takeAt(0)
+                widget = item.widget()
+                if widget:
+                    widget.setParent(None)
+            old_layout.deleteLater()
+
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(8, 8, 8, 8)  # 紧凑边距
 

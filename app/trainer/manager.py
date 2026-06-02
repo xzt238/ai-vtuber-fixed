@@ -1857,15 +1857,16 @@ class TrainingManager:
             # 官方 open1Bb(): Popen(cmd, shell=True)
             # cmd = '"{python}" -s GPT_SoVITS/s1_train.py --config_file "{tmp_s1.yaml}"'
             python_exe = sys.executable
-            cmd = f'"{python_exe}" -s GPT_SoVITS/s1_train.py --config_file "{yaml_path}"'
-            
+            # v1.12.0 AUDIT-2: 使用列表形式避免 shell=True 命令注入风险
+            cmd = [python_exe, "-s", "GPT_SoVITS/s1_train.py", "--config_file", yaml_path]
+
             env = os.environ.copy()
             env["_CUDA_VISIBLE_DEVICES"] = "0"
             env["CUDA_VISIBLE_DEVICES"] = "0"
             env["hz"] = "25hz"
             env["version"] = train_version  # v3（而非 v2Pro）
             env["PYTHONPATH"] = str(GPT_SOVITS_ROOT) + os.pathsep + str(GPT_SOVITS_ROOT / "GPT_SoVITS")
-            
+
             print(f"[TRAIN] 工作目录: {GPT_SOVITS_ROOT}")
             print(f"[TRAIN] 命令: {cmd}")
             print(f"[TRAIN] version={train_version}")
@@ -1880,7 +1881,6 @@ class TrainingManager:
                     encoding="utf-8",
                     errors="replace",
                     env=env,
-                    shell=True,
                 )
                 self._active_processes.append(proc)  # C3修复: 跟踪子进程
                 for line in proc.stdout:
@@ -2422,9 +2422,8 @@ class TrainingManager:
             train_script = GPT_SOVITS_ROOT / "GPT_SoVITS" / "s2_train_v3_lora.py"
             python_exe = sys.executable
             
-            # 与 webui.py open1Ba() 完全一致的命令格式：
-            # python -s GPT_SoVITS/s2_train_v3_lora.py --config "TEMP/tmp_s2.json"
-            cmd = f'"{python_exe}" -s GPT_SoVITS/s2_train_v3_lora.py --config "{tmp_config_path}"'
+            # v1.12.0 AUDIT-2: 使用列表形式避免 shell=True 命令注入风险
+            cmd = [python_exe, "-s", "GPT_SoVITS/s2_train_v3_lora.py", "--config", str(tmp_config_path)]
             
             print(f"[S2] 工作目录: {GPT_SOVITS_ROOT}")
             print(f"[S2] 命令: {cmd}")
@@ -2454,7 +2453,6 @@ class TrainingManager:
                 encoding="utf-8",
                 errors="replace",
                 env=env,
-                shell=True,
             )
             self._active_processes.append(proc)  # C3修复: 跟踪子进程
             

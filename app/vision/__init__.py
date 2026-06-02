@@ -282,7 +282,7 @@ class MiniMaxVLProvider(VisionProvider):
                     cfg = yaml.safe_load(f)
                     llm_cfg = cfg.get("llm", {}).get("minimax", {})
                     self.api_key = llm_cfg.get("api_key", "")
-            except:
+            except Exception:
                 pass
 
     @property
@@ -867,7 +867,7 @@ class MiniCPMProvider(VisionProvider):
         try:
             import torch
             torch.cuda.empty_cache()
-        except:
+        except Exception:
             pass
         print("[Vision] MiniCPM 资源已释放")
 
@@ -1160,6 +1160,38 @@ class VisionManager:
             print(f"[Vision] Provider 切换: {self._current_provider.description}")
         else:
             print(f"[Vision] ⚠️ 未知 Provider: {provider}")
+
+    @property
+    def current_provider(self):
+        """当前活跃的 Provider 实例（只读）"""
+        return self._current_provider
+
+    @property
+    def has_provider(self) -> bool:
+        """是否已配置任意 Provider"""
+        return self._current_provider is not None
+
+    def get_provider(self, provider_type):
+        """
+        按类型获取 Provider 实例
+
+        先查标准 _providers 字典，再查 _mimo_vision_provider 独立实例。
+
+        Args:
+            provider_type: VisionProviderType 枚举
+
+        Returns:
+            Provider 实例，不存在则返回 None
+        """
+        # 先查标准字典
+        provider = self._providers.get(provider_type)
+        if provider:
+            return provider
+        # 再查 MiMo（它使用 MINIMAX_VL 类型但独立存储）
+        if provider_type == VisionProviderType.MINIMAX_VL:
+            if hasattr(self, '_mimo_vision_provider') and self._mimo_vision_provider.is_available():
+                return self._mimo_vision_provider
+        return None
 
     @property
     def current_provider_name(self) -> str:

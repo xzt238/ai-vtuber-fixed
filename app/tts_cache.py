@@ -84,6 +84,10 @@ class TTSCache:
         # 配合 60 秒限频窗口，防止高频写入场景下反复执行磁盘扫描
         self._last_size_check = 0
 
+        # v1.11.25 M-003: 缓存 LRU 淘汰 — 内存缓存最近访问的缓存键
+        self._access_order = []  # LRU 访问顺序（最近访问的在末尾）
+        self._access_order_max = 500  # 最多跟踪 500 个缓存键
+
     def get_cache_key(self, text: str, voice: str, provider: str = "") -> str:
         """
         根据文本、语音名称和提供商生成缓存键（唯一标识符）

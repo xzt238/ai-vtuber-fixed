@@ -14,12 +14,12 @@ import os
 import sys
 import time
 import json
-import torch
-import numpy as np
 from pathlib import Path
 from typing import Optional, Tuple, List
 from contextlib import redirect_stdout, redirect_stderr, contextmanager
 import io as _io
+import torch
+import numpy as np
 
 # 添加 GPT-SoVITS 到路径
 GPT_SOVITS_DIR = Path(__file__).parent.parent.parent / "GPT-SoVITS"
@@ -33,7 +33,10 @@ BERT_MODEL_PATH = str(GPT_SOVITS_DIR / "GPT_SoVITS" / "pretrained_models" / "chi
 os.environ["GPT_SOVITS_BERT_PATH"] = BERT_MODEL_PATH
 
 # 设置工作目录（必须是 GPT-SoVITS/ 根目录，因为 TTS.py 会用 now_dir + "GPT_SoVITS/..." 构建路径）
-os.chdir(str(GPT_SOVITS_DIR))
+# v1.11.21 (P2-9): 删除模块级 os.chdir()，改为在 _lazy_init() 中 save/restore
+# 原实现：os.chdir(str(GPT_SOVITS_DIR)) 在模块导入时永久改变 CWD，
+# 影响整个进程的工作目录（导致 VectorStore、_history_file 等路径漂移）。
+# 现在：仅在 _lazy_init() 推理时临时切换，推理结束后恢复原始 CWD。
 
 # 项目配置目录
 PROJECTS_DIR = GPT_SOVITS_DIR / "data" / "web_projects"
@@ -135,8 +138,18 @@ class GPTSoVITSEngine:
                 return
 
             self.config = config or {}
-            self.device = self.config.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
+            # v1.12.0: CUDA 可用性强制检测 — 忽略 config 中的硬编码值
+            # 防止 config 写死 'cuda' 但实际 CUDA 不可用时崩溃
+            configured_device = self.config.get('device', 'cuda')
+            if configured_device == 'cuda' and not torch.cuda.is_available():
+                print(f"[GPT-SoVITS] ⚠️ config 指定 device=cuda 但 CUDA 不可用，自动回退到 CPU")
+                self.device = 'cpu'
+            else:
+                self.device = configured_device
             self.is_half = self.config.get('is_half', self.device == 'cuda')
+            if self.device == 'cpu' and self.is_half:
+                print(f"[GPT-SoVITS] ⚠️ CPU 不支持半精度，自动关闭 is_half")
+                self.is_half = False
 
             # 模型路径配置
             self.root_dir = GPT_SOVITS_DIR
@@ -605,6 +618,26 @@ class GPTSoVITSEngine:
                 torch.cuda.empty_cache()
                 print("[GPT-SoVITS] 已释放GPU缓存")
 
+    def _enhance_text(self, text: str) -> str:
+        """
+        【公共方法】文本增强：处理 [laugh] 等 TTS 标记 + 通用清理
+
+        【参数说明】
+            text (str): 原始文本
+
+        【返回值】
+            str: 增强后的文本；增强失败时返回原文
+
+        【设计意图】
+            speak() 和 speak_streaming() 都需要调用 text_enhancer，
+            提取为实例方法消除重复。
+        """
+        try:
+            from app.tts.text_enhancer import enhance_text
+            return enhance_text(text)
+        except Exception:
+            return text
+
     def cleanup(self):
         """C2修复: 关停时释放GPU资源，防止显存泄漏"""
         try:
@@ -668,7 +701,7 @@ class GPTSoVITSEngine:
                             "ref_text": cfg.get("ref_text", ""),
                             "has_trained": cfg.get("trained_gpt") is not None or cfg.get("trained_sovits") is not None,
                         })
-                    except:
+                    except Exception:
                         pass
         
         return projects
@@ -713,141 +746,150 @@ class GPTSoVITSEngine:
         if self.tts_pipeline is not None:
             return
 
-        # 防止并发初始化（多个线程同时调用 speak 时）
-        if not hasattr(self, '_init_lock'):
+        # v1.12.0 AUDIT-P0-2: 使用类级别锁避免延迟创建竞态
+        if not hasattr(GPTSoVITSEngine, '_cls_init_lock'):
             import threading
-            self._init_lock = threading.Lock()
-        
-        with self._init_lock:
+            GPTSoVITSEngine._cls_init_lock = threading.Lock()
+
+        with GPTSoVITSEngine._cls_init_lock:
             # double-check：拿到锁后可能另一个线程已经初始化了
             if self.tts_pipeline is not None:
                 return
 
             print("[GPT-SoVITS] Loading models...")
 
-            # 确保工作目录正确（训练可能改变了目录）
-            # 需要 chdir 到 GPT_SoVITS 子目录，因为 GPT-SoVITS 代码中使用相对路径
-            gptsovits_subdir = str(GPT_SOVITS_DIR / "GPT_SoVITS")
-            os.chdir(gptsovits_subdir)
-
-            # 添加必要的路径到 sys.path
-            import sys
-            if gptsovits_subdir not in sys.path:
-                sys.path.insert(0, gptsovits_subdir)
-
-            print(f"[GPT-SoVITS] Working directory: {os.getcwd()}")
-
-            from TTS_infer_pack.TTS import TTS, TTS_Config
-
-            # ============================================================
-            # 修复版本检测问题（v1.9.62 增强）：
-            # GPT-SoVITS 官方 get_sovits_version_from_path_fast 有严重 Bug：
-            #   1. ZIP 格式的 v3/v4 LoRA 文件（前2字节=b"PK"）→ 按文件大小判断
-            #   2. LoRA 只保存适配器参数（50-70MB），远小于完整 v3 模型（~750MB）
-            #   3. 53-64MB < 81MB 阈值 → 错误判定为 v1！
-            #   4. v1 判定 → 加载 v1 GPT 底模 → v1/v3 不匹配 → 回退到 v1 全底模
-            #   5. 结果：所有训练音色信息丢失，输出通用底模声音
-            #
-            # 修复策略：
-            #   - ZIP 头（b"PK"）的模型，无论文件大小，一律视为 v3/v4
-            #   - 通过文件名特征（_l8/_l16/lora_rank）或项目 config.version 确认版本
-            #   - 非 ZIP 头的模型，按原始逻辑处理
-            # ============================================================
-            sovits_version = None
-            is_zip_lora = False  # 标记是否为 ZIP 格式的 LoRA
-            if os.path.exists(self.sovits_path):
-                try:
-                    # 先检查文件头——ZIP 格式的模型一定是 v3/v4
-                    with open(self.sovits_path, "rb") as f:
-                        file_header = f.read(2)
-                    is_zip_lora = (file_header == b"PK")
-
-                    if is_zip_lora:
-                        # ZIP 格式 = v3/v4 LoRA，忽略 get_sovits_version_from_path_fast 的错误结果
-                        # 根据文件名特征或项目 config 判断具体版本
-                        filename_lower = os.path.basename(self.sovits_path).lower()
-                        if "_l16" in filename_lower:
-                            sovits_version = "v4"
-                            print(f"[GPT-SoVITS] ZIP LoRA 检测 → v4 (l16)")
-                        else:
-                            sovits_version = "v3"
-                            print(f"[GPT-SoVITS] ZIP LoRA 检测 → v3 (PK header, filename: {os.path.basename(self.sovits_path)})")
-                    else:
-                        # 非 ZIP 格式，使用官方检测函数
-                        from process_ckpt import get_sovits_version_from_path_fast
-                        ver_info = get_sovits_version_from_path_fast(self.sovits_path)
-                        sovits_version, _, _ = ver_info
-                        print(f"[GPT-SoVITS] 检测 SoVITS 版本(标准): {sovits_version}")
-                except Exception as e:
-                    print(f"[GPT-SoVITS] 版本检测异常: {e}")
-                    # 降级：使用项目配置中的版本
-                    sovits_version = self.version
-
-            # 确保版本有效
-            if sovits_version not in ("v1", "v2", "v3", "v4"):
-                sovits_version = self.version
-                print(f"[GPT-SoVITS] 版本检测未确定，使用项目配置: {sovits_version}")
-
-            # v1 SoVITS 必须搭配 v1 预训练 GPT（仅限真正的 v1 标准格式模型）
-            # 注意：v1 预训练底模已移除，不再支持 v1 回退
-            if sovits_version == "v1" and not is_zip_lora:
-                print(f"[GPT-SoVITS] ⚠️ v1 预训练底模已移除，强制升级到 v3")
-                sovits_version = "v3"
-
-            tts_config = TTS_Config(str(GPT_SOVITS_DIR / "GPT_SoVITS/configs/tts_infer.yaml"))
-            tts_config.device = self.device
-            tts_config.is_half = self.is_half
-            tts_version = sovits_version if sovits_version in ("v1", "v2", "v3", "v4") else self.version
-            tts_config.update_version(tts_version)
-            tts_config.t2s_weights_path = self.gpt_path
-            tts_config.vits_weights_path = self.sovits_path
-            tts_config.cnhuhbert_base_path = self.cnhubert_path
-            tts_config.bert_base_path = self.bert_path
-
-            print(f"[GPT-SoVITS] Device: {self.device}, Half: {self.is_half}")
-            print(f"[GPT-SoVITS] GPT: {os.path.basename(self.gpt_path)}")
-            print(f"[GPT-SoVITS] SoVITS: {os.path.basename(self.sovits_path)}")
-
-            # 验证 SoVITS 文件可读（兼容 LoRA 和标准格式）
-            if not self._check_sovits_config(self.sovits_path):
-                print(f"[GPT-SoVITS] ⚠️ SoVITS 文件无效，回退到预训练底模 s2Gv3.pth")
-                self.sovits_path = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s2Gv3.pth")
-                tts_config.vits_weights_path = self.sovits_path
-
+            # v1.11.21 (P2-9): 使用 save/restore 模式切换工作目录
+            # GPT-SoVITS 内部代码使用相对路径（now_dir + "GPT_SoVITS/..."），
+            # 需要 chdir 到 GPT_SoVITS 子目录。但只在推理期间临时切换，
+            # 完成后恢复原始 CWD，避免影响进程其他模块。
+            old_cwd = os.getcwd()
             try:
-                print(f"[GPT-SoVITS] 正在加载 TTS 模型（输出已静默）...")
-                with _SuppressVerboseOutput():
-                    self.tts_pipeline = TTS(tts_config)
-                print("[GPT-SoVITS] ✓ TTS 模型加载完成!")
-            except TypeError as e:
-                # v1/v3 版本不匹配导致加载失败
-                # 只有真正是 v1 标准格式（非 ZIP LoRA）才回退到 v1 底模
-                if "list indices" in str(e) and not is_zip_lora:
-                    print(f"[GPT-SoVITS] ⚠️ v1/v3 版本不匹配: {e}")
-                    print(f"[GPT-SoVITS] 强制使用 v3 预训练底模（v1 底模已移除）...")
-                    fallback_gpt = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s1v3.ckpt")
-                    fallback_vits = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s2Gv3.pth")
-                    tts_config.t2s_weights_path = fallback_gpt
-                    tts_config.vits_weights_path = fallback_vits
-                    tts_config.update_version("v3")
-                    print(f"[GPT-SoVITS] 正在加载 v3 回退底模（输出已静默）...")
+                # 确保工作目录正确（训练可能改变了目录）
+                # 需要 chdir 到 GPT_SoVITS 子目录，因为 GPT-SoVITS 代码中使用相对路径
+                gptsovits_subdir = str(GPT_SOVITS_DIR / "GPT_SoVITS")
+                os.chdir(gptsovits_subdir)
+
+                # 添加必要的路径到 sys.path
+                import sys
+                if gptsovits_subdir not in sys.path:
+                    sys.path.insert(0, gptsovits_subdir)
+
+                print(f"[GPT-SoVITS] Working directory: {os.getcwd()}")
+
+                from TTS_infer_pack.TTS import TTS, TTS_Config
+
+                # ============================================================
+                # 修复版本检测问题（v1.9.62 增强）：
+                # GPT-SoVITS 官方 get_sovits_version_from_path_fast 有严重 Bug：
+                #   1. ZIP 格式的 v3/v4 LoRA 文件（前2字节=b"PK"）→ 按文件大小判断
+                #   2. LoRA 只保存适配器参数（50-70MB），远小于完整 v3 模型（~750MB）
+                #   3. 53-64MB < 81MB 阈值 → 错误判定为 v1！
+                #   4. v1 判定 → 加载 v1 GPT 底模 → v1/v3 不匹配 → 回退到 v1 全底模
+                #   5. 结果：所有训练音色信息丢失，输出通用底模声音
+                #
+                # 修复策略：
+                #   - ZIP 头（b"PK"）的模型，无论文件大小，一律视为 v3/v4
+                #   - 通过文件名特征（_l8/_l16/lora_rank）或项目 config.version 确认版本
+                #   - 非 ZIP 头的模型，按原始逻辑处理
+                # ============================================================
+                sovits_version = None
+                is_zip_lora = False  # 标记是否为 ZIP 格式的 LoRA
+                if os.path.exists(self.sovits_path):
+                    try:
+                        # 先检查文件头——ZIP 格式的模型一定是 v3/v4
+                        with open(self.sovits_path, "rb") as f:
+                            file_header = f.read(2)
+                        is_zip_lora = (file_header == b"PK")
+
+                        if is_zip_lora:
+                            # ZIP 格式 = v3/v4 LoRA，忽略 get_sovits_version_from_path_fast 的错误结果
+                            # 根据文件名特征或项目 config 判断具体版本
+                            filename_lower = os.path.basename(self.sovits_path).lower()
+                            if "_l16" in filename_lower:
+                                sovits_version = "v4"
+                                print(f"[GPT-SoVITS] ZIP LoRA 检测 → v4 (l16)")
+                            else:
+                                sovits_version = "v3"
+                                print(f"[GPT-SoVITS] ZIP LoRA 检测 → v3 (PK header, filename: {os.path.basename(self.sovits_path)})")
+                        else:
+                            # 非 ZIP 格式，使用官方检测函数
+                            from process_ckpt import get_sovits_version_from_path_fast
+                            ver_info = get_sovits_version_from_path_fast(self.sovits_path)
+                            sovits_version, _, _ = ver_info
+                            print(f"[GPT-SoVITS] 检测 SoVITS 版本(标准): {sovits_version}")
+                    except Exception as e:
+                        print(f"[GPT-SoVITS] 版本检测异常: {e}")
+                        # 降级：使用项目配置中的版本
+                        sovits_version = self.version
+
+                # 确保版本有效
+                if sovits_version not in ("v1", "v2", "v3", "v4"):
+                    sovits_version = self.version
+                    print(f"[GPT-SoVITS] 版本检测未确定，使用项目配置: {sovits_version}")
+
+                # v1 SoVITS 必须搭配 v1 预训练 GPT（仅限真正的 v1 标准格式模型）
+                # 注意：v1 预训练底模已移除，不再支持 v1 回退
+                if sovits_version == "v1" and not is_zip_lora:
+                    print(f"[GPT-SoVITS] ⚠️ v1 预训练底模已移除，强制升级到 v3")
+                    sovits_version = "v3"
+
+                tts_config = TTS_Config(str(GPT_SOVITS_DIR / "GPT_SoVITS/configs/tts_infer.yaml"))
+                tts_config.device = self.device
+                tts_config.is_half = self.is_half
+                tts_version = sovits_version if sovits_version in ("v1", "v2", "v3", "v4") else self.version
+                tts_config.update_version(tts_version)
+                tts_config.t2s_weights_path = self.gpt_path
+                tts_config.vits_weights_path = self.sovits_path
+                tts_config.cnhuhbert_base_path = self.cnhubert_path
+                tts_config.bert_base_path = self.bert_path
+
+                print(f"[GPT-SoVITS] Device: {self.device}, Half: {self.is_half}")
+                print(f"[GPT-SoVITS] GPT: {os.path.basename(self.gpt_path)}")
+                print(f"[GPT-SoVITS] SoVITS: {os.path.basename(self.sovits_path)}")
+
+                # 验证 SoVITS 文件可读（兼容 LoRA 和标准格式）
+                if not self._check_sovits_config(self.sovits_path):
+                    print(f"[GPT-SoVITS] ⚠️ SoVITS 文件无效，回退到预训练底模 s2Gv3.pth")
+                    self.sovits_path = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s2Gv3.pth")
+                    tts_config.vits_weights_path = self.sovits_path
+
+                try:
+                    print(f"[GPT-SoVITS] 正在加载 TTS 模型（输出已静默）...")
                     with _SuppressVerboseOutput():
                         self.tts_pipeline = TTS(tts_config)
-                    print(f"[GPT-SoVITS] ✓ v1 回退底模加载成功!")
-                else:
-                    # ZIP LoRA 加载失败 → 不回退到 v1 底模（会丢失音色），直接报错
-                    if is_zip_lora:
-                        print(f"[GPT-SoVITS] ⚠️ v3 LoRA 模型加载失败: {e}")
-                        print(f"[GPT-SoVITS] LoRA 模型不应回退到 v1 底模（会丢失训练音色），请检查底模是否存在")
-                    raise
+                    print("[GPT-SoVITS] ✓ TTS 模型加载完成!")
+                except TypeError as e:
+                    # v1/v3 版本不匹配导致加载失败
+                    # 只有真正是 v1 标准格式（非 ZIP LoRA）才回退到 v1 底模
+                    if "list indices" in str(e) and not is_zip_lora:
+                        print(f"[GPT-SoVITS] ⚠️ v1/v3 版本不匹配: {e}")
+                        print(f"[GPT-SoVITS] 强制使用 v3 预训练底模（v1 底模已移除）...")
+                        fallback_gpt = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s1v3.ckpt")
+                        fallback_vits = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s2Gv3.pth")
+                        tts_config.t2s_weights_path = fallback_gpt
+                        tts_config.vits_weights_path = fallback_vits
+                        tts_config.update_version("v3")
+                        print(f"[GPT-SoVITS] 正在加载 v3 回退底模（输出已静默）...")
+                        with _SuppressVerboseOutput():
+                            self.tts_pipeline = TTS(tts_config)
+                        print(f"[GPT-SoVITS] ✓ v1 回退底模加载成功!")
+                    else:
+                        # ZIP LoRA 加载失败 → 不回退到 v1 底模（会丢失音色），直接报错
+                        if is_zip_lora:
+                            print(f"[GPT-SoVITS] ⚠️ v3 LoRA 模型加载失败: {e}")
+                            print(f"[GPT-SoVITS] LoRA 模型不应回退到 v1 底模（会丢失训练音色），请检查底模是否存在")
+                        raise
 
-            # 记录显存占用
-            if torch.cuda.is_available():
-                mem_gb = torch.cuda.memory_allocated() / 1024**3
-                print(f"[GPT-SoVITS] GPU Memory: {mem_gb:.2f} GB")
+                # 记录显存占用
+                if torch.cuda.is_available():
+                    mem_gb = torch.cuda.memory_allocated() / 1024**3
+                    print(f"[GPT-SoVITS] GPU Memory: {mem_gb:.2f} GB")
 
-            # v1.9.62: 标记 pipeline 已加载的项目
-            self._pipeline_project = self.current_project
+                # v1.9.62: 标记 pipeline 已加载的项目
+                self._pipeline_project = self.current_project
+            finally:
+                # v1.11.21 (P2-9): 恢复原始工作目录
+                os.chdir(old_cwd)
 
     def speak(self, text: str, ref_audio_path: str = None, ref_text: str = None,
               text_lang: str = "all_zh", prompt_lang: str = "all_zh",
@@ -914,12 +956,7 @@ class GPTSoVITSEngine:
         # 确保 text 以标点结尾
         if text:
             # v1.9.89: 统一由 text_enhancer 处理所有文本清理和增强
-            # 不再在 gptsovits.py 中重复做 emoji/markdown/连字符清理
-            try:
-                from app.tts.text_enhancer import enhance_text
-                text = enhance_text(text)
-            except Exception:
-                pass
+            text = self._enhance_text(text)
 
             # 引擎兜底：确保文本以标点结尾
             import re as _re
@@ -1156,11 +1193,7 @@ class GPTSoVITSEngine:
         # 空格不会触发切分，保持文本连贯
         if sentence:
             # v1.9.89: 统一由 text_enhancer 处理所有文本清理和增强
-            try:
-                from app.tts.text_enhancer import enhance_text
-                sentence = enhance_text(sentence)
-            except Exception:
-                pass
+            sentence = self._enhance_text(sentence)
 
             # 流式模式特有：逗号替换为空格（避免 GPT-SoVITS 按逗号切分导致流式碎片化）
             import re as _re

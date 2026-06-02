@@ -33,6 +33,10 @@ from PySide6.QtGui import QColor
 # 主题管理器（延迟初始化）
 _theme_manager: 'ThemeManager | None' = None
 
+# v1.11.25 S-003: QSS 缓存 — 避免每次切换主题时重新生成
+_qss_cache: dict = {}
+_qss_cache_max_size = 10  # 最多缓存 10 个主题的 QSS
+
 
 def _ensure_manager():
     """确保 ThemeManager 已初始化，未初始化时自动创建"""
@@ -232,6 +236,8 @@ def apply_theme_by_id(theme_id: str):
     """
     manager = _ensure_manager()
     manager.apply(theme_id)
+    # v1.11.27: 清空 QSS 缓存，确保切换主题后使用新 QSS
+    clear_qss_cache()
     # v5.0: 切换主题后重新应用全局 QSS（圆角/间距/阴影/字体会变化）
     from PySide6.QtWidgets import QApplication
     app = QApplication.instance()
@@ -261,11 +267,38 @@ def get_current_theme_id() -> str:
 
 def get_global_qss() -> str:
     """生成全局 QSS 样式表 — v5 多维度升级版
-    
+
     基于当前主题的 AppTheme 自动调整颜色、圆角、间距、阴影、字体。
     兼容旧 API：内部调用 build_global_qss_v5()。
+
+    v1.11.25 S-003: 添加 QSS 缓存，避免重复生成
     """
-    return build_global_qss_v5()
+    # 获取当前主题 ID 作为缓存 key
+    try:
+        from gugu_native.themes.manager import ThemeManager
+        manager = ThemeManager.get_instance()
+        theme_id = manager.get_theme_id() if manager else "default"
+    except Exception:
+        theme_id = "default"
+
+    # 检查缓存
+    if theme_id in _qss_cache:
+        return _qss_cache[theme_id]
+
+    # 缓存未命中，生成 QSS
+    qss = build_global_qss_v5()
+
+    # 存入缓存（如果缓存已满，清空最旧的）
+    if len(_qss_cache) >= _qss_cache_max_size:
+        _qss_cache.pop(next(iter(_qss_cache)))
+    _qss_cache[theme_id] = qss
+
+    return qss
+
+
+def clear_qss_cache():
+    """清空 QSS 缓存 — 主题配置变更时调用"""
+    _qss_cache.clear()
 
 
 def build_global_qss_v5(theme=None) -> str:
@@ -290,11 +323,13 @@ def build_global_qss_v5(theme=None) -> str:
         return get_global_qss.__wrapped__() if hasattr(get_global_qss, '__wrapped__') else ""
     
     v = theme.to_qss_vars()
-    
-    # 如果有缺失的颜色变量，用 safe fallback
+
+    # v1.11.27: 补全所有 QSS 模板中使用的变量 fallback，防止 KeyError 导致 QSS 解析失败
+    # 颜色
     v.setdefault('accent', '#4263eb')
     v.setdefault('window_bg', '#1a1b2e')
     v.setdefault('card_bg', '#232438')
+    v.setdefault('card_bg_hover', '#2a2b42')
     v.setdefault('card_border', '#2e2f48')
     v.setdefault('text_primary', '#e8e8f0')
     v.setdefault('text_secondary', '#9a9ab0')
@@ -303,7 +338,23 @@ def build_global_qss_v5(theme=None) -> str:
     v.setdefault('input_border', '#2e2f48')
     v.setdefault('input_focus_border', '#4263eb')
     v.setdefault('divider', '#2e2f48')
-    
+    v.setdefault('chat_bg', '#1a1b2e')
+    v.setdefault('progress_start', '#4263eb')
+    v.setdefault('progress_end', '#7c3aed')
+    # 圆角
+    v.setdefault('br_card', 12)
+    v.setdefault('br_widget', 8)
+    v.setdefault('br_input', 8)
+    v.setdefault('br_menu', 10)
+    v.setdefault('br_button', 8)
+    # 间距
+    v.setdefault('sp_global', 16)
+    v.setdefault('sp_card', 14)
+    v.setdefault('sp_item', 8)
+    v.setdefault('sp_section', 14)
+    # 字体
+    v.setdefault('font_family', 'Microsoft YaHei UI')
+
     # 构建完整的 QSS
     return _QSS_BASE_TEMPLATE % v
 

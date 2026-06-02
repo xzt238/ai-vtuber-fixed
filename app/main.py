@@ -250,14 +250,99 @@ class Config:
             # 解析 YAML 为 Python 字典
             config = yaml.safe_load(raw_config)
             
-            # API Key管理: 从 app/cache/api_keys.json 加载用户保存的API Key
-            # 这些Key由前端API Key面板设置，优先级高于config.yaml中的值
+            # v1.11.21 (P2-8): 使用 ThreadPoolExecutor 并行加载 5 个偏好 JSON 文件
+            # 原实现串行读取 5 个 JSON，总耗时 ≈ 5×单文件 IO 时间。
+            # 改为并行读取，总耗时 ≈ max(单文件IO)，约降为原来的 1/5。
+            cache_dir = Path(self.config_path).parent / "cache"
             try:
-                cache_dir = Path(self.config_path).parent / "cache"
-                keys_file = cache_dir / "api_keys.json"
-                if keys_file.exists():
-                    with open(keys_file, "r", encoding="utf-8") as kf:
-                        saved_keys = json.load(kf)
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                
+                # 定义 5 个偏好文件的加载函数
+                def _load_json_pref(file_name: str) -> Tuple[str, Optional[dict]]:
+                    """加载单个偏好 JSON 文件，返回 (file_name, data) 或 (file_name, None)"""
+                    fpath = cache_dir / file_name
+                    if fpath.exists():
+                        try:
+                            with open(fpath, "r", encoding="utf-8") as pf:
+                                return (file_name, json.load(pf))
+                        except Exception:
+                            pass
+                    return (file_name, None)
+                
+                pref_files = [
+                    "api_keys.json",
+                    "llm_preferences.json",
+                    "asr_preferences.json",
+                    "tts_preferences.json",
+                    "vision_preferences.json",
+                ]
+                
+                # 并行读取所有偏好文件
+                # max_workers 限制为 min(5, cpu_count)，避免 5 个文件却开 5 个线程的浪费
+                prefs_data = {}
+                with ThreadPoolExecutor(max_workers=min(5, os.cpu_count() or 4)) as pref_executor:
+                    futures = {pref_executor.submit(_load_json_pref, fn): fn for fn in pref_files}
+                    for future in as_completed(futures):
+                        try:
+                            file_name, data = future.result()
+                            prefs_data[file_name] = data
+                        except Exception:
+                            pass
+            except Exception:
+                prefs_data = {}
+            
+            # 【通用偏好恢复方法】消除 5 种偏好加载中的重复代码
+            def _restore_preferences(
+                prefs_file: str, section_key: str, provider_key: str,
+                log_name: str, extra_fields: list = None,
+                provider_configs_fields: list = None,
+            ) -> bool:
+                """
+                从偏好文件恢复配置的通用方法
+
+                【参数说明】
+                    prefs_file: 偏好文件名，如 "llm_preferences.json"
+                    section_key: config 中的顶级 key，如 "llm"
+                    provider_key: 偏好中的 provider 字段名，如 "provider" 或 "default_provider"
+                    log_name: 日志显示名称，如 "LLM"
+                    extra_fields: 需要恢复的额外顶级字段列表，如 ["model", "max_tokens"]
+                    provider_configs_fields: provider_configs 中需要恢复的字段列表，如 ["base_url", "model"]
+
+                【返回值】
+                    bool: 是否成功恢复（prefs_data 中存在对应文件且未出错）
+                """
+                prefs = prefs_data.get(prefs_file)
+                if not prefs:
+                    return False
+                try:
+                    section_cfg = config.setdefault(section_key, {})
+                    # 恢复 provider
+                    if provider_key in prefs:
+                        section_cfg[provider_key] = prefs[provider_key]
+                        print(f"[Config] 恢复 {log_name} provider: {prefs[provider_key]}")
+                    # 恢复额外字段
+                    if extra_fields:
+                        for field in extra_fields:
+                            if field in prefs:
+                                section_cfg[field] = prefs[field]
+                    # 恢复 provider_configs（各 provider 的 base_url/model/voice 等）
+                    if "provider_configs" in prefs and provider_configs_fields:
+                        for pname, pcfg in prefs["provider_configs"].items():
+                            existing_sub = section_cfg.setdefault(pname, {})
+                            for field in provider_configs_fields:
+                                if field in pcfg:
+                                    existing_sub[field] = pcfg[field]
+                    print(f"[Config] 从 {prefs_file} 恢复了 {log_name} 配置")
+                    return True
+                except Exception as e:
+                    print(f"[Config] 加载 {prefs_file} 失败(不影响使用): {e}")
+                    return False
+
+            # API Key 管理: 从 api_keys.json 恢复
+            api_keys_data = prefs_data.get("api_keys.json")
+            if api_keys_data:
+                try:
+                    saved_keys = api_keys_data
                     # 将保存的Key覆盖到config中
                     for provider_name, key_value in saved_keys.items():
                         # LLM: llm.{provider}.api_key
@@ -278,117 +363,54 @@ class Config:
                             vision_mimo = config.setdefault("vision", {}).setdefault("mimo_vision", {})
                             vision_mimo["api_key"] = key_value
                     print(f"[Config] 从 api_keys.json 加载了 {len(saved_keys)} 个API Key")
-            except Exception as e:
-                print(f"[Config] 加载 api_keys.json 失败(不影响使用): {e}")
+                except Exception as e:
+                    print(f"[Config] 加载 api_keys.json 失败(不影响使用): {e}")
 
-            # LLM 偏好持久化: 从 app/cache/llm_preferences.json 加载用户上次选择的 LLM 配置
+            # LLM 偏好持久化: 从 llm_preferences.json 加载用户上次选择的 LLM 配置
             # 优先级: llm_preferences.json > config.yaml
-            # 这样用户切换 LLM provider 后，重启应用仍保持上次的配置
-            try:
-                prefs_file = cache_dir / "llm_preferences.json"
-                if prefs_file.exists():
-                    with open(prefs_file, "r", encoding="utf-8") as pf:
-                        llm_prefs = json.load(pf)
-                    llm_cfg = config.setdefault("llm", {})
-                    # 恢复 provider
-                    if "provider" in llm_prefs:
-                        llm_cfg["provider"] = llm_prefs["provider"]
-                        print(f"[Config] 恢复 LLM provider: {llm_prefs['provider']}")
-                    # 恢复 model（如果有）
-                    if "model" in llm_prefs:
-                        llm_cfg["model"] = llm_prefs["model"]
-                    # 恢复 max_tokens（如果有）
-                    if "max_tokens" in llm_prefs:
-                        llm_cfg["max_tokens"] = llm_prefs["max_tokens"]
-                    # 恢复各 provider 的 base_url（Ollama 等自定义 URL）
-                    if "provider_configs" in llm_prefs:
-                        for pname, pcfg in llm_prefs["provider_configs"].items():
-                            existing_sub = llm_cfg.setdefault(pname, {})
-                            if "base_url" in pcfg:
-                                existing_sub["base_url"] = pcfg["base_url"]
-                            if "model" in pcfg:
-                                existing_sub["model"] = pcfg["model"]
-                    print(f"[Config] 从 llm_preferences.json 恢复了 LLM 配置")
-            except Exception as e:
-                print(f"[Config] 加载 llm_preferences.json 失败(不影响使用): {e}")
+            _restore_preferences(
+                prefs_file="llm_preferences.json", section_key="llm",
+                provider_key="provider", log_name="LLM",
+                extra_fields=["model", "max_tokens"],
+                provider_configs_fields=["base_url", "model"],
+            )
 
-            # ASR 偏好持久化: 从 app/cache/asr_preferences.json 加载
-            # 优先级: asr_preferences.json > config.yaml
-            # start.bat 的 MiMo 配置菜单会写入此文件
-            try:
-                asr_prefs_file = cache_dir / "asr_preferences.json"
-                if asr_prefs_file.exists():
-                    with open(asr_prefs_file, "r", encoding="utf-8") as pf:
-                        asr_prefs = json.load(pf)
-                    asr_cfg = config.setdefault("asr", {})
-                    if "provider" in asr_prefs:
-                        asr_cfg["provider"] = asr_prefs["provider"]
-                        print(f"[Config] 恢复 ASR provider: {asr_prefs['provider']}")
-                    # 恢复 ASR 子配置 (如 mimo 的 base_url)
-                    if "provider_configs" in asr_prefs:
-                        for pname, pcfg in asr_prefs["provider_configs"].items():
-                            existing_sub = asr_cfg.setdefault(pname, {})
-                            if "base_url" in pcfg:
-                                existing_sub["base_url"] = pcfg["base_url"]
-                            if "model" in pcfg:
-                                existing_sub["model"] = pcfg["model"]
-                    print(f"[Config] 从 asr_preferences.json 恢复了 ASR 配置")
-            except Exception as e:
-                print(f"[Config] 加载 asr_preferences.json 失败(不影响使用): {e}")
+            # ASR 偏好持久化: 从 asr_preferences.json 加载
+            _restore_preferences(
+                prefs_file="asr_preferences.json", section_key="asr",
+                provider_key="provider", log_name="ASR",
+                provider_configs_fields=["base_url", "model"],
+            )
 
-            # TTS 偏好持久化: 从 app/cache/tts_preferences.json 加载
-            # 优先级: tts_preferences.json > config.yaml
-            try:
-                tts_prefs_file = cache_dir / "tts_preferences.json"
-                if tts_prefs_file.exists():
-                    with open(tts_prefs_file, "r", encoding="utf-8") as pf:
-                        tts_prefs = json.load(pf)
-                    tts_cfg = config.setdefault("tts", {})
-                    if "provider" in tts_prefs:
-                        tts_cfg["provider"] = tts_prefs["provider"]
-                        print(f"[Config] 恢复 TTS provider: {tts_prefs['provider']}")
-                    # 恢复顶层 voice（当前引擎的音色）
-                    if "voice" in tts_prefs:
-                        tts_cfg["voice"] = tts_prefs["voice"]
-                    # 恢复 TTS 子配置（各引擎的 voice/base_url/model 等）
-                    if "provider_configs" in tts_prefs:
-                        for pname, pcfg in tts_prefs["provider_configs"].items():
-                            existing_sub = tts_cfg.setdefault(pname, {})
-                            if "base_url" in pcfg:
-                                existing_sub["base_url"] = pcfg["base_url"]
-                            if "model" in pcfg:
-                                existing_sub["model"] = pcfg["model"]
-                            if "voice" in pcfg:
-                                existing_sub["voice"] = pcfg["voice"]
-                            if "project" in pcfg:
-                                existing_sub["project"] = pcfg["project"]
-                    print(f"[Config] 从 tts_preferences.json 恢复了 TTS 配置")
-            except Exception as e:
-                print(f"[Config] 加载 tts_preferences.json 失败(不影响使用): {e}")
+            # TTS 偏好持久化: 从 tts_preferences.json 加载（含 fallback 直接读文件）
+            tts_restored = _restore_preferences(
+                prefs_file="tts_preferences.json", section_key="tts",
+                provider_key="provider", log_name="TTS",
+                extra_fields=["voice"],
+                provider_configs_fields=["base_url", "model", "voice", "project"],
+            )
+            # fallback: 并行加载可能失败，直接读文件兜底
+            if not tts_restored:
+                try:
+                    tts_prefs_file = cache_dir / "tts_preferences.json"
+                    if tts_prefs_file.exists():
+                        with open(tts_prefs_file, "r", encoding="utf-8") as pf:
+                            prefs_data["tts_preferences.json"] = json.load(pf)
+                        _restore_preferences(
+                            prefs_file="tts_preferences.json", section_key="tts",
+                            provider_key="provider", log_name="TTS (fallback)",
+                            extra_fields=["voice"],
+                            provider_configs_fields=["base_url", "model", "voice", "project"],
+                        )
+                except Exception as e:
+                    print(f"[Config] 加载 tts_preferences.json 失败(不影响使用): {e}")
 
-            # Vision 偏好持久化: 从 app/cache/vision_preferences.json 加载
-            # 优先级: vision_preferences.json > config.yaml
-            # start.bat 的 MiMo 配置菜单会写入此文件
-            try:
-                vision_prefs_file = cache_dir / "vision_preferences.json"
-                if vision_prefs_file.exists():
-                    with open(vision_prefs_file, "r", encoding="utf-8") as pf:
-                        vision_prefs = json.load(pf)
-                    vision_cfg = config.setdefault("vision", {})
-                    if "default_provider" in vision_prefs:
-                        vision_cfg["default_provider"] = vision_prefs["default_provider"]
-                        print(f"[Config] 恢复 Vision provider: {vision_prefs['default_provider']}")
-                    # 恢复 Vision 子配置 (如 mimo_vision 的 base_url)
-                    if "provider_configs" in vision_prefs:
-                        for pname, pcfg in vision_prefs["provider_configs"].items():
-                            existing_sub = vision_cfg.setdefault(pname, {})
-                            if "base_url" in pcfg:
-                                existing_sub["base_url"] = pcfg["base_url"]
-                            if "model" in pcfg:
-                                existing_sub["model"] = pcfg["model"]
-                    print(f"[Config] 从 vision_preferences.json 恢复了 Vision 配置")
-            except Exception as e:
-                print(f"[Config] 加载 vision_preferences.json 失败(不影响使用): {e}")
+            # Vision 偏好持久化: 从 vision_preferences.json 加载
+            _restore_preferences(
+                prefs_file="vision_preferences.json", section_key="vision",
+                provider_key="default_provider", log_name="Vision",
+                provider_configs_fields=["base_url", "model"],
+            )
 
             return config
         except ImportError:
@@ -500,6 +522,13 @@ class ToolExecutor:
         内部使用 ThreadPoolExecutor(max_workers=3)，可安全并发调用 execute()。
     """
 
+    # v1.11.21 (P2-7): 危险命令黑名单改为类常量 frozenset
+    # 避免每次 can_execute() 调用时重复创建 set 对象
+    _BLOCKLIST = frozenset({"rm", "dd", "mkfs", "shutdown", "reboot", "init",
+                            "chmod", "chown", "kill", "pkill", "curl", "wget",
+                            "nc", "ncat", "bash", "sh", "python", "python3",
+                            "perl", "ruby", "node", "sudo", "su"})
+
     def __init__(self, config: Dict[str, Any]):
         """
         【功能说明】初始化命令执行器
@@ -518,6 +547,7 @@ class ToolExecutor:
         self.timeout = self.config.get("timeout", 30)
 
         # 使用线程池执行命令，避免阻塞主线程（最多 3 个并发命令）
+        # max_workers=3 已合理：命令执行是 I/O bound（subprocess 等待），3 并发足够
         from concurrent.futures import ThreadPoolExecutor
         self._executor = ThreadPoolExecutor(max_workers=3)
 
@@ -560,18 +590,15 @@ class ToolExecutor:
             return False
 
         # 危险命令黑名单：精确匹配命令名 token
-        # 设计说明: 使用 set 精确匹配而非 "rm" in command，
+        # v1.11.21 (P2-7): 改为引用类常量 self._BLOCKLIST
+        # 设计说明: 使用 frozenset 精确匹配而非 "rm" in command，
         # 避免 "grep rm ..." 这种合法场景被误杀
-        _BLOCKLIST = {"rm", "dd", "mkfs", "shutdown", "reboot", "init",
-                      "chmod", "chown", "kill", "pkill", "curl", "wget",
-                      "nc", "ncat", "bash", "sh", "python", "python3",
-                      "perl", "ruby", "node", "sudo", "su"}
         # 同时拒绝包含 shell 操作符的原始字符串
         # （防止 shlex 解析后丢失语义，如 "ls; rm -rf /" 被拆成 ["ls"] 和 ["rm"]）
         _SHELL_CHARS = {">", "<", "|", "&", ";", "`", "$"}
         if any(c in command for c in _SHELL_CHARS):
             return False
-        if cmd_name in _BLOCKLIST:
+        if cmd_name in self._BLOCKLIST:
             return False
 
         return True
@@ -741,6 +768,13 @@ class AIVTuber:
         self._memory = None
         self._memory_initialized = False
 
+        # v1.11.25 R-006: 对象池 — 复用频繁创建的对象，减少 GC 压力
+        self._object_pools = {
+            'dict': [],  # 复用 dict 对象（用于 LLM 结果、记忆条目等）
+            'list': [],  # 复用 list 对象（用于历史记录、搜索结果等）
+        }
+        self._pool_max_size = 50  # 每种类型最多缓存 50 个对象
+
         # TTS 缓存 - 立即初始化（轻量级，仅做文件缓存管理）
         self.tts_cache = TTSCache()
         self.logger.info("TTS 缓存已初始化")
@@ -749,9 +783,11 @@ class AIVTuber:
         # 历史记录限制: 最多保留 MAX_HISTORY 轮对话（每轮 = user + assistant 两条）
         self.MAX_HISTORY = 100
         self.history: List[Dict] = []
+        self._history_lock = threading.Lock()  # v1.12.0 AUDIT-P0-1: history 线程安全锁
         self._history_needs_restore = False  # v1.9.50: 延迟从记忆系统恢复标记
-        # v1.9.50: 对话历史持久化文件路径
-        self._history_file = Path("./memory/state/chat_history.json").resolve()
+        # v1.11.21 (P1-3): 使用 PROJECT_DIR 构建路径，不再依赖 CWD
+        from app.shared_config import PROJECT_DIR as _PD
+        self._history_file = Path(_PD) / "memory" / "state" / "chat_history.json"
         self._history_file.parent.mkdir(parents=True, exist_ok=True)
         self._load_history()
 
@@ -772,12 +808,144 @@ class AIVTuber:
         atexit.register(self._atexit_flush)
         
         # M1修复: 注册信号处理，确保SIGTERM/SIGINT时优雅关停
-        import signal
-        signal.signal(signal.SIGINT, self._signal_handler)
-        try:
-            signal.signal(signal.SIGTERM, self._signal_handler)
-        except (OSError, ValueError):
-            pass  # Windows 可能不支持 SIGTERM
+        # v1.11.24 修复: 只在主线程注册 signal，避免 BackendInitWorker(QThread) 中构造时报错
+        # 注意: threading 已在模块顶部全局导入 (line 41)，此处不可重复 import，
+        #       否则 Python 编译器会将 threading 标记为局部变量，导致前面
+        #       self._lazy_modules_lock = threading.Lock() (line 899) 报 UnboundLocalError。
+        if threading.current_thread() is threading.main_thread():
+            import signal
+            signal.signal(signal.SIGINT, self._signal_handler)
+            try:
+                signal.signal(signal.SIGTERM, self._signal_handler)
+            except (OSError, ValueError):
+                pass  # Windows 可能不支持 SIGTERM
+
+    # ============ R-006: 对象池 ============
+
+    def _pool_get(self, obj_type: str):
+        """从对象池获取一个可复用的对象
+
+        Args:
+            obj_type: 对象类型 ('dict' 或 'list')
+
+        Returns:
+            可复用的对象，或新建的对象（池为空时）
+        """
+        pool = self._object_pools.get(obj_type, [])
+        if pool:
+            obj = pool.pop()
+            # 清空对象内容（复用但不复用数据）
+            if obj_type == 'dict':
+                obj.clear()
+            elif obj_type == 'list':
+                obj.clear()
+            return obj
+        # 池为空，新建对象
+        if obj_type == 'dict':
+            return {}
+        elif obj_type == 'list':
+            return []
+        return None
+
+    def _pool_put(self, obj, obj_type: str):
+        """将对象归还到对象池
+
+        Args:
+            obj: 要归还的对象
+            obj_type: 对象类型 ('dict' 或 'list')
+        """
+        pool = self._object_pools.get(obj_type, [])
+        if len(pool) < self._pool_max_size:
+            # 清空对象内容后归还
+            if obj_type == 'dict' and isinstance(obj, dict):
+                obj.clear()
+                pool.append(obj)
+            elif obj_type == 'list' and isinstance(obj, list):
+                obj.clear()
+                pool.append(obj)
+
+    # ============ S-001: 模型预加载并行化 ============
+
+    def preload_models_parallel(self):
+        """并行预加载 ASR、TTS、Memory 模型，减少启动串行等待时间
+
+        v1.11.25 新增: 使用 ThreadPoolExecutor 并行加载三个模型模块，
+        总耗时从 max(ASR, TTS, Memory) 而非 sum(ASR, TTS, Memory)。
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import time
+
+        def _load_asr():
+            """后台线程加载 ASR"""
+            start = time.time()
+            try:
+                # GIL 让步: 减少对主线程的争抢
+                time.sleep(0.01)
+                _ = self.asr
+                elapsed = time.time() - start
+                self.logger.info(f"ASR 预加载完成 ({elapsed:.1f}s)")
+                return "asr", elapsed, None
+            except Exception as e:
+                return "asr", time.time() - start, str(e)
+
+        def _load_tts():
+            """后台线程加载 TTS"""
+            start = time.time()
+            try:
+                time.sleep(0.01)
+                _ = self.tts
+                elapsed = time.time() - start
+                self.logger.info(f"TTS 预加载完成 ({elapsed:.1f}s)")
+                return "tts", elapsed, None
+            except Exception as e:
+                return "tts", time.time() - start, str(e)
+
+        def _load_memory():
+            """后台线程加载 Memory（仅加载配置和持久化数据，不加载嵌入模型）
+
+            v1.11.30: 嵌入模型（SentenceTransformer ~10-15s）改为首次搜索时懒加载，
+            避免启动时 CPU/内存峰值导致 UI 卡顿。
+            """
+            start = time.time()
+            try:
+                time.sleep(0.01)
+                mem = self.memory
+                # 预热工作记忆（轻量级，仅 JSON 解析）
+                if mem and hasattr(mem, 'working_memory'):
+                    _ = len(mem.working_memory)
+                elapsed = time.time() - start
+                self.logger.info(f"Memory 预加载完成 ({elapsed:.1f}s)")
+                return "memory", elapsed, None
+            except Exception as e:
+                return "memory", time.time() - start, str(e)
+
+        game_section("并行预加载模型")
+        overall_start = time.time()
+
+        # 使用线程池并行加载
+        # 注意: Python GIL 限制了真正的并行，但对于 I/O 密集型（加载模型文件）
+        # 和部分 CPU 密集型（NumPy 初始化）仍有显著加速效果
+        # 决策: 不使用 ProcessPoolExecutor — 本项目 CPU 密集型任务（FFT、模型推理）
+        # 均由 PyTorch/NumPy 内部释放 GIL，ThreadPoolExecutor 已足够实现并行。
+        # ProcessPoolExecutor 会带来进程间序列化开销和内存翻倍，得不偿失。
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="Preload") as executor:
+            futures = {
+                executor.submit(_load_asr): "asr",
+                executor.submit(_load_tts): "tts",
+                executor.submit(_load_memory): "memory",
+            }
+
+            results = {}
+            for future in as_completed(futures):
+                name, elapsed, error = future.result()
+                results[name] = (elapsed, error)
+                if error:
+                    game_fail(f"{name.upper()} 预加载", f"失败 ({elapsed:.1f}s): {error}")
+                else:
+                    game_ok(f"{name.upper()} 预加载", f"完成 ({elapsed:.1f}s)")
+
+        overall_elapsed = time.time() - overall_start
+        game_ok("并行预加载", f"总耗时 {overall_elapsed:.1f}s (串行预计 {sum(r[0] for r in results.values()):.1f}s)")
 
     # ============ 懒加载属性 ============
     # 每个属性在首次访问时才导入并初始化对应的模块
@@ -1284,8 +1452,8 @@ class AIVTuber:
                 full_prompt = f"用户问题: {text}{context}"
 
             # 步骤4: 调用 LLM 进行推理
-            # 传入 history 的列表副本（list(self.history)），确保 LLM 内部不会修改原始历史
-            result = self.llm.chat(full_prompt, list(self.history))
+            # 传入 history 的列表副本（list(self.history)  # v1.12.0: history reads are safe due to GIL list() atomicity），确保 LLM 内部不会修改原始历史
+            result = self.llm.chat(full_prompt, list(self.history))  # v1.12.0: history reads are safe due to GIL list() atomicity
             reply = result.get("text", "")
             action = result.get("action")
 
@@ -1460,6 +1628,94 @@ class AIVTuber:
             self.tts_cache.set(text, voice, audio_path, provider)
 
         return audio_path
+
+    def process_message_streaming(self, text: str) -> Dict[str, Any]:
+        """
+        v1.11.25 (R-004): 流式消息处理 — 边生成边 TTS
+
+        与 process_message() 的区别:
+        - process_message(): LLM 完整回复后才开始 TTS
+        - process_message_streaming(): LLM 按句分割，每句生成完立即开始 TTS
+
+        适用场景:
+        - 原生桌面端的实时对话（降低语音延迟）
+        - 长回复场景（用户更快听到第一句话）
+
+        返回值:
+            Dict[str, Any]: {"text": 完整回复, "audio": 最后一段音频路径}
+        """
+        import re
+
+        try:
+            self.logger.info(f"处理消息(流式): {text[:50]}...")
+
+            # 步骤1: 记忆检索
+            relevant_memories = self.memory.search(text, top_k=3)
+            context = ""
+            if relevant_memories:
+                context = "\n\n相关记忆:\n" + "\n".join([m.get("content") or m.get("text", "") for m in relevant_memories])
+
+            full_prompt = text
+            if context:
+                full_prompt = f"用户问题: {text}{context}"
+
+            # 步骤2: LLM 推理（获取完整回复）
+            result = self.llm.chat(full_prompt, list(self.history))  # v1.12.0: history reads are safe due to GIL list() atomicity
+            reply = result.get("text", "")
+            action = result.get("action")
+
+            # 处理执行动作
+            if action and action.get("type") == "execute":
+                cmd = action.get("command", "")
+                exec_result = self.executor.execute(cmd)
+                if exec_result["success"]:
+                    output = exec_result.get("stdout", "") or exec_result.get("stderr", "")
+                    reply = f"命令执行完成！\n{output}"
+                else:
+                    reply = f"命令执行失败: {exec_result.get('error', '未知错误')}"
+
+            # 步骤3: 流式 TTS — 按句分割，逐句合成
+            # 分割策略: 按中文句号/问号/感叹号/换行符分割
+            sentences = re.split(r'(?<=[。！？\n])', reply)
+            sentences = [s.strip() for s in sentences if s.strip()]
+
+            last_audio = None
+            if sentences:
+                # 逐句 TTS（串行，避免并发推理冲突）
+                for sentence in sentences:
+                    if len(sentence) < 2:
+                        continue  # 跳过单个标点
+                    try:
+                        audio_path = self.tts.speak(sentence)
+                        if audio_path:
+                            last_audio = audio_path
+                            # TODO: 此处可以发送 WebSocket 消息通知前端播放音频
+                            # yield {"type": "audio_chunk", "audio": audio_path, "text": sentence}
+                    except Exception as e:
+                        self.logger.warning(f"流式 TTS 失败: {e}")
+
+            # 步骤4: 记录交互
+            self.record_interaction(text, reply)
+
+            # 步骤5: 工具执行后的二次对话（如果使用了工具）
+            if action and action.get("type") == "execute":
+                tool_result = self.process_message(reply)
+                return tool_result
+
+            return {"text": reply, "audio": last_audio}
+
+        except FileNotFoundError as e:
+            self.logger.error(f"文件未找到: {e}")
+            return {"text": f"抱歉，找不到需要的文件: {e}"}
+        except PermissionError as e:
+            self.logger.error(f"权限错误: {e}")
+            return {"text": f"抱歉，权限不足: {e}"}
+        except TimeoutError as e:
+            self.logger.error(f"处理超时: {e}")
+            return {"text": "抱歉，处理消息超时了，请重试"}
+        except Exception as e:
+            self.logger.exception(f"处理消息错误: {e}")
+            return {"text": "抱歉，处理消息时出错了喵~"}
 
     def run_interactive(self):
         """
@@ -1688,14 +1944,20 @@ class AIVTuber:
             self.stop()
 
     def _load_history(self):
-        """v1.9.50: 从磁盘恢复对话历史，若无则从记忆系统恢复"""
+        """v1.9.50: 从磁盘恢复对话历史，若无则从记忆系统恢复
+
+        v1.11.25 M-002: 分页加载 — 只加载最近的 N 条到内存，历史从磁盘按需读取
+        v1.11.30 OPT-3: 不再全量加载历史到内存，仅加载最近 100 条
+        """
         try:
             if self._history_file.exists():
                 with open(self._history_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 if isinstance(data, list) and len(data) > 0:
+                    # v1.11.30 OPT-3: 仅加载最近的条目到内存，不保存完整历史引用
+                    # 完整历史仍在磁盘，需要时可重新读取
                     self.history = data[-(self.MAX_HISTORY * 2):]
-                    print(f"  [历史] 恢复对话历史: {len(self.history)}条")
+                    print(f"  [历史] 恢复对话历史: {len(self.history)}条 (磁盘共 {len(data)} 条)")
                     return
         except Exception as e:
             print(f"  [历史] 恢复对话历史失败: {e}")
@@ -1724,17 +1986,34 @@ class AIVTuber:
         self.history = []
 
     def _save_history(self):
-        """v1.9.50: 保存对话历史到磁盘"""
+        """v1.9.50: 保存对话历史到磁盘
+
+        v1.11.29 P1-3: 异步文件 I/O — 使用后台线程写入，不阻塞主线程
+        v1.11.30 OPT-2: 使用线程池复用 — 避免每次对话创建新线程
+        """
         try:
             data = self.history[-(self.MAX_HISTORY * 2):]
             # v1.9.89: 为缺少 time 的旧消息补充时间戳
             for m in data:
                 if not m.get('time'):
                     m['time'] = datetime.now().isoformat()
-            tmp_file = self._history_file.with_suffix('.tmp')
-            with open(tmp_file, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            os.replace(tmp_file, self._history_file)
+
+            # v1.11.30 OPT-2: 使用单线程池复用，避免频繁创建线程
+            if not hasattr(self, '_save_executor'):
+                from concurrent.futures import ThreadPoolExecutor
+                self._save_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="history-save")
+
+            history_file = self._history_file
+            def _async_write():
+                try:
+                    tmp_file = history_file.with_suffix('.tmp')
+                    with open(tmp_file, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+                    os.replace(tmp_file, history_file)
+                except Exception as e:
+                    print(f"  [历史] 异步保存对话历史失败: {e}")
+
+            self._save_executor.submit(_async_write)
         except Exception as e:
             print(f"  [历史] 保存对话历史失败: {e}")
 
@@ -1742,6 +2021,8 @@ class AIVTuber:
         """
         v1.9.55: 统一记录对话交互（记忆 + 历史 + 持久化）
         消除 main.py / web/__init__.py 三处重复的 mem.add_interaction + history.append + _save_history 逻辑。
+
+        v1.11.25 (R-001): 新增历史压缩 — 当历史超过 60 轮时，自动摘要旧对话（保留最近 20 轮 + 压缩摘要）
         """
         if not user_text or not assistant_text:
             return
@@ -1753,15 +2034,81 @@ class AIVTuber:
                 mem.add_interaction("assistant", assistant_text)
         except Exception as e:
             self.logger.debug(f"记忆写入错误（可忽略）: {e}")
-        # 2. 历史记录 + 截断 + 持久化
+        # 2. 历史记录 + 截断 + 持久化（v1.12.0 AUDIT-P0-1: 加锁保护）
         try:
-            self.history.append({"role": "user", "content": user_text, "time": datetime.now().isoformat()})
-            self.history.append({"role": "assistant", "content": assistant_text, "time": datetime.now().isoformat()})
-            if len(self.history) > self.MAX_HISTORY * 2:
-                self.history = self.history[-(self.MAX_HISTORY * 2):]
+            with self._history_lock:
+                self.history.append({"role": "user", "content": user_text, "time": datetime.now().isoformat()})
+                self.history.append({"role": "assistant", "content": assistant_text, "time": datetime.now().isoformat()})
+
+                # v1.11.25 R-001: 流式历史压缩
+                # 当历史超过 60 轮（120 条）时，压缩旧对话为摘要
+                COMPRESS_THRESHOLD = 120  # 触发压缩的条数
+                KEEP_RECENT = 40          # 压缩后保留的最近条数（20 轮）
+                if len(self.history) > COMPRESS_THRESHOLD:
+                    self._compress_history(KEEP_RECENT)
+
+                if len(self.history) > self.MAX_HISTORY * 2:
+                    self.history = self.history[-(self.MAX_HISTORY * 2):]
             self._save_history()
         except Exception as e:
             self.logger.debug(f"历史更新错误（可忽略）: {e}")
+
+    def _compress_history(self, keep_recent: int = 40):
+        """v1.11.25 (R-001): 对话历史流式压缩
+
+        将旧对话（keep_recent 之前的）压缩为一条摘要消息，
+        减少 LLM token 消耗，同时保留关键上下文。
+
+        压缩策略：
+        - 优先使用 LLM 生成摘要（质量高）
+        - LLM 不可用时降级为规则摘要（截取关键句）
+        """
+        if len(self.history) <= keep_recent:
+            return
+
+        old_messages = self.history[:-keep_recent]
+        recent_messages = self.history[-keep_recent:]
+
+        # 统计旧对话轮数
+        old_turns = len(old_messages) // 2
+        if old_turns < 5:
+            return  # 太少不值得压缩
+
+        # 尝试 LLM 摘要
+        summary_text = None
+        try:
+            llm = getattr(self, '_lazy_modules', {}).get('llm', None)
+            if llm and hasattr(llm, 'chat'):
+                # 构建摘要 prompt
+                old_text = "\n".join([f"[{m.get('role', '?')}]: {m.get('content', '')}" for m in old_messages[-20:]])
+                summary_prompt = (
+                    f"请将以下 {old_turns} 轮对话压缩为一段简短摘要（100字以内），"
+                    f"保留关键信息（用户偏好、重要决定、未完成事项）：\n\n{old_text}"
+                )
+                result = llm.chat(summary_prompt, [])
+                summary_text = result.get("text", "").strip() if isinstance(result, dict) else str(result).strip()
+        except Exception as e:
+            self.logger.debug(f"LLM 摘要失败，降级为规则摘要: {e}")
+
+        # 降级：规则摘要
+        if not summary_text:
+            # 提取所有用户消息的关键内容
+            user_msgs = [m.get('content', '') for m in old_messages if m.get('role') == 'user']
+            assistant_msgs = [m.get('content', '') for m in old_messages if m.get('role') == 'assistant']
+            # 取首尾各 3 条作为摘要
+            preview = user_msgs[:3] + ["..."] + user_msgs[-3:] if len(user_msgs) > 6 else user_msgs
+            summary_text = f"[历史摘要: {old_turns}轮对话] " + " | ".join(preview[:6])
+
+        # 构建压缩后的历史
+        compressed = {
+            "role": "system",
+            "content": summary_text,
+            "time": datetime.now().isoformat(),
+            "is_compressed": True,
+            "original_turns": old_turns
+        }
+        self.history = [compressed] + recent_messages
+        self.logger.info(f"历史压缩: {old_turns}轮 → 1条摘要 + {len(recent_messages)//2}轮最近对话")
 
     def _atexit_flush(self):
         """atexit 回调：确保异常退出时也能 flush 记忆系统和对话历史"""

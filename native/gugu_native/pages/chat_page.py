@@ -30,6 +30,7 @@ import os
 import shutil
 import json
 import time
+import logging
 import random  # 优化 #5: 移到顶层，避免 _lipsync_tick 每 50ms 重复导入
 import tempfile
 from datetime import datetime, timedelta
@@ -51,6 +52,8 @@ from qfluentwidgets import (
 from PySide6.QtWidgets import QFileDialog
 
 from app.shared_config import PROJECT_DIR
+
+logger = logging.getLogger('ChatPage')
 
 # TTS 偏好文件路径
 _TTS_PREFS_FILE = os.path.join(PROJECT_DIR, "app", "cache", "tts_preferences.json")
@@ -87,9 +90,6 @@ from gugu_native.workers.vision_workers import OCRWorker, VisionWorker
 # ============================================================================
 # ChatPage — 对话页面主控件
 # ============================================================================
-# ============================================================================
-# ChatPage — 对话页面主控件
-# ============================================================================
 
 class ChatPage(QWidget):
     """对话页面 v2.0 — 完全重构版"""
@@ -119,19 +119,38 @@ class ChatPage(QWidget):
         # 按序播放由 _tts_pending + _tts_next_play_seq 机制保证
         from concurrent.futures import ThreadPoolExecutor
         self._tts_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="tts")
-        self._tts_audio_signal.connect(self._on_tts_audio_ready)  # 优化 #13: 线程安全连接
+        self._tts_audio_signal.connect(self._on_tts_audio_ready)
         # v14 FIX: 流式 TTS 句子排序 — 序号计数器和播放指针
-        self._tts_seq_counter = 0     # 递增序号，每个句子分配一个
+        self._tts_seq_counter = 0
         self._tts_next_play_seq = 1   # 下一个预期播放的序号（序号从 1 开始）
         self._tts_pending = {}        # 暂存乱序到达的音频: {seq: audio_path}
-        self._init_ui()
-        self._load_chat_history()
+
+        # 注册清理回调
+        if parent and hasattr(parent, 'perf_manager'):
+            parent.perf_manager.register_cleanup_target("chat_page", self)
+
+        # === 分帧初始化：先创建 shell 框架，再延迟创建内容 ===
+        self._chat_display_ready = False
+        self._pending_chat_messages = []
+
+        self._init_ui_shell()
+        QTimer.singleShot(0, self._init_ui_content)
+
         self.setAcceptDrops(True)  # 启用拖拽
         # 注册主题变更回调
         register_theme_callback(self.refresh_theme)
 
-    def _init_ui(self):
-        """初始化 UI — v2.0 完全重构"""
+    def cleanup(self):
+        """退出时清理：关闭线程池 + 停止定时器 + 清空 Worker 列表"""
+        if hasattr(self, '_tts_executor') and self._tts_executor:
+            self._tts_executor.shutdown(wait=False)
+        if hasattr(self, '_lipsync_timer') and self._lipsync_timer:
+            self._lipsync_timer.stop()
+        if hasattr(self, '_tts_workers'):
+            self._tts_workers.clear()
+
+    def _init_ui_shell(self):
+        """创建主布局框架 + 占位符（极轻量，让窗口尽快显示）"""
         from gugu_native.theme import get_colors
         c = get_colors()
 
@@ -148,8 +167,6 @@ class ChatPage(QWidget):
         main_layout.addLayout(self._live2d_layout, stretch=2)
 
         # ★ v11: Live2D 延迟创建 — 先用占位符，窗口显示后再创建 QWebEngineView
-        # QWebEngineView 的创建需要初始化 Chromium 进程，耗时 5-10 秒
-        # 延迟创建让窗口先显示，用户感知的启动时间大幅缩短
         self.live2d_widget = None  # 将在 _lazy_init_live2d() 中创建
         self._vrm_widget = None    # VRM 3D 模型 widget（延迟创建）
         self._current_model_type = "live2d"  # "live2d" | "vrm"
@@ -164,24 +181,91 @@ class ChatPage(QWidget):
             }}
         """)
         self._live2d_placeholder.setMinimumSize(380, 480)
-        # ★ 模型类型切换栏（Live2D / VRM 3D）
+        self._model_toggle_bar = None  # 将在 _init_ui_content 中创建
+        self._vrm_variant_bar = None   # 将在 _init_ui_content 中创建
+        self._live2d_layout.addWidget(self._live2d_placeholder, stretch=1)
+
+        # 主动画控制器 — 将在 _lazy_init_live2d() 中创建
+        self._animation_controller = None
+
+        # === 中部: 会话列表侧边栏（占位，延迟创建） ===
+        self.session_manager = None  # 将在 _init_ui_content 中创建
+
+        # === 右侧: 对话区域 — 占位符 ===
+        self._right_panel = QVBoxLayout()
+        self._right_panel.setSpacing(6)
+        self._right_panel.setContentsMargins(0, 0, 0, 0)
+        main_layout.addLayout(self._right_panel, stretch=3)
+
+        # 对话区占位符 — 替代 ChatWebDisplay
+        self._chat_placeholder = QLabel("⏳ 正在加载对话...")
+        self._chat_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._chat_placeholder.setStyleSheet(f"""
+            QLabel {{
+                color: {c.text_muted};
+                font-size: 14px;
+                background: transparent;
+                padding: 20px;
+            }}
+        """)
+        self._right_panel.addWidget(self._chat_placeholder, stretch=1)
+
+        # 以下控件将在 _init_ui_content 中创建
+        self.search_bar = None
+        self._chat_card = None
+        self.chat_display = None
+        self._input_card = None
+        self.input_field = None
+        self.send_btn = None
+        self.clear_btn = None
+        self._tts_card = None
+        self.tts_combo = None
+        self.voice_combo = None
+        self.record_btn = None
+        self.realtime_btn = None
+        self.tts_mode_btn = None
+        self.speed_slider = None
+        self.volume_slider = None
+        self._media_player = None
+        self._audio_output = None
+        self._send_style = ""
+        self._stop_style = ""
+
+    def _init_ui_content(self):
+        """延迟创建具体控件（通过 QTimer.singleShot(0) 调度，让窗口先显示）"""
+        # T10: 性能埋点
+        if hasattr(self, '_perf_t4_start'):
+            pass  # 由 T10 外层设置
+        self._perf_t4_start = time.perf_counter()
+
+        from gugu_native.theme import get_colors
+        c = get_colors()
+
+        # === 移除对话区占位符 ===
+        if self._chat_placeholder:
+            self._right_panel.removeWidget(self._chat_placeholder)
+            self._chat_placeholder.hide()
+            self._chat_placeholder.deleteLater()
+            self._chat_placeholder = None
+
+        # ★ 模型类型切换栏（Live2D / VRM 3D）— 插入到 Live2D 占位符之前
         self._model_toggle_bar = QWidget()
         toggle_layout = QHBoxLayout(self._model_toggle_bar)
         toggle_layout.setContentsMargins(4, 2, 4, 2)
         toggle_layout.setSpacing(4)
-        
+
         self._btn_live2d = QPushButton("🐱 Live2D")
         self._btn_live2d.setCheckable(True)
         self._btn_live2d.setChecked(True)
         self._btn_live2d.setStyleSheet(f"""
-            QPushButton {{ background: {c.accent}; color: {c.text_on_accent}; border: none; 
+            QPushButton {{ background: {c.accent}; color: {c.text_on_accent}; border: none;
                 border-radius: 4px; padding: 4px 12px; font-size: 12px; font-weight: bold; }}
             QPushButton:checked {{ background: {c.accent}; color: {c.text_on_accent}; }}
             QPushButton:!checked {{ background: {c.card_bg}; color: {c.text_muted}; }}
             QPushButton:hover {{ background: {c.accent_hover}; }}
         """)
         self._btn_live2d.clicked.connect(lambda: self.switch_model_type("live2d"))
-        
+
         self._btn_vrm = QPushButton("🧊 VRM 3D")
         self._btn_vrm.setCheckable(True)
         self._btn_vrm.setStyleSheet(f"""
@@ -192,16 +276,16 @@ class ChatPage(QWidget):
             QPushButton:hover {{ background: {c.card_bg_hover}; }}
         """)
         self._btn_vrm.clicked.connect(lambda: self.switch_model_type("vrm"))
-        
+
         toggle_layout.addWidget(self._btn_live2d)
         toggle_layout.addWidget(self._btn_vrm)
-        
+
         # 竖分隔线
         sep = QFrame()
         sep.setFixedWidth(1)
         sep.setStyleSheet(f"background-color: {c.card_border};")
         toggle_layout.addWidget(sep)
-        
+
         # ★ 模型导入按钮（合并到同一行）
         btn_vrm = QPushButton("📁 加载VRM")
         _vrm_bg = _hex_to_rgba(c.ai_bubble_accent, 0.13)
@@ -226,7 +310,7 @@ class ChatPage(QWidget):
         """)
         btn_l2d.clicked.connect(self._import_live2d_model)
         toggle_layout.addWidget(btn_l2d)
-        
+
         toggle_layout.addStretch()
 
         # 桌面宠物按钮
@@ -235,11 +319,12 @@ class ChatPage(QWidget):
         self.pet_btn.setToolTip("桌面宠物")
         self.pet_btn.clicked.connect(self._toggle_pet)
         toggle_layout.addWidget(self.pet_btn)
-        
+
         self._model_toggle_bar.setFixedHeight(34)
         # 默认可见（导入按钮+宠物按钮始终可用），VRM 切换按钮按需显示
         self._btn_vrm.hide()
-        self._live2d_layout.addWidget(self._model_toggle_bar)
+        # 插入到 Live2D 占位符之前（index 0 = toggle bar, index 1 = VRM variant bar, index 2 = placeholder/widget）
+        self._live2d_layout.insertWidget(0, self._model_toggle_bar)
 
         # ★ VRM 变体切换栏（AU / cow / jacket / swim）
         self._vrm_variant_bar = QWidget()
@@ -266,30 +351,20 @@ class ChatPage(QWidget):
             self._btn_vrm_variants["default"].setChecked(True)
         self._vrm_variant_bar.setFixedHeight(26)
         self._vrm_variant_bar.hide()
-        self._live2d_layout.addWidget(self._vrm_variant_bar)
-
-        self._live2d_layout.addWidget(self._live2d_placeholder, stretch=1)
-
-        # 主动画控制器 — 将在 _lazy_init_live2d() 中创建
-        self._animation_controller = None
+        self._live2d_layout.insertWidget(1, self._vrm_variant_bar)
 
         # === 中部: 会话列表侧边栏 ===
         self.session_manager = SessionManager(self)
         self.session_manager.sessionSwitched.connect(self._on_session_switched)
         self.session_manager.sessionCreated.connect(self._on_session_created)
-        main_layout.addWidget(self.session_manager, stretch=0)
-
-        # === 右侧: 对话区域 — 四层布局 ===
-        right_panel = QVBoxLayout()
-        right_panel.setSpacing(6)
-        right_panel.setContentsMargins(0, 0, 0, 0)
-        main_layout.addLayout(right_panel, stretch=3)
+        # 插入到主布局中 Live2D 和右侧之间（index 1）
+        self.layout().insertWidget(1, self.session_manager, stretch=0)
 
         # ──────── 消息搜索栏（默认隐藏） ────────
         self.search_bar = MessageSearchBar(self)
         self.search_bar.searchRequested.connect(self._on_search)
         self.search_bar.searchNavigate.connect(self._on_search_navigate)
-        right_panel.addWidget(self.search_bar)
+        self._right_panel.addWidget(self.search_bar)
 
         # ──────── 卡片1: 聊天显示区 (QWebEngineView) ────────
         self._chat_card = QFrame()
@@ -313,7 +388,7 @@ class ChatPage(QWidget):
         self.chat_display.action_quote.connect(self._on_action_quote)
         self.chat_display.action_edit.connect(self._on_action_edit)
         chat_card_layout.addWidget(self.chat_display)
-        right_panel.addWidget(self._chat_card, stretch=1)
+        self._right_panel.addWidget(self._chat_card, stretch=1)
 
         # ──────── 卡片2: 输入栏（多行输入框） ────────
         self._input_card = QFrame()
@@ -424,7 +499,7 @@ class ChatPage(QWidget):
         self.input_field.sendRequested.connect(self._send_message)
         input_card_layout.addWidget(self.input_field)
 
-        right_panel.addWidget(self._input_card)
+        self._right_panel.addWidget(self._input_card)
 
         # ──────── 卡片3: TTS 工具栏（两行布局，防缩放重叠） ────────
         self._tts_card = QFrame()
@@ -558,7 +633,7 @@ class ChatPage(QWidget):
         self.volume_slider.valueChanged.connect(self._on_volume_changed)
         tts_row2.addWidget(self.volume_slider, stretch=1)
 
-        right_panel.addWidget(self._tts_card)
+        self._right_panel.addWidget(self._tts_card)
 
         # === 音频播放器 ===
         self._media_player = QMediaPlayer()
@@ -566,12 +641,57 @@ class ChatPage(QWidget):
         self._media_player.setAudioOutput(self._audio_output)
         self._audio_output.setVolume(0.8)
 
-        # === Live2D 延迟初始化 ===
-        # v13: 不在 ChatPage 构造时启动 Live2D，改为在 on_backend_ready() 中启动
-        # 原因：QWebEngineView + Chromium 初始化耗时 5-10s，
-        # 如果在 ChatPage 构造时（GuguGagaApp.__init__ 内）启动，
-        # 会阻塞窗口显示，增加用户感知的启动时间。
-        # 延迟到后端就绪后启动，窗口可以更快显示出来。
+        # === ChatWebDisplay 已就绪 — 标记 + 重放缓冲消息 ===
+        self._chat_display_ready = True
+        self._replay_pending_chat_messages()
+
+        # === 加载对话历史（从 __init__ 移至此处，确保 chat_display 已创建）===
+        self._load_chat_history()
+
+        # T10: 性能埋点
+        self._perf_t4_end = time.perf_counter()
+        logger.info(f"[PERF] ChatPage _init_ui_content: {self._perf_t4_end - self._perf_t4_start:.3f}s")
+
+    def append_message_safe(self, role: str, text: str, timestamp: str = None):
+        """安全追加消息 — 如果 ChatWebDisplay 未就绪，缓冲到队列"""
+        if self._chat_display_ready and self.chat_display:
+            if role == "user":
+                self.chat_display.append_user_msg(text, timestamp=timestamp)
+            elif role == "assistant":
+                self.chat_display.append_ai_msg(text, timestamp=timestamp)
+            else:
+                self.chat_display.append_system_msg(text)
+        else:
+            self._pending_chat_messages.append((role, text, timestamp))
+
+    def _replay_pending_chat_messages(self):
+        """重放缓冲消息 — 在 ChatWebDisplay 创建后调用"""
+        if not self._pending_chat_messages:
+            return
+        for role, text, timestamp in self._pending_chat_messages:
+            if role == "user":
+                self.chat_display.append_user_msg(text, timestamp=timestamp)
+            elif role == "assistant":
+                self.chat_display.append_ai_msg(text, timestamp=timestamp)
+            else:
+                self.chat_display.append_system_msg(text)
+        self._pending_chat_messages.clear()
+
+    # T10: showEvent 埋点
+    def showEvent(self, event):
+        """首次显示时输出性能汇总"""
+        super().showEvent(event)
+        if not hasattr(self, '_perf_first_show'):
+            self._perf_first_show = True
+            self._perf_t6 = time.perf_counter()
+            # 从主窗口获取性能时间戳（_perf_t1/t2/t3 在 GuguGagaApp 上）
+            main_win = self.window()
+            t1 = getattr(main_win, '_perf_t1', 0)
+            t2 = getattr(main_win, '_perf_t2', 0)
+            t3 = getattr(main_win, '_perf_t3', 0)
+            t6 = self._perf_t6
+            if t1 > 0:
+                logger.info(f"[PERF] T1→T2: init前置 {t2-t1:.3f}s | T2→T3: 页面创建 {t3-t2:.3f}s | T1→T6: 总计 {t6-t1:.3f}s")
 
     def _lazy_init_live2d(self):
         """v1.10.2: 延迟创建 Live2DWidget — 让窗口先显示再加载 Chromium
@@ -593,6 +713,13 @@ class ChatPage(QWidget):
 
         # 创建 Live2D 组件
         self.live2d_widget = Live2DWidget()
+
+        # v1.11.24 性能优化：连接窗口拖动状态信号，拖动/resize 时暂停 Live2D 渲染
+        main_window = self.window()
+        if main_window and hasattr(main_window, 'perf_manager') and main_window.perf_manager:
+            main_window.perf_manager.window_drag_state_changed.connect(
+                self.live2d_widget.set_window_drag_state
+            )
 
         # 替换占位符 — 只在 _live2d_layout 上操作
         # placeholder 在 __init__ 中通过 self._live2d_layout.addWidget() 添加，
@@ -685,7 +812,8 @@ class ChatPage(QWidget):
             if self._animation_controller:
                 self._animation_controller.start()
         else:
-            self.chat_display.append_system_msg(f"默认模型不存在: {model_path}")
+            if self._chat_display_ready and self.chat_display:
+                self.chat_display.append_system_msg(f"默认模型不存在: {model_path}")
 
     def _load_default_vrm_model(self):
         """加载默认 VRM 3D 模型"""
@@ -831,7 +959,23 @@ class ChatPage(QWidget):
         # 确保窗口已经显示，Live2D 的 Chromium 初始化不会阻塞 UI
         QTimer.singleShot(100, self._lazy_init_live2d)
 
-        # 加载 TTS 配置
+        # 加载 TTS 配置（需要 chat_display_ready，因为 _populate_*_voices 依赖 combo 控件）
+        if self._chat_display_ready:
+            self._load_tts_config_on_backend_ready()
+        else:
+            # 延迟加载：等 _init_ui_content 完成后
+            QTimer.singleShot(200, self._load_tts_config_on_backend_ready)
+
+        # 加载对话历史（仅从 backend.history 加载，_load_chat_history 在 _init_ui_content 中已调用）
+        if self._chat_display_ready:
+            self._load_backend_history()
+        else:
+            QTimer.singleShot(300, self._load_backend_history)
+
+    def _load_tts_config_on_backend_ready(self):
+        """后端就绪后加载 TTS 配置"""
+        if not self._chat_display_ready:
+            return
         try:
             if os.path.exists(_TTS_PREFS_FILE):
                 with open(_TTS_PREFS_FILE, "r", encoding="utf-8") as f:
@@ -870,11 +1014,10 @@ class ChatPage(QWidget):
             self.tts_combo.blockSignals(False)
             self.voice_combo.blockSignals(False)
 
-        # 加载对话历史
-        # v1.9.89: 避免与 _load_chat_history() 重复加载
-        # 如果 _load_chat_history 已经加载了历史，不再重复加载
-        # backend.history 用于 LLM 上下文，不用于 UI 显示
-        # （native_chat_history.json 是 UI 显示的数据源）
+    def _load_backend_history(self):
+        """从 backend.history 加载对话历史"""
+        if not self._chat_display_ready or not self.chat_display:
+            return
         try:
             if not self._chat_messages and hasattr(self.backend, 'history') and len(self.backend.history) > 0:
                 # 仅在 _load_chat_history 没有数据时，才从 backend.history 加载
@@ -917,19 +1060,31 @@ class ChatPage(QWidget):
         if not text:
             return
         if not self.backend:
-            self.chat_display.append_system_msg("后端未初始化，请先在设置页面配置 API Key")
+            self.append_message_safe("system", "后端未初始化，请先在设置页面配置 API Key")
             return
+
+        # v1.11.25: S-002 TTS 预热懒加载 — 首次对话时触发预热
+        if not getattr(self, '_tts_prewarmed', True):
+            self._tts_prewarmed = True
+            main_window = self.window()
+            if main_window and hasattr(main_window, '_prewarm_tts'):
+                import threading
+                threading.Thread(target=main_window._prewarm_tts, daemon=True).start()
+                logger.info("TTS prewarm triggered by first conversation")
 
         # 获取引用文本
         quote = self.input_field.quote_text
         if quote:
-            self.chat_display.append_user_msg(text, quote=quote)
+            if self._chat_display_ready and self.chat_display:
+                self.chat_display.append_user_msg(text, quote=quote)
+            else:
+                self._pending_chat_messages.append(("user", text, None))
             # 在发送给 LLM 的文本中加入引用
             if quote:
                 text = f"[引用: {quote}]\n{text}"
             self.input_field.clear_quote()
         else:
-            self.chat_display.append_user_msg(text)
+            self.append_message_safe("user", text)
         # v1.9.89: 记录用户消息到历史
         self._record_message("user", text)
 
@@ -943,7 +1098,8 @@ class ChatPage(QWidget):
         self._tts_pending.clear()
 
         # 添加正在思考占位
-        self.chat_display.start_streaming()
+        if self._chat_display_ready and self.chat_display:
+            self.chat_display.start_streaming()
 
         # 获取对话历史
         history = list(self.backend.history) if hasattr(self.backend, 'history') else []
@@ -1265,7 +1421,7 @@ class ChatPage(QWidget):
         # 播放期间持续设置嘴巴开合度
         self._lipsync_timer = QTimer(self)
         self._lipsync_timer.timeout.connect(self._lipsync_tick)
-        self._lipsync_timer.start(50)  # 每 50ms 更新一次
+        self._lipsync_timer.start(100)  # 每 100ms 更新一次（10 fps，原 50ms）
 
         # 监听播放结束 — 先断开旧连接再重新连接，防止 N 次播放触发 N 次回调
         try:
@@ -1276,6 +1432,8 @@ class ChatPage(QWidget):
 
     def _lipsync_tick(self):
         """口型同步定时更新 — 模拟嘴巴开合"""
+        if not self.isVisible():
+            return
         if not self._animation_controller:
             return
         if not self._media_player or self._media_player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
@@ -1406,7 +1564,7 @@ class ChatPage(QWidget):
         v14 FIX: 改进错误处理和信号连接/断开逻辑
         """
         main_window = self.window()
-        if not hasattr(main_window, 'voice_manager'):
+        if not hasattr(main_window, 'voice_manager') or main_window.voice_manager is None:
             self.chat_display.append_system_msg("语音管理器未初始化")
             self.realtime_btn.setChecked(False)
             return
@@ -1613,6 +1771,8 @@ class ChatPage(QWidget):
         self._save_current_session()
 
         # 加载新会话
+        if not self.session_manager or not self.chat_display:
+            return
         session = self.session_manager.get_session(session_id)
         if session:
             self.chat_display.clear()
@@ -1629,11 +1789,14 @@ class ChatPage(QWidget):
 
     def _on_session_created(self, session_id: str):
         """创建新会话"""
-        self.chat_display.clear()
+        if self.chat_display:
+            self.chat_display.clear()
         self._chat_messages = []
 
     def _save_current_session(self):
         """保存当前会话"""
+        if not self.session_manager:
+            return
         session_id = self.session_manager.current_session_id()
         if session_id:
             self.session_manager.update_session_messages(session_id, self._chat_messages)
@@ -1813,6 +1976,8 @@ class ChatPage(QWidget):
 
     def _load_chat_history(self):
         """加载对话历史（优化 #9: 仅渲染最近20条，完整历史保存在 _chat_messages 中供 LLM 上下文使用）"""
+        if not self.chat_display:
+            return  # ChatWebDisplay 未创建，跳过（将在 _init_ui_content 中调用）
         try:
             path = self._get_history_path()
             if not os.path.exists(path):
@@ -1836,7 +2001,8 @@ class ChatPage(QWidget):
 
     def clear_chat(self):
         """清空对话"""
-        self.chat_display.clear()
+        if self.chat_display:
+            self.chat_display.clear()
         self._chat_messages = []
         self._save_chat_history()
 
@@ -1858,8 +2024,12 @@ class ChatPage(QWidget):
         if not text:
             return
 
-        self.chat_display.append_system_msg("AI 主动说话")
-        self.chat_display.append_ai_msg(text)
+        if self._chat_display_ready and self.chat_display:
+            self.chat_display.append_system_msg("AI 主动说话")
+            self.chat_display.append_ai_msg(text)
+        else:
+            self._pending_chat_messages.append(("system", "AI 主动说话", None))
+            self._pending_chat_messages.append(("assistant", text, None))
         self._record_message("assistant", text)
 
         # 优化 #6: 统一通过 AnimationController 检测情绪
@@ -1883,148 +2053,168 @@ class ChatPage(QWidget):
         from gugu_native.theme import get_colors
         c = get_colors()
 
+        # 如果 _init_ui_content 尚未执行，只刷新 shell 阶段的控件
+        if not self._chat_display_ready:
+            # 刷新 Live2D 占位符
+            if self._live2d_placeholder:
+                self._live2d_placeholder.setStyleSheet(f"""
+                    QLabel {{
+                        color: {c.text_muted};
+                        font-size: 14px;
+                        background: transparent;
+                        padding: 20px;
+                    }}
+                """)
+            # 刷新对话区占位符
+            if self._chat_placeholder:
+                self._chat_placeholder.setStyleSheet(f"""
+                    QLabel {{
+                        color: {c.text_muted};
+                        font-size: 14px;
+                        background: transparent;
+                        padding: 20px;
+                    }}
+                """)
+            return
+
         # 刷新聊天区卡片
-        self._chat_card.setStyleSheet(f"""
-            QFrame#chatCard {{
-                background-color: {c.card_bg};
-                border: 1px solid {c.card_border};
-                border-radius: 16px;
-            }}
-        """)
+        if self._chat_card:
+            self._chat_card.setStyleSheet(f"""
+                QFrame#chatCard {{
+                    background-color: {c.card_bg};
+                    border: 1px solid {c.card_border};
+                    border-radius: 16px;
+                }}
+            """)
 
         # 刷新 Web 显示主题
-        self.chat_display.refresh_theme()
+        if self.chat_display:
+            self.chat_display.refresh_theme()
 
         # 刷新输入栏卡片
-        self._input_card.setStyleSheet(f"""
-            QFrame#inputCard {{
-                background-color: {c.card_bg};
-                border: 1px solid {c.card_border};
-                border-radius: 14px;
-            }}
-        """)
+        if self._input_card:
+            self._input_card.setStyleSheet(f"""
+                QFrame#inputCard {{
+                    background-color: {c.card_bg};
+                    border: 1px solid {c.card_border};
+                    border-radius: 14px;
+                }}
+            """)
 
         # 刷新多行输入框
-        self.input_field.refresh_theme()
+        if self.input_field:
+            self.input_field.refresh_theme()
 
         # 刷新发送按钮
-        self.send_btn.setStyleSheet(f"""
-            PushButton {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {c.accent_gradient_start}, stop:1 {c.accent_gradient_end});
-                color: {c.text_on_accent};
-                border: none;
-                border-radius: 10px;
-                padding: 7px 18px;
-                font-weight: 600;
-                font-size: 13px;
-            }}
-            PushButton:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {c.accent}, stop:1 {c.accent_hover});
-            }}
-            PushButton:pressed {{
-                background: {c.accent_pressed};
-            }}
-            PushButton:disabled {{
-                background: {c.card_border};
-                color: {c.text_muted};
-            }}
-        """)
+        if self.send_btn:
+            self.send_btn.setStyleSheet(f"""
+                PushButton {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 {c.accent_gradient_start}, stop:1 {c.accent_gradient_end});
+                    color: {c.text_on_accent};
+                    border: none;
+                    border-radius: 10px;
+                    padding: 7px 18px;
+                    font-weight: 600;
+                    font-size: 13px;
+                }}
+                PushButton:hover {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 {c.accent}, stop:1 {c.accent_hover});
+                }}
+                PushButton:pressed {{
+                    background: {c.accent_pressed};
+                }}
+                PushButton:disabled {{
+                    background: {c.card_border};
+                    color: {c.text_muted};
+                }}
+            """)
 
-        # 刷新停止按钮
-        self.stop_btn.setStyleSheet(f"""
-            PushButton {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {c.error}, stop:1 {c.error_hover});
-                color: {c.text_on_accent};
-                border: none;
-                border-radius: 10px;
-                padding: 7px 18px;
-                font-weight: 600;
-                font-size: 13px;
-            }}
-            PushButton:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {c.error_hover}, stop:1 {c.error_pressed});
-            }}
-            PushButton:pressed {{
-                background: {c.error_pressed};
-            }}
-        """)
+        # 停止按钮样式已在 _set_streaming_state 中通过 send_btn 切换
 
         # 刷新TTS工具栏卡片
-        self._tts_card.setStyleSheet(f"""
-            QFrame#ttsCard {{
-                background-color: {c.card_bg};
-                border: 1px solid {c.card_border};
-                border-radius: 12px;
-            }}
-        """)
+        if self._tts_card:
+            self._tts_card.setStyleSheet(f"""
+                QFrame#ttsCard {{
+                    background-color: {c.card_bg};
+                    border: 1px solid {c.card_border};
+                    border-radius: 12px;
+                }}
+            """)
 
         # 刷新 QComboBox 样式
-        self._style_qcombobox(self.tts_combo, c)
-        self._style_qcombobox(self.voice_combo, c)
+        if self.tts_combo:
+            self._style_qcombobox(self.tts_combo, c)
+        if self.voice_combo:
+            self._style_qcombobox(self.voice_combo, c)
 
         # 刷新录音/实时语音按钮
-        self.record_btn.setStyleSheet(f"""
-            TogglePushButton {{
-                border-radius: 12px;
-                padding: 3px 10px;
-                border: 1px solid {c.card_border};
-                font-size: 12px;
-            }}
-            TogglePushButton:checked {{
-                background-color: {c.error};
-                color: {c.text_on_accent};
-                border: none;
-            }}
-        """)
-        self.realtime_btn.setStyleSheet(f"""
-            TogglePushButton {{
-                border-radius: 12px;
-                padding: 3px 10px;
-                border: 1px solid {c.card_border};
-                font-size: 12px;
-            }}
-            TogglePushButton:checked {{
-                background-color: {c.success};
-                color: {c.text_on_accent};
-                border: none;
-            }}
-        """)
+        if self.record_btn:
+            self.record_btn.setStyleSheet(f"""
+                TogglePushButton {{
+                    border-radius: 12px;
+                    padding: 3px 10px;
+                    border: 1px solid {c.card_border};
+                    font-size: 12px;
+                }}
+                TogglePushButton:checked {{
+                    background-color: {c.error};
+                    color: {c.text_on_accent};
+                    border: none;
+                }}
+            """)
+        if self.realtime_btn:
+            self.realtime_btn.setStyleSheet(f"""
+                TogglePushButton {{
+                    border-radius: 12px;
+                    padding: 3px 10px;
+                    border: 1px solid {c.card_border};
+                    font-size: 12px;
+                }}
+                TogglePushButton:checked {{
+                    background-color: {c.success};
+                    color: {c.text_on_accent};
+                    border: none;
+                }}
+            """)
 
         # 刷新搜索栏
-        self.search_bar.refresh_theme()
+        if self.search_bar:
+            self.search_bar.refresh_theme()
 
         # 刷新会话管理器
-        self.session_manager.refresh_theme()
+        if self.session_manager:
+            self.session_manager.refresh_theme()
 
         # 刷新 Live2D/VRM 切换按钮
-        self._btn_live2d.setStyleSheet(f"""
-            QPushButton {{ background: {c.accent}; color: {c.text_on_accent}; border: none; 
-                border-radius: 4px; padding: 4px 12px; font-size: 12px; font-weight: bold; }}
-            QPushButton:checked {{ background: {c.accent}; color: {c.text_on_accent}; }}
-            QPushButton:!checked {{ background: {c.card_bg}; color: {c.text_muted}; }}
-            QPushButton:hover {{ background: {c.accent_hover}; }}
-        """)
-        self._btn_vrm.setStyleSheet(f"""
-            QPushButton {{ background: {c.card_bg}; color: {c.text_muted}; border: none;
-                border-radius: 4px; padding: 4px 12px; font-size: 12px; }}
-            QPushButton:checked {{ background: {c.ai_bubble_accent}; color: {c.text_on_accent}; font-weight: bold; }}
-            QPushButton:!checked {{ background: {c.card_bg}; color: {c.text_muted}; }}
-            QPushButton:hover {{ background: {c.card_bg_hover}; }}
-        """)
-
-        # 刷新 VRM 变体按钮
-        for name, btn in self._btn_vrm_variants.items():
-            btn.setStyleSheet(f"""
-                QPushButton {{ background: {c.card_bg}; color: {c.text_muted};
-                    border: 1px solid {c.card_border}; border-radius: 3px;
-                    padding: 2px 8px; font-size: 11px; }}
-                QPushButton:checked {{ background: {c.ai_bubble_accent}; color: {c.text_on_accent}; border-color: {c.ai_bubble_accent}; font-weight: bold; }}
+        if hasattr(self, '_btn_live2d') and self._btn_live2d:
+            self._btn_live2d.setStyleSheet(f"""
+                QPushButton {{ background: {c.accent}; color: {c.text_on_accent}; border: none;
+                    border-radius: 4px; padding: 4px 12px; font-size: 12px; font-weight: bold; }}
+                QPushButton:checked {{ background: {c.accent}; color: {c.text_on_accent}; }}
+                QPushButton:!checked {{ background: {c.card_bg}; color: {c.text_muted}; }}
+                QPushButton:hover {{ background: {c.accent_hover}; }}
+            """)
+        if hasattr(self, '_btn_vrm') and self._btn_vrm:
+            self._btn_vrm.setStyleSheet(f"""
+                QPushButton {{ background: {c.card_bg}; color: {c.text_muted}; border: none;
+                    border-radius: 4px; padding: 4px 12px; font-size: 12px; }}
+                QPushButton:checked {{ background: {c.ai_bubble_accent}; color: {c.text_on_accent}; font-weight: bold; }}
+                QPushButton:!checked {{ background: {c.card_bg}; color: {c.text_muted}; }}
                 QPushButton:hover {{ background: {c.card_bg_hover}; }}
             """)
+
+        # 刷新 VRM 变体按钮
+        if hasattr(self, '_btn_vrm_variants') and self._btn_vrm_variants:
+            for name, btn in self._btn_vrm_variants.items():
+                btn.setStyleSheet(f"""
+                    QPushButton {{ background: {c.card_bg}; color: {c.text_muted};
+                        border: 1px solid {c.card_border}; border-radius: 3px;
+                        padding: 2px 8px; font-size: 11px; }}
+                    QPushButton:checked {{ background: {c.ai_bubble_accent}; color: {c.text_on_accent}; border-color: {c.ai_bubble_accent}; font-weight: bold; }}
+                    QPushButton:hover {{ background: {c.card_bg_hover}; }}
+                """)
 
         # 刷新 Live2D 占位符
         if self._live2d_placeholder:
@@ -2037,14 +2227,15 @@ class ChatPage(QWidget):
             """)
 
         # 刷新 TTS 模式按钮
-        self.tts_mode_btn.setStyleSheet(f"""
-            TogglePushButton {{
-                border-radius: 12px;
-                padding: 3px 10px;
-                border: 1px solid {c.card_border};
-                font-size: 12px;
-            }}
-            TogglePushButton:checked {{
+        if self.tts_mode_btn:
+            self.tts_mode_btn.setStyleSheet(f"""
+                TogglePushButton {{
+                    border-radius: 12px;
+                    padding: 3px 10px;
+                    border: 1px solid {c.card_border};
+                    font-size: 12px;
+                }}
+                TogglePushButton:checked {{
                 background-color: {c.accent};
                 color: {c.text_on_accent};
                 border: none;

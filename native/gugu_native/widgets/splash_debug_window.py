@@ -22,7 +22,7 @@ from datetime import datetime
 
 from PySide6.QtCore import Qt, QObject, Signal, QTimer, QPropertyAnimation, QEasingCurve
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QTextEdit, QPushButton, QSizePolicy, QGraphicsOpacityEffect
 )
 from PySide6.QtGui import QFont, QPixmap, QColor, QTextCursor
@@ -317,13 +317,29 @@ class SplashDebugWindow(QWidget):
         # 初始添加一条欢迎日志
         self.append_log("咕咕嘎嘎 AI-VTuber 启动中...")
 
-    def set_progress(self, text: str):
-        """更新启动进度文字 — 供 main.py 各阶段调用"""
-        self._progress_label.setText(text)
-        QApplication.processEvents()  # 立即刷新 UI
+    def set_progress(self, text: str, percent: int = -1):
+        """更新启动进度文字 — 供 main.py 各阶段调用
 
-        # --- 窗口居中 ---
-        self._center_on_screen()
+        合并了进度刷新、窗口居中和跳过按钮计时器三项功能。
+
+        Args:
+            text: 进度文字
+            percent: 进度百分比 (0-100)，-1 表示不显示百分比
+        """
+        # v1.11.25 S-004: 进度细化 — 显示百分比
+        if percent >= 0:
+            display_text = f"{text} ({percent}%)"
+        else:
+            display_text = text
+
+        self._progress_label.setText(display_text)
+        QApplication.processEvents()       # 立即刷新 UI
+        self._center_on_screen()           # 窗口居中
+
+        # 首次调用 set_progress 后启动 10 秒倒计时显示跳过按钮
+        if not hasattr(self, '_skip_timer_started'):
+            self._skip_timer_started = True
+            QTimer.singleShot(10000, self._show_skip_button)
 
     def _center_on_screen(self):
         """将窗口居中到屏幕"""
@@ -384,14 +400,6 @@ class SplashDebugWindow(QWidget):
             # 自动滚到底部
             scrollbar = self._log_view.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
-
-    def set_progress(self, text: str):
-        """更新进度文字，超过 10 秒显示跳过按钮"""
-        self._progress_label.setText(text)
-        # 首次调用 set_progress 后启动 10 秒倒计时显示跳过按钮
-        if not hasattr(self, '_skip_timer_started'):
-            self._skip_timer_started = True
-            QTimer.singleShot(10000, self._show_skip_button)
 
     def _show_skip_button(self):
         """显示跳过按钮"""

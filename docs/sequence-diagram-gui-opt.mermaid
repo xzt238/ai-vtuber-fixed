@@ -1,0 +1,55 @@
+sequenceDiagram
+    participant Main as GuguGagaApp<br/>(主线程)
+    participant PM as PerformanceManager
+    participant Splash as SplashDebugWindow
+    participant Thread as QThread<br/>(Worker线程)
+    participant Worker as BackendInitWorker
+
+    Main->>Main: __init__(): 创建 UI + 性能管理器
+    Main->>PM: schedule_backend_init_async(callback, 100ms)
+    PM->>PM: 创建 BackendInitWorker + QThread
+    PM->>Worker: moveToThread(Thread)
+    PM->>Thread: start()
+    Note over Main: ✅ GUI 立即可交互/拖动
+
+    Thread->>Worker: do_work() [在 Worker 线程]
+    Worker->>Worker: AIVTuber()
+    Worker->>Splash: init_progress → "正在初始化 AI 引擎..."
+    Worker->>Worker: init_progress → "正在加载语言模型..."
+    Worker->>PM: backend_ready.emit(backend_instance)
+
+    PM->>Main: _on_backend_init_done(backend) [Signal → 主线程]
+    Main->>Main: self._backend = backend_instance
+    Main->>Main: self._backend_ready = True
+    Main->>Main: _on_backend_ready_async()
+    PM->>Thread: quit() + wait()
+
+    participant JMgr as AsyncJobManager
+    participant Pool as QThreadPool
+    participant W1 as PageInitWorker<br/>(TrainPage)
+    participant W2 as PageInitWorker<br/>(MemoryPage)
+    participant W3 as PageInitWorker<br/>(ModelDLPage)
+    participant W4 as PageInitWorker<br/>(SettingsPage)
+    participant Chat as ChatPage<br/>(主线程延迟)
+
+    Main->>Main: _on_backend_ready_async()
+    Main->>JMgr: submit("train_init", PageInitWorker)
+    Main->>JMgr: submit("memory_init", PageInitWorker)
+    Main->>JMgr: submit("model_dl_init", PageInitWorker)
+    Main->>JMgr: submit("settings_init", PageInitWorker)
+
+    Note over Pool: 4 个 Worker 并行执行
+    Pool->>W1: run() → train_page.on_backend_ready()
+    Pool->>W2: run() → memory_page._init_backend_data()
+    Pool->>W3: run() → model_download_page.on_backend_ready()
+    Pool->>W4: run() → settings_page.on_backend_ready()
+
+    W1->>Main: init_done("train")
+    W2->>Main: init_done("memory")
+    W3->>Main: init_done("model_download")
+    W4->>Main: init_done("settings")
+
+    Note over Main: ChatPage 特殊处理 — Live2D 必须主线程
+    Main->>Chat: QTimer.singleShot(100, _lazy_init_live2d)
+    Chat->>Chat: on_backend_ready() → TTS配置/历史加载
+    Chat->>Chat: _lazy_init_live2d() [100ms后主线程空闲时]

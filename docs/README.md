@@ -1,6 +1,6 @@
 # 📚 咕咕嘎嘎 AI-VTuber 文档中心
 
-> **最后更新**: 2026-05-23 | **当前版本**: v1.11.0 | **文档总数**: 19
+> **最后更新**: 2026-05-31 | **当前版本**: v1.11.23 | **文档总数**: 22
 
 欢迎来到项目文档中心！所有文档按功能分类，快速找到你需要的内容。
 
@@ -21,6 +21,9 @@
 | 了解原生桌面架构 | [guides/NATIVE_DESKTOP.md](guides/NATIVE_DESKTOP.md) |
 | Live2D 原生渲染方案 | [guides/LIVE2D_NATIVE_RENDER.md](guides/LIVE2D_NATIVE_RENDER.md) |
 | 查看竞品差距 | [reference/COMPETITIVE_GAP_ANALYSIS.md](reference/COMPETITIVE_GAP_ANALYSIS.md) |
+| 查看 AI 伴侣竞品对比 | [AI_COMPANION_BENCHMARK.md](AI_COMPANION_BENCHMARK.md) |
+| 查看差距评价报告 | [GAP_EVALUATION_v1.11.0.md](GAP_EVALUATION_v1.11.0.md) |
+| 查看移动端可行性 | [MOBILE_FEASIBILITY.md](MOBILE_FEASIBILITY.md) |
 
 ---
 
@@ -53,6 +56,10 @@
 | [reference/COMPETITIVE_GAP_ANALYSIS.md](reference/COMPETITIVE_GAP_ANALYSIS.md) | 竞品差距分析 — 7 个竞品的功能矩阵对比 | 季度 |
 | [reference/GAP_DETAILED_ANALYSIS.md](reference/GAP_DETAILED_ANALYSIS.md) | 详细优先级分析 — AI 陪伴定位的差距和路线图 | 路线图调整时 |
 | [reference/CHAT_UX_COMPETITIVE_ANALYSIS.md](reference/CHAT_UX_COMPETITIVE_ANALYSIS.md) | 聊天 UX 竞品分析 — 优化后的 UX 评分和实现细节 | UX 大改版时 |
+| [AI_COMPANION_BENCHMARK.md](AI_COMPANION_BENCHMARK.md) | AI 伴侣/女友竞品对比 — 8 个项目差距与评价 | 季度 |
+| [GAP_EVALUATION_v1.11.0.md](GAP_EVALUATION_v1.11.0.md) | 差距评价报告 — 咕咕嘎嘎 vs 竞品对标评价 | 大版本发布时 |
+| [MOBILE_FEASIBILITY.md](MOBILE_FEASIBILITY.md) | 移动端可行性分析 — iOS/Android 适配方案 | 启动移动端计划时 |
+| [reference/VRM_FEASIBILITY_ANALYSIS.md](reference/VRM_FEASIBILITY_ANALYSIS.md) | VRM 3D 模型可行性分析 — 集成方案与渲染管线 | 新增 3D 模型支持时 |
 
 ### archive/ — 历史归档
 
@@ -62,6 +69,14 @@
 | [archive/feasibility_native_desktop.md](archive/feasibility_native_desktop.md) | 原生桌面可行性研究 | 所有 5 个阶段已执行完毕 |
 | [archive/feasibility_tool_system_upgrade.md](archive/feasibility_tool_system_upgrade.md) | 工具系统升级可行性 | Phase 1 已完成 |
 | [archive/CHAT_UX_COMPETITIVE_ANALYSIS_V1.md](archive/CHAT_UX_COMPETITIVE_ANALYSIS_V1.md) | 聊天 UX 分析 V1 | 已被 V2 取代 |
+| [archive/arch-fix-2025-05.md](archive/arch-fix-2025-05.md) | v1.11.20 修复架构设计 | 已实施并入 VERSION.md |
+| [archive/pr-fix-2025-05.md](archive/pr-fix-2025-05.md) | v1.11.20 修复 PRD | 已实施并入 VERSION.md |
+| [archive/arch-gui-opt-2025-05.md](archive/arch-gui-opt-2025-05.md) | v1.11.22 GUI 优化架构设计 | 已实施并入 VERSION.md |
+| [archive/pr-gui-opt-2025-05.md](archive/pr-gui-opt-2025-05.md) | v1.11.22 GUI 优化 PRD | 已实施并入 VERSION.md |
+| [archive/prd-theme-system.md](archive/prd-theme-system.md) | 主题系统增强 PRD | 已实施并入 VERSION.md |
+| [archive/arch-theme-system.md](archive/arch-theme-system.md) | 主题系统架构设计 | 已实施并入 VERSION.md |
+| [archive/system_design.md](archive/system_design.md) | 跨平台桌面适配系统设计 | Phase 1 已完成 |
+| [archive/PRD_CROSS_PLATFORM.md](archive/PRD_CROSS_PLATFORM.md) | 跨平台适配 PRD | Phase 1 已完成 |
 
 ---
 
@@ -84,10 +99,10 @@
 | 类别 | 数量 |
 |------|------|
 | 顶层文档 | 6 |
-| 操作指南 | 3 |
-| 参考分析 | 3 |
-| 历史归档 | 4 |
-| **总计** | **16** |
+| 操作指南 | 4 |
+| 参考分析 | 7 |
+| 历史归档 | 12 |
+| **总计** | **29** |
 
 ---
 

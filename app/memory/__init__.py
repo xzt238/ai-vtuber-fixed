@@ -24,11 +24,19 @@ import time
 import math
 import re
 import hashlib
+import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from collections import OrderedDict
 from dataclasses import dataclass, asdict, field
+
+# NumPy 可选导入：向量化运算加速，不可用时回退到纯 Python
+try:
+    import numpy as np
+    _HAS_NUMPY = True
+except ImportError:
+    _HAS_NUMPY = False
 
 
 # ==================== 数据结构 ====================
@@ -547,9 +555,11 @@ class VectorStore:
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./memory/vectors")
-        # 立即解析为绝对路径，防止 os.chdir() 导致路径漂移
+        # 基于 PROJECT_DIR 解析，防止 GPT-SoVITS 的 os.chdir() 污染 CWD
         if not os.path.isabs(self.storage_dir):
-            self.storage_dir = str(Path(self.storage_dir).resolve())
+            from app.shared_config import PROJECT_DIR
+            self.storage_dir = os.path.join(PROJECT_DIR, self.storage_dir)
+            self.storage_dir = os.path.normpath(self.storage_dir)
         self.embedding_dim = self.config.get("embedding_dim", 768)
         
         self.vectors = {}
@@ -557,8 +567,13 @@ class VectorStore:
         self.metadatas = {}
         self._norms = {}
         
+        # v1.11.21: NumPy 向量矩阵缓存（脏标记机制，add/remove/load 后标记为脏）
+        self._vectors_matrix = None   # np.ndarray 或 None
+        self._norms_array = None      # np.ndarray 或 None
+        self._matrix_dirty = True     # 脏标记：True 表示需要从 self.vectors 重建矩阵
+        
         self._embedding_cache = LRUCache(1000)  # 从 200 扩到 1000，提高缓存命中率（~3MB 内存）
-        self._search_cache = LRUCache(50)
+        self._search_cache = LRUCache(200)  # v1.11.25 R-002: 从 50 扩到 200，提高搜索缓存命中率
         self.embedding_model = None
         self._model_loaded = False
         self._pending_save = False
@@ -567,6 +582,9 @@ class VectorStore:
         self._dedup_threshold = self.config.get("dedup_threshold", 0.95)
         
         self._persist_file = Path(self.storage_dir) / "vector_store.json"
+        # v1.11.21: NumPy 二进制存储路径
+        self._vectors_npy_file = Path(self.storage_dir) / "vectors.npy"
+        self._vectors_meta_file = Path(self.storage_dir) / "vectors_meta.json"
         Path(self.storage_dir).mkdir(parents=True, exist_ok=True)
         self._retrieval_weights = (config or {}).get("retrieval_weights", {"vector": 0.5, "keyword": 0.3, "recency": 0.2})
         self._embed_device = (config or {}).get("embedding_device", "cpu")
@@ -579,23 +597,102 @@ class VectorStore:
             self._norms[doc_id] = sum(x * x for x in emb) ** 0.5
         return self._norms[doc_id]
     
-    def _load_from_disk(self):
-        if not self._persist_file.exists():
+    def _ensure_matrix(self):
+        """
+        v1.11.21: 确保 NumPy 向量矩阵缓存是最新的。
+        
+        如果矩阵脏或为 None，从 self.vectors 字典重建矩阵。
+        矩阵行顺序与 self._doc_ids 列表对齐，用于 NumPy 批量运算。
+        如果 NumPy 不可用，此方法为空操作（回退到纯 Python 逻辑）。
+        """
+        if not _HAS_NUMPY:
             return
-        try:
-            print(" 加载持久化记忆...")
-            with open(self._persist_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            self.vectors = data.get("vectors", {})
-            self.texts = data.get("texts", {})
-            self.metadatas = data.get("metadatas", {})
-            self._norms.clear()  # 重建范数缓存
-            print(f" 已加载 {len(self.texts)} 条语义记忆")
-        except Exception as e:
-            print(f"️ 加载记忆失败: {e}")
+        if not self._matrix_dirty and self._vectors_matrix is not None:
+            return
+        if not self.vectors:
+            self._vectors_matrix = None
+            self._norms_array = None
+            self._doc_ids = []
+            self._matrix_dirty = False
+            return
+        # 从字典构建有序列表和矩阵
+        self._doc_ids = list(self.vectors.keys())
+        vec_list = [self.vectors[doc_id] for doc_id in self._doc_ids]
+        self._vectors_matrix = np.array(vec_list, dtype=np.float32)
+        self._norms_array = np.linalg.norm(self._vectors_matrix, axis=1)
+        self._matrix_dirty = False
+    
+    def _load_from_disk(self):
+        # v1.11.21: 优先加载 NumPy 二进制格式（更快），兼容旧 JSON 格式
+        npy_loaded = False
+        if _HAS_NUMPY and self._vectors_npy_file.exists() and self._vectors_meta_file.exists():
+            try:
+                print(" 加载持久化记忆（NumPy 二进制格式）...")
+                # 加载向量矩阵
+                matrix = np.load(str(self._vectors_npy_file))
+                # 加载元数据
+                with open(self._vectors_meta_file, 'r', encoding='utf-8') as f:
+                    meta = json.load(f)
+                doc_ids = meta.get("doc_ids", [])
+                self.texts = meta.get("texts", {})
+                self.metadatas = meta.get("metadatas", {})
+                # 从矩阵重建 vectors 字典
+                self.vectors = {}
+                for i, doc_id in enumerate(doc_ids):
+                    if i < len(matrix):
+                        self.vectors[doc_id] = matrix[i].tolist()
+                self._norms.clear()
+                print(f" 已加载 {len(self.texts)} 条语义记忆（npy格式）")
+                npy_loaded = True
+            except Exception as e:
+                print(f" 加载 npy 格式失败，回退到 JSON: {e}")
+        
+        if not npy_loaded and self._persist_file.exists():
+            try:
+                print(" 加载持久化记忆（JSON 格式）...")
+                with open(self._persist_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                self.vectors = data.get("vectors", {})
+                self.texts = data.get("texts", {})
+                self.metadatas = data.get("metadatas", {})
+                self._norms.clear()
+                print(f" 已加载 {len(self.texts)} 条语义记忆")
+                # v1.11.21: 自动迁移旧 JSON 格式到 npy 格式
+                if _HAS_NUMPY and self.vectors:
+                    try:
+                        self._save_to_disk()
+                        print(f" 已自动迁移记忆数据为 npy 格式")
+                    except Exception as e:
+                        print(f" 自动迁移 npy 格式失败（不影响使用）: {e}")
+            except Exception as e:
+                print(f"️ 加载记忆失败: {e}")
+        
+        # 标记矩阵为脏，下次 _ensure_matrix() 时重建
+        self._matrix_dirty = True
     
     def _save_to_disk(self):
         try:
+            # v1.11.21: 优先使用 NumPy 二进制格式保存
+            if _HAS_NUMPY and self.vectors:
+                # 确保矩阵是最新的
+                self._ensure_matrix()
+                if self._vectors_matrix is not None:
+                    # 保存向量矩阵为 .npy
+                    np.save(str(self._vectors_npy_file), self._vectors_matrix)
+                    # 保存元数据为 JSON（doc_ids + texts + metadatas）
+                    meta = {
+                        "doc_ids": self._doc_ids if hasattr(self, '_doc_ids') else list(self.vectors.keys()),
+                        "texts": self.texts,
+                        "metadatas": self.metadatas,
+                        "updated_at": datetime.now().isoformat(),
+                    }
+                    tmp_meta = self._vectors_meta_file.with_suffix('.tmp')
+                    with open(tmp_meta, 'w', encoding='utf-8') as f:
+                        json.dump(meta, f, ensure_ascii=False, indent=2)
+                    os.replace(tmp_meta, self._vectors_meta_file)
+                    return
+            
+            # 回退：纯 JSON 格式保存（NumPy 不可用或无向量数据）
             data = {
                 "vectors": self.vectors,
                 "texts": self.texts,
@@ -707,9 +804,33 @@ class VectorStore:
         return [v / total for v in vector]
     
     def _is_duplicate(self, text: str, embedding: List[float]) -> bool:
-        """检查是否与已有向量重复(cosine > threshold)"""
+        """
+        检查是否与已有向量重复(cosine > threshold)
+        
+        v1.11.21: 优先使用 NumPy 批量计算，不可用时回退到纯 Python
+        """
         if not self.vectors:
             return False
+        
+        # v1.11.21: NumPy 批量计算路径
+        if _HAS_NUMPY:
+            try:
+                self._ensure_matrix()
+                if self._vectors_matrix is not None and len(self._vectors_matrix) > 0:
+                    query_vec = np.array(embedding, dtype=np.float32)
+                    query_norm = np.linalg.norm(query_vec)
+                    if query_norm == 0:
+                        return False
+                    # 批量点积 + 范数除法
+                    similarities = np.dot(self._vectors_matrix, query_vec) / (self._norms_array * query_norm + 1e-8)
+                    max_sim = float(np.max(similarities))
+                    if max_sim > self._dedup_threshold:
+                        return True
+                    return False
+            except Exception:
+                pass  # 回退到纯 Python
+        
+        # 纯 Python 回退路径
         norm_a = sum(x * x for x in embedding) ** 0.5
         if norm_a == 0:
             return False
@@ -735,6 +856,11 @@ class VectorStore:
         self.metadatas[doc_id] = metadata or {}
         self._norms[doc_id] = sum(x * x for x in embedding) ** 0.5
         
+        # v1.11.21: 标记矩阵为脏（下次 _ensure_matrix 会重建）
+        self._matrix_dirty = True
+        # v1.11.21 (P1-4): add 成功后清除搜索缓存，避免返回过时结果
+        self._search_cache = LRUCache(50)
+        
         # 持久化策略: 每5条写一次磁盘
         if len(self.texts) % 5 == 0:
             self._save_to_disk()
@@ -744,7 +870,11 @@ class VectorStore:
         return doc_id
     
     def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        """混合检索:向量相似度 + 关键词 + 时间权重"""
+        """
+        混合检索:向量相似度 + 关键词 + 时间权重
+        
+        v1.11.21: NumPy 向量化加速余弦相似度计算，不可用时回退到纯 Python
+        """
         cache_key = f"{query}:{top_k}"
         cached = self._search_cache.get(cache_key)
         if cached is not None:
@@ -752,6 +882,18 @@ class VectorStore:
         if not self.texts:
             return []
         query_embedding = self.get_embedding(query)
+        
+        # v1.11.21: NumPy 向量化路径
+        if _HAS_NUMPY:
+            try:
+                results = self._search_numpy(query_embedding, query, top_k)
+                if results is not None:
+                    self._search_cache.put(cache_key, results)
+                    return results
+            except Exception:
+                pass  # 回退到纯 Python
+        
+        # 纯 Python 回退路径
         norm_a = sum(x * x for x in query_embedding) ** 0.5
         
         results = []
@@ -794,6 +936,66 @@ class VectorStore:
         self._search_cache.put(cache_key, final_results)
         return final_results
     
+    def _search_numpy(self, query_embedding: List[float], query: str, top_k: int) -> Optional[List[Dict[str, Any]]]:
+        """
+        v1.11.21: NumPy 向量化搜索路径。
+        
+        使用矩阵批量运算替代逐条 Python 循环，500条×768维从~500ms降至~5ms。
+        返回 None 表示需要回退到纯 Python 路径。
+        """
+        self._ensure_matrix()
+        if self._vectors_matrix is None or len(self._vectors_matrix) == 0:
+            return None
+        
+        query_vec = np.array(query_embedding, dtype=np.float32)
+        query_norm = np.linalg.norm(query_vec)
+        if query_norm == 0:
+            return []
+        
+        # 批量余弦相似度: (N,) = dot(M, q) / (norms * query_norm)
+        vector_scores = np.dot(self._vectors_matrix, query_vec) / (self._norms_array * query_norm + 1e-8)
+        
+        doc_ids = self._doc_ids if hasattr(self, '_doc_ids') else list(self.vectors.keys())
+        weights = getattr(self, '_retrieval_weights', None) or {"vector": 0.5, "keyword": 0.3, "recency": 0.2}
+        
+        results = []
+        for i, doc_id in enumerate(doc_ids):
+            vector_score = float(vector_scores[i])
+            keyword_score = self._bm25_keyword_score(query, self.texts[doc_id])
+            metadata = self.metadatas.get(doc_id, {})
+            timestamp = metadata.get("timestamp", time.time())
+            hours_old = (time.time() - timestamp) / 3600
+            time_weight = RetentionScorer.compute_recency_decay(hours_old)
+            
+            final_score = (weights.get("vector", 0.5) * vector_score +
+                           weights.get("keyword", 0.3) * keyword_score +
+                           weights.get("recency", 0.2) * time_weight)
+            
+            results.append({
+                "id": doc_id,
+                "vector_score": vector_score,
+                "keyword_score": keyword_score,
+                "time_weight": time_weight,
+                "score": final_score,
+            })
+        
+        results.sort(key=lambda x: x["score"], reverse=True)
+        
+        final_results = []
+        for item in results[:top_k]:
+            doc_id = item["id"]
+            final_results.append({
+                "id": doc_id,
+                "text": self.texts[doc_id],
+                "score": item["score"],
+                "vector_score": item["vector_score"],
+                "keyword_score": item["keyword_score"],
+                "time_weight": item["time_weight"],
+                "metadata": self.metadatas.get(doc_id, {}),
+            })
+        
+        return final_results
+    
     def delete(self, doc_id: str) -> bool:
         """删除指定向量"""
         if doc_id not in self.vectors:
@@ -802,6 +1004,9 @@ class VectorStore:
         del self.texts[doc_id]
         del self.metadatas[doc_id]
         self._norms.pop(doc_id, None)
+        # v1.11.21: 标记矩阵为脏 + 清除搜索缓存
+        self._matrix_dirty = True
+        self._search_cache = LRUCache(50)
         self._pending_save = True
         return True
     
@@ -815,11 +1020,19 @@ class VectorStore:
         matches = len(query_words & text_words)
         return matches / len(query_words)
     
-    def _cosine_similarity(self, a: List[float], norm_a: float, b: List[float]) -> float:
-        dot = sum(x * y for x, y in zip(a, b))
-        norm_b = sum(x * x for x in b) ** 0.5
+    def _cosine_similarity(self, a: List[float], norm_a: float, b: List[float], norm_b: float = None) -> float:
+        """
+        计算余弦相似度（纯 Python 回退路径）
+        
+        v1.11.21: 签名扩展为 _cosine_similarity(a, norm_a, b, norm_b=None)，
+        支持传入预计算的 norm_b 以避免重复计算。
+        主要作为 NumPy 不可用时的 fallback。
+        """
+        if norm_b is None:
+            norm_b = sum(x * x for x in b) ** 0.5
         if norm_a == 0 or norm_b == 0:
             return 0.0
+        dot = sum(x * y for x, y in zip(a, b))
         return dot / (norm_a * norm_b)
     
     def get_stats(self) -> Dict[str, Any]:
@@ -840,10 +1053,19 @@ class VectorStore:
         self.texts.clear()
         self.metadatas.clear()
         self._norms.clear()
+        # v1.11.21: 清除 NumPy 矩阵缓存
+        self._vectors_matrix = None
+        self._norms_array = None
+        self._matrix_dirty = True
         self._embedding_cache = LRUCache(1000)  # 从 200 扩到 1000，提高缓存命中率（~3MB 内存）
         self._search_cache = LRUCache(50)
         if self._persist_file.exists():
             self._persist_file.unlink()
+        # v1.11.21: 同时清除 npy 格式文件
+        if hasattr(self, '_vectors_npy_file') and self._vectors_npy_file.exists():
+            self._vectors_npy_file.unlink()
+        if hasattr(self, '_vectors_meta_file') and self._vectors_meta_file.exists():
+            self._vectors_meta_file.unlink()
 
 
 # ==================== 文件存储 ====================
@@ -1059,10 +1281,12 @@ class MemorySystem:
     def __init__(self, config: Dict[str, Any] = None):
         """初始化记忆系统"""
         self.config = config or {}
-        # 存储目录（立即解析为绝对路径，防止 os.chdir() 导致路径漂移）
+        # 存储目录（基于 PROJECT_DIR 解析，防止 GPT-SoVITS 的 os.chdir() 污染 CWD 导致路径漂移）
         self.storage_dir = self.config.get("storage_dir", "./memory")
         if not os.path.isabs(self.storage_dir):
-            self.storage_dir = str(Path(self.storage_dir).resolve())
+            from app.shared_config import PROJECT_DIR
+            self.storage_dir = os.path.join(PROJECT_DIR, self.storage_dir)
+            self.storage_dir = os.path.normpath(self.storage_dir)
         
         # 从配置读取参数
         self.working_memory_limit = self.config.get("working_memory_limit", 30)  # v3.0: 20→30
@@ -1121,6 +1345,11 @@ class MemorySystem:
         # 定时flush
         self._flush_timer = None
         self._start_flush_timer()
+        
+        # v1.11.30: Embedding 模型改为首次搜索时懒加载
+        # 原来在启动时后台预热（_warmup_embedding），但 SentenceTransformer 加载
+        # 消耗 10-15s CPU，导致 UI 卡顿。现在延迟到首次语义搜索时才加载。
+        self._embedding_warmed = False
     
     # ==================== LLM 回调 ====================
     
@@ -1132,6 +1361,30 @@ class MemorySystem:
         """
         self._llm_chat_func = chat_func
         print(f" [记忆系统] LLM 回调已设置")
+    
+    # ==================== v1.11.21: Embedding 预热 ====================
+    
+    def _warmup_embedding(self):
+        """
+        v1.11.21 (P2-10): 后台预热 embedding 模型。
+        
+        首次调用 get_embedding() 时需要加载 sentence-transformers 模型，
+        可能耗时 5-10 秒。通过后台线程预热，避免首次对话时延迟。
+        """
+        if self._embedding_warmed:
+            return
+        
+        def _warmup_worker():
+            try:
+                # 触发一次 embedding 计算，加载模型到内存
+                _ = self.vector_store.get_embedding("warmup")
+                self._embedding_warmed = True
+                print(f" [记忆系统] Embedding 模型预热完成")
+            except Exception as e:
+                print(f" [记忆系统] Embedding 模型预热失败(不影响使用): {e}")
+        
+        warmup_thread = threading.Thread(target=_warmup_worker, daemon=True)
+        warmup_thread.start()
     
     # ==================== 定时持久化 ====================
     

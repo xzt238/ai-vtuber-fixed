@@ -1,6 +1,6 @@
 # 🛠️ 咕咕嘎嘎 AI-VTuber 开发者指南
 
-> **版本**: v1.0 | **适用项目版本**: v1.9.90+ | **日期**: 2026-05-07
+> **版本**: v1.1 | **适用项目版本**: v1.11.23+ | **日期**: 2026-05-31
 
 ---
 
@@ -24,15 +24,15 @@
 
 ## 1. 项目概览
 
-**咕咕嘎嘎 (GuguGaga)** 是一个功能丰富的 AI 虚拟形象系统，当前版本 v1.9.90。
+**咕咕嘎嘎 (GuguGaga)** 是一个功能丰富的 AI 虚拟形象系统，当前版本 v1.11.23。
 
 核心能力：
 - **实时语音对话** — ASR 语音识别 → LLM 推理 → TTS 语音合成
-- **文字聊天** — 多 LLM 后端支持（10 个 Provider）
+- **文字聊天** — 多 LLM 后端支持（12 个 Provider）
 - **Function Calling** — 统一工具调用执行器（fc_executor），OpenAI/MiniMax 已激活
 - **7 个伴侣工具** — GetTime、GetWeather、SetReminder、RememberThing、ChangeExpression、SearchWeb、PlayMusic
 - **TTS 文本增强** — text_enhancer 自动处理 ChatTTS 标记、中文特性和情感扩散
-- **ChatTTS / CosyVoice** — 新增 TTS 引擎，扩展语音合成选项
+- **GPT-SoVITS v3** — 本地声音克隆训练 + LoRA 微调
 - **声音克隆训练** — 内置 GPT-SoVITS v3 训练面板
 - **Live2D 虚拟形象** — 浏览器 WebGL / 原生 OpenGL 渲染
 - **四层记忆系统** — 工作记忆 + 情景记忆 + 语义记忆 + 事实记忆
@@ -49,7 +49,7 @@
 | 许可证 | GPL-3.0 |
 | 操作系统 | Windows 10/11 |
 | 仓库 | `https://github.com/xzt238/ai-vtuber-fixed` |
-| 本地路径 | `C:\Users\x\Desktop\ai-vtuber-fixed` |
+| 本地路径 | `F:\ai-vtuber-fixed` |
 
 ---
 
@@ -66,10 +66,10 @@
 | **桌面模式** | pywebview (WebView2) + pystray | 原生窗口壳 + 系统托盘 |
 | **原生桌面** | PySide6 6.x + PySide6-Fluent-Widgets | Qt6 + Windows 11 Fluent Design |
 | **Live2D 原生** | live2d-py 0.6.x | QOpenGLWidget + OpenGL 渲染 |
-| **ASR** | FunASR (Paraformer) / faster-whisper (CTranslate2) | 语音识别 |
-| **TTS** | GPT-SoVITS v3 (本地 GPU) / Edge TTS (在线备用) / ChatTTS / CosyVoice | 语音合成 |
-| **LLM** | MiniMax / OpenAI / Anthropic + 7 个 OpenAI 兼容 Provider | 大语言模型 |
-| **视觉** | MiniMax VL API / MiniCPM-V2 / RapidOCR | 图片理解 + OCR |
+| **ASR** | FunASR (Paraformer) / faster-whisper (CTranslate2) / MiMo ASR (云端) | 语音识别 |
+| **TTS** | GPT-SoVITS v3 (本地 GPU, 音色克隆) / Edge TTS (在线备用) / MiMo TTS (云端) | 语音合成 |
+| **LLM** | DeepSeek / Kimi / 智谱GLM / 通义千问 / MiniMax / 豆包 / MiMo / OpenAI / Anthropic / Ollama / Gemini / OpenRouter | 大语言模型 |
+| **视觉** | MiniMax VL API / MiniCPM-V2 / RapidOCR / MiMo Vision (云端) | 图片理解 + OCR |
 | **记忆** | sentence-transformers (BAAI/bge-base-zh-v1.5) | 向量嵌入 |
 | **ML** | PyTorch 2.6.0+cu124, transformers, peft, accelerate | 机器学习框架 |
 | **打包** | PyInstaller | 单 EXE 启动器 |
@@ -439,7 +439,7 @@ class AIVTuber:
 
 ```python
 # app/version.py
-VERSION = "v1.9.90"
+VERSION = "v1.11.23"
 ```
 
 **原则**：
@@ -792,13 +792,13 @@ logger.error("严重错误，功能受影响")
 
 ### 8.6 版本号约定
 
-格式：`v主版本.次版本.修订号`（如 v1.9.90）
+格式：`v主版本.次版本.修订号`（如 v1.11.23）
 
 | 变更类型 | 递增规则 | 示例 |
 |---------|---------|------|
 | 重大架构重构 / API 不兼容 | 主版本 | v1.x → v2.0 |
 | 新功能 / 模块优化 / 新增模块 | 次版本 | v1.9 → v1.10 |
-| Bug 修复 / 小改动 / 文档更新 | 修订号 | v1.9.90 → v1.9.91 |
+| Bug 修复 / 小改动 / 文档更新 | 修订号 | v1.11.23 → v1.11.24 |
 
 更新类型标记：✨ 新增 / 🔧 修复 / 🐛 优化 / 🔐 安全 / 📝 文档 / 🔄 重构 / ⚡ 性能
 
@@ -993,7 +993,7 @@ build.bat    # PyInstaller 构建
 
 ```python
 # app/version.py
-VERSION = "v1.9.90"
+VERSION = "v1.11.23"
 ```
 
 ### 11.2 代码修改后必做清单
@@ -1119,4 +1119,4 @@ git push origin main --tags
 
 ---
 
-*本文档最后更新: 2026-05-07 | 适用版本: v1.9.90+*
+*本文档最后更新: 2026-05-31 | 适用版本: v1.11.23+*

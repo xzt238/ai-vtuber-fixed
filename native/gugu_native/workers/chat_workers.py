@@ -75,16 +75,7 @@ class StreamChatWorker(QThread):
 
     def run(self):
         try:
-            relevant_memories = self.backend.memory.search(self.text, top_k=3)
-            context = ""
-            if relevant_memories:
-                context = "\n\n相关记忆:\n" + "\n".join(
-                    [m.get("content") or m.get("text", "") for m in relevant_memories]
-                )
-
-            full_prompt = self.text
-            if context:
-                full_prompt = f"用户问题: {self.text}{context}"
+            full_prompt = self.text  # 记忆由 LLM 内部 MemoryRAGInjector 统一处理
 
             def on_chunk(chunk_text: str):
                 if self.is_stop_requested():
@@ -102,6 +93,7 @@ class StreamChatWorker(QThread):
                 full_prompt,
                 list(self.history),
                 callback=on_chunk,
+                memory_system=self.backend.memory,
                 on_tool_call=on_tool_call
             )
 
@@ -110,15 +102,28 @@ class StreamChatWorker(QThread):
             stream_error = result.get("_stream_error")
 
             if not reply and not stream_error:
-                result = self.backend.llm.stream_chat(
-                    full_prompt,
-                    list(self.history),
-                    callback=on_chunk,
-                    on_tool_call=on_tool_call
-                )
-                reply = result.get("text", "")
-                action = result.get("action")
-                stream_error = result.get("_stream_error")
+                # 带退避的重试：2秒延迟 + 最多1次
+                if not hasattr(self, '_retry_count'):
+                    self._retry_count = 0
+                if self._retry_count < 1:
+                    self._retry_count += 1
+                    # 分段延迟（总计2秒，每0.5秒检查stop标志）
+                    import time
+                    for _ in range(4):
+                        if self.is_stop_requested():
+                            break
+                        time.sleep(0.5)
+                    if not self.is_stop_requested():
+                        result = self.backend.llm.stream_chat(
+                            full_prompt,
+                            list(self.history),
+                            callback=on_chunk,
+                            memory_system=self.backend.memory,
+                            on_tool_call=on_tool_call
+                        )
+                        reply = result.get("text", "")
+                        action = result.get("action")
+                        stream_error = result.get("_stream_error")
 
             if not reply and stream_error:
                 reply = f"LLM 请求失败: {stream_error}"

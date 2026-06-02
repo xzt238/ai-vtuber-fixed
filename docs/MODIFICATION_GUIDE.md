@@ -1,6 +1,6 @@
 # 🔧 常见修改操作手册 (MODIFICATION_GUIDE)
 
-> **最后更新**: 2026-05-23 | **当前版本**: v1.11.0
+> **最后更新**: 2026-05-31 | **当前版本**: v1.11.23
 
 本文档提供常见多文件修改的分步操作指南。每个操作对应一个唯一编号，与 `CHANGE_IMPACT_MAP.md`（列出*哪些文件需要改*）互补——本手册告诉你*具体怎么改*。
 
@@ -18,8 +18,8 @@
 | 4 | 更新构建脚本中的版本号 | `native/build.bat` |
 | 5 | 更新 Windows 版本信息 | `native/gugu_native/resources/version_info.txt` |
 | 6 | 更新启动画面版本号 | `native/gugu_native/resources/generate_icons.py` |
-| 7 | 更新 fallback 版本号 | `native/main.py` L85 |
-| 8 | 更新 fallback 版本号 | `native/gugu_native/widgets/update_manager.py` L180 |
+| 7 | （已自动同步）fallback 版本号 | `native/main.py` 已从 `app.version` 自动导入 |
+| 8 | （已自动同步）fallback 版本号 | `native/gugu_native/widgets/update_manager.py` 已从 `app.version` 自动导入 |
 
 **验证**:
 ```bash

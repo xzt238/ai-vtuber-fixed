@@ -1,0 +1,76 @@
+classDiagram
+    class ChatPage {
+        -QLabel _chat_placeholder
+        -list _pending_chat_messages
+        -bool _chat_display_ready
+        +_init_ui_shell()
+        +_init_ui_content()
+        +_create_chat_display()
+        +_replay_pending_chat_messages()
+        +append_message_safe(role, text, timestamp)
+        +on_backend_ready()
+    }
+
+    class ChatWebDisplay {
+        -QWebEngineView _web_view
+        -QLabel _placeholder
+        -list _pending_messages
+        -bool _webengine_initialized
+        +_ensure_webengine()
+        +append_user_msg(text, quote, timestamp)
+        +append_ai_msg(text, timestamp)
+        +append_system_msg(text)
+    }
+
+    class SettingsPage {
+        -AsyncJsonWorker _prefs_worker
+        +_on_backend_ready_impl()
+        +_load_prefs_async()
+        +_on_prefs_loaded(results: dict)
+        +_apply_llm_prefs(prefs: dict)
+        +_apply_tts_prefs(prefs: dict)
+        +_apply_asr_prefs(prefs: dict)
+        +_apply_vision_prefs(prefs: dict)
+        +_apply_proactive_prefs(prefs: dict)
+        +_apply_api_keys(prefs: dict)
+    }
+
+    class AsyncJsonWorker {
+        +list file_paths
+        +Signal json_loaded(dict)
+        +Signal json_failed(str)
+        +run()
+    }
+
+    class GuguGagaApp {
+        -RealtimeVoiceManager voice_manager
+        -HotkeyManager hotkey_manager
+        -bool _managers_initialized
+        +_init_backend_managers()
+        +changeEvent(event)
+    }
+
+    class AnimationController {
+        -QTimer _idle_timer
+        -bool _idle_paused
+        -float _last_idle_time
+        +pause_idle()
+        +resume_idle()
+        +start()
+        +stop()
+        +trigger_emotion(emotion, lock_duration)
+    }
+
+    class TrayManager {
+        +toggle_record_action()
+        +handle_close_event(event)
+    }
+
+    ChatPage --> ChatWebDisplay : creates lazily
+    ChatPage --> AnimationController : owns
+    SettingsPage --> AsyncJsonWorker : uses
+    GuguGagaApp --> ChatPage : owns
+    GuguGagaApp --> AnimationController : controls via ChatPage
+    GuguGagaApp --> TrayManager : owns
+    GuguGagaApp --> RealtimeVoiceManager : creates lazily
+    GuguGagaApp --> HotkeyManager : creates lazily

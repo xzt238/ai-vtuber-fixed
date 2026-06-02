@@ -156,8 +156,11 @@ class SetReminderTool(Tool):
             }
             reminders.append(reminder)
 
-            with open(reminders_file, "w", encoding="utf-8") as f:
+            # v1.12.0 AUDIT-3-2: 原子写入
+            tmp_path = str(reminders_file) + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(reminders, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, reminders_file)
 
             time_info = f"，提醒时间: {remind_time}" if remind_time else ""
             return {
@@ -225,8 +228,11 @@ class RememberThingTool(Tool):
             }
             memories.append(memory_entry)
 
-            with open(mem_file, "w", encoding="utf-8") as f:
+            # v1.12.0 AUDIT-3-2: 原子写入
+            tmp_path = str(mem_file) + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(memories, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, mem_file)
 
             return {
                 "success": True,

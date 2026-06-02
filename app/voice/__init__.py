@@ -275,9 +275,11 @@ class VoiceInput:
             
             # 保存为 WAV 文件
             # delete=False: 不自动删除临时文件（因为调用者需要读取）
+            # v1.12.0 AUDIT-P1: 关闭文件句柄，避免 Windows 上句柄泄漏
             import wave
             temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-            
+            temp_file.close()  # 关闭句柄，后续通过文件名访问
+
             with wave.open(temp_file.name, 'wb') as f:
                 f.setnchannels(1)          # 单声道
                 f.setsampwidth(2)          # 2字节 = 16位
@@ -309,7 +311,7 @@ class VoiceInput:
             try:
                 self.recorder.stop()
                 self.recorder.close()
-            except:
+            except Exception:
                 pass  # 忽略关闭时的异常
             self.is_recording = False
             self.audio_data = []  # 清空缓冲区，丢弃所有数据

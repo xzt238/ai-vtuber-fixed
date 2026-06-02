@@ -1,47 +1,21 @@
 sequenceDiagram
-    actor User
-    participant Script as start.sh/go.bat
-    participant Launcher as launcher.py
-    participant PA as PlatformAbstraction
-    participant DM as DeviceManager
-    participant Main as app/main.py
-    participant Live2D as Live2DModule
+    participant Main as main.py
+    participant Splash as SplashDebugWindow
 
-    User->>Script: 双击启动
-    Script->>Launcher: python launcher.py
-
-    Launcher->>PA: acquire_single_instance("GuguGaga")
-    alt Windows
-        PA->>PA: kernel32.CreateMutexW("Local\\GuguGaga...")
-    else macOS/Linux
-        PA->>PA: fcntl.lockf(lockfile)
-    end
-    PA-->>Launcher: True/False
-
-    Launcher->>Launcher: BackendManager.start()
-    Launcher->>PA: get_python_command()
-    PA-->>Launcher: ["python3", "-m", "app.main", "--desktop"]
-    Launcher->>PA: get_subprocess_kwargs()
-    PA-->>Launcher: {} (Unix) / {startupinfo, creationflags} (Win)
-
-    Launcher->>Main: subprocess.Popen(..., **kwargs)
-
-    Main->>DM: detect_device()
-    alt CUDA available
-        DM-->>Main: "cuda"
-    else MPS available (macOS)
-        DM-->>Main: "mps"
-    else
-        DM-->>Main: "cpu"
+    Main->>Splash: set_progress("加载模型...")
+    Splash->>Splash: _progress_label.setText(text)
+    Splash->>Splash: QApplication.processEvents()
+    Splash->>Splash: _center_on_screen()
+    alt 首次调用
+        Splash->>Splash: _skip_timer_started = True
+        Splash->>Splash: QTimer.singleShot(10000, _show_skip_button)
     end
 
-    Main->>PA: get_platform()
-    alt Windows OR live2d-py available
-        Main->>Main: Live2DWidget (native OpenGL)
-    else macOS/Linux
-        Main->>Live2D: Live2DModel (Web pixi.js)
-        Live2D->>Live2D: start HTTP server
-    end
+    Main->>Splash: set_progress("初始化完成")
+    Splash->>Splash: _progress_label.setText(text)
+    Splash->>Splash: QApplication.processEvents()
+    Splash->>Splash: _center_on_screen()
+    Note over Splash: _skip_timer_started 已设置，不再重复启动定时器
 
-    Main-->>Launcher: HTTP :12393 就绪
-    Launcher->>Launcher: load_url(http://localhost:12393)
+    Splash-->>Splash: 10秒后 _show_skip_button()
+    Splash->>Splash: _skip_btn.setVisible(True)

@@ -377,7 +377,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
             print(f"[SANDBOX] API错误: {e}")
             import traceback
             traceback.print_exc()
-            self.send_json({"success": False, "error": str(e)})
+            self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
     
     def _handle_train_upload(self):
         """
@@ -472,7 +472,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
             print(f"[TRAIN] 上传失败: {e}")
             import traceback
             traceback.print_exc()
-            self.send_json({"success": False, "error": str(e)})
+            self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
 
     def _serve_config_js(self):
         """KI-001 FIX: 动态生成 config.js，从 shared_config.py 单一数据源
@@ -532,7 +532,7 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
             except json.JSONDecodeError:
                 self.send_json({"success": True, "data": None})
             except Exception as e:
-                self.send_json({"success": False, "error": str(e)})
+                self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
             return
 
         # POST: 保存布局数据
@@ -567,10 +567,10 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
                 print(f"[Layout] 已保存布局到 {layout_file}")
                 self.send_json({"success": True})
             except json.JSONDecodeError as e:
-                self.send_json({"success": False, "error": f"JSON 解析失败: {e}"})
+                self.send_json({"success": False, "error": "JSON 解析失败"})
             except Exception as e:
                 print(f"[Layout] 保存失败: {e}")
-                self.send_json({"success": False, "error": str(e)})
+                self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
             return
 
         # 其他方法
@@ -605,7 +605,7 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
             
         except Exception as e:
             print(f"[SANDBOX] 状态错误: {e}")
-            self.send_json({"success": False, "error": str(e)})
+            self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
     
     def send_json(self, data):
         """
@@ -633,7 +633,8 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(response)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        # v1.12.0 AUDIT-3-3: CORS 收紧 — 限制为 localhost
+        self.send_header("Access-Control-Allow-Origin", "http://localhost:12393")
         self.end_headers()
         self.wfile.write(response)
 
@@ -3300,7 +3301,7 @@ class WebSocketServer:
                         with open(result.screenshot_path, "rb") as f:
                             import base64
                             screenshot_b64 = base64.b64encode(f.read()).decode()
-                    except:
+                    except Exception:
                         pass
 
                     self.server.send_message(client, json.dumps({
@@ -3413,7 +3414,7 @@ class WebSocketServer:
                             with open(result.screenshot_path, "rb") as f:
                                 import base64
                                 screenshot_b64 = base64.b64encode(f.read()).decode()
-                        except:
+                        except Exception:
                             pass
 
                         self.server.send_message(client, json.dumps({

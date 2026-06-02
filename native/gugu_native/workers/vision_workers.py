@@ -26,15 +26,15 @@ class OCRWorker(QThread):
             except Exception as e:
                 self.error.emit(f"视觉模块加载失败: {e}")
                 return
-            if vision is None or vision._current_provider is None:
+            if vision is None or not vision.has_provider:
                 self.error.emit("视觉 Provider 未配置，请检查设置 > 视觉/OCR")
                 return
 
             text = vision.recognize_text(self.image_path)
-            if not text and hasattr(vision, '_providers'):
+            if not text:
                 try:
                     from app.vision import VisionProviderType
-                    rapidocr = vision._providers.get(VisionProviderType.RAPIDOCR)
+                    rapidocr = vision.get_provider(VisionProviderType.RAPIDOCR)
                     if rapidocr:
                         text = rapidocr.recognize_text(self.image_path)
                 except Exception:
@@ -70,17 +70,17 @@ class VisionWorker(QThread):
                 self.result_ready.emit(f"[用户上传了一张图片（视觉模块不可用）]\n{self.user_text}")
                 return
 
-            if vision is None or vision._current_provider is None:
+            if vision is None or not vision.has_provider:
                 self.error_occurred.emit("视觉 Provider 未配置")
                 self.result_ready.emit(f"[用户上传了一张图片（视觉未配置）]\n{self.user_text}")
                 return
 
             if not self.user_text.strip():
                 ocr_result = vision.recognize_text(self.image_path)
-                if not ocr_result and hasattr(vision, '_providers'):
+                if not ocr_result:
                     try:
                         from app.vision import VisionProviderType
-                        rapidocr = vision._providers.get(VisionProviderType.RAPIDOCR)
+                        rapidocr = vision.get_provider(VisionProviderType.RAPIDOCR)
                         if rapidocr:
                             ocr_result = rapidocr.recognize_text(self.image_path)
                     except Exception:

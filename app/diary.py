@@ -182,11 +182,13 @@ class DiaryManager:
 请开始写今天的日记："""
 
     def _save_diary(self, content: str):
-        """保存日记文件"""
+        """保存日记文件（v1.12.0 AUDIT-3-2: 原子写入）"""
         today = datetime.now().strftime("%Y-%m-%d")
         filepath = os.path.join(self.storage_dir, f"{today}.md")
-        with open(filepath, "w", encoding="utf-8") as f:
+        tmp_path = filepath + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             f.write(content)
+        os.replace(tmp_path, filepath)
 
     # ========== 读取 & 总结 ==========
 

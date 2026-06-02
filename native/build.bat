@@ -1,11 +1,11 @@
-﻿@echo off
+@echo off
 REM ======================================
 REM  GuguGaga Native - Build Script
 REM  Must run with Python 3.11
 REM ======================================
 
 echo ========================================
-echo  Building GuguGagaNative v1.11.15
+echo  Building GuguGagaNative v1.12.0
 echo ========================================
 
 REM Check Python 3.11

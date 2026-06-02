@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QInputDialog, QMessageBox, QSplitter, QMenu,
     QProgressBar, QGroupBox
 )
-from PySide6.QtCore import Qt, Signal, Slot, QTimer, QThread
+from PySide6.QtCore import Qt, Signal, Slot, QTimer, QThread, QThreadPool
 from PySide6.QtGui import QFont, QColor, QAction, QTextCursor
 
 from qfluentwidgets import (
@@ -35,6 +35,8 @@ from qfluentwidgets import (
 from app.shared_config import PROJECT_DIR
 
 from gugu_native.theme import get_colors, register_theme_callback
+from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
+from gugu_native.widgets.skeleton_container import SkeletonContainer
 
 
 class MemorySearchWorker(QThread):
@@ -131,24 +133,50 @@ class MemoryItemWidget(QTreeWidgetItem):
             self.setText(1, f"[摘要] {role}")
 
 
-class MemoryPage(QWidget):
-    """记忆页面 — 四层记忆系统可视化"""
+class MemoryPage(QWidget, LazyPageMixin):
+    """记忆页面 — 四层记忆系统可视化，支持懒加载"""
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        QWidget.__init__(self, parent)
+        LazyPageMixin.__init__(self)
         self.setObjectName("memoryPage")
         self._backend = None
         self._search_worker = None
         self._consolidate_worker = None
-        self._init_ui()
+        self._stats_worker = None  # 异步统计 Worker 引用（防止 GC 回收 Bridge）
+        # 不调用 _init_ui()，延迟到 lazy_init()
+        # 骨架屏占位
+        self._skeleton = SkeletonContainer("正在加载记忆系统...", self)
+        self._skeleton.hide_skeleton()
 
-        # 定时刷新统计
+    def show_skeleton(self):
+        self._skeleton.show_skeleton()
+
+    def hide_skeleton(self):
+        self._skeleton.hide_skeleton()
+
+    def lazy_init(self):
+        """首次切换到该页时调用 — 构建完整 UI"""
+        if self._is_initialized:
+            return
+        self._skeleton.hide_skeleton()
+        self._skeleton.setParent(None)
+        self._skeleton.deleteLater()
+        self._init_ui()
+        # 定时刷新统计（在 _init_ui 后创建）
         self._stats_timer = QTimer(self)
         self._stats_timer.setInterval(10000)  # 10秒刷新
         self._stats_timer.timeout.connect(self._refresh_stats)
         self._stats_timer.start()
-        # 注册主题变更回调
+        # 注册主题变更回调（延迟到 UI 创建后）
         register_theme_callback(self.refresh_theme)
+        # 如果后端已就绪，立即刷新数据
+        if self.backend:
+            self._on_backend_ready_impl()
+
+    def _on_backend_ready_impl(self):
+        """后端就绪后的实际 UI 操作"""
+        self._refresh_all()
 
     def showEvent(self, event):
         """页面可见时恢复定时刷新"""
@@ -290,8 +318,7 @@ class MemoryPage(QWidget):
 
         main_layout.addWidget(splitter, stretch=1)
 
-        # 延迟加载数据
-        QTimer.singleShot(800, self._refresh_all)
+        # 延迟加载数据（由 lazy_init → _on_backend_ready_impl 触发）
 
     def _create_stat_card(self, label: str, value: str, color: str) -> CardWidget:
         """创建统计卡片 — 紧凑布局（v1.11.16 缩小尺寸放5个）"""
@@ -406,7 +433,10 @@ class MemoryPage(QWidget):
 
     def on_backend_ready(self):
         """后端就绪回调 — 刷新记忆数据"""
-        self._refresh_all()
+        if not self._is_initialized:
+            # 页面尚未初始化，保存后端引用但不执行 UI 操作
+            return
+        self._on_backend_ready_impl()
 
     # ========== 数据加载 ==========
 
@@ -423,27 +453,49 @@ class MemoryPage(QWidget):
         self._refresh_facts()
 
     def _refresh_stats(self):
-        """刷新统计面板"""
+        """刷新统计面板（异步）— 使用 StatsResultWorker 在线程池中读取记忆数据
+
+        v1.11.22: 从同步阻塞改为异步模式，主线程立即返回不卡顿。
+        统计结果通过 Signal 回传到主线程更新 UI。
+        """
         mem = self.memory_system
         if not mem:
             return
+        # 提交异步任务
+        from gugu_native.workers.init_workers import StatsResultWorker
+        self._stats_worker = StatsResultWorker(mem)
+        self._stats_worker.stats_ready.connect(self._on_stats_ready)
+        self._stats_worker.error.connect(self._on_stats_error)
+        QThreadPool.globalInstance().start(self._stats_worker)
 
+    @Slot(dict)
+    def _on_stats_ready(self, stats: dict):
+        """异步统计结果回调 — 在主线程更新 UI
+
+        Args:
+            stats: 统计数据字典，包含 working_count/episodic_count/semantic_stats/facts_count/forgotten_count
+        """
         try:
-            working_count = len(mem.working_memory)
-            episodic_count = len(mem.episodic_memory)
-            semantic_stats = mem.vector_store.get_stats()
-            semantic_count = semantic_stats.get("total_docs", 0)
-            facts_count = len(mem.facts)
-            forgotten = mem.forgotten_count
-
-            # 更新统计卡片（直接引用，不再用 findChild）
-            self._stat_working_val.setText(str(working_count))
-            self._stat_episodic_val.setText(str(episodic_count))
-            self._stat_semantic_val.setText(str(semantic_count))
-            self._stat_facts_val.setText(str(facts_count))
-            self._stat_forgotten_val.setText(str(forgotten))
+            self._stat_working_val.setText(str(stats.get("working_count", 0)))
+            self._stat_episodic_val.setText(str(stats.get("episodic_count", 0)))
+            semantic_stats = stats.get("semantic_stats", {})
+            self._stat_semantic_val.setText(str(semantic_stats.get("total_docs", 0)))
+            self._stat_facts_val.setText(str(stats.get("facts_count", 0)))
+            self._stat_forgotten_val.setText(str(stats.get("forgotten_count", 0)))
         except Exception as e:
-            print(f"[MemoryPage] 刷新统计失败: {e}")
+            logger.debug(f"Failed to update stats UI: {e}")
+        finally:
+            # 手动释放已完成的 worker（setAutoDelete=False）
+            if hasattr(self, '_stats_worker') and self._stats_worker:
+                self._stats_worker = None
+
+    @Slot(str)
+    def _on_stats_error(self, error_msg: str):
+        """异步统计读取错误回调"""
+        logger.debug(f"Stats refresh error: {error_msg}")
+        # 手动释放已完成的 worker（setAutoDelete=False）
+        if hasattr(self, '_stats_worker') and self._stats_worker:
+            self._stats_worker = None
 
     def _refresh_working(self):
         """刷新工作记忆"""

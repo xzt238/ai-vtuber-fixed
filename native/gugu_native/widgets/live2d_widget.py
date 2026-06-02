@@ -113,6 +113,14 @@ class Live2DWidget(QOpenGLWidget):
 
         # ---- 渲染参数 ----
         self._target_fps = 60
+        self._idle_fps = 15  # v1.11.29 P1-2: 空闲时帧率
+        self._last_activity_time = 0  # 最后活动时间（鼠标移动/点击）
+
+        # ---- 窗口拖动状态 ----
+        self._is_dragging = False
+
+        # v1.11.25 R-005: OpenGL 渲染优化 — 减少不必要的状态切换
+        self._last_gl_state = {}  # 缓存 GL 状态，避免重复设置
 
         # ---- Widget 配置 ----
         self.setMinimumSize(380, 480)
@@ -172,14 +180,37 @@ class Live2DWidget(QOpenGLWidget):
         每帧执行：
         1. 更新鼠标拖拽状态（眼球/头部跟踪）
         2. 触发 paintGL 重绘
+
+        窗口拖动/resize 期间跳过重绘，释放主线程保证窗口操作流畅。
+
+        v1.11.29 P1-2: 帧率自适应 — 空闲时自动降帧率
         """
+        import time
+
+        # v1.11.29 P1-2: 帧率自适应
+        # 检测是否有活动（鼠标移动/点击）
+        current_time = time.time()
+        idle_time = current_time - self._last_activity_time
+
+        # 空闲超过 3 秒时降帧率，有活动时恢复高帧率
+        if idle_time > 3.0:
+            target_interval = 1000 // self._idle_fps  # 66ms (15fps)
+        else:
+            target_interval = 1000 // self._target_fps  # 16ms (60fps)
+
+        # 动态调整定时器间隔
+        current_interval = self._anim_timer.interval()
+        if abs(current_interval - target_interval) > 5:  # 避免频繁微调
+            self._anim_timer.setInterval(target_interval)
+
         if self.model is not None:
             # 鼠标跟踪：将归一化坐标传给模型
             if hasattr(self.model, "SetDragging"):
                 self.model.SetDragging(self._mouse_x, self._mouse_y)
             self.model.Drag(self._mouse_x, self._mouse_y)
 
-        self.update()  # 触发 paintGL()
+        if not self._is_dragging:
+            self.update()  # 触发 paintGL()
 
     # ============================================================
     # 鼠标事件（眼球/头部跟踪 + 点击交互）
@@ -190,7 +221,12 @@ class Live2DWidget(QOpenGLWidget):
 
         将 Qt 像素坐标归一化到 [0, 1] 范围传给 live2d-py。
         live2d-py 内部使用此坐标驱动模型的眼球跟随和头部微转。
+
+        v1.11.29 P1-2: 记录活动时间，用于帧率自适应
         """
+        import time
+        self._last_activity_time = time.time()  # 记录活动时间
+
         if self.model is not None and self.width() > 0 and self.height() > 0:
             x = event.position().x() / self.width()
             y = event.position().y() / self.height()
@@ -421,6 +457,18 @@ class Live2DWidget(QOpenGLWidget):
             interval_ms = int(1000 / self._target_fps)
             self._anim_timer.setInterval(interval_ms)
             _logger.debug(f"FPS 更新: {self._target_fps}")
+
+    def set_window_drag_state(self, dragging: bool):
+        """响应窗口拖动/resize 状态变化，暂停或恢复重绘
+
+        Args:
+            dragging: True 时跳过重绘；False 时恢复正常帧率。
+        """
+        self._is_dragging = dragging
+        if dragging:
+            _logger.debug("Live2D 渲染暂停（窗口拖动/resize）")
+        else:
+            _logger.debug("Live2D 渲染恢复")
 
 
 __all__ = ["Live2DWidget"]

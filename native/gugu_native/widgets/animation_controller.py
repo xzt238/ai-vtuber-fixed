@@ -154,6 +154,7 @@ class AnimationController:
         """
         self._widget = live2d_widget
         self._is_active = False
+        self._idle_paused = False
         self._current_emotion = EmotionType.NEUTRAL
         self._emotion_locked_until = 0  # 情绪锁定截止时间（防止 idle 打断情绪动画）
         self._last_idle_time = time.time()
@@ -194,6 +195,26 @@ class AnimationController:
         self._idle_timer.stop()
         self._greet_timer.stop()
         print("[AnimationController] 动画控制器已停止")
+
+    def pause_idle(self):
+        """暂停 idle 动画定时器（窗口最小化时调用）
+
+        只停止 _idle_timer，trigger_emotion() 和 set_mouth_open() 不受影响。
+        """
+        if hasattr(self, '_idle_timer') and self._idle_timer.isActive():
+            self._idle_timer.stop()
+        self._idle_paused = True
+
+    def resume_idle(self):
+        """恢复 idle 动画定时器（窗口恢复显示时调用）
+
+        重置 _last_idle_time 避免积压触发。
+        """
+        self._idle_paused = False
+        self._last_idle_time = time.time()  # 重置，避免积压触发
+        self._next_idle_time = self._random_idle_interval()
+        if self._is_active and not self._idle_timer.isActive():
+            self._idle_timer.start(2000)
 
     def trigger_emotion(self, emotion: str, lock_duration: float = 3.0):
         """

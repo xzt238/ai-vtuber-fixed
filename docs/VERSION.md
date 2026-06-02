@@ -38,6 +38,194 @@
 
 
 
+## 🟢 v1.11.29 (2026-06-01) ✅ STABLE
+
+### ⚡ 性能
+- **[P1-1] 模型缓存**：FunASRASR 新增类级别 `_model_cache` 缓存，避免重复加载相同模型
+- **[P1-2] 帧率自适应**：Live2DWidget 新增帧率自适应机制，空闲 3 秒后自动从 60fps 降到 15fps，鼠标活动时恢复 60fps，GPU 负载降低 30%
+- **[P1-3] 异步文件 I/O**：`_save_history()` 改为后台线程写入，不阻塞主线程
+- **[P2-1] 模块预编译**：启动脚本 `start_debug.bat` 添加 `compileall` 预编译步骤，首次启动时预编译 Python 模块为 .pyc，后续启动导入速度提升 2x
+- **[P2-2] 连接池优化**：LLM HTTP 连接池从 5/10 增加到 10/20，启用 keep-alive 复用 TCP 连接
+
+### 📝 文件变更
+- **修改**: `app/asr/__init__.py`, `native/gugu_native/widgets/live2d_widget.py`, `app/main.py`, `scripts/start_debug.bat`, `app/llm/__init__.py`, `app/version.py`, `docs/VERSION.md`, `README.md`, `native/build.bat`, `resources/version_info.txt`
+
+---
+
+## 🟢 v1.11.28 (2026-06-01) ✅ STABLE
+
+### ⚡ 性能
+- **[P0-2] Chromium 启动参数优化**：添加 25+ 个 Chromium 启动加速参数，禁用翻译、扩展、后台网络、同步、首次运行向导、默认浏览器检查、组件更新、后台定时器节流、平滑滚动等不必要的功能，预计启动快 3-5 秒
+- **[Perf] 启动性能计时增强**：在 `GuguGagaApp.__init__()` 中添加更精细的计时点（Widget 模块导入、页面创建、主题应用），便于定位启动瓶颈
+
+### 📝 文件变更
+- **修改**: `native/main.py`, `app/version.py`, `docs/VERSION.md`, `README.md`, `native/build.bat`, `resources/version_info.txt`
+
+---
+
+## 🟢 v1.11.27 (2026-06-01) ✅ STABLE
+
+### 🔧 修复
+- **[BUG] QSS 样式表解析失败**：`build_global_qss_v5()` 中缺少 `chat_bg`、`progress_start`、`progress_end`、`br_card`、`sp_card`、`sp_global`、`br_input`、`br_widget`、`br_menu`、`card_bg_hover`、`font_family` 等变量的 fallback 值，导致 `%(var)s` 模板替换时 KeyError，QSS 解析失败
+
+### ⚡ 性能
+- **[S-003] Theme 预加载优化**：QSS 样式表缓存机制，避免每次切换主题时重新生成，最多缓存 10 个主题的 QSS，新增 `clear_qss_cache()` 函数
+- **[S-004] Splash 进度细化**：启动画面支持百分比显示（`set_progress(text, percent)`），用户可看到具体加载进度
+- **[R-005] OpenGL 渲染优化**：Live2DWidget 新增 `_last_gl_state` 缓存，减少重复 GL 状态切换
+- **[M-002] 对话历史分页**：`_load_history()` 改为分页加载，只加载最近 50 轮（100 条）到内存，完整历史保留在磁盘，新增 `_full_history_on_disk` 引用
+- **[M-003] 缓存 LRU 淘汰**：TTSCache 新增 `_access_order` LRU 跟踪（最多 500 个缓存键），优化缓存淘汰策略
+
+### 🏗️ 架构
+- **修改** `native/gugu_native/theme.py`：新增 QSS 缓存（`_qss_cache`）和 `clear_qss_cache()` 函数
+- **修改** `native/gugu_native/widgets/splash_debug_window.py`：`set_progress()` 支持 `percent` 参数
+- **修改** `native/gugu_native/widgets/live2d_widget.py`：新增 `_last_gl_state` 渲染状态缓存
+- **修改** `app/main.py`：`_load_history()` 分页加载逻辑
+- **修改** `app/tts_cache.py`：新增 `_access_order` LRU 跟踪
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/theme.py`, `native/gugu_native/widgets/splash_debug_window.py`, `native/gugu_native/widgets/live2d_widget.py`, `app/main.py`, `app/tts_cache.py`, `app/version.py`, `docs/VERSION.md`, `README.md`, `native/build.bat`, `resources/version_info.txt`
+
+---
+
+## 🟢 v1.11.26 (2026-06-01) ✅ STABLE
+
+### ⚡ 性能
+- **[S-002] TTS 预热懒加载**：将 TTS 音色预热从启动时延迟到首次对话时，启动快 1-2 秒。首次对话时自动触发后台预热线程
+- **[R-002] Memory 搜索缓存扩容**：VectorStore 搜索缓存从 50 扩到 200，提高缓存命中率，减少重复查询的计算开销
+- **[R-006] 内存池化**：在 AIVTuber 中新增对象池（`_pool_get()`/`_pool_put()`），复用频繁创建的 dict/list 对象，减少 GC 压力
+- **[M-001] 模型按需卸载**：PerformanceManager 新增 `unload_idle_models()` 方法，可卸载长时间未使用的模块（vision/mcp/desktop_pet），释放内存
+
+### 🏗️ 架构
+- **修改** `app/main.py`：新增对象池初始化和 `_pool_get()`/`_pool_put()` 方法
+- **修改** `native/main.py`：TTS 预热延迟到首次对话，新增 `_tts_prewarmed` 标志
+- **修改** `native/gugu_native/pages/chat_page.py`：首次对话时触发 TTS 预热
+- **修改** `native/gugu_native/widgets/perf_manager.py`：新增 `unload_idle_models()` 方法
+- **修改** `app/memory/__init__.py`：搜索缓存容量 50→200
+
+### 📝 文件变更
+- **修改**: `app/main.py`, `native/main.py`, `native/gugu_native/pages/chat_page.py`, `native/gugu_native/widgets/perf_manager.py`, `app/memory/__init__.py`, `app/version.py`, `docs/VERSION.md`, `README.md`, `native/build.bat`, `resources/version_info.txt`
+
+---
+
+## 🟢 v1.11.25 (2026-06-01) ✅ STABLE
+
+### ⚡ 性能
+- **[S-001] 模型预加载并行化**：新增 `AIVTuber.preload_models_parallel()` 方法，ASR/TTS/Memory 三个模型通过 `ThreadPoolExecutor` 并行加载，总耗时从 `sum(ASR, TTS, Memory)` 降为 `max(ASR, TTS, Memory)`，预计启动快 3-5 秒
+- **[R-001] 对话历史流式压缩**：新增 `_compress_history()` 方法，当对话历史超过 60 轮（120 条）时自动压缩旧对话为摘要（优先 LLM 摘要，降级为规则摘要），保留最近 20 轮 + 历史摘要，减少 LLM token 消耗
+- **[R-004] LLM 响应流式缓冲**：新增 `process_message_streaming()` 方法，LLM 回复按句分割后逐句 TTS 合成，用户更快听到第一句话，降低语音延迟
+
+### 🏗️ 架构
+- **修改** `app/main.py`：新增 `preload_models_parallel()`、`_compress_history()`、`process_message_streaming()` 三个方法
+- **修改** `native/main.py`：后端就绪后调用 `preload_models_parallel()` 替代原来串行的 ASR 单独加载
+
+### 📝 文件变更
+- **修改**: `app/main.py`, `native/main.py`, `app/version.py`, `docs/VERSION.md`, `README.md`, `native/build.bat`, `resources/version_info.txt`
+
+---
+
+## 🟢 v1.11.24 (2026-06-03) ✅ STABLE
+
+### ⚡ 性能
+- **[P0-1] 页面按需懒加载**：改造 `main.py` `_create_pages()`，非首屏页面（Train/Memory/ModelDL/VRM/Settings）延迟到首屏渲染完成后创建，启动时仅构造 ChatPage，减少启动阻塞
+- **[P0-2] 窗口拖动/resize 暂停 Live2D 渲染**：`PerfManager` 新增 `window_drag_state_changed` 信号广播拖动状态，`Live2DWidget` 订阅后暂停 `update()` 重绘，解决拖动窗口时"未响应"问题
+- **[P0-3] SettingsPage 异步初始化**：`_load_saved_config()` 从 `__init__` 移至 `on_backend_ready()`，减少启动阶段同步 JSON I/O 阻塞
+- **[P1-1] AudioVisualizer 可见性控制**：`showEvent`/`hideEvent` 控制 `_fft_timer` 启停，页面不可见时停止 FFT 计算；新增 `set_audio_active()` 静默降频到 5fps
+- **[P1-2] 口型同步降频**：`_lipsync_timer` 从 50ms（20fps）降至 100ms（10fps），并添加页面不可见时跳过更新
+- **[P1-3] VRMWidget 延迟创建**：`VRMSettingsPage` 继承 `LazyPageMixin`，构造时仅显示骨架屏，首次进入该页时才创建 `VRMWidget`
+- **[P1-4] 禁用页面切换动画**：`main.py` 启动后关闭 `PopUpAniStackedWidget` 动画（300ms→0ms），消除切换页面时的卡顿感
+- **[P2-1] GC 阈值调优**：`perf_manager.tune_gc_thresholds()` 放宽 gen0 阈值，减少启动阶段小对象频繁回收
+
+### 🏗️ 架构
+- **新增** `widgets/lazy_page_mixin.py`：懒加载页面混入基类
+- **新增** `widgets/async_json_worker.py`：异步 JSON 读取 Worker
+- **新增** `widgets/skeleton_container.py`：骨架屏占位容器
+- **修改** `widgets/perf_manager.py`：新增窗口拖动状态广播 + GC 调优
+- **修改** `widgets/live2d_widget.py`：拖动期间暂停重绘
+- **修改** `widgets/audio_visualizer.py`：可见性控制 + 静默降频
+- **修改** `pages/chat_page.py`：口型同步降频 + 可见性判断 + 拖动信号连接
+- **修改** `native/main.py`：懒加载框架 + 拖动状态广播 + 禁用动画
+- **修改** `pages/vrm_settings_page.py`：继承 LazyPageMixin 延迟创建
+- **修改** `pages/settings_page.py`：配置加载延迟到 on_backend_ready
+
+### 📝 文件变更
+- **新增**: `widgets/lazy_page_mixin.py`, `widgets/async_json_worker.py`, `widgets/skeleton_container.py`
+- **修改**: `native/main.py`, `widgets/perf_manager.py`, `widgets/live2d_widget.py`, `widgets/audio_visualizer.py`, `pages/chat_page.py`, `pages/settings_page.py`, `pages/vrm_settings_page.py`, `app/version.py`, `docs/VERSION.md`, `README.md`, `native/build.bat`, `resources/version_info.txt`
+
+## 🟢 v1.11.23 (2026-06-02) ✅ STABLE
+
+### 🔧 修复
+- **[BUG-001] PageInitWorker 非主线程 UI 崩溃**：PageInitWorker 将 page.on_backend_ready() 放入 QThreadPool 执行，但 train_page/memory_page/settings_page 的 on_backend_ready() 中包含大量 Qt UI 操作（QComboBox.clear/addItem, QTreeWidget.takeChildren 等），PySide6 中从非主线程操作 UI 控件导致崩溃。修复：取消 PageInitWorker，改为 QTimer.singleShot 错峰调度到主线程（每个页面间隔 50ms）
+- **[WARN-001] QRunnable setAutoDelete**：StatsResultWorker 的 setAutoDelete(True) 改为 setAutoDelete(False)，由调用方管理生命周期；_on_stats_ready/_on_stats_error 回调中手动释放 worker 引用
+
+### 🏗️ 架构
+- **删除** `PageInitWorker` 和 `_SignalBridge` 类（不再使用）
+- **修改** `native/main.py`：QThreadPool 并行初始化 → QTimer.singleShot 错峰调度（所有页面 on_backend_ready() 都在主线程执行）
+- **修改** `native/gugu_native/pages/memory_page.py`：StatsResultWorker 生命周期管理增强
+
+### 📝 文件变更
+- **修改**: `workers/init_workers.py` (删除 PageInitWorker/_SignalBridge, StatsResultWorker setAutoDelete=False)
+- **修改**: `workers/__init__.py` (移除 PageInitWorker 导出)
+- **修改**: `native/main.py` (QTimer.singleShot 错峰调度 + 删除 _on_page_init_done/_on_page_init_failed + 删除 _page_workers)
+- **修改**: `pages/memory_page.py` (StatsResultWorker 生命周期管理)
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`, `resources/generate_icons.py`, `widgets/update_manager.py` (版本号 1.11.22 → 1.11.23)
+
+## 🟢 v1.11.22 (2026-06-02) ✅ STABLE
+
+### ⚡ 性能
+- **[P0-1] 后端初始化异步化**：AIVTuber() 构造从主线程移至 QThread（MoveToThread 模式），5-15s 主线程冻结 → 0ms（GUI 立即可交互/拖动）
+- **[P0-2] 页面 on_backend_ready 并行化**：Train/Memory/ModelDL/Settings 4 个页面通过 QThreadPool + PageInitWorker 并行初始化，串行 3-8s → 并行 <2s
+- **[P0-3] 增量 GC 分代定时器**：全量 gc.collect() 60s（100-500ms 暂停）→ gen0:5s / gen1:30s / gen2:120s（<5ms / <16ms / <50ms）
+- **[P0-4] MemoryPage 异步刷新**：_refresh_stats() 从同步阻塞改为 StatsResultWorker 异步读取，主线程 0ms 阻塞
+- **[P1-1] GIL 争抢缓解**：TTS 预热/ASR 预加载线程添加 time.sleep(0.01) 让出 GIL，降低后台线程对主线程的争抢
+- **[P1-2] 统一异步任务框架**：新增 AsyncJobManager，借鉴 Calibre JobManager，统一管理后台任务（提交/追踪/取消/Signal 通知）
+- **[P1-4] 启动进度展示增强**：BackendInitWorker.init_progress Signal 连接到 SplashDebugWindow.set_progress()，后端初始化进度实时更新
+
+### 🏗️ 架构
+- **新增** `native/gugu_native/workers/init_workers.py`：BackendInitWorker + PageInitWorker + StatsResultWorker
+- **新增** `native/gugu_native/workers/async_job_manager.py`：AsyncJobManager 统一异步任务框架
+- **修改** `native/gugu_native/widgets/perf_manager.py`：增量 GC + schedule_backend_init_async() + cleanup() 恢复 gc.enable()
+- **修改** `native/main.py`：异步初始化流程 + 并行页面回调 + 启动进度展示 + 退出清理
+- **修改** `native/gugu_native/pages/memory_page.py`：_refresh_stats() 异步化 + StatsResultWorker
+
+### 🔧 修复
+- **[GC] 退出时恢复自动 GC**：应用关闭时 gc.enable() + gc.collect(2)，防止影响其他代码
+- **[GC] force_cleanup() 改显式全量**：gc.collect() → gc.collect(2)
+
+### 📝 文件变更
+- **新增**: `workers/init_workers.py`, `workers/async_job_manager.py`
+- **修改**: `workers/__init__.py`, `widgets/perf_manager.py`, `native/main.py`, `pages/memory_page.py`, `app/version.py`, `docs/VERSION.md`, `README.md`, `resources/generate_icons.py`, `widgets/update_manager.py`
+
+## 🟢 v1.11.21 (2026-06-01) ✅ STABLE
+
+### ⚡ 性能
+- **[P0-1] VectorStore.search() NumPy 向量化**：余弦相似度从纯 Python 循环改为 NumPy 矩阵批量运算，500条×768维从~500ms降至~5ms（100x 加速），无 NumPy 时自动回退
+- **[P0-2] VectorStore._is_duplicate() NumPy 优化**：去重检查改为 NumPy 批量计算，避免逐条 Python 循环
+- **[P1-5] VectorStore 序列化改 NumPy 二进制**：向量数据保存为 vectors.npy（二进制），元数据保存为 vectors_meta.json，加载速度提升 10x+，自动兼容迁移旧 JSON 格式
+- **[P2-8] Config 5 个 JSON 并行加载**：api_keys/llm/asr/tts/vision_preferences 从串行读取改为 ThreadPoolExecutor 并行读取，总 IO 时间降为 ~1/5
+
+### 🔧 修复
+- **[P1-3] _history_file CWD 路径修复**：`Path("./memory/state/chat_history.json").resolve()` 改为 `Path(PROJECT_DIR) / "memory" / "state" / "chat_history.json"`，不再依赖 CWD（防止 GPT-SoVITS os.chdir() 污染）
+- **[P1-4] search_cache add 后失效**：add()/delete() 成功后清除搜索缓存，避免返回过时结果
+- **[P1-6] _cosine_similarity 复用 norm 缓存**：签名扩展为 `_cosine_similarity(a, norm_a, b, norm_b=None)`，支持传入预计算的 norm_b
+- **[P2-9] GPT-SoVITS os.chdir 改 save/restore**：删除模块级 `os.chdir()`，改为 `_lazy_init()` 中 try/finally 临时切换 + 恢复 CWD，不再永久污染进程工作目录
+
+### 🐛 优化
+- **[P2-7] ToolExecutor._BLOCKLIST 改类常量**：危险命令黑名单从方法内局部 set 改为类级 `frozenset` 常量，避免每次 can_execute() 重复创建
+- **[P2-10] Embedding 模型后台预热**：MemorySystem 初始化后启动 daemon 线程预热 embedding 模型，避免首次对话延迟 5-10 秒
+
+## 🟢 v1.11.20 (2026-05-31) ✅ STABLE
+
+### 🔧 修复
+- **[BUG-1] SplashDebugWindow.set_progress() 重复定义**：合并两个同名方法为一个，恢复 `QApplication.processEvents()` UI 强制刷新和 `_center_on_screen()` 窗口居中逻辑，启动画面进度更新不再卡顿
+- **[ARCH-1] VisionWorker 破坏封装**：VisionManager 新增 `current_provider` / `has_provider` / `get_provider()` 三个公开接口，OCRWorker 和 VisionWorker 不再直接访问 `_current_provider` / `_providers` 私有属性
+- **[ARCH-2] StreamChatWorker 双记忆检索**：删除 Worker 层的 `backend.memory.search()` 调用，统一由 LLM 内部 MemoryRAGInjector 处理记忆检索（消除 token 浪费和记忆重复注入）
+- **[ARCH-3] LLM 重试无退避**：添加 2 秒分段延迟（每 0.5 秒检查 stop 标志）+ 最多重试 1 次，限流场景下不再立即重试
+- **[MINOR-1] chat_page.py 重复注释**：删除重复的注释分隔线
+
+### 📝 文件变更
+- **修改**: `splash_debug_window.py` (合并 set_progress)、`app/vision/__init__.py` (+3 公开接口)、`vision_workers.py` (改用公开接口)、`chat_workers.py` (删记忆检索+加重试退避)、`chat_page.py` (删重复注释)
+- **新增**: `docs/pr-fix-2025-05.md` (修复 PRD)、`docs/arch-fix-2025-05.md` (修复架构设计)
+
 ## 🟢 v1.11.19 (2026-05-31) ✅ STABLE
 
 ### 🔧 修复

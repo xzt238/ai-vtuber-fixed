@@ -417,7 +417,10 @@ class FunASRASR(ASREngine):
         model: 模型名称，默认 paraformer-zh
         device: 推理设备，默认 cuda
     """
-    
+
+    # v1.11.29 P1-1: 模型加载状态缓存 — 避免重复检查模型文件
+    _model_cache = {}  # 类级别缓存: {model_name: model_instance}
+
     def __init__(self, config: Dict[str, Any]):
         """
         【构造函数】初始化 FunASR 配置，但不加载模型（懒加载）

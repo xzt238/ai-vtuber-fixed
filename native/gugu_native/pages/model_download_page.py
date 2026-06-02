@@ -42,6 +42,8 @@ from app.shared_config import PROJECT_DIR, GPT_SOVITS_MODELS
 HF_MIRROR = 'https://hf-mirror.com'
 
 from gugu_native.theme import get_colors, register_theme_callback
+from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
+from gugu_native.widgets.skeleton_container import SkeletonContainer
 
 
 # ===== 模型下载列表配置 =====
@@ -485,15 +487,36 @@ class _DownloadWorker(QThread):
             self.finished.emit(mdl_id, False, str(e)[:300])
 
 
-class ModelDownloadPage(ScrollArea):
-    """模型下载页面"""
+class ModelDownloadPage(ScrollArea, LazyPageMixin):
+    """模型下载页面 — 支持懒加载，首次可见时才创建完整 UI"""
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        ScrollArea.__init__(self, parent)
+        LazyPageMixin.__init__(self)
         self.setObjectName("modelDownloadPage")
         self._download_worker = None
         self._model_items = {}
+        # 不调用 _init_ui()，延迟到 lazy_init()
+        # 骨架屏占位
+        self._skeleton = SkeletonContainer("正在加载模型下载...", self)
+        self._skeleton.hide_skeleton()
+
+    def show_skeleton(self):
+        self._skeleton.show_skeleton()
+
+    def hide_skeleton(self):
+        self._skeleton.hide_skeleton()
+
+    def lazy_init(self):
+        """首次切换到该页时调用 — 构建完整 UI"""
+        if self._is_initialized:
+            return
+        self._skeleton.hide_skeleton()
+        self._skeleton.setParent(None)
+        self._skeleton.deleteLater()
         self._init_ui()
+        # 注册主题变更回调（延迟到 UI 创建后）
+        register_theme_callback(self.refresh_theme)
 
     def _init_ui(self):
         self.setWidgetResizable(True)

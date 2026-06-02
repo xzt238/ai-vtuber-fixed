@@ -1,94 +1,55 @@
 classDiagram
-    %% ──── 平台抽象层 ────
-    class PlatformAbstraction {
-        +is_windows() bool
-        +is_macos() bool
-        +is_linux() bool
-        +get_platform() str
-        -_platform: str
-        --
-        +get_python_command() List~str~
-        +get_subprocess_kwargs() Dict
-        +kill_process_tree(pid: int) void
-        --
-        +acquire_single_instance(name: str) bool
-        +release_single_instance() void
-        --
-        +show_message(title: str, msg: str, level: str) void
-        --
-        +get_autostart() AutoStartBase
-        +get_system_monitor() SystemMonitorBase
-        --
-        +get_app_config_dir() Path
-        +get_app_data_dir() Path
+    class VisionManager {
+        -Dict~VisionProviderType,VisionProvider~ _providers
+        -VisionProviderType _current_provider_type
+        -VisionProvider _current_provider
+        -MimoVisionProvider _mimo_vision_provider
+        +set_provider(provider: str) void
+        +current_provider_name: str %% property
+        +current_provider_description: str %% property
+        +recognize_text(image_path: str) Optional~str~
+        +understand(image_path: str, prompt: str) Optional~str~
+        +get_available_providers() List~Dict~
+        +current_provider: Optional~VisionProvider~ %% property [NEW]
+        +has_provider: bool %% property [NEW]
+        +get_provider(provider_type: VisionProviderType) Optional~VisionProvider~ %% [NEW]
     }
 
-    %% ──── 设备管理器 ────
-    class DeviceManager {
-        +detect_device() str
-        +get_torch_device() torch.device
-        +get_available_devices() List~str~
-        +is_cuda_available() bool
-        +is_mps_available() bool
-        +get_gpu_stats() Dict~str,Any~
-        +get_recommended_dtype() torch.dtype
-        -_cached_device: str
+    class OCRWorker {
+        +finished: Signal~str~
+        +error: Signal~str~
+        +run() void
     }
 
-    %% ──── 系统监控抽象 ────
-    class SystemMonitorBase {
-        <<abstract>>
-        +get_gpu_stats() Dict
-        +get_memory_stats() Dict
-        +get_cpu_stats() Dict
+    class VisionWorker {
+        +result_ready: Signal~str~
+        +error_occurred: Signal~str~
+        +run() void
     }
 
-    class WindowsMonitor {
-        +get_gpu_stats() Dict
-    }
-    class MacMonitor {
-        +get_gpu_stats() Dict
-    }
-    class LinuxMonitor {
-        +get_gpu_stats() Dict
-    }
-
-    %% ──── 自启管理抽象 ────
-    class AutoStartBase {
-        <<abstract>>
-        +is_enabled() bool
-        +enable() bool
-        +disable() bool
+    class StreamChatWorker {
+        +chunk_received: Signal~str~
+        +sentence_ready: Signal~str~
+        +finished_stream: Signal~dict~
+        +error: Signal~str~
+        +tool_call_status: Signal~str~
+        -_stop_requested: bool
+        -_mutex: QMutex
+        -_retry_count: int %% [NEW]
+        +run() void
+        +stop_stream() void
+        +is_stop_requested() bool
     }
 
-    class WinAutoStart {
-        -REG_KEY: str
-        +is_enabled() bool
-        +enable() bool
-        +disable() bool
-    }
-    class MacAutoStart {
-        -LAUNCH_AGENT_DIR: Path
-        +is_enabled() bool
-        +enable() bool
-        +disable() bool
-    }
-    class LinuxAutoStart {
-        -AUTOSTART_DIR: Path
-        +is_enabled() bool
-        +enable() bool
-        +disable() bool
+    class SplashDebugWindow {
+        -_progress_label: QLabel
+        -_skip_btn: QPushButton
+        -_skip_timer_started: bool
+        +set_progress(text: str) void %% [MERGED]
+        -_center_on_screen() void
+        -_show_skip_button() void
+        +append_log(text: str) void
     }
 
-    %% ──── 关系 ────
-    PlatformAbstraction --> SystemMonitorBase : creates
-    PlatformAbstraction --> AutoStartBase : creates
-    SystemMonitorBase <|-- WindowsMonitor
-    SystemMonitorBase <|-- MacMonitor
-    SystemMonitorBase <|-- LinuxMonitor
-    AutoStartBase <|-- WinAutoStart
-    AutoStartBase <|-- MacAutoStart
-    AutoStartBase <|-- LinuxAutoStart
-
-    note for PlatformAbstraction "被 app/main.py, launcher/launcher.py,\nnative/*, app/web/ 引用"
-    note for DeviceManager "被 app/asr/, app/vision/,\napp/tts/, app/llm/, app/main.py 引用"
+    OCRWorker --> VisionManager : 使用公开接口
+    VisionWorker --> VisionManager : 使用公开接口

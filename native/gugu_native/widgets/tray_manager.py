@@ -166,6 +166,16 @@ class TrayManager(QObject):
                 return True
         return False
 
+    def toggle_record_action(self):
+        """托盘菜单切换录音 — 带 None guard"""
+        voice_manager = getattr(self.main_window, 'voice_manager', None)
+        if voice_manager is None:
+            return
+        if voice_manager.is_listening:
+            voice_manager.stop_listening()
+        else:
+            voice_manager.start_listening()
+
     def cleanup(self):
         """清理托盘资源"""
         if self._tray:

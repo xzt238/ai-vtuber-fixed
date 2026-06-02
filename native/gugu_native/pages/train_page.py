@@ -36,6 +36,8 @@ from qfluentwidgets import (
 from app.shared_config import PROJECT_DIR
 
 from gugu_native.theme import get_colors, register_theme_callback
+from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
+from gugu_native.widgets.skeleton_container import SkeletonContainer
 
 
 class ProjectListWorker(QThread):
@@ -103,24 +105,49 @@ class TrainWorker(QThread):
             self.error.emit(str(e))
 
 
-class TrainPage(QWidget):
-    """音色训练页面"""
+class TrainPage(QWidget, LazyPageMixin):
+    """音色训练页面 — 支持懒加载，首次可见时才创建完整 UI"""
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        QWidget.__init__(self, parent)
+        LazyPageMixin.__init__(self)
         self.setObjectName("trainPage")
         self._backend = None
         self._trainer = None
         self._current_project = None
         self._train_worker = None
-        self._init_ui()
+        # 不调用 _init_ui()，延迟到 lazy_init()
+        # 骨架屏占位
+        self._skeleton = SkeletonContainer("正在加载音色训练...", self)
+        self._skeleton.hide_skeleton()
 
-        # 训练进度轮询
+    def show_skeleton(self):
+        self._skeleton.show_skeleton()
+
+    def hide_skeleton(self):
+        self._skeleton.hide_skeleton()
+
+    def lazy_init(self):
+        """首次切换到该页时调用 — 构建完整 UI"""
+        if self._is_initialized:
+            return
+        self._skeleton.hide_skeleton()
+        self._skeleton.setParent(None)
+        self._skeleton.deleteLater()
+        self._init_ui()
+        # 训练进度轮询（在 _init_ui 后创建，避免 __init__ 中创建未使用的定时器）
         self._progress_timer = QTimer(self)
         self._progress_timer.setInterval(1000)  # 1秒轮询
         self._progress_timer.timeout.connect(self._poll_training_status)
-        # 注册主题变更回调
+        # 注册主题变更回调（延迟到 UI 创建后）
         register_theme_callback(self.refresh_theme)
+        # 如果后端已就绪，立即刷新项目列表
+        if self.backend:
+            self._on_backend_ready_impl()
+
+    def _on_backend_ready_impl(self):
+        """后端就绪后的实际 UI 操作"""
+        self._refresh_projects()
 
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -491,8 +518,7 @@ class TrainPage(QWidget):
 
         main_layout.addWidget(splitter, stretch=1)
 
-        # 延迟加载项目列表
-        QTimer.singleShot(800, self._refresh_projects)
+        # 延迟加载项目列表（由 lazy_init → _on_backend_ready_impl 触发）
 
     # ========== 后端访问 ==========
 
@@ -513,7 +539,10 @@ class TrainPage(QWidget):
 
     def on_backend_ready(self):
         """后端就绪回调 — 刷新项目列表"""
-        self._refresh_projects()
+        if not self._is_initialized:
+            # 页面尚未初始化，保存后端引用但不执行 UI 操作
+            return
+        self._on_backend_ready_impl()
 
     # ========== 项目管理 ==========
 

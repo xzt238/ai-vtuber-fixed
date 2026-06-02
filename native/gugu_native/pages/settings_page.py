@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFormLayout, QSizePolicy
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QThread
 from qfluentwidgets import (
     TitleLabel, SubtitleLabel, ComboBox, LineEdit,
     PushButton, FluentIcon, InfoBar, InfoBarPosition,
@@ -28,6 +28,8 @@ from app.shared_config import PROJECT_DIR
 
 from gugu_native.theme import apply_theme, get_global_qss, is_dark, apply_theme_by_id, get_current_theme_id, get_colors, register_theme_callback
 from gugu_native.widgets.theme_selector import ThemeSelector
+from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
+from gugu_native.widgets.skeleton_container import SkeletonContainer
 
 # ===== Provider 配置数据（统一从 shared_config 引入，不再本地维护副本）=====
 from app.shared_config import PROVIDER_CONFIG, EDGE_VOICES
@@ -40,24 +42,64 @@ _CACHE_DIR = os.path.join(PROJECT_DIR, "app", "cache")
 _LLM_PREFS_FILE = os.path.join(_CACHE_DIR, "llm_preferences.json")
 _API_KEYS_FILE = os.path.join(_CACHE_DIR, "api_keys.json")
 _TTS_PREFS_FILE = os.path.join(_CACHE_DIR, "tts_preferences.json")
+_ASR_PREFS_FILE = os.path.join(_CACHE_DIR, "asr_preferences.json")
+_VISION_PREFS_FILE = os.path.join(_CACHE_DIR, "vision_preferences.json")
+_PROACTIVE_PREFS_FILE = os.path.join(_CACHE_DIR, "proactive_prefs.json")
 
 # Edge TTS 音色列表已从 app/shared_config.py 引入（不再本地维护副本）
 
 
-class SettingsPage(ScrollArea):
-    """设置页面 — 卡片式分组布局"""
+class SettingsPage(ScrollArea, LazyPageMixin):
+    """设置页面 — 卡片式分组布局，支持懒加载"""
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        ScrollArea.__init__(self, parent)
+        LazyPageMixin.__init__(self)
         self.setObjectName("settingsPage")
         self._backend = None
         self._api_key_visible = False  # API Key 显隐状态
         self._pending_tts_voice = None  # 待恢复的 TTS 音色 ID（异步加载完成后恢复用）
         self._dirty = False  # 是否有未保存的修改
+        # 不调用 _init_ui()，延迟到 lazy_init()
+        # 骨架屏占位
+        self._skeleton = SkeletonContainer("正在加载设置...", self)
+        self._skeleton.hide_skeleton()
+        # 配置加载延迟到 on_backend_ready，减少启动时同步 I/O
+
+    def show_skeleton(self):
+        self._skeleton.show_skeleton()
+
+    def hide_skeleton(self):
+        self._skeleton.hide_skeleton()
+
+    def lazy_init(self):
+        """首次切换到该页时调用 — 构建完整 UI"""
+        if self._is_initialized:
+            return
+        self._skeleton.hide_skeleton()
+        self._skeleton.setParent(None)
+        self._skeleton.deleteLater()
         self._init_ui()
-        self._load_saved_config()
-        # 注册主题变更回调
+        # 注册主题变更回调（延迟到 UI 创建后）
         register_theme_callback(self.refresh_theme)
+        # 绑定开机自启开关到 AutoStartManager
+        # （因为 _init_ui 延迟到 lazy_init，autostart_switch 此时才可用）
+        self._bind_autostart_switch()
+        # 如果后端已就绪，立即同步配置
+        if self.backend:
+            self._on_backend_ready_impl()
+
+    def _bind_autostart_switch(self):
+        """绑定开机自启开关到主窗口的 AutoStartManager"""
+        if not hasattr(self, 'autostart_switch'):
+            return
+        main_window = self.window()
+        if main_window and hasattr(main_window, 'autostart_manager'):
+            mgr = main_window.autostart_manager
+            self.autostart_switch.setChecked(mgr.is_enabled())
+            self.autostart_switch.checkedChanged.connect(
+                lambda checked: mgr.enable() if checked else mgr.disable()
+            )
 
     @property
     def backend(self):
@@ -1201,125 +1243,275 @@ class SettingsPage(ScrollArea):
         注意: backend.config 是 Config 对象，其 .get() 方法使用点号分隔的扁平查找，
         无法直接获取嵌套字典。需要通过 backend.config.config（原始 dict）访问。
         """
+        if not self._is_initialized:
+            # 页面尚未初始化，保存后端引用但不执行 UI 操作
+            return
+        self._on_backend_ready_impl()
+
+    def _on_backend_ready_impl(self):
+        """后端就绪后的实际 UI 操作 — 异步加载偏好文件，减少同步 I/O"""
+        # 使用 AsyncJsonWorker 批量异步读取所有偏好文件
+        self._load_prefs_async()
+
+    def _load_prefs_async(self):
+        """异步批量加载所有偏好文件"""
+        from gugu_native.widgets.async_json_worker import AsyncJsonWorker
+
+        file_paths = [
+            _LLM_PREFS_FILE,
+            _API_KEYS_FILE,
+            _TTS_PREFS_FILE,
+            _ASR_PREFS_FILE,
+            _VISION_PREFS_FILE,
+            _PROACTIVE_PREFS_FILE,
+        ]
+
+        self._prefs_worker = AsyncJsonWorker(file_paths, parent=self)
+        self._prefs_worker.json_loaded.connect(self._on_prefs_loaded)
+        self._prefs_worker.json_failed.connect(self._on_prefs_load_failed)
+        self._prefs_worker.start()
+
+    def _on_prefs_loaded(self, results: dict):
+        """所有偏好文件加载完成 — 批量更新 UI"""
+        # results 格式: {file_path: data_dict_or_None}
+        llm_prefs = results.get(_LLM_PREFS_FILE) or {}
+        api_keys = results.get(_API_KEYS_FILE) or {}
+        tts_prefs = results.get(_TTS_PREFS_FILE) or {}
+        asr_prefs = results.get(_ASR_PREFS_FILE) or {}
+        vision_prefs = results.get(_VISION_PREFS_FILE) or {}
+        proactive_prefs = results.get(_PROACTIVE_PREFS_FILE) or {}
+
+        # 应用 LLM 偏好
+        self._apply_llm_prefs(llm_prefs, api_keys)
+
+        # 应用 TTS 偏好
+        self._apply_tts_prefs(tts_prefs)
+
+        # 应用 ASR 偏好
+        self._apply_asr_prefs(asr_prefs)
+
+        # 应用视觉偏好
+        self._apply_vision_prefs(vision_prefs)
+
+        # 应用主动说话偏好
+        self._apply_proactive_prefs(proactive_prefs)
+
+        # 从 backend.config 补充偏好文件中不存在的配置
+        self._apply_backend_config_fallback()
+
+    def _on_prefs_load_failed(self, error_msg: str):
+        """偏好文件异步加载失败 — 降级到同步读取"""
+        print(f"[SettingsPage] 异步偏好加载失败，降级到同步读取: {error_msg}")
+        try:
+            self._load_saved_config()
+            self._apply_backend_config_fallback()
+        except Exception as e:
+            print(f"[SettingsPage] 同步降级加载也失败: {e}")
+
+    def _apply_llm_prefs(self, prefs: dict, api_keys: dict = None):
+        """应用 LLM 偏好（输入是已解析的 dict）"""
+        if not prefs:
+            return
+        try:
+            saved_provider = prefs.get("provider", "minimax")
+            saved_model = prefs.get("model", "")
+
+            provider_cfg = PROVIDER_CONFIG.get(saved_provider, {})
+            label = provider_cfg.get("label", saved_provider)
+            idx = self.llm_provider.findText(label)
+            if idx >= 0:
+                self.llm_provider.setCurrentIndex(idx)
+
+            provider_configs = prefs.get("provider_configs", {})
+            saved_config = provider_configs.get(saved_provider, {})
+            base_url = saved_config.get("base_url", provider_cfg.get("baseUrl", ""))
+            self.base_url_input.setText(base_url)
+
+            if saved_model:
+                model_idx = self.model_combo.findText(saved_model)
+                if model_idx >= 0:
+                    self.model_combo.setCurrentIndex(model_idx)
+                else:
+                    self.model_combo.addItem(saved_model)
+                    self.model_combo.setCurrentText(saved_model)
+
+            # 恢复 API Key
+            if api_keys:
+                saved_key = api_keys.get(saved_provider, "")
+                self.api_key_input.setText(saved_key)
+            else:
+                self._load_api_key_for_provider(saved_provider)
+        except Exception as e:
+            print(f"[SettingsPage] 应用 LLM 偏好失败: {e}")
+
+    def _apply_tts_prefs(self, prefs: dict):
+        """应用 TTS 偏好（输入是已解析的 dict）"""
+        if not prefs:
+            return
+        try:
+            engine = prefs.get("engine", "Edge TTS")
+            voice_id = prefs.get("voice", "")
+
+            # 设置引擎（会触发 _on_tts_engine_changed → 填充音色列表）
+            idx = self.tts_engine.findText(engine)
+            if idx >= 0:
+                self.tts_engine.setCurrentIndex(idx)
+
+            # 设置音色
+            if voice_id:
+                self._pending_tts_voice = voice_id
+                for i in range(self.tts_voice.count()):
+                    if str(self.tts_voice.itemData(i) or "") == voice_id:
+                        self.tts_voice.setCurrentIndex(i)
+                        self._pending_tts_voice = None
+                        break
+                else:
+                    voice_idx = self.tts_voice.findText(voice_id)
+                    if voice_idx >= 0:
+                        self.tts_voice.setCurrentIndex(voice_idx)
+                        self._pending_tts_voice = None
+
+            # 恢复各引擎的子配置
+            provider_configs = prefs.get("provider_configs", {})
+            mimo_cfg = provider_configs.get("mimo", {})
+            if mimo_cfg.get("base_url"):
+                self.mimo_tts_base_url.setText(mimo_cfg["base_url"])
+        except Exception as e:
+            print(f"[SettingsPage] 应用 TTS 偏好失败: {e}")
+
+    def _apply_asr_prefs(self, prefs: dict):
+        """应用 ASR 偏好（输入是已解析的 dict）"""
+        if not prefs:
+            return
+        try:
+            provider = prefs.get("provider", "funasr")
+            provider_map = {"funasr": 0, "mimo": 1}
+            idx = provider_map.get(provider, 0)
+            self.asr_provider.setCurrentIndex(idx)
+
+            provider_configs = prefs.get("provider_configs", {})
+            mimo_cfg = provider_configs.get("mimo", {})
+            if mimo_cfg.get("base_url"):
+                self.mimo_asr_base_url.setText(mimo_cfg["base_url"])
+        except Exception as e:
+            print(f"[SettingsPage] 应用 ASR 偏好失败: {e}")
+
+    def _apply_vision_prefs(self, prefs: dict):
+        """应用视觉偏好（输入是已解析的 dict）"""
+        if not prefs:
+            return
+        try:
+            vp = prefs.get("default_provider", "rapidocr")
+            vision_provider_idx = {"rapidocr": 0, "minimax_vl": 1, "minicpm": 2, "mimo_vision": 3}.get(vp, 0)
+            self.vision_provider.setCurrentIndex(vision_provider_idx)
+            pcfg = prefs.get("provider_configs", {}).get("mimo_vision", {})
+            if pcfg.get("base_url"):
+                self.mimo_vision_base_url.setText(pcfg["base_url"])
+        except Exception as e:
+            print(f"[SettingsPage] 应用视觉偏好失败: {e}")
+
+    def _apply_proactive_prefs(self, prefs: dict):
+        """应用主动说话偏好（输入是已解析的 dict）"""
+        if not prefs:
+            return
+        try:
+            if "interval" in prefs:
+                self.proactive_interval.setValue(prefs["interval"])
+            if prefs.get("enabled", False):
+                self.proactive_switch.setChecked(True)
+        except Exception as e:
+            print(f"[SettingsPage] 应用主动说话偏好失败: {e}")
+
+    def _apply_backend_config_fallback(self):
+        """从 backend.config.yaml 补充偏好文件中不存在的配置"""
         try:
             backend = self.backend
             if not backend:
                 return
-            if hasattr(backend, 'config'):
-                # 注意: backend.config 是 Config 对象，
-                # config.get('llm') 用扁平查找会返回 {}（因为 'llm' 不是叶子节点）
-                # 必须用 config.config.get('llm') 访问原始嵌套字典
-                raw_config = backend.config.config if hasattr(backend.config, 'config') else {}
+            if not hasattr(backend, 'config'):
+                return
+            raw_config = backend.config.config if hasattr(backend.config, 'config') else {}
 
-                # ===== 同步 LLM 配置（优先用偏好文件）=====
-                if not os.path.exists(_LLM_PREFS_FILE):
-                    # 偏好文件不存在 → 从 config.yaml 恢复
-                    llm_cfg = raw_config.get('llm', {})
-                    provider = llm_cfg.get('provider', 'minimax')
-                    model = llm_cfg.get('model', '')
-                    provider_cfg = PROVIDER_CONFIG.get(provider, {})
-                    label = provider_cfg.get("label", provider)
-                    idx = self.llm_provider.findText(label)
-                    if idx >= 0:
-                        self.llm_provider.setCurrentIndex(idx)
-                    if model:
-                        model_idx = self.model_combo.findText(model)
-                        if model_idx >= 0:
-                            self.model_combo.setCurrentIndex(model_idx)
-                # 偏好文件存在 → _load_saved_config 已在 __init__ 中恢复，不覆盖
+            # ===== LLM: 仅当偏好文件不存在时从 config.yaml 恢复 =====
+            if not os.path.exists(_LLM_PREFS_FILE):
+                llm_cfg = raw_config.get('llm', {})
+                provider = llm_cfg.get('provider', 'minimax')
+                model = llm_cfg.get('model', '')
+                provider_cfg = PROVIDER_CONFIG.get(provider, {})
+                label = provider_cfg.get("label", provider)
+                idx = self.llm_provider.findText(label)
+                if idx >= 0:
+                    self.llm_provider.setCurrentIndex(idx)
+                if model:
+                    model_idx = self.model_combo.findText(model)
+                    if model_idx >= 0:
+                        self.model_combo.setCurrentIndex(model_idx)
 
-                # ===== 同步 TTS 配置（优先用偏好文件）=====
-                if not os.path.exists(_TTS_PREFS_FILE):
-                    tts_cfg = raw_config.get('tts', {})
-                    tts_provider = tts_cfg.get("provider", "edge")
-                    engine_map = {"edge": "Edge TTS", "gptsovits": "GPT-SoVITS", "mimo": "MiMo TTS"}
-                    engine_label = engine_map.get(tts_provider, "Edge TTS")
-                    idx = self.tts_engine.findText(engine_label)
-                    if idx >= 0:
-                        self.tts_engine.setCurrentIndex(idx)
-                    voice = tts_cfg.get(tts_provider, {}).get("voice", "")
-                    if voice:
-                        for i in range(self.tts_voice.count()):
-                            if str(self.tts_voice.itemData(i) or "") == voice:
-                                self.tts_voice.setCurrentIndex(i)
-                                break
-                    # 恢复 MiMo base_url from config.yaml
-                    if tts_provider == "mimo":
-                        mimo_url = tts_cfg.get("mimo", {}).get("base_url", "")
-                        if mimo_url:
-                            self.mimo_tts_base_url.setText(mimo_url)
-                else:
-                    self._load_tts_prefs()
+            # ===== TTS: 仅当偏好文件不存在时从 config.yaml 恢复 =====
+            if not os.path.exists(_TTS_PREFS_FILE):
+                tts_cfg = raw_config.get('tts', {})
+                tts_provider = tts_cfg.get("provider", "edge")
+                engine_map = {"edge": "Edge TTS", "gptsovits": "GPT-SoVITS", "mimo": "MiMo TTS"}
+                engine_label = engine_map.get(tts_provider, "Edge TTS")
+                idx = self.tts_engine.findText(engine_label)
+                if idx >= 0:
+                    self.tts_engine.setCurrentIndex(idx)
+                voice = tts_cfg.get(tts_provider, {}).get("voice", "")
+                if voice:
+                    for i in range(self.tts_voice.count()):
+                        if str(self.tts_voice.itemData(i) or "") == voice:
+                            self.tts_voice.setCurrentIndex(i)
+                            break
+                if tts_provider == "mimo":
+                    mimo_url = tts_cfg.get("mimo", {}).get("base_url", "")
+                    if mimo_url:
+                        self.mimo_tts_base_url.setText(mimo_url)
 
-                # ===== 同步 ASR 配置（优先用偏好文件）=====
-                asr_prefs_file = os.path.join(_CACHE_DIR, "asr_preferences.json")
-                if not os.path.exists(asr_prefs_file):
-                    asr_cfg = raw_config.get('asr', {})
-                    asr_provider = asr_cfg.get("provider", "funasr")
-                    provider_map = {"funasr": 0, "mimo": 1}
-                    self.asr_provider.setCurrentIndex(provider_map.get(asr_provider, 0))
-                    if asr_provider == "mimo":
-                        mimo_url = asr_cfg.get("mimo", {}).get("base_url", "")
-                        if mimo_url:
-                            self.mimo_asr_base_url.setText(mimo_url)
-                else:
-                    self._load_asr_prefs()
+            # ===== ASR: 仅当偏好文件不存在时从 config.yaml 恢复 =====
+            if not os.path.exists(_ASR_PREFS_FILE):
+                asr_cfg = raw_config.get('asr', {})
+                asr_provider = asr_cfg.get("provider", "funasr")
+                provider_map = {"funasr": 0, "mimo": 1}
+                self.asr_provider.setCurrentIndex(provider_map.get(asr_provider, 0))
+                if asr_provider == "mimo":
+                    mimo_url = asr_cfg.get("mimo", {}).get("base_url", "")
+                    if mimo_url:
+                        self.mimo_asr_base_url.setText(mimo_url)
 
-                # ===== 同步视觉配置（优先用偏好文件）=====
+            # ===== Vision: 仅当偏好文件不存在时从 config.yaml 恢复 =====
+            if not os.path.exists(_VISION_PREFS_FILE):
                 vision_cfg = raw_config.get('vision', {})
-                vision_prefs_file = os.path.join(_CACHE_DIR, "vision_preferences.json")
-                vision_provider_idx = 0  # 默认 RapidOCR
-                if not os.path.exists(vision_prefs_file):
-                    vision_provider = vision_cfg.get('default_provider', 'rapidocr')
-                    vision_provider_idx = {"rapidocr": 0, "minimax_vl": 1, "minicpm": 2, "mimo_vision": 3}.get(vision_provider, 0)
-                    self.vision_provider.setCurrentIndex(vision_provider_idx)
-                    # MiniMax VL key 共享 LLM key
-                    minimax_vl_cfg = vision_cfg.get('minimax_vl', {})
-                    vl_key = minimax_vl_cfg.get('api_key', '')
-                    if vl_key:
-                        self.vision_api_key.setText(vl_key)
-                    vl_host = minimax_vl_cfg.get('api_host', '')
-                    if vl_host:
-                        self.vision_api_host.setText(vl_host)
+                vision_provider = vision_cfg.get('default_provider', 'rapidocr')
+                vision_provider_idx = {"rapidocr": 0, "minimax_vl": 1, "minicpm": 2, "mimo_vision": 3}.get(vision_provider, 0)
+                self.vision_provider.setCurrentIndex(vision_provider_idx)
+                minimax_vl_cfg = vision_cfg.get('minimax_vl', {})
+                vl_key = minimax_vl_cfg.get('api_key', '')
+                if vl_key:
+                    self.vision_api_key.setText(vl_key)
+                vl_host = minimax_vl_cfg.get('api_host', '')
+                if vl_host:
+                    self.vision_api_host.setText(vl_host)
+                minicpm_cfg = vision_cfg.get('minicpm', {})
+                model_path = minicpm_cfg.get('model_id_or_path', '')
+                if model_path:
+                    self.vision_model_path.setText(model_path)
+                if minicpm_cfg.get('int4', False):
+                    self.vision_int4_switch.setChecked(True)
+                if vision_provider == "mimo_vision":
+                    mimo_url = vision_cfg.get("mimo_vision", {}).get("base_url", "")
+                    if mimo_url:
+                        self.mimo_vision_base_url.setText(mimo_url)
 
-                    # v1.9.76: 同步 MiniCPM-V2 配置
-                    minicpm_cfg = vision_cfg.get('minicpm', {})
-                    model_path = minicpm_cfg.get('model_id_or_path', '')
-                    if model_path:
-                        self.vision_model_path.setText(model_path)
-                    if minicpm_cfg.get('int4', False):
-                        self.vision_int4_switch.setChecked(True)
+            # 触发 provider 切换以更新 UI 状态
+            self._on_vision_provider_changed(self.vision_provider.currentIndex())
+            self._on_asr_provider_changed(self.asr_provider.currentIndex())
 
-                    # 同步 MiMo Vision base_url
-                    if vision_provider == "mimo_vision":
-                        mimo_url = vision_cfg.get("mimo_vision", {}).get("base_url", "")
-                        if mimo_url:
-                            self.mimo_vision_base_url.setText(mimo_url)
-                else:
-                    # 从偏好文件恢复
-                    try:
-                        with open(vision_prefs_file, "r", encoding="utf-8") as f:
-                            vprefs = json.load(f)
-                        vp = vprefs.get("default_provider", "rapidocr")
-                        vision_provider_idx = {"rapidocr": 0, "minimax_vl": 1, "minicpm": 2, "mimo_vision": 3}.get(vp, 0)
-                        self.vision_provider.setCurrentIndex(vision_provider_idx)
-                        pcfg = vprefs.get("provider_configs", {}).get("mimo_vision", {})
-                        if pcfg.get("base_url"):
-                            self.mimo_vision_base_url.setText(pcfg["base_url"])
-                    except Exception:
-                        pass
-
-                # 触发 provider 切换以更新 UI 状态
-                self._on_vision_provider_changed(vision_provider_idx)
-
-                # ASR provider 切换触发
-                self._on_asr_provider_changed(self.asr_provider.currentIndex())
-
-                # v1.9.76: 同步主动说话配置
+            # 同步主动说话配置（从 config.yaml fallback）
+            if not os.path.exists(_PROACTIVE_PREFS_FILE):
                 self._load_proactive_config()
         except Exception as e:
             import traceback
-            print(f"[SettingsPage] on_backend_ready 失败: {e}")
+            print(f"[SettingsPage] _apply_backend_config_fallback 失败: {e}")
             traceback.print_exc()
 
     def _on_proactive_toggled(self, checked: bool):

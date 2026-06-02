@@ -6,6 +6,12 @@ asr:
   funasr:
     device: cuda
     model: paraformer-zh
+  mimo:
+    api_key: ''
+    base_url: https://api.xiaomimimo.com/v1
+    language: auto
+    model: mimo-v2.5
+    timeout: 60
   provider: funasr
 desktop_pet:
   always_on_top: true
@@ -141,6 +147,13 @@ tts:
     is_half: true
     root_dir: ./GPT-SoVITS
     version: v3
+  mimo:
+    api_key: ''
+    audio_format: wav
+    base_url: https://api.xiaomimimo.com/v1
+    model: mimo-v2.5-tts
+    style: ''
+    voice: mimo_default
   provider: gptsovits
 vad:
   stop_threshold_ms: 1800
@@ -158,6 +171,12 @@ vision:
     api_key: ''
     jpeg_quality: 40
     model: MiniMax-VL-01
+    timeout: 120
+  mimo_vision:
+    api_key: ''
+    base_url: https://api.xiaomimimo.com/v1
+    jpeg_quality: 50
+    model: mimo-v2.5
     timeout: 120
   rapidocr:
     enabled: true
