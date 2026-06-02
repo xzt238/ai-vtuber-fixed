@@ -69,11 +69,9 @@ def validate_path(path: Union[str, Path], base_dir: Optional[Union[str, Path]] =
         base = Path(base_dir or Path.cwd()).resolve()
 
         # ===== 安全边界检查 =====
-        # 通过字符串前缀匹配判断 resolved 是否在 base 目录内
-        # 这是路径遍历防护的核心逻辑：
-        # 如果攻击者传入 "/etc/passwd"，而 base 是 "/app/data"，
-        # 则 str(resolved) = "/etc/passwd" 不会以 "/app/data" 开头，检查失败
-        if not str(resolved).startswith(str(base)):
+        # v1.12.0: 使用 Path.is_relative_to() 或添加分隔符的前缀匹配
+        # 防止 "/app/data_leak" 绕过 "/app/data" 的检查
+        if not (resolved == base or str(resolved).startswith(str(base) + os.sep)):
             raise ValueError(f"路径超出允许范围: {path}")
 
         # 所有检查通过，返回安全可用的绝对路径

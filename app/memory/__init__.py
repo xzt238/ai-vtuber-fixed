@@ -1314,7 +1314,8 @@ class MemorySystem:
         # ===== 四层记忆 =====
         self.working_memory: List[MemoryItem] = []
         self.episodic_memory: List[MemoryItem] = []
-        
+        self._memory_lock = threading.Lock()  # v1.12.0: 保护并发读写
+
         # ===== v3.0: 事实库 =====
         self.facts: List[FactItem] = []
         
@@ -1480,13 +1481,16 @@ class MemorySystem:
     def _save_memory_state(self):
         """保存到磁盘（原子写入）"""
         try:
+            with self._memory_lock:
+                wm_snapshot = [asdict(item) for item in self.working_memory]
+                em_snapshot = [asdict(item) for item in self.episodic_memory]
             self._atomic_write_json(
                 self._working_memory_file,
-                [asdict(item) for item in self.working_memory]
+                wm_snapshot
             )
             self._atomic_write_json(
                 self._episodic_memory_file,
-                [asdict(item) for item in self.episodic_memory]
+                em_snapshot
             )
             self._atomic_write_json(
                 self._forgotten_count_file,
@@ -1561,12 +1565,13 @@ class MemorySystem:
             facts=[f.content for f in extracted_facts],
         )
         
-        # 4. 加入工作记忆
-        self.working_memory.append(item)
-        
-        # 5. 滑动窗口 + LLM/规则 摘要压缩
-        if len(self.working_memory) > self.summarize_threshold:
-            self._compress_early_memory()
+        # 4. 加入工作记忆 (v1.12.0: 加锁保护并发访问)
+        with self._memory_lock:
+            self.working_memory.append(item)
+
+            # 5. 滑动窗口 + LLM/规则 摘要压缩
+            if len(self.working_memory) > self.summarize_threshold:
+                self._compress_early_memory()
         
         # 6. 重要记忆存入向量库 (v3.0: 阈值从>=4降到>=3)
         if ImportanceScorer.is_important(importance):  # >=3

@@ -1693,6 +1693,7 @@ class OpenAILLM(LLMEngine):
             
             return ret
         except Exception as e:
+            print(f"[LLM] 对话异常: {type(e).__name__}: {e}")
             return {"text": "对话出错了，请稍后重试", "action": None}
 
     def _ollama_chat(self, message: str, history: List[Dict] = None,
@@ -1753,6 +1754,7 @@ class OpenAILLM(LLMEngine):
                 self._cache[cache_key] = (ret, time.time())
             return ret
         except Exception as e:
+            print(f"[LLM] 对话异常: {type(e).__name__}: {e}")
             return {"text": "对话出错了，请稍后重试", "action": None}
 
     def _ollama_stream_chat(self, message: str, history: List[Dict] = None, callback=None,
@@ -2068,6 +2070,7 @@ class AnthropicLLM(LLMEngine):
 
             return ret
         except Exception as e:
+            print(f"[LLM] 对话异常: {type(e).__name__}: {e}")
             return {"text": "对话出错了，请稍后重试", "action": None}
 
     def stream_chat(self, message: str, history: List[Dict] = None, callback=None,

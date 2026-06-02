@@ -180,8 +180,8 @@ def _load_ports():
                 'HTTP_PORT': web_cfg.get('port', 12393),
                 'WS_PORT': web_cfg.get('ws_port', 12394),
             }
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[Config] 端口加载失败(使用默认值): {e}")
     return {'HTTP_PORT': 12393, 'WS_PORT': 12394}
 
 _ports = _load_ports()

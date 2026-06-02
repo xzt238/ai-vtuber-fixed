@@ -56,7 +56,8 @@ import argparse
 import atexit
 import base64
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
+from datetime import datetime
 from functools import cached_property
 
 # 将当前 app/ 目录插入 Python 模块搜索路径的最前面
@@ -1452,8 +1453,11 @@ class AIVTuber:
                 full_prompt = f"用户问题: {text}{context}"
 
             # 步骤4: 调用 LLM 进行推理
-            # 传入 history 的列表副本（list(self.history)  # v1.12.0: history reads are safe due to GIL list() atomicity），确保 LLM 内部不会修改原始历史
-            result = self.llm.chat(full_prompt, list(self.history))  # v1.12.0: history reads are safe due to GIL list() atomicity
+            # 传入 history 的列表副本，确保 LLM 内部不会修改原始历史
+            # v1.12.0: 使用 _history_lock 保护并发读取
+            with self._history_lock:
+                history_snapshot = list(self.history)
+            result = self.llm.chat(full_prompt, history_snapshot)
             reply = result.get("text", "")
             action = result.get("action")
 
@@ -1660,7 +1664,10 @@ class AIVTuber:
                 full_prompt = f"用户问题: {text}{context}"
 
             # 步骤2: LLM 推理（获取完整回复）
-            result = self.llm.chat(full_prompt, list(self.history))  # v1.12.0: history reads are safe due to GIL list() atomicity
+            # v1.12.0: 使用 _history_lock 保护并发读取
+            with self._history_lock:
+                history_snapshot = list(self.history)
+            result = self.llm.chat(full_prompt, history_snapshot)
             reply = result.get("text", "")
             action = result.get("action")
 
@@ -2215,6 +2222,14 @@ class AIVTuber:
                 self.logger.info("记忆系统已刷新")
             except Exception as e:
                 self.logger.error(f"记忆刷新失败: {e}")
+
+        # v1.12.0: 关闭 LLM HTTP 连接池
+        if 'llm' in self._lazy_modules and self._lazy_modules.get('llm'):
+            try:
+                self._lazy_modules['llm'].cleanup()
+                self.logger.info("LLM 连接池已关闭")
+            except Exception as e:
+                self.logger.error(f"LLM 连接池关闭失败: {e}")
 
         # v1.9.50: 保存对话历史到磁盘
         if self.history:
