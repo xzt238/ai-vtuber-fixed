@@ -13,6 +13,18 @@ asr:
     model: mimo-v2.5
     timeout: 60
   provider: funasr
+bot:
+  discord:
+    channel_id: ''
+    command_prefix: '!'
+    guild_id: ''
+    token: ''
+  enabled: false
+  storage_dir: ./cache/bot
+  telegram:
+    chat_id: ''
+    parse_mode: HTML
+    token: ''
 desktop_pet:
   always_on_top: true
   click_action: greet
@@ -25,6 +37,42 @@ diary:
   enabled: true
   max_context_items: 30
   time: '23:00'
+emotion:
+  analysis:
+    face_enabled: false
+    text_enabled: true
+    voice_enabled: true
+  enabled: true
+  expression:
+    emoji_enabled: true
+    response_templates: true
+  memory:
+    max_history: 100
+    trend_window: 10
+  storage_dir: ./memory/emotion
+game:
+  enabled: false
+  minecraft:
+    host: localhost
+    password: ''
+    port: 25565
+    username: AI_VTuber
+  storage_dir: ./cache/game
+image_gen:
+  api_key: ''
+  base_url: ''
+  enabled: false
+  height: 1024
+  model: ''
+  provider: mimo
+  style: ''
+  width: 1024
+live:
+  bilibili:
+    room_id: ''
+    token: ''
+    uid: 0
+  enabled: false
 live2d:
   enabled: true
   idle_motion: Idle
@@ -110,6 +158,15 @@ memory:
   summarize_batch: 5
   summarize_threshold: 20
   working_memory_limit: 30
+multi_agent:
+  conversation_timeout: 3600
+  enabled: false
+  max_agents: 10
+plugin:
+  auto_load: true
+  enabled: true
+  max_plugins: 50
+  plugins_dir: ./plugins
 proactive_speech:
   api_key: ${SUBAGENT_API_KEY}
   base_url: https://ccvibe.cc/v1
@@ -121,8 +178,43 @@ proactive_speech:
   min_interval: 300
   model: ccvibe/claude-opus-4-6
   randomize_range: 30
+rag:
+  chunk_overlap: 50
+  chunk_size: 500
+  enabled: false
+  retrieval_weights:
+    keyword: 0.3
+    vector: 0.7
+  similarity_threshold: 0.7
+  storage_dir: ./memory/knowledge_base
+  top_k: 5
+roleplay:
+  characters:
+    max_characters: 50
+    storage_dir: ./memory/characters
+  enabled: false
+  sessions:
+    max_sessions: 10
+    timeout: 3600
+  storage_dir: ./memory/roleplay
+  stories:
+    max_stories: 100
+    storage_dir: ./memory/stories
+singing:
+  device: cpu
+  enabled: false
+  f0_method: crepe
+  half: true
+  model_path: ''
 subagent:
   enabled: true
+svc:
+  config_path: ''
+  device: cuda
+  enabled: false
+  f0_method: crepe
+  half: true
+  model_path: ''
 text_enhancement:
   auto_detect: true
   chinese_features: true
@@ -140,8 +232,24 @@ tts:
     rate: +0%
     voice: zh-CN-XiaoxiaoNeural
     volume: +0%
+  elevenlabs:
+    api_key: ''
+    model_id: eleven_monolingual_v1
+    similarity_boost: 0.75
+    stability: 0.5
+    style: 0.0
+    use_speaker_boost: true
+    voice_id: 21m00Tcm4TlvDq8ikWAM
   fallback_engines:
   - edge
+  fish_speech:
+    api_key: ''
+    audio_format: wav
+    model_id: fish-speech-1.5
+    pitch: 0.0
+    speed: 1.0
+    voice_id: default
+    volume: 1.0
   gptsovits:
     device: cuda
     is_half: true
@@ -162,6 +270,12 @@ vad:
   thinking_threshold_factor: 0.8
 vision:
   default_provider: minimax_vl
+  mimo_vision:
+    api_key: ''
+    base_url: https://api.xiaomimimo.com/v1
+    jpeg_quality: 50
+    model: mimo-v2.5
+    timeout: 120
   minicpm:
     model_id: OpenBMB/MiniCPM-V-2
     model_path: ''
@@ -172,16 +286,35 @@ vision:
     jpeg_quality: 40
     model: MiniMax-VL-01
     timeout: 120
-  mimo_vision:
-    api_key: ''
-    base_url: https://api.xiaomimimo.com/v1
-    jpeg_quality: 50
-    model: mimo-v2.5
-    timeout: 120
   rapidocr:
     enabled: true
+vision_input:
+  camera:
+    device_id: 0
+    fps: 30
+    height: 480
+    width: 640
+  enabled: false
+  storage_dir: ./cache/vision
 voice_input:
   provider: web
+
+# VAD语音活动检测配置
+vad:
+  enabled: true
+  model: silero
+  prob_threshold: 0.4
+  db_threshold: 60
+  required_hits: 3
+  required_misses: 24
+
+# 语音打断配置
+interrupt:
+  enabled: true
+  auto_interrupt: true
+  save_heard_response: true
+  max_interrupt_history: 100
+  interrupt_cooldown_ms: 500
 vrm_display:
   ambient_light: 0.8
   anim_amplitude: 1.0

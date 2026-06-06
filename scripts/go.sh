@@ -1,38 +1,36 @@
 #!/bin/bash
-# GuguGaga AI VTuber — 一键启动 (Linux/macOS)
-# 自动检查依赖并启动原生桌面应用
+# 咕咕嘎嘎 AI-VTuber 浏览器模式启动脚本 (macOS/Linux)
 
-set -e
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+# 获取脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "========================================"
-echo "  GuguGaga AI VTuber"
-echo "  Platform: $(uname -s)"
-echo "========================================"
+# 切换到项目目录
+cd "$PROJECT_DIR"
 
-# 检查 Python
-PYTHON=""
-for py in python3.11 python3.12 python3 python; do
-    if command -v $py &>/dev/null && $py -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2>/dev/null; then
-        PYTHON=$py
-        break
-    fi
-done
-if [ -z "$PYTHON" ]; then
-    echo "[ERROR] Python 3.11+ 未安装"
+# 检查Python环境
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
+    echo "错误: 未找到Python，请先安装Python 3.11+"
     exit 1
 fi
-echo "[OK] Python: $($PYTHON --version)"
 
-# 检查关键模块
-echo "Checking dependencies..."
-$PYTHON -c "import PySide6" 2>/dev/null || {
-    echo "[WARN] PySide6 未安装，尝试安装..."
-    $PYTHON -m pip install PySide6 PySide6-Fluent-Widgets
-}
-echo "[OK] Dependencies OK"
+# 检查Python版本
+PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | awk '{print $2}')
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 11 ]); then
+    echo "警告: Python版本 $PYTHON_VERSION 可能不兼容，建议使用Python 3.11+"
+fi
 
 # 启动应用
-echo "Starting GuguGaga..."
-$PYTHON native/main.py "$@"
+echo "启动咕咕嘎嘎 AI-VTuber (浏览器模式)..."
+echo "Python: $PYTHON_CMD $PYTHON_VERSION"
+echo "项目目录: $PROJECT_DIR"
+echo "访问地址: http://localhost:12393"
+
+$PYTHON_CMD -m app.main "$@"

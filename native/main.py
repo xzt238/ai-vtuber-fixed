@@ -370,6 +370,66 @@ class GuguGagaApp(FluentWindow):
         except ImportError:
             pass
 
+        # 新增功能调试页面（优化版）
+        try:
+            from gugu_native.pages.debug_page_optimized import DebugPageOptimized
+            self.debug_page = DebugPageOptimized(self)
+            self.addSubInterface(
+                self.debug_page,
+                FluentIcon.DEVELOPER_TOOLS,
+                "功能调试"
+            )
+        except ImportError:
+            pass
+
+        # 直播平台设置页面
+        try:
+            from gugu_native.pages.live_settings_page import LiveSettingsPage
+            self.live_settings_page = LiveSettingsPage(self)
+            self.addSubInterface(
+                self.live_settings_page,
+                FluentIcon.VIDEO,
+                "直播设置"
+            )
+        except ImportError:
+            pass
+
+        # 游戏设置页面
+        try:
+            from gugu_native.pages.game_settings_page import GameSettingsPage
+            self.game_settings_page = GameSettingsPage(self)
+            self.addSubInterface(
+                self.game_settings_page,
+                FluentIcon.GAME,
+                "游戏设置"
+            )
+        except ImportError:
+            pass
+
+        # 社交Bot设置页面
+        try:
+            from gugu_native.pages.bot_settings_page import BotSettingsPage
+            self.bot_settings_page = BotSettingsPage(self)
+            self.addSubInterface(
+                self.bot_settings_page,
+                FluentIcon.PEOPLE,
+                "Bot设置"
+            )
+        except ImportError:
+            pass
+
+        # 功能设置页面
+        try:
+            from gugu_native.pages.features_settings_page import FeaturesSettingsPage
+            self.features_settings_page = FeaturesSettingsPage(self)
+            self.addSubInterface(
+                self.features_settings_page,
+                FluentIcon.SHOPPING_CART,
+                "功能设置"
+            )
+        except ImportError:
+            pass
+
         from gugu_native.pages.settings_page import SettingsPage
         self.settings_page = SettingsPage(self)
         # autostart_switch 绑定已移至 SettingsPage.lazy_init() 中
@@ -841,16 +901,15 @@ class GuguGagaApp(FluentWindow):
 
 
 def _check_dependencies():
-    """检查关键依赖（PySide6），失败时弹出 Windows 消息框"""
+    """检查关键依赖（PySide6），失败时弹出跨平台消息框"""
     try:
         import PySide6  # noqa: F401
     except ImportError:
-        import ctypes
-        ctypes.windll.user32.MessageBoxW(
-            0,
-            "PySide6 未安装!\n请先运行 scripts\\install_deps.bat 安装依赖。",
+        from app.platform_abstraction import show_message
+        show_message(
             "咕咕嘎嘎 - 启动失败",
-            0x10  # MB_ICONERROR
+            "PySide6 未安装!\n请先运行安装脚本安装依赖。",
+            level="error"
         )
         sys.exit(1)
 
@@ -946,12 +1005,26 @@ def main():
     app = QApplication(sys.argv)
     _checkpoint("QApplication 创建完成")
 
-    # 全局默认字体
+    # 全局默认字体 - 跨平台支持
     from PySide6.QtGui import QFont
-    app.setFont(QFont("Microsoft YaHei UI", 10))
+    import platform
+    if platform.system() == "Windows":
+        font_family = "Microsoft YaHei UI"
+    elif platform.system() == "Darwin":
+        font_family = "PingFang SC"
+    else:
+        font_family = "Noto Sans CJK SC"
+    app.setFont(QFont(font_family, 10))
 
-    # 设置应用图标
-    icon_path = os.path.join(NATIVE_DIR, "gugu_native", "resources", "app.ico")
+    # 设置应用图标 - 跨平台支持
+    import platform
+    if platform.system() == "Windows":
+        icon_name = "app.ico"
+    elif platform.system() == "Darwin":
+        icon_name = "app.icns"
+    else:
+        icon_name = "app.png"
+    icon_path = os.path.join(NATIVE_DIR, "gugu_native", "resources", icon_name)
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
 

@@ -4,16 +4,32 @@
 
 # 🐧 咕咕嘎嘎 AI VTuber
 
-**GPT-SoVITS 声音克隆 · Live2D/VRM 双模型 · 四层记忆 · 视觉理解 · Function Calling · 10 主题 · 原生桌面**
+**全平台 AI 虚拟主播解决方案 | 桌面端 + 移动端**
+
+**GPT-SoVITS 声音克隆 · Live2D/VRM 双模型 · 四层记忆 · 视觉理解 · Function Calling · 10 主题 · 原生桌面 · Android/iOS**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-v1.12.0-yellow.svg)](docs/VERSION.md)
+[![Version](https://img.shields.io/badge/version-v2.6.0-blue.svg)](docs/VERSION.md)
 [![Python](https://img.shields.io/badge/python-3.11-yellow.svg)](https://www.python.org/downloads/release/python-3119/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20iOS-lightgrey)]()
 [![Known Issues](https://img.shields.io/badge/known%20issues-10-orange.svg)](docs/KNOWN_ISSUES.md)
 
-[功能特性](#-功能特性) · [快速开始](#-快速开始) · [训练声音克隆](#-声音克隆训练) · [配置说明](#-配置说明) · [项目架构](#-项目架构) · [常见问题](#-常见问题) · [贡献指南](#-贡献指南)
+[功能特性](#-功能特性) · [快速开始](#-快速开始) · [移动端](#-移动端) · [训练声音克隆](#-声音克隆训练) · [配置说明](#-配置说明) · [项目架构](#-项目架构) · [常见问题](#-常见问题) · [贡献指南](#-贡献指南)
 
 </div>
+
+---
+
+## 📱 移动端支持
+
+本项目同时支持 **Windows 桌面端** 和 **Android/iOS 移动端**！
+
+| 平台 | 技术栈 | 位置 | 状态 |
+|------|--------|------|------|
+| **Windows 桌面端** | Python + PySide6 | 根目录 | ✅ 稳定版 |
+| **Android/iOS 移动端** | React Native + Expo | `mobile/` | ✅ v2.6.0 |
+
+移动端详细文档请查看 [mobile/README.md](mobile/README.md)
 
 ---
 

@@ -402,7 +402,7 @@ _QSS_BASE_TEMPLATE = """\
         QLineEdit, QTextEdit:not([objectName="chatDisplay"]) {
             background-color: %(input_bg)s;
             color: %(text_primary)s;
-            border: 1.5px solid %(input_border)s;
+            border: 1px solid %(input_border)s;
             border-radius: %(br_input)dpx;
             padding: 6px 12px;
         }
@@ -461,7 +461,6 @@ _QSS_BASE_TEMPLATE = """\
             color: %(text_primary)s;
             border: 1px solid %(card_border)s;
             border-radius: %(br_widget)dpx;
-            outline: none;
             padding: 2px;
         }
         QListWidget::item, QTreeWidget::item {

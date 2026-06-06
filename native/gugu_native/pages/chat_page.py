@@ -747,8 +747,8 @@ class ChatPage(QWidget):
                 # (1) 立即：通过 processEvents 让 pending 的布局事件先处理
                 # (2) 500ms：Chromium 轻量初始化可能已完成
                 # (3) 3000ms：安全网，覆盖 Chromium 完全冷启动
-                QApplication.processEvents()
-                self._force_live2d_repaint()
+                # 优化：使用 QTimer.singleShot 替代直接调用 processEvents，避免阻塞UI
+                QTimer.singleShot(0, self._force_live2d_repaint)
                 QTimer.singleShot(500, self._force_live2d_repaint)
                 QTimer.singleShot(3000, self._force_live2d_repaint)
                 print("[ChatPage] Live2D placeholder replaced with widget")
@@ -761,8 +761,8 @@ class ChatPage(QWidget):
                 self._live2d_placeholder.deleteLater()
                 self._live2d_placeholder = None
 
-                QApplication.processEvents()
-                self._force_live2d_repaint()
+                # 优化：使用 QTimer.singleShot 替代直接调用 processEvents，避免阻塞UI
+                QTimer.singleShot(0, self._force_live2d_repaint)
                 QTimer.singleShot(500, self._force_live2d_repaint)
                 QTimer.singleShot(3000, self._force_live2d_repaint)
                 print("[ChatPage] Live2D placeholder replaced (fallback append)")

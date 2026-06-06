@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; width: 100vw; height: 100vh; }
+    #live2d-container { width: 100%; height: 100%; position: relative; }
+    canvas { display: block; }
+    #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #6366f1; font-family: sans-serif; font-size: 14px; }
+    #emotion-bubble {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.95); border-radius: 16px; padding: 8px 16px;
+      font-size: 13px; color: #1f2937; max-width: 80%; text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none; font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="live2d-container">
+    <div id="loading">Loading model...</div>
+    <div id="emotion-bubble"></div>
+    <canvas id="live2d-canvas"></canvas>
+  </div>
+
+  <script>
+    // ============================================
+    // Live2D 移动端渲染引擎
+    // ============================================
+    
+    const canvas = document.getElementById('live2d-canvas');
+    const ctx = canvas.getContext('2d');
+    const loading = document.getElementById('loading');
+    const emotionBubble = document.getElementById('emotion-bubble');
+    
+    let model = null;
+    let isTalking = false;
+    let talkFrame = 0;
+    let currentEmotion = 'neutral';
+    let blinkTimer = 0;
+    let isBlinking = false;
+    let breathTimer = 0;
+    let mouseX = 0.5;
+    let mouseY = 0.5;
+    
+    // 画布尺寸
+    function resizeCanvas() {
+      canvas.width = window.innerWidth * window.devicePixelRatio;
+      canvas.height = window.innerHeight * window.devicePixelRatio;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // ============================================
+    // 简化的 Live2D 模型渲染（Canvas 2D）
+    // ============================================
+    class SimpleLive2DModel {
+      constructor() {
+        this.x = window.innerWidth / 2;
+        this.y = window.innerHeight * 0.6;
+        this.scale = Math.min(window.innerWidth, window.innerHeight) * 0.004;
+        this.headAngle = 0;
+        this.bodyAngle = 0;
+        this.eyeOpenL = 1;
+        this.eyeOpenR = 1;
+        this.mouthOpen = 0;
+        this.browL = 0;
+        this.browR = 0;
+        this.hairFront = 0;
+        this.hairBack = 0;
+        this.armAngle = 0;
+      }
+      
+      update(deltaTime) {
+        // 呼吸动画
+        breathTimer += deltaTime * 0.002;
+        this.bodyAngle = Math.sin(breathTimer) * 1.5;
+        
+        // 头部跟随鼠标
+        const targetHeadX = (mouseX - 0.5) * 15;
+        const targetHeadY = (mouseY - 0.5) * 10;
+        this.headAngle += (targetHeadX - this.headAngle) * 0.1;
+        
+        // 眨眼
+        blinkTimer += deltaTime;
+        if (blinkTimer > 3000 + Math.random() * 2000) {
+          isBlinking = true;
+          blinkTimer = 0;
+        }
+        if (isBlinking) {
+          this.eyeOpenL = Math.max(0, this.eyeOpenL - 0.15);
+          this.eyeOpenR = Math.max(0, this.eyeOpenR - 0.15);
+          if (this.eyeOpenL <= 0) isBlinking = false;
+        } else {
+          this.eyeOpenL = Math.min(1, this.eyeOpenL + 0.1);
+          this.eyeOpenR = Math.min(1, this.eyeOpenR + 0.1);
+        }
+        
+        // 说话动画
+        if (isTalking) {
+          talkFrame += deltaTime * 0.01;
+          this.mouthOpen = (Math.sin(talkFrame * 3) * 0.5 + 0.5) * 0.8;
+        } else {
+          this.mouthOpen *= 0.9;
+        }
+        
+        // 情感表情
+        this.applyEmotion();
+        
+        // 头发飘动
+        this.hairFront = Math.sin(breathTimer * 1.5) * 2;
+        this.hairBack = Math.sin(breathTimer * 1.2 + 1) * 3;
+        
+        // 手臂摆动
+        this.armAngle = Math.sin(breathTimer * 0.8) * 3;
+      }
+      
+      applyEmotion() {
+        switch(currentEmotion) {
+          case 'happy':
+            this.browL = -0.3;
+            this.browR = -0.3;
+            this.eyeOpenL = 0.7;
+            this.eyeOpenR = 0.7;
+            break;
+          case 'sad':
+            this.browL = 0.4;
+            this.browR = 0.4;
+            this.eyeOpenL = 0.6;
+            this.eyeOpenR = 0.6;
+            break;
+          case 'angry':
+            this.browL = -0.5;
+            this.browR = 0.5;
+            this.eyeOpenL = 0.8;
+            this.eyeOpenR = 0.8;
+            break;
+          case 'surprised':
+            this.browL = -0.6;
+            this.browR = -0.6;
+            this.eyeOpenL = 1.2;
+            this.eyeOpenR = 1.2;
+            break;
+          default:
+            this.browL *= 0.95;
+            this.browR *= 0.95;
+        }
+      }
+      
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.scale, this.scale);
+        
+        // 身体
+        ctx.save();
+        ctx.rotate(this.bodyAngle * Math.PI / 180);
+        this.drawBody(ctx);
+        ctx.restore();
+        
+        // 头部
+        ctx.save();
+        ctx.translate(0, -120);
+        ctx.rotate(this.headAngle * Math.PI / 180);
+        this.drawHead(ctx);
+        ctx.restore();
+        
+        // 手臂
+        ctx.save();
+        ctx.rotate(this.bodyAngle * Math.PI / 180);
+        this.drawArms(ctx);
+        ctx.restore();
+        
+        ctx.restore();
+      }
+      
+      drawBody(ctx) {
+        // 身体轮廓
+        ctx.fillStyle = '#e8e0f0';
+        ctx.beginPath();
+        ctx.ellipse(0, 20, 50, 80, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 衣服
+        ctx.fillStyle = '#6366f1';
+        ctx.beginPath();
+        ctx.ellipse(0, 20, 48, 78, 0, 0, Math.PI);
+        ctx.fill();
+        
+        // 领口
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(-15, -30);
+        ctx.lineTo(0, -10);
+        ctx.lineTo(15, -30);
+        ctx.fill();
+      }
+      
+      drawHead(ctx) {
+        // 头发后层
+        ctx.fillStyle = '#4a3728';
+        ctx.beginPath();
+        ctx.ellipse(0, -10, 75, 85, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 脸部
+        ctx.fillStyle = '#fce4d6';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 65, 75, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 头发前层
+        ctx.fillStyle = '#5a4232';
+        ctx.beginPath();
+        ctx.moveTo(-65, -30);
+        ctx.quadraticCurveTo(-70, -80, -30, -85);
+        ctx.quadraticCurveTo(0, -90, 30, -85);
+        ctx.quadraticCurveTo(70, -80, 65, -30);
+        ctx.quadraticCurveTo(50, -50, 20, -45);
+        ctx.quadraticCurveTo(0, -40, -20, -45);
+        ctx.quadraticCurveTo(-50, -50, -65, -30);
+        ctx.fill();
+        
+        // 刘海飘动
+        ctx.save();
+        ctx.translate(this.hairFront, 0);
+        ctx.fillStyle = '#5a4232';
+        ctx.beginPath();
+        ctx.moveTo(-20, -75);
+        ctx.quadraticCurveTo(-10, -85, 0, -80);
+        ctx.quadraticCurveTo(10, -85, 20, -75);
+        ctx.quadraticCurveTo(10, -55, 0, -60);
+        ctx.quadraticCurveTo(-10, -55, -20, -75);
+        ctx.fill();
+        ctx.restore();
+        
+        // 眉毛
+        ctx.strokeStyle = '#4a3728';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        
+        ctx.save();
+        ctx.translate(0, this.browL * 5);
+        ctx.beginPath();
+        ctx.moveTo(-30, -25);
+        ctx.quadraticCurveTo(-20, -28 + this.browL * 8, -10, -25);
+        ctx.stroke();
+        ctx.restore();
+        
+        ctx.save();
+        ctx.translate(0, this.browR * 5);
+        ctx.beginPath();
+        ctx.moveTo(10, -25);
+        ctx.quadraticCurveTo(20, -28 + this.browR * 8, 30, -25);
+        ctx.stroke();
+        ctx.restore();
+        
+        // 眼睛
+        this.drawEye(ctx, -22, -8, this.eyeOpenL, -1);
+        this.drawEye(ctx, 22, -8, this.eyeOpenR, 1);
+        
+        // 鼻子
+        ctx.fillStyle = '#e8c4b0';
+        ctx.beginPath();
+        ctx.ellipse(0, 8, 3, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 嘴巴
+        this.drawMouth(ctx);
+        
+        // 腮红
+        ctx.fillStyle = 'rgba(255, 150, 150, 0.25)';
+        ctx.beginPath();
+        ctx.ellipse(-35, 10, 12, 8, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(35, 10, 12, 8, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      drawEye(ctx, x, y, open, dir) {
+        ctx.save();
+        ctx.translate(x, y);
+        
+        // 眼白
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 12, 14 * open, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 瞳孔
+        if (open > 0.2) {
+          const pupilX = (mouseX - 0.5) * 4 * dir;
+          const pupilY = (mouseY - 0.5) * 3;
+          
+          ctx.fillStyle = '#2a1a0a';
+          ctx.beginPath();
+          ctx.ellipse(pupilX, pupilY, 7, 8 * open, 0, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 高光
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.ellipse(pupilX + 3, pupilY - 3, 2.5, 2.5 * open, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(pupilX - 1, pupilY + 2, 1.2, 1.2 * open, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        // 眼线
+        ctx.strokeStyle = '#2a1a0a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 13, 15 * open, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // 睫毛
+        if (open > 0.3) {
+          ctx.lineWidth = 1.5;
+          for (let i = -2; i <= 2; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * 5, -14 * open);
+            ctx.lineTo(i * 5 + dir, -17 * open);
+            ctx.stroke();
+          }
+        }
+        
+        ctx.restore();
+      }
+      
+      drawMouth(ctx) {
+        ctx.save();
+        ctx.translate(0, 25);
+        
+        if (this.mouthOpen > 0.1) {
+          // 张嘴
+          ctx.fillStyle = '#c0392b';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 8, 5 * this.mouthOpen + 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 牙齿
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.rect(-6, -2, 12, 3 * this.mouthOpen);
+          ctx.fill();
+        } else {
+          // 闭嘴微笑
+          ctx.strokeStyle = '#c0392b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-8, 0);
+          ctx.quadraticCurveTo(0, 5, 8, 0);
+          ctx.stroke();
+        }
+        
+        ctx.restore();
+      }
+      
+      drawArms(ctx) {
+        ctx.save();
+        
+        // 左手臂
+        ctx.save();
+        ctx.translate(-55, -20);
+        ctx.rotate((-10 + this.armAngle) * Math.PI / 180);
+        ctx.fillStyle = '#fce4d6';
+        ctx.beginPath();
+        ctx.ellipse(0, 30, 12, 35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        
+        // 右手臂
+        ctx.save();
+        ctx.translate(55, -20);
+        ctx.rotate((10 - this.armAngle) * Math.PI / 180);
+        ctx.fillStyle = '#fce4d6';
+        ctx.beginPath();
+        ctx.ellipse(0, 30, 12, 35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        
+        ctx.restore();
+      }
+    }
+    
+    // ============================================
+    // 动画循环
+    // ============================================
+    model = new SimpleLive2DModel();
+    loading.style.display = 'none';
+    
+    let lastTime = performance.now();
+    
+    function animate(time) {
+      const deltaTime = time - lastTime;
+      lastTime = time;
+      
+      ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+      
+      model.update(deltaTime);
+      model.draw(ctx);
+      
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+    
+    // ============================================
+    // 触摸交互
+    // ============================================
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      mouseX = touch.clientX / window.innerWidth;
+      mouseY = touch.clientY / window.innerHeight;
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX / window.innerWidth;
+      mouseY = e.clientY / window.innerHeight;
+    });
+    
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // 点击头部区域触发特殊反应
+      const centerX = model.x / window.devicePixelRatio;
+      const centerY = (model.y - 120 * model.scale) / window.devicePixelRatio;
+      const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+      
+      if (dist < 60 * model.scale) {
+        // 点击头部 - 开心反应
+        window.ReactNativeWebView?.postMessage(JSON.stringify({
+          type: 'tap_head'
+        }));
+      }
+    });
+    
+    // ============================================
+    // React Native 通信接口
+    // ============================================
+    function setEmotion(emotion) {
+      currentEmotion = emotion;
+    }
+    
+    function setTalking(talking) {
+      isTalking = talking;
+      if (!talking) talkFrame = 0;
+    }
+    
+    function showMessage(text, duration) {
+      emotionBubble.textContent = text;
+      emotionBubble.style.display = 'block';
+      setTimeout(() => {
+        emotionBubble.style.display = 'none';
+      }, duration || 3000);
+    }
+    
+    function setModelScale(scale) {
+      model.scale = scale;
+    }
+    
+    // 监听来自 React Native 的消息
+    window.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        switch(data.type) {
+          case 'emotion': setEmotion(data.emotion); break;
+          case 'talk': setTalking(data.talking); break;
+          case 'message': showMessage(data.text, data.duration); break;
+          case 'scale': setModelScale(data.scale); break;
+        }
+      } catch(e) {}
+    });
+    
+    // 通知 RN 已加载完成
+    window.ReactNativeWebView?.postMessage(JSON.stringify({
+      type: 'loaded'
+    }));
+  </script>
+</body>
+</html>

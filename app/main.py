@@ -1391,6 +1391,306 @@ class AIVTuber:
             game_ok("WebSocket 服务", "实时通道已建立")
         return self._lazy_modules['ws_server']
 
+    @property
+    def emotion(self):
+        """
+        情感理解模块 - 懒加载
+
+        延迟导入: from app.emotion import EmotionManager
+        配置来源: config["emotion"]
+
+        功能: 情感识别、情感表达、情感记忆
+
+        返回值:
+            EmotionManager 实例（支持 analyze_and_respond(), get_user_emotion_profile() 方法）
+        """
+        if 'emotion' not in self._lazy_modules:
+            game_section("加载情感理解模块")
+            try:
+                from app.emotion import EmotionManager
+                emotion_config = self.config.config.get("emotion", {})
+                self._lazy_modules['emotion'] = EmotionManager(emotion_config)
+                game_ok("情感理解", "情感识别和表达已就绪")
+            except Exception as e:
+                game_fail("情感理解", f"初始化失败: {e}")
+                self._lazy_modules['emotion'] = None
+        return self._lazy_modules['emotion']
+
+    @property
+    def roleplay(self):
+        """
+        角色扮演模块 - 懒加载
+
+        延迟导入: from app.roleplay import RoleplayManager
+        配置来源: config["roleplay"]
+
+        功能: 角色创建、角色扮演、剧情系统
+
+        返回值:
+            RoleplayManager 实例（支持 start_session(), get_character_prompt() 方法）
+        """
+        if 'roleplay' not in self._lazy_modules:
+            game_section("加载角色扮演模块")
+            try:
+                from app.roleplay import RoleplayManager
+                roleplay_config = self.config.config.get("roleplay", {})
+                self._lazy_modules['roleplay'] = RoleplayManager(roleplay_config)
+                game_ok("角色扮演", "角色创建和扮演已就绪")
+            except Exception as e:
+                game_fail("角色扮演", f"初始化失败: {e}")
+                self._lazy_modules['roleplay'] = None
+        return self._lazy_modules['roleplay']
+
+    @property
+    def plugin(self):
+        """
+        插件系统模块 - 懒加载
+
+        延迟导入: from app.plugin import PluginManager
+        配置来源: config["plugin"]
+
+        功能: 插件加载、插件管理、插件执行
+
+        返回值:
+            PluginManager 实例（支持 list_plugins(), execute_plugin() 方法）
+        """
+        if 'plugin' not in self._lazy_modules:
+            game_section("加载插件系统模块")
+            try:
+                from app.plugin import PluginManager
+                plugin_config = self.config.config.get("plugin", {})
+                self._lazy_modules['plugin'] = PluginManager(plugin_config)
+                game_ok("插件系统", "插件加载和管理已就绪")
+            except Exception as e:
+                game_fail("插件系统", f"初始化失败: {e}")
+                self._lazy_modules['plugin'] = None
+        return self._lazy_modules['plugin']
+
+    @property
+    def rag(self):
+        """
+        RAG知识库模块 - 懒加载
+
+        延迟导入: from app.rag import RAGSystem
+        配置来源: config["rag"]
+
+        功能: 文档导入、文本分块、向量存储、检索增强生成
+
+        返回值:
+            RAGSystem 实例（支持 add_document(), search(), generate() 方法）
+        """
+        if 'rag' not in self._lazy_modules:
+            game_section("加载RAG知识库模块")
+            try:
+                from app.rag import RAGSystem
+                rag_config = self.config.config.get("rag", {})
+                self._lazy_modules['rag'] = RAGSystem(rag_config)
+                game_ok("RAG知识库", "文档检索增强生成已就绪")
+            except Exception as e:
+                game_fail("RAG知识库", f"初始化失败: {e}")
+                self._lazy_modules['rag'] = None
+        return self._lazy_modules['rag']
+
+    @property
+    def live(self):
+        """
+        直播平台集成模块 - 懒加载
+
+        延迟导入: from app.live import LiveSystem
+        配置来源: config["live"]
+
+        功能: Bilibili直播弹幕接收、解析、AI回复、弹幕发送
+
+        返回值:
+            LiveSystem 实例（支持 connect(), disconnect(), send_message() 方法）
+        """
+        if 'live' not in self._lazy_modules:
+            game_section("加载直播平台集成模块")
+            try:
+                from app.live import LiveSystem
+                live_config = self.config.config.get("live", {})
+                self._lazy_modules['live'] = LiveSystem(live_config)
+                game_ok("直播平台集成", "Bilibili直播弹幕支持已就绪")
+            except Exception as e:
+                game_fail("直播平台集成", f"初始化失败: {e}")
+                self._lazy_modules['live'] = None
+        return self._lazy_modules['live']
+
+    @property
+    def svc(self):
+        """
+        SVC声音转换模块 - 懒加载
+
+        延迟导入: from app.svc import SVCManager
+        配置来源: config["svc"]
+
+        功能: SVC模型加载、音频声音转换
+
+        返回值:
+            SVCManager 实例（支持 load_model(), convert() 方法）
+        """
+        if 'svc' not in self._lazy_modules:
+            game_section("加载SVC声音转换模块")
+            try:
+                from app.svc import SVCManager
+                svc_config = self.config.config.get("svc", {})
+                self._lazy_modules['svc'] = SVCManager(svc_config)
+                game_ok("SVC声音转换", "声音转换支持已就绪")
+            except Exception as e:
+                game_fail("SVC声音转换", f"初始化失败: {e}")
+                self._lazy_modules['svc'] = None
+        return self._lazy_modules['svc']
+
+    @property
+    def singing(self):
+        """
+        唱歌模块 - 懒加载
+
+        延迟导入: from app.singing import SingingManager
+        配置来源: config["singing"]
+
+        功能: 唱歌模型加载、歌曲生成
+
+        返回值:
+            SingingManager 实例（支持 load_model(), sing() 方法）
+        """
+        if 'singing' not in self._lazy_modules:
+            game_section("加载唱歌模块")
+            try:
+                from app.singing import SingingManager
+                singing_config = self.config.config.get("singing", {})
+                self._lazy_modules['singing'] = SingingManager(singing_config)
+                game_ok("唱歌模块", "AI唱歌支持已就绪")
+            except Exception as e:
+                game_fail("唱歌模块", f"初始化失败: {e}")
+                self._lazy_modules['singing'] = None
+        return self._lazy_modules['singing']
+
+    @property
+    def sd(self):
+        """
+        Stable Diffusion模块 - 懒加载
+
+        延迟导入: from app.sd import ImageGenerator
+        配置来源: config["sd"]
+
+        功能: SD WebUI连接、文本到图像生成、图像到图像生成
+
+        返回值:
+            ImageGenerator 实例（支持 connect(), generate() 方法）
+        """
+        if 'sd' not in self._lazy_modules:
+            game_section("加载Stable Diffusion模块")
+            try:
+                from app.sd import ImageGenerator
+                sd_config = self.config.config.get("sd", {})
+                self._lazy_modules['sd'] = ImageGenerator(sd_config)
+                game_ok("Stable Diffusion", "AI绘画支持已就绪")
+            except Exception as e:
+                game_fail("Stable Diffusion", f"初始化失败: {e}")
+                self._lazy_modules['sd'] = None
+        return self._lazy_modules['sd']
+
+    @property
+    def game(self):
+        """
+        游戏感知框架模块 - 懒加载
+
+        延迟导入: from app.game import GameAgentManager
+        配置来源: config["game"]
+
+        功能: 游戏代理创建、游戏状态获取、游戏动作执行
+
+        返回值:
+            GameAgentManager 实例（支持 create_agent() 方法）
+        """
+        if 'game' not in self._lazy_modules:
+            game_section("加载游戏感知框架模块")
+            try:
+                from app.game import GameAgentManager
+                game_config = self.config.config.get("game", {})
+                self._lazy_modules['game'] = GameAgentManager(game_config)
+                game_ok("游戏感知框架", "游戏支持已就绪")
+            except Exception as e:
+                game_fail("游戏感知框架", f"初始化失败: {e}")
+                self._lazy_modules['game'] = None
+        return self._lazy_modules['game']
+
+    @property
+    def multi_agent(self):
+        """
+        多AI群聊模块 - 懒加载
+
+        延迟导入: from app.multi_agent import MultiAgentChat
+        配置来源: config["multi_agent"]
+
+        功能: AI代理创建、多代理对话、对话历史管理
+
+        返回值:
+            MultiAgentChat 实例（支持 create_agent(), start_conversation() 方法）
+        """
+        if 'multi_agent' not in self._lazy_modules:
+            game_section("加载多AI群聊模块")
+            try:
+                from app.multi_agent import MultiAgentChat
+                multi_agent_config = self.config.config.get("multi_agent", {})
+                self._lazy_modules['multi_agent'] = MultiAgentChat(multi_agent_config)
+                game_ok("多AI群聊", "多角色对话支持已就绪")
+            except Exception as e:
+                game_fail("多AI群聊", f"初始化失败: {e}")
+                self._lazy_modules['multi_agent'] = None
+        return self._lazy_modules['multi_agent']
+
+    @property
+    def bot(self):
+        """
+        社交Bot模块 - 懒加载
+
+        延迟导入: from app.bot import BotManager
+        配置来源: config["bot"]
+
+        功能: Discord/Telegram Bot支持
+
+        返回值:
+            BotManager 实例（支持 create_discord_bot(), create_telegram_bot() 方法）
+        """
+        if 'bot' not in self._lazy_modules:
+            game_section("加载社交Bot模块")
+            try:
+                from app.bot import BotManager
+                bot_config = self.config.config.get("bot", {})
+                self._lazy_modules['bot'] = BotManager(bot_config)
+                game_ok("社交Bot", "Discord/Telegram支持已就绪")
+            except Exception as e:
+                game_fail("社交Bot", f"初始化失败: {e}")
+                self._lazy_modules['bot'] = None
+        return self._lazy_modules['bot']
+
+    @property
+    def vision_input(self):
+        """
+        摄像头视觉输入模块 - 懒加载
+
+        延迟导入: from app.vision_input import get_vision_input_manager
+        配置来源: config["vision_input"]
+
+        功能: 摄像头输入、物体检测、人脸识别、场景描述
+
+        返回值:
+            视觉输入管理器字典（包含 camera_manager 和 vision_processor）
+        """
+        if 'vision_input' not in self._lazy_modules:
+            game_section("加载摄像头视觉输入模块")
+            try:
+                from app.vision_input import get_vision_input_manager
+                vision_input_config = self.config.config.get("vision_input", {})
+                self._lazy_modules['vision_input'] = get_vision_input_manager(vision_input_config)
+                game_ok("摄像头视觉输入", "摄像头支持已就绪")
+            except Exception as e:
+                game_fail("摄像头视觉输入", f"初始化失败: {e}")
+                self._lazy_modules['vision_input'] = None
+        return self._lazy_modules['vision_input']
+
     def __enter__(self):
         """上下文管理器入口 - 支持 with 语句自动资源管理"""
         return self

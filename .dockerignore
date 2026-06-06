@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv
+env
+.env
+.venv
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 项目特定
+python/
+models/
+.cache/
+logs/
+memory/
+GPT-SoVITS/GPT_weights_v3/
+GPT-SoVITS/SoVITS_weights_v3/
+GPT-SoVITS/GPT_SoVITS/pretrained_models/
+
+# 敏感文件
+app/cache/api_keys.json
+.env
+.env.local
+.env.production
+
+# 文档（可选）
+docs/
+*.md
+!README.md
+
+# 测试
+tests/
+pytest.ini
+
+# 构建产物
+dist/
+build/
+*.egg-info/
+
+# 临时文件
+*.tmp
+*.temp
+*.log

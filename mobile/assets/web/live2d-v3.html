@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="live2d"></canvas>
+  <script>
+    // ========== Live2D V3 Engine ==========
+    // 高性能渲染 + 物理引擎 + 丰富表情 + 粒子效果
+    
+    const canvas = document.getElementById('live2d');
+    const ctx = canvas.getContext('2d');
+    
+    // 响应式画布
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+    
+    // ========== 配置 ==========
+    const CONFIG = {
+      physics: {
+        hair: { stiffness: 0.06, damping: 0.90, mass: 1.2 },
+        cloth: { stiffness: 0.04, damping: 0.93, mass: 0.9 },
+        tail: { stiffness: 0.05, damping: 0.88, mass: 1.5 }
+      },
+      lipSync: {
+        sensitivity: 1.8,
+        smoothing: 0.25,
+        maxOpen: 0.9
+      },
+      particles: {
+        maxCount: 20,
+        colors: ['#ff6b9d', '#c44dff', '#6366f1', '#10b981', '#f59e0b'],
+        size: { min: 2, max: 6 },
+        speed: { min: 0.5, max: 2 }
+      }
+    };
+    
+    // ========== 状态管理 ==========
+    const state = {
+      time: 0,
+      delta: 0,
+      mouse: { x: 0, y: 0, pressed: false },
+      
+      lipSync: { value: 0, target: 0, vowel: 'a' },
+      
+      blink: { value: 0, timer: 0, nextBlink: 3000, isBlinking: false },
+      
+      breath: { value: 0, phase: 0 },
+      
+      emotion: { current: 'neutral', target: 'neutral', value: 0, intensity: 0.5 },
+      
+      physics: {
+        hair: Array.from({ length: 4 }, () => ({ x: 0, y: 0, vx: 0, vy: 0 })),
+        cloth: { x: 0, y: 0, vx: 0, vy: 0 },
+        tail: { x: 0, y: 0, vx: 0, vy: 0, angle: 0, vAngle: 0 }
+      },
+      
+      head: { x: 0, y: 0, targetX: 0, targetY: 0, angle: 0 },
+      
+      touch: { area: null, reaction: 0, timer: 0 },
+      
+      particles: [],
+      
+      // 动画队列
+      animations: [],
+      currentAnimation: null
+    };
+    
+    // ========== 情感系统 ==========
+    const EMOTIONS = {
+      neutral: { color: '#6366f1', eyeScale: 1, mouthCurve: 0.1, browAngle: 0, particleColor: '#6366f1' },
+      happy: { color: '#10b981', eyeScale: 1.1, mouthCurve: 0.5, browAngle: -5, particleColor: '#10b981' },
+      sad: { color: '#6b7280', eyeScale: 0.9, mouthCurve: -0.3, browAngle: 10, particleColor: '#6b7280' },
+      angry: { color: '#ef4444', eyeScale: 0.85, mouthCurve: -0.2, browAngle: 15, particleColor: '#ef4444' },
+      surprised: { color: '#f59e0b', eyeScale: 1.3, mouthCurve: 0.2, browAngle: -15, particleColor: '#f59e0b' },
+      love: { color: '#ec4899', eyeScale: 1.15, mouthCurve: 0.4, browAngle: -8, particleColor: '#ec4899' },
+      thinking: { color: '#8b5cf6', eyeScale: 0.95, mouthCurve: 0, browAngle: 5, particleColor: '#8b5cf6' },
+      excited: { color: '#f97316', eyeScale: 1.2, mouthCurve: 0.6, browAngle: -10, particleColor: '#f97316' }
+    };
+    
+    // ========== 母音口型 ==========
+    const VOWEL_SHAPES = {
+      a: { width: 1.0, height: 1.0, roundness: 0.3 },
+      i: { width: 0.6, height: 0.4, roundness: 0.1 },
+      u: { width: 0.5, height: 0.7, roundness: 0.8 },
+      e: { width: 0.9, height: 0.6, roundness: 0.2 },
+      o: { width: 0.6, height: 0.8, roundness: 0.9 }
+    };
+    
+    // ========== 触摸区域 ==========
+    const TOUCH_AREAS = {
+      head: { cx: 0.5, cy: 0.25, r: 0.2 },
+      cheek_left: { cx: 0.35, cy: 0.45, r: 0.1 },
+      cheek_right: { cx: 0.65, cy: 0.45, r: 0.1 },
+      body: { cx: 0.5, cy: 0.7, r: 0.25 }
+    };
+    
+    // ========== 粒子系统 ==========
+    function createParticle(x, y, color) {
+      return {
+        x, y,
+        vx: (Math.random() - 0.5) * CONFIG.particles.speed.max,
+        vy: -Math.random() * CONFIG.particles.speed.max - 0.5,
+        size: CONFIG.particles.size.min + Math.random() * (CONFIG.particles.size.max - CONFIG.particles.size.min),
+        color: color || CONFIG.particles.colors[Math.floor(Math.random() * CONFIG.particles.colors.length)],
+        alpha: 1,
+        life: 1,
+        decay: 0.01 + Math.random() * 0.02,
+        shape: Math.random() > 0.5 ? 'circle' : 'heart'
+      };
+    }
+    
+    function updateParticles(dt) {
+      // 更新现有粒子
+      state.particles = state.particles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.02; // 重力
+        p.life -= p.decay;
+        p.alpha = p.life;
+        p.size *= 0.99;
+        return p.life > 0;
+      });
+      
+      // 限制粒子数量
+      if (state.particles.length > CONFIG.particles.maxCount) {
+        state.particles = state.particles.slice(-CONFIG.particles.maxCount);
+      }
+    }
+    
+    function drawParticles() {
+      state.particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        
+        if (p.shape === 'heart') {
+          drawHeartShape(p.x, p.y, p.size);
+        } else {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        ctx.restore();
+      });
+    }
+    
+    function drawHeartShape(x, y, size) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(size / 10, size / 10);
+      
+      ctx.beginPath();
+      ctx.moveTo(0, -3);
+      ctx.bezierCurveTo(-5, -8, -12, -5, -12, 0);
+      ctx.bezierCurveTo(-12, 5, 0, 12, 0, 15);
+      ctx.bezierCurveTo(0, 12, 12, 5, 12, 0);
+      ctx.bezierCurveTo(12, -5, 5, -8, 0, -3);
+      ctx.fill();
+      
+      ctx.restore();
+    }
+    
+    // 发射粒子
+    function emitParticles(count, x, y, color) {
+      for (let i = 0; i < count; i++) {
+        state.particles.push(createParticle(x, y, color));
+      }
+    }
+    
+    // ========== 物理引擎 ==========
+    function updatePhysics(dt) {
+      const { physics: phys, head } = state;
+      const gravity = 0.12;
+      const wind = Math.sin(state.time * 0.001) * 0.4;
+      
+      // 头发物理
+      phys.hair.forEach((hair, i) => {
+        const spring = CONFIG.physics.hair.stiffness;
+        const damping = CONFIG.physics.hair.damping;
+        
+        const targetX = head.x * (0.4 + i * 0.15) + wind * (i + 1) * 0.25;
+        const targetY = head.y * 0.25 + gravity * (i + 1) * 1.8;
+        
+        const fx = (targetX - hair.x) * spring;
+        const fy = (targetY - hair.y) * spring;
+        
+        hair.vx = (hair.vx + fx) * damping;
+        hair.vy = (hair.vy + fy) * damping;
+        hair.x += hair.vx * dt;
+        hair.y += hair.vy * dt;
+      });
+      
+      // 衣服物理
+      const clothTarget = { x: head.x * 0.15 + wind * 0.5, y: head.y * 0.08 + 1.5 };
+      phys.cloth.vx = (phys.cloth.vx + (clothTarget.x - phys.cloth.x) * CONFIG.physics.cloth.stiffness) * CONFIG.physics.cloth.damping;
+      phys.cloth.vy = (phys.cloth.vy + (clothTarget.y - phys.cloth.y) * CONFIG.physics.cloth.stiffness) * CONFIG.physics.cloth.damping;
+      phys.cloth.x += phys.cloth.vx * dt;
+      phys.cloth.y += phys.cloth.vy * dt;
+      
+      // 尾巴物理
+      const tailTarget = { x: head.x * 0.25 - 0.8, y: head.y * 0.15 + 4 };
+      phys.tail.vx = (phys.tail.vx + (tailTarget.x - phys.tail.x) * CONFIG.physics.tail.stiffness) * CONFIG.physics.tail.damping;
+      phys.tail.vy = (phys.tail.vy + (tailTarget.y - phys.tail.y) * CONFIG.physics.tail.stiffness) * CONFIG.physics.tail.damping;
+      phys.tail.x += phys.tail.vx * dt;
+      phys.tail.y += phys.tail.vy * dt;
+      
+      phys.tail.angle = Math.sin(state.time * 0.003) * 0.35 + phys.tail.vx * 0.12;
+    }
+    
+    // ========== 口型同步 ==========
+    function updateLipSync(dt) {
+      const { lipSync } = state;
+      
+      lipSync.value += (lipSync.target - lipSync.value) * CONFIG.lipSync.smoothing;
+      
+      if (lipSync.target === 0) {
+        lipSync.value *= 0.93;
+      }
+      
+      if (Math.random() < 0.025 && lipSync.value > 0.3) {
+        const vowels = ['a', 'i', 'u', 'e', 'o'];
+        lipSync.vowel = vowels[Math.floor(Math.random() * vowels.length)];
+      }
+    }
+    
+    // ========== 眨眼系统 ==========
+    function updateBlink(dt) {
+      const { blink } = state;
+      
+      blink.timer += dt;
+      
+      if (!blink.isBlinking && blink.timer > blink.nextBlink) {
+        blink.isBlinking = true;
+        blink.timer = 0;
+        blink.nextBlink = 2000 + Math.random() * 3500;
+      }
+      
+      if (blink.isBlinking) {
+        if (blink.timer < 70) {
+          blink.value = blink.timer / 70;
+        } else if (blink.timer < 140) {
+          blink.value = 1 - (blink.timer - 70) / 70;
+        } else {
+          blink.value = 0;
+          blink.isBlinking = false;
+          blink.timer = 0;
+        }
+      }
+    }
+    
+    // ========== 呼吸系统 ==========
+    function updateBreath(dt) {
+      state.breath.phase += 0.018 * dt;
+      state.breath.value = Math.sin(state.breath.phase) * 0.5 + 0.5;
+    }
+    
+    // ========== 情感系统 ==========
+    function updateEmotion(dt) {
+      const { emotion } = state;
+      
+      if (emotion.current !== emotion.target) {
+        emotion.value += 0.08 * dt;
+        if (emotion.value >= 1) {
+          emotion.current = emotion.target;
+          emotion.value = 0;
+        }
+      }
+    }
+    
+    // ========== 头部追踪 ==========
+    function updateHead(dt) {
+      const { head, mouse } = state;
+      
+      const centerX = canvas.offsetWidth / 2;
+      const centerY = canvas.offsetHeight / 3;
+      
+      head.targetX = (mouse.x - centerX) / centerX * 18;
+      head.targetY = (mouse.y - centerY) / centerY * 12;
+      
+      head.x += (head.targetX - head.x) * 0.06;
+      head.y += (head.targetY - head.y) * 0.06;
+      head.angle = head.x * 0.4;
+    }
+    
+    // ========== 渲染函数 ==========
+    
+    // 绘制头发
+    function drawHair(cx, cy) {
+      const { physics: phys } = state;
+      const emotionData = EMOTIONS[state.emotion.current];
+      const baseColor = emotionData.color;
+      
+      phys.hair.forEach((hair, i) => {
+        const x = cx + hair.x;
+        const y = cy - 35 + hair.y + i * 12;
+        
+        ctx.beginPath();
+        ctx.moveTo(cx - 22 + i * 18, cy - 55);
+        
+        const cp1x = x - 8 + Math.sin(state.time * 0.002 + i) * 4;
+        const cp1y = y - 18;
+        const cp2x = x + 4 + Math.cos(state.time * 0.003 + i) * 3;
+        const cp2y = y + 8;
+        const endx = x + phys.tail.x * (i * 0.15);
+        const endy = y + 25 + phys.tail.y;
+        
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endx, endy);
+        
+        ctx.strokeStyle = i === 0 ? baseColor : adjustColor(baseColor, -15 + i * 8);
+        ctx.lineWidth = 7 - i * 1.5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      });
+    }
+    
+    // 绘制脸部
+    function drawFace(cx, cy) {
+      const { blink, breath, emotion } = state;
+      const emotionData = EMOTIONS[emotion.current];
+      const breathOffset = breath.value * 1.5;
+      
+      // 脸部轮廓
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 50, 60 + breathOffset, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffe0cc';
+      ctx.fill();
+      ctx.strokeStyle = '#e8b090';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      
+      // 腮红
+      const blushAlpha = emotion.current === 'happy' || emotion.current === 'love' ? 0.45 : 0.22;
+      ctx.beginPath();
+      ctx.ellipse(cx - 28, cy + 8, 13, 7, 0, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 150, 150, ${blushAlpha})`;
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.ellipse(cx + 28, cy + 8, 13, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 眼睛
+      const eyeScale = emotionData.eyeScale * (1 - blink.value * 0.92);
+      drawEyes(cx, cy - 8, eyeScale);
+      
+      // 眉毛
+      drawEyebrows(cx, cy - 28, emotionData.browAngle);
+      
+      // 嘴巴
+      drawMouth(cx, cy + 22, emotionData.mouthCurve);
+      
+      // 鼻子
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + 3);
+      ctx.lineTo(cx - 2, cy + 10);
+      ctx.lineTo(cx + 2, cy + 10);
+      ctx.fillStyle = '#e8b090';
+      ctx.fill();
+    }
+    
+    // 绘制眼睛
+    function drawEyes(cx, cy, scale) {
+      const { head } = state;
+      const eyeOffsetX = head.x * 0.25;
+      const eyeOffsetY = head.y * 0.15;
+      
+      [-1, 1].forEach(side => {
+        const ex = cx + side * 20 + eyeOffsetX;
+        const ey = cy + eyeOffsetY;
+        
+        // 眼白
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, 11 * scale, 13 * scale, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        
+        // 瞳孔
+        const pupilScale = state.emotion.current === 'surprised' ? 0.7 : 0.5;
+        ctx.beginPath();
+        ctx.ellipse(ex + eyeOffsetX * 0.4, ey + eyeOffsetY * 0.25, 
+                    5.5 * scale * pupilScale, 6.5 * scale * pupilScale, 0, 0, Math.PI * 2);
+        ctx.fillStyle = state.emotion.current === 'love' ? '#ec4899' : '#4a5568';
+        ctx.fill();
+        
+        // 高光
+        ctx.beginPath();
+        ctx.ellipse(ex + 1.5 + eyeOffsetX * 0.25, ey - 1.5, 2.2, 2.8, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.ellipse(ex - 0.8 + eyeOffsetX * 0.15, ey + 2.5, 1.2, 1.2, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fill();
+        
+        // 爱心眼
+        if (state.emotion.current === 'love' && scale > 0.5) {
+          drawHeart(ex, ey, 7 * scale);
+        }
+      });
+    }
+    
+    // 绘制爱心
+    function drawHeart(cx, cy, size) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(size / 10, size / 10);
+      
+      ctx.beginPath();
+      ctx.moveTo(0, -3);
+      ctx.bezierCurveTo(-5, -8, -12, -5, -12, 0);
+      ctx.bezierCurveTo(-12, 5, 0, 12, 0, 15);
+      ctx.bezierCurveTo(0, 12, 12, 5, 12, 0);
+      ctx.bezierCurveTo(12, -5, 5, -8, 0, -3);
+      
+      ctx.fillStyle = '#ec4899';
+      ctx.fill();
+      ctx.restore();
+    }
+    
+    // 绘制眉毛
+    function drawEyebrows(cx, cy, angle) {
+      const { head } = state;
+      
+      [-1, 1].forEach(side => {
+        const bx = cx + side * 22 + head.x * 0.15;
+        const by = cy + head.y * 0.08;
+        
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(side * angle * Math.PI / 180);
+        
+        ctx.beginPath();
+        ctx.moveTo(-10, 0);
+        ctx.quadraticCurveTo(0, -4, 10, 0);
+        ctx.strokeStyle = '#5d4e37';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        
+        ctx.restore();
+      });
+    }
+    
+    // 绘制嘴巴
+    function drawMouth(cx, cy, curve) {
+      const { lipSync } = state;
+      const vowelShape = VOWEL_SHAPES[lipSync.vowel];
+      
+      const openAmount = lipSync.value * CONFIG.lipSync.maxOpen;
+      const mouthWidth = 13 + openAmount * 9 * vowelShape.width;
+      const mouthHeight = 2.5 + openAmount * 11 * vowelShape.height;
+      
+      ctx.save();
+      ctx.translate(cx, cy);
+      
+      ctx.beginPath();
+      if (openAmount > 0.1) {
+        const roundness = vowelShape.roundness;
+        ctx.moveTo(-mouthWidth, curve * 4);
+        ctx.quadraticCurveTo(-mouthWidth * roundness, -mouthHeight, 0, -mouthHeight);
+        ctx.quadraticCurveTo(mouthWidth * roundness, -mouthHeight, mouthWidth, curve * 4);
+        ctx.quadraticCurveTo(mouthWidth * roundness, mouthHeight * 1.3, 0, mouthHeight * 1.3);
+        ctx.quadraticCurveTo(-mouthWidth * roundness, mouthHeight * 1.3, -mouthWidth, curve * 4);
+        
+        ctx.fillStyle = '#cc6666';
+        ctx.fill();
+        
+        if (lipSync.vowel === 'a' || lipSync.vowel === 'e') {
+          ctx.beginPath();
+          ctx.ellipse(0, mouthHeight * 0.7, mouthWidth * 0.35, mouthHeight * 0.35, 0, 0, Math.PI);
+          ctx.fillStyle = '#ff8888';
+          ctx.fill();
+        }
+      } else {
+        ctx.moveTo(-10, curve * 4);
+        ctx.quadraticCurveTo(0, curve * 12, 10, curve * 4);
+        ctx.strokeStyle = '#cc6666';
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+      
+      ctx.restore();
+    }
+    
+    // 绘制身体
+    function drawBody(cx, cy) {
+      const { physics: phys, breath } = state;
+      const emotionData = EMOTIONS[state.emotion.current];
+      const breathOffset = breath.value * 2.5;
+      
+      ctx.beginPath();
+      ctx.moveTo(cx - 32, cy + 38);
+      ctx.quadraticCurveTo(cx - 42, cy + 75, cx - 28 + phys.cloth.x, cy + 115 + phys.cloth.y);
+      ctx.lineTo(cx + 28 + phys.cloth.x, cy + 115 + phys.cloth.y);
+      ctx.quadraticCurveTo(cx + 42, cy + 75, cx + 32, cy + 38);
+      ctx.closePath();
+      
+      ctx.fillStyle = emotionData.color;
+      ctx.fill();
+      ctx.strokeStyle = adjustColor(emotionData.color, -25);
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(cx - 18, cy + 38);
+      ctx.lineTo(cx, cy + 52 + breathOffset);
+      ctx.lineTo(cx + 18, cy + 38);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+    }
+    
+    // 绘制尾巴
+    function drawTail(cx, cy) {
+      const { physics: phys } = state;
+      
+      ctx.save();
+      ctx.translate(cx + 18, cy + 75);
+      ctx.rotate(phys.tail.angle);
+      
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(
+        18 + phys.tail.x, -28 + phys.tail.y,
+        8 + phys.tail.x * 1.3, -55 + phys.tail.y
+      );
+      
+      ctx.strokeStyle = EMOTIONS[state.emotion.current].color;
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.arc(8 + phys.tail.x * 1.3, -55 + phys.tail.y, 9, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      
+      ctx.restore();
+    }
+    
+    // ========== 辅助函数 ==========
+    function adjustColor(hex, amount) {
+      const r = Math.max(0, Math.min(255, parseInt(hex.slice(1, 3), 16) + amount));
+      const g = Math.max(0, Math.min(255, parseInt(hex.slice(3, 5), 16) + amount));
+      const b = Math.max(0, Math.min(255, parseInt(hex.slice(5, 7), 16) + amount));
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    
+    // ========== 主渲染循环 ==========
+    let lastTime = performance.now();
+    let fps = 0;
+    let frameCount = 0;
+    let fpsTimer = 0;
+    
+    function render(currentTime) {
+      const dt = Math.min(currentTime - lastTime, 40);
+      lastTime = currentTime;
+      state.time = currentTime;
+      state.delta = dt;
+      
+      // FPS 计算
+      frameCount++;
+      fpsTimer += dt;
+      if (fpsTimer >= 1000) {
+        fps = frameCount;
+        frameCount = 0;
+        fpsTimer = 0;
+      }
+      
+      // 更新系统
+      updatePhysics(dt);
+      updateLipSync(dt);
+      updateBlink(dt);
+      updateBreath(dt);
+      updateEmotion(dt);
+      updateHead(dt);
+      updateParticles(dt);
+      
+      // 清空画布
+      ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+      
+      // 角色中心
+      const cx = canvas.offsetWidth / 2 + state.head.x;
+      const cy = canvas.offsetHeight * 0.4 + state.head.y;
+      
+      // 应用头部旋转
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(state.head.angle * Math.PI / 180 * 0.25);
+      ctx.translate(-cx, -cy);
+      
+      // 渲染顺序
+      drawTail(cx, cy);
+      drawHair(cx, cy);
+      drawBody(cx, cy);
+      drawFace(cx, cy);
+      
+      // 触摸反馈
+      if (state.touch.reaction > 0) {
+        drawTouchFeedback(cx, cy);
+        state.touch.reaction *= 0.94;
+      }
+      
+      ctx.restore();
+      
+      // 绘制粒子
+      drawParticles();
+      
+      requestAnimationFrame(render);
+    }
+    
+    // 绘制触摸反馈
+    function drawTouchFeedback(cx, cy) {
+      const { touch } = state;
+      
+      ctx.beginPath();
+      ctx.arc(cx, cy - 18, 55 + (1 - touch.reaction) * 35, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 200, 100, ${touch.reaction * 0.25})`;
+      ctx.fill();
+      
+      if (touch.area === 'head' || touch.area === 'cheek_left' || touch.area === 'cheek_right') {
+        for (let i = 0; i < 3; i++) {
+          const angle = (state.time * 0.004 + i * Math.PI * 2 / 3) % (Math.PI * 2);
+          const radius = 35 + (1 - touch.reaction) * 25;
+          const px = cx + Math.cos(angle) * radius;
+          const py = cy - 18 + Math.sin(angle) * radius - (1 - touch.reaction) * 45;
+          
+          ctx.save();
+          ctx.globalAlpha = touch.reaction;
+          drawHeart(px, py, 5);
+          ctx.restore();
+        }
+      }
+    }
+    
+    // ========== 事件处理 ==========
+    canvas.addEventListener('mousemove', (e) => {
+      state.mouse.x = e.offsetX;
+      state.mouse.y = e.offsetY;
+    });
+    
+    canvas.addEventListener('mousedown', (e) => {
+      state.mouse.pressed = true;
+      const area = checkTouchArea(e.offsetX, e.offsetY);
+      if (area) {
+        state.touch.area = area;
+        state.touch.reaction = 1;
+        state.touch.timer = 0;
+        
+        switch(area) {
+          case 'head':
+            setEmotion('happy', 3000);
+            emitParticles(8, e.offsetX, e.offsetY, '#10b981');
+            break;
+          case 'cheek_left':
+          case 'cheek_right':
+            setEmotion('love', 3000);
+            emitParticles(6, e.offsetX, e.offsetY, '#ec4899');
+            break;
+          case 'body':
+            setEmotion('surprised', 2000);
+            emitParticles(5, e.offsetX, e.offsetY, '#f59e0b');
+            break;
+        }
+        
+        window.ReactNativeWebView?.postMessage(JSON.stringify({
+          type: 'touch',
+          area: area
+        }));
+      }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+      state.mouse.pressed = false;
+    });
+    
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      state.mouse.x = touch.clientX - rect.left;
+      state.mouse.y = touch.clientY - rect.top;
+      
+      const area = checkTouchArea(state.mouse.x, state.mouse.y);
+      if (area) {
+        state.touch.area = area;
+        state.touch.reaction = 1;
+        
+        window.ReactNativeWebView?.postMessage(JSON.stringify({
+          type: 'touch',
+          area: area
+        }));
+      }
+    });
+    
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      state.mouse.x = touch.clientX - rect.left;
+      state.mouse.y = touch.clientY - rect.top;
+    });
+    
+    function checkTouchArea(x, y) {
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      const nx = x / w;
+      const ny = y / h;
+      
+      for (const [name, area] of Object.entries(TOUCH_AREAS)) {
+        const dx = nx - area.cx;
+        const dy = ny - area.cy;
+        if (Math.sqrt(dx * dx + dy * dy) < area.r) {
+          return name;
+        }
+      }
+      return null;
+    }
+    
+    // ========== React Native 通信 ==========
+    function setLipSync(value) {
+      state.lipSync.target = Math.min(1, Math.max(0, value * CONFIG.lipSync.sensitivity));
+    }
+    
+    function setEmotion(emotion, duration = 0) {
+      if (EMOTIONS[emotion]) {
+        state.emotion.target = emotion;
+        state.emotion.value = 0;
+        
+        if (duration > 0) {
+          setTimeout(() => {
+            state.emotion.target = 'neutral';
+            state.emotion.value = 0;
+          }, duration);
+        }
+      }
+    }
+    
+    function setEmotionIntensity(intensity) {
+      state.emotion.intensity = Math.min(1, Math.max(0, intensity));
+    }
+    
+    function playAnimation(name) {
+      switch(name) {
+        case 'happy':
+          setEmotion('happy', 3000);
+          emitParticles(10, canvas.offsetWidth / 2, canvas.offsetHeight / 2, '#10b981');
+          break;
+        case 'sad':
+          setEmotion('sad', 5000);
+          break;
+        case 'angry':
+          setEmotion('angry', 3000);
+          emitParticles(5, canvas.offsetWidth / 2, canvas.offsetHeight / 2, '#ef4444');
+          break;
+        case 'surprised':
+          setEmotion('surprised', 2000);
+          emitParticles(8, canvas.offsetWidth / 2, canvas.offsetHeight / 2, '#f59e0b');
+          break;
+        case 'love':
+          setEmotion('love', 4000);
+          emitParticles(15, canvas.offsetWidth / 2, canvas.offsetHeight / 2, '#ec4899');
+          break;
+        case 'thinking':
+          setEmotion('thinking', 5000);
+          break;
+        case 'excited':
+          setEmotion('excited', 3000);
+          emitParticles(12, canvas.offsetWidth / 2, canvas.offsetHeight / 2, '#f97316');
+          break;
+        case 'nod':
+          state.head.targetY = 8;
+          setTimeout(() => { state.head.targetY = -4; }, 250);
+          setTimeout(() => { state.head.targetY = 0; }, 500);
+          break;
+        case 'shake':
+          state.head.targetX = -8;
+          setTimeout(() => { state.head.targetX = 8; }, 180);
+          setTimeout(() => { state.head.targetX = -4; }, 360);
+          setTimeout(() => { state.head.targetX = 0; }, 540);
+          break;
+      }
+    }
+    
+    window.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        switch(data.type) {
+          case 'lipSync':
+            setLipSync(data.value);
+            break;
+          case 'emotion':
+            setEmotion(data.emotion, data.duration);
+            break;
+          case 'animation':
+            playAnimation(data.animation);
+            break;
+          case 'intensity':
+            setEmotionIntensity(data.value);
+            break;
+        }
+      } catch (e) {}
+    });
+    
+    window.setLipSync = setLipSync;
+    window.setEmotion = setEmotion;
+    window.playAnimation = playAnimation;
+    
+    // ========== 启动 ==========
+    requestAnimationFrame(render);
+    
+    window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'ready' }));
+  </script>
+</body>
+</html>

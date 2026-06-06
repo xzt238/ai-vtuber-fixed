@@ -32,10 +32,11 @@ from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
 from gugu_native.widgets.skeleton_container import SkeletonContainer
 
 # ===== Provider 配置数据（统一从 shared_config 引入，不再本地维护副本）=====
-from app.shared_config import PROVIDER_CONFIG, EDGE_VOICES
+from app.shared_config import PROVIDER_CONFIG, EDGE_VOICES, IMAGE_GEN_CONFIG
 
 # Provider 显示名 -> 内部 key 的映射
 _LABEL_TO_KEY = {v["label"]: k for k, v in PROVIDER_CONFIG.items()}
+_IMAGE_GEN_LABEL_TO_KEY = {v["label"]: k for k, v in IMAGE_GEN_CONFIG.items()}
 
 # 缓存文件路径
 _CACHE_DIR = os.path.join(PROJECT_DIR, "app", "cache")
@@ -130,6 +131,10 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         title_row.addWidget(title)
         title_row.addStretch()
 
+        # 保存按钮布局
+        save_btn_layout = QHBoxLayout()
+        save_btn_layout.setSpacing(8)
+        
         self._save_all_btn = PushButton("💾 保存所有设置")
         self._save_all_btn.clicked.connect(self._save_all_settings)
         self._save_all_btn.setStyleSheet(f"""
@@ -154,7 +159,64 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 border: 2px solid {c.warning};
             }}
         """)
-        title_row.addWidget(self._save_all_btn)
+        save_btn_layout.addWidget(self._save_all_btn)
+        
+        # 单个保存按钮
+        self._save_llm_btn = PushButton("保存LLM")
+        self._save_llm_btn.clicked.connect(self._save_llm_config)
+        self._save_llm_btn.setStyleSheet(f"""
+            PushButton {{
+                background: {c.card_bg};
+                color: {c.text_secondary};
+                border: 1px solid {c.card_border};
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 12px;
+            }}
+            PushButton:hover {{
+                background: {c.card_bg_hover};
+                border-color: {c.accent};
+            }}
+        """)
+        save_btn_layout.addWidget(self._save_llm_btn)
+        
+        self._save_tts_btn = PushButton("保存TTS")
+        self._save_tts_btn.clicked.connect(self._save_tts_config)
+        self._save_tts_btn.setStyleSheet(f"""
+            PushButton {{
+                background: {c.card_bg};
+                color: {c.text_secondary};
+                border: 1px solid {c.card_border};
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 12px;
+            }}
+            PushButton:hover {{
+                background: {c.card_bg_hover};
+                border-color: {c.accent};
+            }}
+        """)
+        save_btn_layout.addWidget(self._save_tts_btn)
+        
+        self._save_image_gen_btn = PushButton("保存文生图")
+        self._save_image_gen_btn.clicked.connect(self._save_image_gen_config)
+        self._save_image_gen_btn.setStyleSheet(f"""
+            PushButton {{
+                background: {c.card_bg};
+                color: {c.text_secondary};
+                border: 1px solid {c.card_border};
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 12px;
+            }}
+            PushButton:hover {{
+                background: {c.card_bg_hover};
+                border-color: {c.accent};
+            }}
+        """)
+        save_btn_layout.addWidget(self._save_image_gen_btn)
+        
+        title_row.addLayout(save_btn_layout)
         main_layout.addLayout(title_row)
 
         # 获取当前主题颜色
@@ -295,7 +357,78 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         vision_card.viewLayout.addWidget(vision_content)
         main_layout.addWidget(vision_card)
 
-        # === 4. ASR 配置卡片 ===
+        # === 4. 文生图配置卡片 ===
+        image_gen_card = HeaderCardWidget(self)
+        image_gen_card.setTitle("文生图")
+        image_gen_content = QWidget()
+        image_gen_layout = QFormLayout(image_gen_content)
+        image_gen_layout.setContentsMargins(16, 8, 16, 16)
+        image_gen_layout.setSpacing(12)
+
+        self.image_gen_provider = ComboBox()
+        image_gen_provider_order = ["wanx", "cogview", "kolors", "dall_e", "flux", "mimo"]
+        for key in image_gen_provider_order:
+            cfg = IMAGE_GEN_CONFIG.get(key, {})
+            self.image_gen_provider.addItem(cfg.get("label", key))
+        self.image_gen_provider.currentIndexChanged.connect(self._on_image_gen_provider_changed)
+        image_gen_layout.addRow("文生图引擎:", self.image_gen_provider)
+
+        # API Key 行（输入框 + 显隐切换按钮）
+        image_gen_api_key_row = QHBoxLayout()
+        image_gen_api_key_row.setSpacing(4)
+        self.image_gen_api_key = LineEdit()
+        self.image_gen_api_key.setPlaceholderText("输入 API Key...")
+        self.image_gen_api_key.setEchoMode(LineEdit.EchoMode.Password)
+        image_gen_api_key_row.addWidget(self.image_gen_api_key, stretch=1)
+
+        self._toggle_image_gen_key_btn = ToolButton(FluentIcon.VIEW)
+        self._toggle_image_gen_key_btn.setFixedSize(32, 32)
+        self._toggle_image_gen_key_btn.setToolTip("显示/隐藏 API Key")
+        self._toggle_image_gen_key_btn.clicked.connect(self._toggle_image_gen_key_visibility)
+        image_gen_api_key_row.addWidget(self._toggle_image_gen_key_btn)
+        image_gen_layout.addRow("API Key:", image_gen_api_key_row)
+
+        self.image_gen_model = ComboBox()
+        self.image_gen_model.setPlaceholderText("选择模型...")
+        image_gen_layout.addRow("模型:", self.image_gen_model)
+
+        self.image_gen_base_url = LineEdit()
+        self.image_gen_base_url.setPlaceholderText("自定义 Base URL（可选）")
+        image_gen_layout.addRow("Base URL:", self.image_gen_base_url)
+
+        # 图像尺寸
+        image_gen_size_row = QHBoxLayout()
+        image_gen_size_row.setSpacing(8)
+        self.image_gen_width = SpinBox()
+        self.image_gen_width.setRange(256, 2048)
+        self.image_gen_width.setValue(1024)
+        self.image_gen_width.setPrefix("宽: ")
+        image_gen_size_row.addWidget(self.image_gen_width)
+        
+        self.image_gen_height = SpinBox()
+        self.image_gen_height.setRange(256, 2048)
+        self.image_gen_height.setValue(1024)
+        self.image_gen_height.setPrefix("高: ")
+        image_gen_size_row.addWidget(self.image_gen_height)
+        image_gen_layout.addRow("图像尺寸:", image_gen_size_row)
+
+        # 提示信息
+        self.image_gen_hint = CaptionLabel("")
+        self.image_gen_hint.setWordWrap(True)
+        image_gen_layout.addRow("", self.image_gen_hint)
+
+        for w in [self.image_gen_provider, self.image_gen_api_key, self.image_gen_model, self.image_gen_base_url, self.image_gen_width, self.image_gen_height]:
+            if hasattr(w, 'currentIndexChanged'):
+                w.currentIndexChanged.connect(self._mark_dirty)
+            elif hasattr(w, 'textChanged'):
+                w.textChanged.connect(self._mark_dirty)
+            elif hasattr(w, 'valueChanged'):
+                w.valueChanged.connect(self._mark_dirty)
+
+        image_gen_card.viewLayout.addWidget(image_gen_content)
+        main_layout.addWidget(image_gen_card)
+
+        # === 5. ASR 配置卡片 ===
         asr_card = HeaderCardWidget(self)
         asr_card.setTitle("语音识别 (ASR)")
         asr_content = QWidget()
@@ -585,6 +718,11 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             self._save_asr_config()
         except Exception as e:
             errors.append(f"ASR: {e}")
+        # 文生图
+        try:
+            self._save_image_gen_config()
+        except Exception as e:
+            errors.append(f"文生图: {e}")
 
         self._dirty = False
         if hasattr(self, '_save_all_btn') and self._save_all_btn:
@@ -775,6 +913,142 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 json.dump(keys, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"[SettingsPage] 保存 API Key 失败: {e}")
+
+    # ========== 文生图配置逻辑 ==========
+
+    def _get_current_image_gen_provider_key(self) -> str:
+        """获取当前选中的文生图 provider 内部 key"""
+        label = self.image_gen_provider.currentText()
+        return _IMAGE_GEN_LABEL_TO_KEY.get(label, "wanx")
+
+    def _on_image_gen_provider_changed(self, index: int):
+        """文生图 Provider 切换 - 加载对应的模型列表和默认值"""
+        provider_key = self._get_current_image_gen_provider_key()
+        cfg = IMAGE_GEN_CONFIG.get(provider_key, {})
+
+        # 更新模型列表
+        self.image_gen_model.clear()
+        models = cfg.get("models", [])
+        if models:
+            self.image_gen_model.addItems(models)
+        else:
+            self.image_gen_model.addItem(cfg.get("defaultModel", ""))
+
+        # 更新 Base URL
+        self.image_gen_base_url.setText(cfg.get("baseUrl", ""))
+        self.image_gen_api_key.setPlaceholderText(cfg.get("keyPlaceholder", "输入 API Key..."))
+
+        # 更新提示信息
+        self.image_gen_hint.setText(cfg.get("hint", ""))
+
+        # 加载已保存的 API Key
+        self._load_image_gen_api_key_for_provider(provider_key)
+
+    def _load_image_gen_api_key_for_provider(self, provider_key: str):
+        """加载指定文生图 provider 的已保存 API Key"""
+        try:
+            if os.path.exists(_API_KEYS_FILE):
+                with open(_API_KEYS_FILE, "r", encoding="utf-8") as f:
+                    keys = json.load(f)
+                # 使用 image_gen_ 前缀区分
+                saved_key = keys.get(f"image_gen_{provider_key}", "")
+                self.image_gen_api_key.setText(saved_key)
+            else:
+                self.image_gen_api_key.setText("")
+        except Exception:
+            self.image_gen_api_key.setText("")
+
+    def _toggle_image_gen_key_visibility(self):
+        """切换文生图 API Key 显示/隐藏"""
+        if self.image_gen_api_key.echoMode() == QLineEdit.EchoMode.Password:
+            self.image_gen_api_key.setEchoMode(QLineEdit.EchoMode.Normal)
+            self._toggle_image_gen_key_btn.setIcon(FluentIcon.HIDE)
+        else:
+            self.image_gen_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+            self._toggle_image_gen_key_btn.setIcon(FluentIcon.VIEW)
+
+    def _save_image_gen_config(self):
+        """保存文生图配置"""
+        provider_key = self._get_current_image_gen_provider_key()
+        api_key = self.image_gen_api_key.text().strip()
+        model = self.image_gen_model.currentText()
+        base_url = self.image_gen_base_url.text().strip()
+        width = self.image_gen_width.value()
+        height = self.image_gen_height.value()
+        cfg = IMAGE_GEN_CONFIG.get(provider_key, {})
+
+        if not base_url:
+            base_url = cfg.get("baseUrl", "")
+
+        # 1. 保存 API Key
+        self._save_api_key(f"image_gen_{provider_key}", api_key)
+
+        # 2. 保存文生图偏好
+        prefs = {}
+        if os.path.exists(_LLM_PREFS_FILE):
+            try:
+                with open(_LLM_PREFS_FILE, "r", encoding="utf-8") as f:
+                    prefs = json.load(f)
+            except Exception:
+                prefs = {}
+
+        if "image_gen" not in prefs:
+            prefs["image_gen"] = {}
+
+        prefs["image_gen"]["provider"] = provider_key
+        prefs["image_gen"]["model"] = model
+        prefs["image_gen"]["base_url"] = base_url
+        prefs["image_gen"]["width"] = width
+        prefs["image_gen"]["height"] = height
+
+        try:
+            os.makedirs(_CACHE_DIR, exist_ok=True)
+            with open(_LLM_PREFS_FILE, "w", encoding="utf-8") as f:
+                json.dump(prefs, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            InfoBar.error(
+                title="保存失败",
+                content=f"无法写入配置文件: {e}",
+                parent=self,
+                position=InfoBarPosition.TOP,
+                duration=3000
+            )
+            return
+
+        # 3. 更新后端配置
+        self._apply_image_gen_config_to_backend(provider_key, api_key, model, base_url, width, height)
+
+        InfoBar.success(
+            title="保存成功",
+            content=f"文生图配置已保存: {cfg.get('label', provider_key)} / {model}",
+            parent=self,
+            position=InfoBarPosition.TOP,
+            duration=2000
+        )
+
+    def _apply_image_gen_config_to_backend(self, provider_key: str, api_key: str, model: str, base_url: str, width: int, height: int):
+        """将文生图配置应用到后端"""
+        backend = self.backend
+        if not backend:
+            return
+
+        image_gen_section = backend.config.config.setdefault("image_gen", {})
+        image_gen_section["enabled"] = True
+        image_gen_section["provider"] = provider_key
+        image_gen_section["api_key"] = api_key
+        image_gen_section["model"] = model
+        image_gen_section["base_url"] = base_url
+        image_gen_section["width"] = width
+        image_gen_section["height"] = height
+
+        # MiMo Key 分发: 如果选择小米MiMo，使用LLM的API Key
+        if provider_key == "mimo" and not api_key:
+            llm_section = backend.config.config.get("llm", {})
+            mimo_section = llm_section.get("mimo", {})
+            mimo_api_key = mimo_section.get("api_key", "")
+            if mimo_api_key:
+                image_gen_section["api_key"] = mimo_api_key
+                self.image_gen_api_key.setText(mimo_api_key)
 
     def _apply_llm_config_to_backend(self, provider_key: str, api_key: str, model: str, base_url: str):
         """将 LLM 配置应用到后端（引擎重建在后台线程执行）"""

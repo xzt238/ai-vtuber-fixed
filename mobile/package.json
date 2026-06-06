@@ -1,0 +1,47 @@
+{
+  "name": "gugu-ai-vtuber-mobile",
+  "version": "1.1.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build:android": "EAS_NO_VCS=1 eas build --platform android --profile preview --non-interactive",
+    "build:ios": "EAS_NO_VCS=1 eas build --platform ios --profile preview --non-interactive",
+    "update": "EAS_NO_VCS=1 eas update --branch preview --non-interactive",
+    "update:prod": "EAS_NO_VCS=1 eas update --branch production --non-interactive"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "14.0.4",
+    "@react-native-community/slider": "^5.2.0",
+    "axios": "^1.7.0",
+    "expo": "~51.0.0",
+    "expo-constants": "~16.0.2",
+    "expo-file-system": "~17.0.1",
+    "expo-haptics": "~13.0.1",
+    "expo-linking": "~6.3.1",
+    "expo-modules-autolinking": "^1.10.3",
+    "expo-modules-core": "^1.11.14",
+    "expo-router": "~3.5.24",
+    "expo-speech": "~12.0.2",
+    "expo-splash-screen": "~0.27.7",
+    "expo-status-bar": "~1.12.1",
+    "expo-updates": "~0.25.28",
+    "react": "^18.2.0",
+    "react-native": "^0.74.5",
+    "react-native-gesture-handler": "~2.16.1",
+    "react-native-mmkv": "^2.12.0",
+    "react-native-reanimated": "~3.10.1",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "3.31.1",
+    "react-native-webview": "~13.10.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@types/react": "~18.2.0",
+    "typescript": "~5.3.3"
+  },
+  "private": true
+}

@@ -113,6 +113,66 @@ PROVIDER_CONFIG = {
 }
 
 # ============================================================
+# 文生图 Provider 配置
+# ============================================================
+IMAGE_GEN_CONFIG = {
+    "wanx": {
+        "label": "通义万相",
+        "baseUrl": "https://dashscope.aliyuncs.com",
+        "models": ["wanx-v1", "wanx2.1-t2i-turbo", "wanx2.1-t2i-plus", "wanx2.1-t2i-max"],
+        "defaultModel": "wanx2.1-t2i-turbo",
+        "hint": "阿里云通义万相文生图，中文优化",
+        "keyPlaceholder": "在 dashscope.console.aliyun.com 获取",
+        "color": {"bg": "rgba(255,152,0,0.25)", "fg": "#ffb74d"},
+    },
+    "cogview": {
+        "label": "智谱 CogView",
+        "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+        "models": ["cogview-4", "cogview-4-plus", "cogview-3-flash"],
+        "defaultModel": "cogview-4",
+        "hint": "智谱AI CogView文生图，支持中文",
+        "keyPlaceholder": "在 open.bigmodel.cn 获取",
+        "color": {"bg": "rgba(33,150,243,0.25)", "fg": "#64b5f6"},
+    },
+    "kolors": {
+        "label": "可图",
+        "baseUrl": "https://api.kolors.com",
+        "models": ["kolors", "kolors-plus"],
+        "defaultModel": "kolors",
+        "hint": "可图文生图，高质量",
+        "keyPlaceholder": "在 kolors.com 获取",
+        "color": {"bg": "rgba(156,39,176,0.25)", "fg": "#ce93d8"},
+    },
+    "dall_e": {
+        "label": "DALL-E",
+        "baseUrl": "https://api.openai.com/v1",
+        "models": ["dall-e-3", "dall-e-2"],
+        "defaultModel": "dall-e-3",
+        "hint": "OpenAI DALL-E文生图，高质量",
+        "keyPlaceholder": "在 platform.openai.com 获取",
+        "color": {"bg": "rgba(102,126,234,0.3)", "fg": "#a8b5ff"},
+    },
+    "flux": {
+        "label": "Flux",
+        "baseUrl": "https://api.bfl.ml",
+        "models": ["flux-pro-1.1", "flux-pro", "flux-schnell"],
+        "defaultModel": "flux-pro-1.1",
+        "hint": "Flux文生图，高质量",
+        "keyPlaceholder": "在 bfl.ml 获取",
+        "color": {"bg": "rgba(76,175,80,0.25)", "fg": "#81c784"},
+    },
+    "mimo": {
+        "label": "小米 MiMo",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "models": ["mimo-v2.5"],
+        "defaultModel": "mimo-v2.5",
+        "hint": "小米MiMo文生图，使用LLM相同的API Key",
+        "keyPlaceholder": "使用小米MiMo LLM的API Key",
+        "color": {"bg": "rgba(255,87,34,0.25)", "fg": "#ff8a65"},
+    },
+}
+
+# ============================================================
 # Edge TTS 音色列表（单一数据源）
 # 前端通过 /api/config.js 动态加载，修改后自动生效
 # ============================================================

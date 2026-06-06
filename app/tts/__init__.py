@@ -888,5 +888,13 @@ class TTSFactory:
                 except Exception:
                     pass
             return MimoTTS(provider_config)
+        elif provider == "elevenlabs":
+            # ElevenLabs高质量语音合成引擎
+            from .elevenlabs import ElevenLabsTTS
+            return ElevenLabsTTS(provider_config)
+        elif provider == "fish_speech":
+            # Fish-Speech高质量语音合成引擎
+            from .fish_speech import FishSpeechTTS
+            return FishSpeechTTS(provider_config)
         else:
             raise ValueError(f"未知 TTS 提供商: {provider}")

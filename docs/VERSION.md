@@ -38,6 +38,788 @@
 
 
 
+## 🟢 v1.19.1 (2026-06-04) ✅ STABLE
+
+### 🔧 优化
+- **[MOBILE-003] 移动端本地运行**：修改移动端应用支持完全本地运行，无需后端服务器
+  - 新增本地AI服务：`mobile/src/services/localAI.ts`
+  - 修改对话页面使用本地AI服务
+  - 支持本地历史记录存储
+
+### 📝 文件变更
+- **新增**: `mobile/src/services/localAI.ts`
+- **修改**: `mobile/src/screens/ChatScreen.tsx`, `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.19.0 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[MOBILE-002] 移动端应用**：新增 `mobile/` 目录，包含完整的React Native移动端应用
+  - 对话页面：与AI进行文字对话
+  - 角色页面：查看和选择角色
+  - 记忆页面：查看记忆系统状态
+  - 直播页面：连接直播平台
+  - 设置页面：服务器连接、主题、语言设置
+
+### 📝 文件变更
+- **新增**: `mobile/package.json`, `mobile/src/App.tsx`, `mobile/src/navigation/AppNavigator.tsx`, `mobile/src/screens/ChatScreen.tsx`, `mobile/src/screens/CharacterScreen.tsx`, `mobile/src/screens/MemoryScreen.tsx`, `mobile/src/screens/LiveScreen.tsx`, `mobile/src/screens/SettingsScreen.tsx`, `mobile/src/services/api.ts`, `mobile/src/store/appStore.ts`, `mobile/src/utils/constants.ts`, `mobile/tsconfig.json`, `mobile/README.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.9 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[MOBILE-001] 移动端支持模块**：新增 `app/mobile/__init__.py`，提供移动端API接口、响应式设计、触摸交互支持
+- **[I18N-001] 国际化增强模块**：新增 `app/i18n/enhanced_i18n.py`，支持12种语言、动态翻译、语言包管理
+- **[PLUGIN-002] 插件市场增强版**：新增 `app/plugin/enhanced_marketplace.py`，支持插件发布、搜索、评分、下载、版本管理
+
+### 📝 文件变更
+- **新增**: `app/mobile/__init__.py`, `app/i18n/enhanced_i18n.py`, `app/plugin/enhanced_marketplace.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.8 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[SING-001] AI唱歌增强版**：新增 `app/singing/enhanced_singing.py`，支持多种唱歌模式、伴奏分离、旋律生成、音效处理
+- **[GAME-003] 屏幕识别增强版**：新增 `app/game/enhanced_screen_recognition.py`，支持多游戏识别、实时状态推断、智能决策
+
+### 📝 文件变更
+- **新增**: `app/singing/enhanced_singing.py`, `app/game/enhanced_screen_recognition.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.7 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[LIVE-002] 抖音直播增强版**：新增 `app/live/platforms/douyin_enhanced.py`，实现完整的弹幕接收、发送、礼物处理、自动重连功能
+- **[LIVE-003] 快手直播增强版**：新增 `app/live/platforms/kuaishou_enhanced.py`，实现完整的弹幕接收、发送、礼物处理、自动重连功能
+
+### 📝 文件变更
+- **新增**: `app/live/platforms/douyin_enhanced.py`, `app/live/platforms/kuaishou_enhanced.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.6 (2026-06-04) ✅ STABLE
+
+### 📝 文档
+- **[DOC-027] 项目设计路线图**：新增 `docs/PROJECT_DESIGN_ROADMAP.md`，包含项目现状检查、UI/UX设计、测试策略、功能发展路线图、多平台支持设计、性能指标设计、安全设计、商业化设计
+- **[DOC-028] UI设计规范**：新增 `docs/UI_DESIGN_SPEC.md`，包含设计原则、颜色系统、字体系统、间距系统、圆角系统、阴影系统、图标系统、动画系统、响应式设计、组件规范
+
+### 📝 文件变更
+- **新增**: `docs/PROJECT_DESIGN_ROADMAP.md`, `docs/UI_DESIGN_SPEC.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.5 (2026-06-04) ✅ STABLE
+
+### 🔧 优化
+- **[OPT-030] 页面功能去重**：将调试页面中的RAG、SVC、唱歌、多AI群聊、摄像头功能移至功能设置页面
+- **[OPT-031] 调试页面重构**：调试页面改为系统调试、性能监控、配置热重载功能
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/pages/debug_page_optimized.py`, `native/gugu_native/pages/features_settings_page.py`, `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.4 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[TEST-004] 性能测试模块**：新增 `tests/test_performance.py`，包含9个性能测试用例
+- **[GAME-002] 游戏模板模块**：新增 `app/game/game_templates.py`，提供Minecraft、Factorio、Terraria、Stardew Valley的UI模板和识别规则
+
+### 📝 文件变更
+- **新增**: `tests/test_performance.py`, `app/game/game_templates.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.3 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[TEST-003] 集成测试模块**：新增 `tests/test_integration.py`，包含10个集成测试用例
+- **[DOC-026] 项目完整度检查**：新增 `docs/PROJECT_COMPLETENESS_CHECK.md`，详细检查各模块完整度
+
+### 📝 文件变更
+- **新增**: `tests/test_integration.py`, `docs/PROJECT_COMPLETENESS_CHECK.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.2 (2026-06-04) ✅ STABLE
+
+### 📝 文档清理
+- **[DOC-023] 过时文档删除**：删除analysis目录中5个过时文档（v1.11.0/v1.12.0版本）
+- **[DOC-024] 过时参考文档删除**：删除reference目录中2个过时文档（v1.10.2/v1.11.23版本）
+- **[DOC-025] 文档索引更新**：更新 `docs/INDEX.md`，删除对已删除文档的引用
+
+### 📝 文件变更
+- **删除**: `analysis/GAP_EVALUATION_v1.11.0.md`, `analysis/AI_COMPANION_BENCHMARK.md`, `analysis/CONFIGURATION_STATUS.md`, `analysis/PROJECT_ANALYSIS.md`, `analysis/ANALYSIS_SUMMARY.md`, `reference/COMPETITIVE_GAP_ANALYSIS.md`, `reference/GAP_DETAILED_ANALYSIS.md`
+- **修改**: `docs/INDEX.md`, `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.1 (2026-06-04) ✅ STABLE
+
+### 📝 文档整理
+- **[DOC-020] 文档目录重组**：将docs目录按功能分类重组为features、analysis、optimization、architecture、diagrams等子目录
+- **[DOC-021] 文档索引创建**：新增 `docs/INDEX.md`，提供完整的文档导航
+- **[DOC-022] 过时文档归档**：将Phase 1/2/3完成报告等过时文档移至archive目录
+
+### 📝 文件变更
+- **新增**: `docs/INDEX.md`, `docs/DOCS_ORGANIZATION_PLAN.md`
+- **移动**: 50+个文档文件重新分类到子目录
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.18.0 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[PERF-002] 启动优化模块**：新增 `app/startup_optimizer.py`，提供懒加载、预加载、启动时间优化
+- **[PERF-003] 交互优化模块**：新增 `app/interaction_optimizer.py`，提供防抖、节流、操作队列、反馈优化
+- **[PERF-004] 缓存优化模块**：新增 `app/cache_optimizer.py`，提供内存缓存、磁盘缓存、LRU策略、缓存预热
+
+### 📝 文件变更
+- **新增**: `app/startup_optimizer.py`, `app/interaction_optimizer.py`, `app/cache_optimizer.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.17.9 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[TEST-001] 测试框架模块**：新增 `tests/test_framework.py`，提供单元测试、集成测试、性能测试支持
+- **[TEST-002] 核心模块测试**：新增 `tests/test_core_modules.py`，包含10个核心模块的单元测试
+- **[PERF-001] 性能监控模块**：新增 `app/performance_monitor.py`，提供CPU、内存、GPU、响应时间等性能指标监控
+
+### 📝 文件变更
+- **新增**: `tests/test_framework.py`, `tests/test_core_modules.py`, `app/performance_monitor.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.17.8 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[GAME-001] 屏幕识别模块**：新增 `app/game/screen_recognition.py`，实现屏幕截图、OCR文字识别、游戏状态推断
+- **[CONFIG-001] 配置热重载模块**：新增 `app/config_hot_reload.py`，实现配置文件监听、自动重载、变更通知
+
+### 📝 文件变更
+- **新增**: `app/game/screen_recognition.py`, `app/config_hot_reload.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.17.7 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[LIVE-001] 弹幕增强模块**：新增 `app/live/danmaku_enhancer.py`，实现智能弹幕回复、礼物感谢、自动互动
+- **[RAG-001] 增量更新模块**：新增 `app/rag/incremental_updater.py`，实现文档增量更新、版本管理、变更追踪
+- **[PLUGIN-001] 插件市场模块**：新增 `app/plugin/marketplace.py`，实现插件发布、搜索、评分、下载
+
+### 📝 文件变更
+- **新增**: `app/live/danmaku_enhancer.py`, `app/rag/incremental_updater.py`, `app/plugin/marketplace.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.17.6 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[ASR-001] 音频预处理模块**：新增 `app/asr/audio_preprocessor.py`，实现降噪、音量标准化、静音检测
+- **[TTS-001] 语速控制模块**：新增 `app/tts/speed_control.py`，实现语速调整、停顿控制、情感语速
+- **[EMO-001] 情感语音控制**：新增 `app/emotion/voice_emotion.py`，实现情感到语音参数的映射
+
+### 📝 文件变更
+- **新增**: `app/asr/audio_preprocessor.py`, `app/tts/speed_control.py`, `app/emotion/voice_emotion.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.17.5 (2026-06-04) ✅ STABLE
+
+### 🔧 优化
+- **[OPT-029] VAD优化**：新增 `app/vad/optimized_vad.py`，实现自适应阈值、降噪、概率平滑等优化
+
+### 📝 文件变更
+- **新增**: `app/vad/optimized_vad.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.17.4 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[VOICE-001] 支持打断的语音输入**：新增 `app/voice/interrupt_voice.py`，集成VAD和打断处理器
+- **[CONFIG-002] VAD和打断配置**：在config.yaml中添加VAD和打断配置参数
+
+### 📝 文件变更
+- **新增**: `app/voice/interrupt_voice.py`
+- **修改**: `app/config.yaml`, `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.17.3 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[VAD-001] VAD模块**：新增 `app/vad/__init__.py`，实现Silero VAD语音活动检测状态机
+- **[INT-001] 打断处理器**：新增 `app/interrupt/__init__.py`，实现asyncio.Task取消链和打断处理
+- **[DOC-019] 语音打断分析**：新增 `docs/VOICE_INTERRUPTION_ANALYSIS.md`，详细分析实时语音打断功能
+
+### 📝 文件变更
+- **新增**: `app/vad/__init__.py`, `app/interrupt/__init__.py`, `docs/VOICE_INTERRUPTION_ANALYSIS.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.17.2 (2026-06-04) ✅ STABLE
+
+### 🔧 优化
+- **[OPT-024] 声音处理模块优化**：优化SVC和唱歌模块，添加音频缓冲、实时处理、多引擎支持
+- **[OPT-025] 知识库模块优化**：优化RAG模块，添加智能分块、向量存储、多策略检索
+- **[OPT-026] 角色扮演模块优化**：优化角色管理，添加角色配置、剧情系统、会话管理
+- **[OPT-027] 情感系统优化**：优化情感分析，添加多模态融合、情感记忆、情感化回复
+- **[OPT-028] 插件系统优化**：优化插件管理，添加热加载、权限控制、配置管理
+
+### 📝 文件变更
+- **修改**: `app/svc/__init__.py`, `app/singing/__init__.py`, `app/rag/__init__.py`, `app/roleplay/__init__.py`, `app/emotion/__init__.py`, `app/plugin/__init__.py`, `app/version.py`, `docs/VERSION.md`
+
+---
+
+## 🟢 v1.17.1 (2026-06-04) ✅ STABLE
+
+### ✨ 新增
+- **[UI-014] 功能设置页面**：新增 `native/gugu_native/pages/features_settings_page.py`，统一管理声音处理、知识库、角色扮演、情感系统、插件系统配置
+- **[UI-015] 功能设置页面集成**：将功能设置页面集成到主窗口导航栏
+
+### 📝 文件变更
+- **新增**: `native/gugu_native/pages/features_settings_page.py`
+- **修改**: `native/main.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.17.0 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[UI-013] 单个保存按钮**：在设置页面中添加LLM、TTS、文生图等单个保存按钮
+
+### 🔧 优化
+- **[OPT-023] 调试页面优化**：从调试页面中删除文生图配置
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/pages/settings_page.py`, `native/gugu_native/pages/debug_page_optimized.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.9 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[UI-012] 文生图配置集成**：将文生图配置集成到设置页面，类似LLM配置的交互方式
+- **[CONFIG-001] 文生图提供商配置**：在shared_config.py中添加IMAGE_GEN_CONFIG，支持6个提供商
+
+### 🔧 优化
+- **[OPT-021] 设置页面优化**：在设置页面中添加文生图配置卡片
+- **[OPT-022] 配置保存优化**：将文生图配置集成到统一保存流程
+
+### 📝 文件变更
+- **修改**: `app/shared_config.py`, `native/gugu_native/pages/settings_page.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.8 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[IMG-001] 文生图模块**：新增 `app/image_gen/__init__.py`，支持通义万相、智谱CogView、可图、DALL-E、Flux、小米MiMo等文生图API
+
+### 🔧 优化
+- **[OPT-019] 文生图配置**：将Stable Diffusion替换为文生图API，支持多个提供商
+- **[OPT-020] 调试页面优化**：更新调试页面，将SD配置替换为文生图配置
+
+### 📝 文件变更
+- **删除**: `app/sd/` 目录
+- **新增**: `app/image_gen/__init__.py`
+- **修改**: `native/gugu_native/pages/debug_page_optimized.py`, `app/config.yaml`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.7 (2026-06-03) ✅ STABLE
+
+### 🔧 优化
+- **[OPT-018] 调试页面优化**：从功能调试页面中移除游戏和Bot配置，因为已经有单独的设置页面
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/pages/debug_page_optimized.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.6 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[BOT-001] Discord Bot完善**：完善 `app/bot/discord_bot.py`，实现真实的Discord API连接
+- **[BOT-002] Telegram Bot完善**：完善 `app/bot/telegram_bot.py`，实现真实的Telegram API连接
+- **[BOT-003] QQ Bot**：新增 `app/bot/qq_bot.py`，支持QQ机器人
+- **[BOT-004] 微信 Bot**：新增 `app/bot/wechat_bot.py`，支持微信公众号/企业微信
+- **[BOT-005] 飞书 Bot**：新增 `app/bot/feishu_bot.py`，支持飞书机器人
+- **[BOT-006] 钉钉 Bot**：新增 `app/bot/dingtalk_bot.py`，支持钉钉机器人
+- **[BOT-007] Slack Bot**：新增 `app/bot/slack_bot.py`，支持Slack工作区Bot
+- **[BOT-008] LINE Bot**：新增 `app/bot/line_bot.py`，支持LINE聊天Bot
+- **[UI-010] 社交Bot设置页面**：新增 `native/gugu_native/pages/bot_settings_page.py`，支持8个平台配置
+- **[UI-011] 社交Bot设置页面集成**：将社交Bot设置页面集成到主窗口导航栏
+
+### 📝 文件变更
+- **新增**: `app/bot/discord_bot.py`, `app/bot/telegram_bot.py`, `app/bot/qq_bot.py`, `app/bot/wechat_bot.py`, `app/bot/feishu_bot.py`, `app/bot/dingtalk_bot.py`, `app/bot/slack_bot.py`, `app/bot/line_bot.py`, `native/gugu_native/pages/bot_settings_page.py`
+- **修改**: `native/main.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.5 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[UI-008] 游戏设置页面**：新增 `native/gugu_native/pages/game_settings_page.py`，支持Minecraft、Factorio、Terraria、Stardew Valley、通用屏幕识别配置
+- **[UI-009] 游戏设置页面集成**：将游戏设置页面集成到主窗口导航栏
+
+### 📝 文件变更
+- **新增**: `native/gugu_native/pages/game_settings_page.py`
+- **修改**: `native/main.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.4 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[GAME-001] Minecraft代理完善**：完善 `app/game/minecraft_agent.py`，实现真实的Minecraft API连接
+- **[GAME-002] Factorio代理**：新增 `app/game/factorio_agent.py`，支持RCON连接
+- **[GAME-003] Terraria代理**：新增 `app/game/terraria_agent.py`，支持RCON连接
+- **[GAME-004] Stardew Valley代理**：新增 `app/game/stardew_valley_agent.py`，支持SMAPI HTTP API
+- **[DOC-018] 游戏注入分析**：新增 `docs/GAME_INJECTION_ANALYSIS.md`，分析内存注入和模组注入可行性
+
+### 🔧 优化
+- **[OPT-017] 游戏代理管理器优化**：更新 `app/game/__init__.py`，支持所有新游戏
+
+### 📝 文件变更
+- **新增**: `app/game/minecraft_agent.py`, `app/game/factorio_agent.py`, `app/game/terraria_agent.py`, `app/game/stardew_valley_agent.py`, `docs/GAME_INJECTION_ANALYSIS.md`
+- **修改**: `app/game/__init__.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.3 (2026-06-03) ✅ STABLE
+
+### 📝 文档
+- **[DOC-017] 游戏集成分析**：新增游戏集成详细分析文档 `docs/GAME_INTEGRATION_ANALYSIS.md`，包含技术方案对比、可扩展游戏列表、通用屏幕识别方案
+
+### 📝 文件变更
+- **新增**: `docs/GAME_INTEGRATION_ANALYSIS.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.2 (2026-06-03) ✅ STABLE
+
+### 🔧 修复
+- **[BUG-007] YouTube平台修复**：添加 `_receive_messages` 抽象方法实现
+- **[BUG-008] 微信视频号平台修复**：添加 `_receive_messages` 抽象方法实现
+
+### ✅ 测试
+- **[TEST-001] 直播平台连接测试**：测试所有9个平台的实例创建和API访问
+- **测试结果**: 所有平台实例创建成功，Bilibili API访问成功
+
+### 📝 文件变更
+- **新增**: `test_live_platforms.py`
+- **修改**: `app/live/platforms/youtube.py`, `app/live/platforms/weixin_video.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.1 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[LIVE-007] 斗鱼平台实现**：新增 `app/live/platforms/douyu.py`
+- **[LIVE-008] 虎牙平台实现**：新增 `app/live/platforms/huya.py`
+- **[LIVE-009] YouTube平台实现**：新增 `app/live/platforms/youtube.py`
+- **[LIVE-010] Twitch平台实现**：新增 `app/live/platforms/twitch.py`
+- **[LIVE-011] TikTok平台实现**：新增 `app/live/platforms/tiktok.py`
+- **[LIVE-012] 微信视频号平台实现**：新增 `app/live/platforms/weixin_video.py`
+
+### 🔧 优化
+- **[OPT-016] 调试页面优化**：从功能调试页面中移除直播平台配置，避免重复
+
+### 📝 文件变更
+- **新增**: `app/live/platforms/douyu.py`, `app/live/platforms/huya.py`, `app/live/platforms/youtube.py`, `app/live/platforms/twitch.py`, `app/live/platforms/tiktok.py`, `app/live/platforms/weixin_video.py`
+- **修改**: `app/live/platforms/__init__.py`, `native/gugu_native/pages/debug_page_optimized.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.16.0 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[UI-007] 直播设置页面集成**：将直播设置页面集成到主窗口导航栏，支持9个平台配置
+
+### 📝 文件变更
+- **修改**: `native/main.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.15.9 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[LIVE-001] 统一直播平台架构**：新增 `app/live/platforms/` 模块，支持多平台扩展
+- **[LIVE-002] Bilibili平台实现**：完整的Bilibili直播弹幕接收和发送功能
+- **[LIVE-003] 抖音平台实现**：抖音直播弹幕接收框架
+- **[LIVE-004] 快手平台实现**：快手直播弹幕接收框架
+- **[LIVE-005] 直播平台配置界面**：新增 `native/gugu_native/pages/live_settings_page.py`，支持9个平台配置
+- **[LIVE-006] 直播通信桥梁**：新增 `app/live/bridge.py`，实现直播与LLM/TTS的通信
+
+### 📝 文件变更
+- **新增**: `app/live/platforms/__init__.py`, `app/live/platforms/bilibili.py`, `app/live/platforms/douyin.py`, `app/live/platforms/kuaishou.py`, `app/live/bridge.py`, `native/gugu_native/pages/live_settings_page.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.15.8 (2026-06-03) ✅ STABLE
+
+### 📝 文档
+- **[DOC-016] 直播功能分析**：新增直播功能详细分析文档 `docs/LIVE_STREAMING_ANALYSIS.md`，包含Bilibili配置、多平台支持、扩展方案等
+
+### 📝 文件变更
+- **新增**: `docs/LIVE_STREAMING_ANALYSIS.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.15.7 (2026-06-03) ✅ STABLE
+
+### 📝 文档
+- **[DOC-015] 完整功能清单**：新增完整功能清单文档 `docs/ALL_FEATURES_SUMMARY.md`，详细列出所有功能模块
+
+### 📝 文件变更
+- **新增**: `docs/ALL_FEATURES_SUMMARY.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.15.6 (2026-06-03) ✅ STABLE
+
+### 🔧 修复
+- **[BUG-006] DebugPageOptimized日志显示修复**：修复`_log_text`属性未初始化导致的AttributeError，在`_on_log_message`方法中添加属性检查
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/pages/debug_page_optimized.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.15.5 (2026-06-03) ✅ STABLE
+
+### 🔧 修复
+- **[BUG-005] 启动时窗口切换无响应修复**：优化QApplication.processEvents()调用，使用QTimer.singleShot替代直接调用，避免阻塞UI线程
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/pages/chat_page.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+- **新增**: `docs/STARTUP_UI_FREEZE_FIX.md`
+
+---
+
+## 🟢 v1.15.4 (2026-06-03) ✅ STABLE
+
+### 🔧 修复
+- **[BUG-003] 样式表解析修复**：移除Qt QSS不支持的`outline: none`属性
+- **[BUG-004] 边框宽度修复**：将`1.5px`改为`1px`，Qt QSS不支持非整数像素值
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/theme.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.15.3 (2026-06-03) ✅ STABLE
+
+### 📝 文档
+- **[DOC-014] 启动问题分析**：新增启动日志问题分析文档 `docs/STARTUP_ISSUES_RESOLVED.md`，分析并解决启动日志中的警告
+
+### 📝 文件变更
+- **新增**: `docs/STARTUP_ISSUES_RESOLVED.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.15.2 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[PLUGIN-001] 插件系统模块**：新增插件系统模块 `app/plugin/`，提供插件加载、插件管理、插件执行功能
+- **[PLUGIN-002] 插件管理器**：支持插件发现、加载、启用、禁用、执行功能
+- **[PLUGIN-003] 插件加载器**：支持从插件目录自动发现和加载插件
+
+### 🔧 优化
+- **[OPT-014] 插件系统配置支持**：在config.yaml中添加插件系统模块配置
+- **[OPT-015] 插件系统模块集成**：将插件系统模块集成到AIVTuber类中
+
+### 📝 文件变更
+- **新增**: `app/plugin/__init__.py`
+- **修改**: `app/main.py`, `app/config.yaml`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.15.1 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[RP-001] 角色扮演模块**：新增角色扮演模块 `app/roleplay/`，提供角色创建、角色扮演、剧情系统功能
+- **[RP-002] 角色管理器**：支持角色创建、编辑、删除、查询功能
+- **[RP-003] 剧情管理器**：支持剧情创建、编辑、删除、查询功能
+- **[RP-004] 角色扮演管理器**：支持角色扮演会话管理
+
+### 🔧 优化
+- **[OPT-012] 角色扮演配置支持**：在config.yaml中添加角色扮演模块配置
+- **[OPT-013] 角色扮演模块集成**：将角色扮演模块集成到AIVTuber类中
+
+### 📝 文件变更
+- **新增**: `app/roleplay/__init__.py`
+- **修改**: `app/main.py`, `app/config.yaml`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.15.0 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[EMO-001] 情感理解模块**：新增情感理解模块 `app/emotion/`，提供情感识别、情感表达、情感记忆功能
+- **[EMO-002] 情感分析器**：支持文本、语音、面部情感分析
+- **[EMO-003] 情感表达器**：支持情感化回复生成和表情切换
+- **[EMO-004] 情感记忆器**：支持情感历史记录和趋势分析
+
+### 🔧 优化
+- **[OPT-010] 情感配置支持**：在config.yaml中添加情感模块配置
+- **[OPT-011] 情感模块集成**：将情感模块集成到AIVTuber类中
+
+### 📝 文件变更
+- **新增**: `app/emotion/__init__.py`, `docs/OPTIMIZATION_ROADMAP.md`
+- **修改**: `app/main.py`, `app/config.yaml`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.14.5 (2026-06-03) ✅ STABLE
+
+### 📝 文档
+- **[DOC-013] 对比结果罗列**：新增对比结果罗列文档 `docs/COMPARISON_RESULTS.md`，清晰展示与各类软件的对比结果
+
+### 📝 文件变更
+- **新增**: `docs/COMPARISON_RESULTS.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.14.4 (2026-06-03) ✅ STABLE
+
+### 📝 文档
+- **[DOC-011] 市场对比分析**：新增市场对比分析报告 `docs/MARKET_COMPARISON_2026.md`，对比AI聊天、AI女友、AI直播、微信、QQ等软件
+- **[DOC-012] 差距分析报告**：详细分析与各类软件的差距，提供发展建议
+
+### 📝 文件变更
+- **新增**: `docs/MARKET_COMPARISON_2026.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.14.3 (2026-06-03) ✅ STABLE
+
+### 🔧 优化
+- **[UI-003] 调试页面优化**：优化调试页面，增加配置保存、日志输出、状态监控等功能
+- **[UI-004] 配置实时保存**：支持配置参数实时保存到配置文件
+- **[UI-005] 日志输出面板**：增加日志输出面板，方便调试
+- **[UI-006] 状态监控面板**：增加状态监控面板，实时显示功能状态
+
+### 📝 文件变更
+- **新增**: `native/gugu_native/pages/debug_page_optimized.py`
+- **修改**: `native/main.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.14.2 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[UI-001] 功能调试页面**：新增功能调试页面 `native/gugu_native/pages/debug_page.py`，提供新增功能的图形化配置界面
+- **[UI-002] 调试页面集成**：将调试页面集成到原生桌面应用的导航栏中
+
+### 📝 文件变更
+- **新增**: `native/gugu_native/pages/debug_page.py`
+- **修改**: `native/main.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.14.1 (2026-06-03) ✅ STABLE
+
+### 🔧 优化
+- **[INT-001] 模块集成**：将所有新增模块集成到AIVTuber类中
+- **[INT-002] 配置扩展**：在config.yaml中添加所有新增模块的配置参数
+- **[INT-003] 懒加载支持**：为所有新增模块添加懒加载属性
+
+### 📝 文件变更
+- **修改**: `app/main.py`, `app/config.yaml`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.14.0 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[DOCKER-001] Docker部署支持**：新增Dockerfile和docker-compose.yml，支持服务器/云端部署
+- **[MULTI-001] 多AI群聊模块**：新增多AI群聊模块 `app/multi_agent/`，支持多角色对话场景
+- **[BOT-001] 社交Bot模块**：新增社交Bot模块 `app/bot/`，支持Discord/Telegram Bot接口
+- **[VISION-001] 摄像头视觉输入模块**：新增摄像头视觉输入模块 `app/vision_input/`，支持摄像头视觉输入
+
+### 📝 文件变更
+- **新增**: `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `app/multi_agent/__init__.py`, `app/bot/__init__.py`, `app/vision_input/__init__.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.13.0 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[SVC-001] SVC声音转换模块**：新增SVC声音转换模块 `app/svc/`，支持So-VITS-SVC声音转换
+- **[SING-001] 唱歌模块**：新增唱歌模块 `app/singing/`，支持AI唱歌功能
+- **[SD-001] Stable Diffusion模块**：新增Stable Diffusion模块 `app/sd/`，支持AI绘画功能
+- **[GAME-001] 游戏感知框架模块**：新增游戏感知框架模块 `app/game/`，支持Minecraft等游戏
+
+### 🔧 优化
+- **[OPT-008] TTS引擎扩展**：新增ElevenLabs和Fish-Speech TTS引擎支持
+- **[OPT-009] 配置文件扩展**：在config.yaml中添加ElevenLabs和Fish-Speech配置
+
+### 📝 文件变更
+- **新增**: `app/svc/__init__.py`, `app/singing/__init__.py`, `app/sd/__init__.py`, `app/game/__init__.py`, `app/tts/elevenlabs.py`, `app/tts/fish_speech.py`
+- **修改**: `app/tts/__init__.py`, `app/config.yaml`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.12.9 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[TTS-001] ElevenLabs TTS引擎**：新增ElevenLabs高质量语音合成引擎 `app/tts/elevenlabs.py`
+- **[TTS-002] Fish-Speech TTS引擎**：新增Fish-Speech高质量语音合成引擎 `app/tts/fish_speech.py`
+- **[TTS-003] TTS引擎扩展**：TTSFactory支持ElevenLabs和Fish-Speech引擎
+
+### 🔧 优化
+- **[OPT-007] TTS配置扩展**：在config.yaml中添加ElevenLabs和Fish-Speech配置
+
+### 📝 文件变更
+- **新增**: `app/tts/elevenlabs.py`, `app/tts/fish_speech.py`
+- **修改**: `app/tts/__init__.py`, `app/config.yaml`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.12.8 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[LIVE-001] 直播平台集成模块**：新增直播平台集成模块 `app/live/`，支持Bilibili直播弹幕接收、解析、AI回复、弹幕发送
+- **[LIVE-002] Bilibili直播客户端**：实现Bilibili直播弹幕WebSocket连接和接收
+- **[LIVE-003] 弹幕解析器**：实现弹幕、礼物、系统消息等解析
+- **[LIVE-004] AI回复生成器**：基于弹幕内容的AI回复生成功能
+- **[LIVE-005] 弹幕发送器**：实现Bilibili直播弹幕发送功能
+
+### 📝 文件变更
+- **新增**: `app/live/__init__.py`, `app/live/bilibili_client.py`, `app/live/danmaku_parser.py`, `app/live/ai_responder.py`, `app/live/danmaku_sender.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.12.7 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[CROSS-001] 跨平台支持**：支持macOS和Linux操作系统
+- **[CROSS-002] 跨平台启动脚本**：创建macOS/Linux启动脚本 `scripts/start.sh` 和 `scripts/go.sh`
+
+### 🔧 优化
+- **[OPT-004] 依赖检查函数跨平台适配**：使用平台抽象层的消息框，支持Windows/macOS/Linux
+- **[OPT-005] 字体设置跨平台适配**：根据操作系统使用系统默认字体
+- **[OPT-006] 图标文件跨平台适配**：根据操作系统使用对应的图标格式
+
+### 📝 文件变更
+- **新增**: `scripts/start.sh`, `scripts/go.sh`, `docs/CROSS_PLATFORM_ADAPTATION.md`
+- **修改**: `native/main.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.12.6 (2026-06-03) ✅ STABLE
+
+### 🔧 修复
+- **[BUG-001] RAG知识库向量存储接口修复**：修复VectorStore.add()参数不匹配问题，使用正确的接口调用
+- **[BUG-002] RAG知识库文档删除修复**：修复文档删除时向量存储清理问题，支持直接操作内部数据结构
+
+### 📝 文件变更
+- **修改**: `app/rag/knowledge_base.py`, `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.12.5 (2026-06-03) ✅ STABLE
+
+### ✨ 新增
+- **[RAG-001] RAG知识库模块**：新增RAG知识库模块 `app/rag/`，支持文档导入、文本分块、向量存储、检索增强生成
+- **[RAG-002] 文档加载器**：支持PDF、TXT、MD、DOCX等多种文档格式
+- **[RAG-003] 文本分块器**：智能文本分块，保持语义完整性
+- **[RAG-004] 检索器**：支持向量检索和关键词检索
+- **[RAG-005] 生成器**：检索增强生成功能
+- **[RAG-006] 知识库管理**：文档管理、搜索、统计等功能
+
+### 📝 文件变更
+- **新增**: `app/rag/__init__.py`, `app/rag/document_loader.py`, `app/rag/text_splitter.py`, `app/rag/retriever.py`, `app/rag/generator.py`, `app/rag/knowledge_base.py`, `docs/RAG_ARCHITECTURE.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.12.4 (2026-06-03) ✅ STABLE
+
+### 📝 文档
+- **[DOC-009] 行业对比分析**：新增行业顶级项目对比分析 `docs/INDUSTRY_COMPARISON_2026.md`，对比Neuro-sama、AIRI、Open-LLM-VTuber、Luna AI等顶级项目
+- **[DOC-010] 差距分析报告**：详细分析咕咕嘎嘎与行业顶级项目的差距，提供发展路线建议
+
+### 📝 文件变更
+- **新增**: `docs/INDUSTRY_COMPARISON_2026.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.12.3 (2026-06-03) ✅ STABLE
+
+### 🔧 优化
+- **[OPT-001] 配置验证模块**：新增配置验证模块 `app/config_validator.py`，提供配置验证、错误检查和配置优化功能
+- **[OPT-002] 配置管理器**：新增配置管理器 `app/config_manager.py`，提供配置缓存、热更新、配置变更通知等功能
+- **[OPT-003] 配置验证报告**：配置验证器可生成详细的配置验证报告，帮助识别配置问题
+
+### 📝 文件变更
+- **新增**: `app/config_validator.py`, `app/config_manager.py`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.12.2 (2026-06-03) ✅ STABLE
+
+### 📝 文档
+- **[DOC-004] 优化任务文档**：新增优化任务文档 `docs/OPTIMIZATION_TASK.md`，包含全面优化计划和任务分解
+- **[DOC-005] 产品经理优化任务**：创建产品经理优化需求分析任务文档
+- **[DOC-006] 架构师优化任务**：创建架构师优化方案设计任务文档
+- **[DOC-007] 工程师优化任务**：创建工程师优化代码实现任务文档
+- **[DOC-008] QA工程师优化任务**：创建QA工程师优化测试验证任务文档
+
+### 📝 文件变更
+- **新增**: `docs/OPTIMIZATION_TASK.md`, `/tmp/product_manager_optimization_task.md`, `/tmp/architect_optimization_task.md`, `/tmp/engineer_optimization_task.md`, `/tmp/qa_optimization_task.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
+## 🟢 v1.12.1 (2026-06-03) ✅ STABLE
+
+### 📝 文档
+- **[DOC-001] 项目分析报告**：新增详细的项目分析报告 `docs/PROJECT_ANALYSIS.md`，包含项目原理、技术架构、文档系统、版本管理机制等全面分析
+- **[DOC-002] 产品分析任务**：创建产品经理分析任务文档，用于深入分析产品定位、用户需求和市场价值
+- **[DOC-003] 架构分析任务**：创建架构师分析任务文档，用于深入分析系统架构和技术实现
+
+### 📝 文件变更
+- **新增**: `docs/PROJECT_ANALYSIS.md`, `/tmp/product_manager_task.md`, `/tmp/architect_task.md`
+- **修改**: `app/version.py`, `docs/VERSION.md`, `README.md`
+
+---
+
 ## 🟢 v1.11.29 (2026-06-01) ✅ STABLE
 
 ### ⚡ 性能
