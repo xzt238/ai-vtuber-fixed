@@ -110,7 +110,7 @@ class CheckUpdateWorker(QThread):
             if suffix1 and not suffix2:
                 return False  # v1 是预发布，v2 是正式版
             return suffix1 > suffix2  # 都有后缀，按字典序
-        except Exception:
+        except Exception as e:
             return False
 
 
@@ -195,7 +195,7 @@ class UpdateManager(QObject):
                 with open(self._skip_file, 'r') as f:
                     data = json.load(f)
                 self._skipped_version = data.get("skip_version")
-        except Exception:
+        except Exception as e:
             pass
 
     def _save_skip_version(self, version: str):
@@ -205,7 +205,7 @@ class UpdateManager(QObject):
             os.makedirs(os.path.dirname(self._skip_file), exist_ok=True)
             with open(self._skip_file, 'w') as f:
                 json.dump({"skip_version": version}, f)
-        except Exception:
+        except Exception as e:
             pass
 
     def check_for_updates(self):

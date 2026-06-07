@@ -47,7 +47,7 @@ if os.name == 'nt':
     def _sp_main_patched(cmd, **kw):
         try:
             prog = (cmd[0] if isinstance(cmd, (list, tuple)) else str(cmd).split()[0]).lower()
-        except Exception:
+        except Exception as e:
             return _SP_MAIN_ORIG(cmd, **kw)
         if prog in ('ffmpeg', 'ffmpeg.exe', 'avconv', 'avconv.exe', 'ffprobe', 'ffprobe.exe'):
             raise FileNotFoundError("patched")
@@ -188,7 +188,7 @@ class GuguGagaApp(FluentWindow):
         try:
             if hasattr(self, 'stackedWidget') and hasattr(self.stackedWidget, 'view'):
                 self.stackedWidget.view.setAnimationEnabled(False)
-        except Exception:
+        except Exception as e:
             pass
 
         # === 设置主题（从持久化偏好恢复）===
@@ -320,7 +320,7 @@ class GuguGagaApp(FluentWindow):
             nav = self.navigationInterface
             nav.setExpandWidth(200)
             nav.setCollapsible(True)
-        except Exception:
+        except Exception as e:
             pass
 
     def _create_non_primary_pages(self):
@@ -469,7 +469,7 @@ class GuguGagaApp(FluentWindow):
 
         # 关闭启动画面（隐藏但不销毁，日志内容保留供后续查看）
         if self._splash:
-            print(f"✓ 后端全部就绪 (耗时 {elapsed:.1f}s)")
+            logger.info(f"✓ 后端全部就绪 (耗时 {elapsed:.1f}s)")
             self._splash.set_progress("启动完成!")
             self._splash.fade_out_and_close()
 
@@ -1083,7 +1083,7 @@ def main():
         try:
             if hasattr(live2d, 'dispose'):
                 live2d.dispose()
-        except Exception:
+        except Exception as e:
             pass
 
     sys.exit(exit_code)

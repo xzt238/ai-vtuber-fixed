@@ -225,7 +225,7 @@ class AudioVisualizer(QWidget):
             # Qt6 中 QMediaPlayer 不直接暴露 PCM 数据
             # 使用模拟模式：根据播放状态生成伪频谱
             player.playbackStateChanged.connect(self._on_playback_state_changed)
-        except Exception:
+        except Exception as e:
             pass
 
     def set_audio_data(self, pcm_data: np.ndarray, sample_rate: int = 44100):

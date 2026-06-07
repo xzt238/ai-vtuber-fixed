@@ -91,7 +91,7 @@ class MemoryItemWidget(QTreeWidgetItem):
             try:
                 dt = datetime.fromtimestamp(timestamp)
                 time_str = dt.strftime("%Y-%m-%d %H:%M")
-            except Exception:
+            except Exception as e:
                 time_str = str(timestamp)[:16]
         else:
             time_str = ""

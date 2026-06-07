@@ -239,7 +239,7 @@ class Live2DWidget(QOpenGLWidget):
         if self.model is not None:
             try:
                 self.model.StartRandomMotion("TapBody", 3)
-            except Exception:
+            except Exception as e:
                 pass
         super().mousePressEvent(event)
 
@@ -430,7 +430,7 @@ class Live2DWidget(QOpenGLWidget):
         clamped = max(0.0, min(1.0, float(value)))
         try:
             self.model.SetParameterValue("ParamMouthOpenY", clamped)
-        except Exception:
+        except Exception as e:
             # 某些模型可能使用不同的参数名，静默忽略
             pass
 

@@ -131,7 +131,7 @@ class _VRMStaticServer:
         if self._server:
             try:
                 self._server.shutdown()
-            except Exception:
+            except Exception as e:
                 pass
             self._server = None
             self._port = None
@@ -751,7 +751,7 @@ class VRMWidget(QWidget):
         """调用 JS forceResize() 同步 canvas 尺寸"""
         try:
             self._web_page.runJavaScript("if(window.forceResize)window.forceResize()")
-        except Exception:
+        except Exception as e:
             pass
 
     def _load_page(self):

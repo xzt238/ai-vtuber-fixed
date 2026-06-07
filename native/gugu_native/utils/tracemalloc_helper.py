@@ -10,7 +10,7 @@
     snap2 = MemorySnapshot.take_snapshot()
     diffs = MemorySnapshot.compare(snap1, snap2)
     report = MemorySnapshot.print_report(snap2)
-    print(report)
+    logger.info(report)
     MemorySnapshot.stop()
 """
 

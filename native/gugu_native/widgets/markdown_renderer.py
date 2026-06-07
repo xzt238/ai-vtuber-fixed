@@ -167,7 +167,7 @@ def render_markdown(text: str, theme: str = "dark") -> str:
     try:
         md = _get_md_instance()
         html = md.convert(processed_text)
-    except Exception:
+    except Exception as e:
         # 降级：纯文本转 HTML
         html = _escape_html(text).replace("\n", "<br>")
 
@@ -246,7 +246,7 @@ def _get_lang_label(code_html: str) -> str:
     try:
         if 'class="codehilite"' in code_html:
             return "code"
-    except Exception:
+    except Exception as e:
         pass
     return "code"
 

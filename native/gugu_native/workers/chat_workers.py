@@ -1,6 +1,9 @@
+import logging
 """
 聊天对话 Worker 线程 — StreamChatWorker + TTSWorker + ASRWorker
 """
+
+logger = logging.getLogger(__name__)
 
 import os
 from PySide6.QtCore import QThread, Signal, QMutex
@@ -156,7 +159,7 @@ class StreamChatWorker(QThread):
                 try:
                     audio_path = self.backend.speak(reply)
                 except Exception as e:
-                    print(f"[StreamChatWorker] TTS 合成失败: {e}")
+                    logger.info(f"[StreamChatWorker] TTS 合成失败: {e}")
 
             self.finished_stream.emit({
                 "text": reply,

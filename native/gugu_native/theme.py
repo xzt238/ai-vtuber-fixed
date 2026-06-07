@@ -76,7 +76,7 @@ def unregister_theme_callback(callback: Callable):
     try:
         manager = _ensure_manager()
         manager.unregister_callback(callback)
-    except Exception:
+    except Exception as e:
         pass
 
 
@@ -278,7 +278,7 @@ def get_global_qss() -> str:
         from gugu_native.themes.manager import ThemeManager
         manager = ThemeManager.get_instance()
         theme_id = manager.get_theme_id() if manager else "default"
-    except Exception:
+    except Exception as e:
         theme_id = "default"
 
     # 检查缓存

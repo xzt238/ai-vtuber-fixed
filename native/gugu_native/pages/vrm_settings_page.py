@@ -332,7 +332,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
                 with open(cache_path, "r", encoding="utf-8") as f:
                     saved = json.load(f)
                 cfg.update(saved)
-            except Exception:
+            except Exception as e:
                 pass
 
         # 2. fallback 读 config.yaml
@@ -344,7 +344,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
                     yml = yaml.safe_load(f)
                 if yml and "vrm_display" in yml:
                     cfg.update(yml["vrm_display"])
-            except Exception:
+            except Exception as e:
                 pass
 
         return cfg

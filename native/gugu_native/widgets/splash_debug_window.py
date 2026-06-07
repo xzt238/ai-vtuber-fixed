@@ -57,7 +57,7 @@ def _get_log_colors():
             'info': c.log_info,
             'bg': c.log_bg,
         }
-    except Exception:
+    except Exception as e:
         return {
             'default': '#c9d1d9',
             'timestamp': '#5c5c72',
@@ -116,7 +116,7 @@ class StdoutRedirector(QObject):
         try:
             self._original.write(text)
             self._original.flush()
-        except Exception:
+        except Exception as e:
             pass
 
         # 缓冲并逐行发射信号
@@ -136,7 +136,7 @@ class StdoutRedirector(QObject):
             self._buffer = ""
         try:
             self._original.flush()
-        except Exception:
+        except Exception as e:
             pass
 
 

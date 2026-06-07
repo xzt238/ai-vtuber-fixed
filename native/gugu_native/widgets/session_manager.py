@@ -1,5 +1,8 @@
+import logging
 """
 咕咕嘎嘎 AI-VTuber — 多会话管理器
+
+logger = logging.getLogger(__name__)
 
 功能:
 - 多会话（多标签）支持
@@ -397,9 +400,9 @@ class SessionManager(QWidget):
                     session._messages_loaded = False
                     session._full_data_path = filepath
                     self._sessions[session.session_id] = session
-                except Exception:
+                except Exception as e:
                     continue
-        except Exception:
+        except Exception as e:
             pass
 
         # 如果没有会话，创建默认会话
@@ -435,7 +438,7 @@ class SessionManager(QWidget):
             with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
             session.messages = data.get("messages", [])
-        except Exception:
+        except Exception as e:
             session.messages = []
         session._messages_loaded = True
 
@@ -447,7 +450,7 @@ class SessionManager(QWidget):
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(session.to_dict(), f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"[SessionManager] 会话保存失败: {e}")
+            logger.info(f"[SessionManager] 会话保存失败: {e}")
 
     def _delete_session_file(self, session_id: str):
         """删除会话文件"""
@@ -455,7 +458,7 @@ class SessionManager(QWidget):
         try:
             if os.path.exists(filepath):
                 os.remove(filepath)
-        except Exception:
+        except Exception as e:
             pass
 
     # ===== 公共接口 =====

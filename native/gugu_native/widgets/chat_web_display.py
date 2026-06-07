@@ -1,5 +1,8 @@
+import logging
 """
 咕咕嘎嘎 AI-VTuber — QWebEngineView 聊天显示组件
+
+logger = logging.getLogger(__name__)
 
 完整 Markdown 渲染 + 消息操作 + 流式更新 + 主题切换
 
@@ -1204,7 +1207,7 @@ class ChatWebDisplay(QWidget):
         level_name = level_names.get(level, str(level))
         # 只打印 WARNING 和 ERROR，避免 INFO 刷屏
         if level >= 1:
-            print(f"[ChatWebDisplay JS {level_name}] {message} (line {line})")
+            logger.info(f"[ChatWebDisplay JS {level_name}] {message} (line {line})")
 
     def _run_js(self, js_code: str):
         """执行 JavaScript 代码"""
@@ -1217,7 +1220,7 @@ class ChatWebDisplay(QWidget):
     def _on_page_ready(self):
         """页面加载完成回调"""
         self._page_ready = True
-        print(f"[ChatWebDisplay] Page ready! Executing {len(self._pending_messages)} pending messages")
+        logger.info(f"[ChatWebDisplay] Page ready! Executing {len(self._pending_messages)} pending messages")
         # 执行待处理的消息
         for js_code in self._pending_messages:
             self._web_view.page().runJavaScript(js_code)
@@ -1237,7 +1240,7 @@ class ChatWebDisplay(QWidget):
                 msg_id = edit_data.get("msgId", "")
                 text = edit_data.get("text", "")
                 self.action_edit.emit(msg_id, text)
-            except Exception:
+            except Exception as e:
                 pass
 
     def _next_msg_id(self) -> int:

@@ -41,7 +41,7 @@ def _build_style_tags(theme_def) -> str:
         if ty_label:
             parts.append(ty_label)
         return " · ".join(parts)
-    except Exception:
+    except Exception as e:
         return ""
 
 

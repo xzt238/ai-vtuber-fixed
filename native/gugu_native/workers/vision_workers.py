@@ -37,7 +37,7 @@ class OCRWorker(QThread):
                     rapidocr = vision.get_provider(VisionProviderType.RAPIDOCR)
                     if rapidocr:
                         text = rapidocr.recognize_text(self.image_path)
-                except Exception:
+                except Exception as e:
                     pass
             self.finished.emit(text or "")
         except Exception as e:
@@ -83,7 +83,7 @@ class VisionWorker(QThread):
                         rapidocr = vision.get_provider(VisionProviderType.RAPIDOCR)
                         if rapidocr:
                             ocr_result = rapidocr.recognize_text(self.image_path)
-                    except Exception:
+                    except Exception as e:
                         pass
                 if ocr_result:
                     self.result_ready.emit(f"请根据以下OCR识别结果回答：\n{ocr_result}")

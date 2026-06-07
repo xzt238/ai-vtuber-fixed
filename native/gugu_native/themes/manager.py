@@ -92,7 +92,7 @@ class ThemeManager:
         for callback in self._callbacks:
             try:
                 callback()
-            except Exception:
+            except Exception as e:
                 pass
 
     def get_colors(self):
@@ -180,7 +180,7 @@ class ThemeManager:
                 os.makedirs(prefs_dir, exist_ok=True)
             with open(self._prefs_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-        except Exception:
+        except Exception as e:
             pass
 
     def load_preferences(self) -> str:
@@ -195,6 +195,6 @@ class ThemeManager:
                 theme_id = data.get("theme_id", "dark")
                 if self._registry.get(theme_id):
                     return theme_id
-        except Exception:
+        except Exception as e:
             pass
         return "dark"

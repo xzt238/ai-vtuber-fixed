@@ -171,7 +171,7 @@ class ChatPageTTSConfigMixin:
                     m['time'] = datetime.now().isoformat()
             with open(self._get_history_path(), "w", encoding="utf-8") as f:
                 json.dump(messages, f, ensure_ascii=False, indent=2)
-        except Exception:
+        except Exception as e:
             pass
 
     def _load_chat_history(self):
@@ -196,7 +196,7 @@ class ChatPageTTSConfigMixin:
                     self.chat_display.append_user_msg(content, timestamp=time_str)
                 elif role == "assistant":
                     self.chat_display.append_ai_msg(content, timestamp=time_str)
-        except Exception:
+        except Exception as e:
             pass
 
     def clear_chat(self):

@@ -566,7 +566,7 @@ class TrainPage(QWidget, LazyPageMixin):
                         inner_cb.setItemData(idx, f"音频: {p.get('audio_count', 0)} | "
                                                    f"已训练: {'是' if p.get('has_trained') else '否'}",
                                              Qt.ItemDataRole.ToolTipRole)
-                except Exception:
+                except Exception as e:
                     pass  # 内部 QComboBox 不可访问则忽略 tooltip
         except Exception as e:
             self._show_info("加载失败", str(e))
@@ -834,7 +834,7 @@ class TrainPage(QWidget, LazyPageMixin):
                     self.ref_text_edit.setPlainText(texts[base_name])
                     return
             self.ref_text_edit.clear()
-        except Exception:
+        except Exception as e:
             self.ref_text_edit.clear()
 
     def _save_ref_config(self):
@@ -985,7 +985,7 @@ class TrainPage(QWidget, LazyPageMixin):
                 c = get_colors()
                 self.train_status_label.setText("训练完成")
                 self.train_status_label.setStyleSheet(f"color: {c.success};")
-        except Exception:
+        except Exception as e:
             pass
 
     def _on_train_done(self, stage: str, result: dict):

@@ -319,7 +319,7 @@ def _check_model_downloaded(mdl: dict) -> bool:
             hub_dir = torch.hub.get_dir()
             if os.path.exists(os.path.join(hub_dir, "snakers4_silero-vad_master")):
                 return True
-        except Exception:
+        except Exception as e:
             pass
 
     return False

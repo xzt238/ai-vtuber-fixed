@@ -210,7 +210,7 @@ class ChatPageAudioMixin:
         if self._recording_file:
             try:
                 os.unlink(self._recording_file)
-            except Exception:
+            except Exception as e:
                 pass
             self._recording_file = None
 
@@ -226,7 +226,7 @@ class ChatPageAudioMixin:
         if self._recording_file:
             try:
                 os.unlink(self._recording_file)
-            except Exception:
+            except Exception as e:
                 pass
             self._recording_file = None
         self.chat_display.append_system_msg(f"语音识别失败: {error_msg}")

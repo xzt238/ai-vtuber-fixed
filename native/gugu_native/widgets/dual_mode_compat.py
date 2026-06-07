@@ -55,7 +55,7 @@ class WebUICheckWorker(QObject):
                 s.settimeout(1)
                 result = s.connect_ex(('127.0.0.1', self._http_port))
                 self.result_ready.emit(result == 0)
-        except Exception:
+        except Exception as e:
             self.result_ready.emit(False)
 
 
@@ -140,7 +140,7 @@ class DualModeCompat:
                 s.settimeout(1)
                 result = s.connect_ex(('127.0.0.1', self.WEBUI_HTTP_PORT))
                 return result == 0  # 端口被占用 = WebUI 在运行
-        except Exception:
+        except Exception as e:
             return False
 
     def release_mutex(self):
@@ -150,7 +150,7 @@ class DualModeCompat:
                 import ctypes
                 kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
                 kernel32.CloseHandle(self._mutex_handle)
-            except Exception:
+            except Exception as e:
                 pass
             self._mutex_handle = None
 
@@ -208,7 +208,7 @@ class DualModeCompat:
             try:
                 with open(pref_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except Exception:
+            except Exception as e:
                 pass
         return {}
 

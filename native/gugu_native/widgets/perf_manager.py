@@ -299,7 +299,7 @@ class PerformanceManager(QObject):
                 counters.cb = ctypes.sizeof(PROCESS_MEMORY_COUNTERS)
                 psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb)
                 return counters.WorkingSetSize / (1024 * 1024)
-            except Exception:
+            except Exception as e:
                 return 0.0
 
     def force_cleanup(self):
@@ -372,7 +372,7 @@ class PerformanceManager(QObject):
                 if obj and hasattr(obj, 'cleanup'):
                     try:
                         obj.cleanup()
-                    except Exception:
+                    except Exception as e:
                         pass
 
     # ========== M-001: 模型按需卸载 ==========

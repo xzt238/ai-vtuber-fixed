@@ -1,5 +1,8 @@
+import logging
 """
 全局快捷键管理器 — pynput 实现
+
+logger = logging.getLogger(__name__)
 
 功能:
 - 全局快捷键注册/注销
@@ -76,7 +79,7 @@ class HotkeyManager(QObject):
                 with open(self._config_path, 'r', encoding='utf-8') as f:
                     saved = json.load(f)
                 self._hotkeys.update(saved)
-            except Exception:
+            except Exception as e:
                 pass
 
     def _save_config(self):
@@ -86,7 +89,7 @@ class HotkeyManager(QObject):
             with open(self._config_path, 'w', encoding='utf-8') as f:
                 json.dump(self._hotkeys, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"[HotkeyManager] 保存配置失败: {e}")
+            logger.info(f"[HotkeyManager] 保存配置失败: {e}")
 
     def start(self):
         """开始监听全局快捷键"""
@@ -109,7 +112,7 @@ class HotkeyManager(QObject):
             self._listener = keyboard.GlobalHotKeys(hotkey_map)
             self._listener.start()
             self._is_running = True
-            print(f"[HotkeyManager] 全局快捷键已启动: {self._hotkeys}")
+            logger.info(f"[HotkeyManager] 全局快捷键已启动: {self._hotkeys}")
         except Exception as e:
             self.error_occurred.emit(f"快捷键启动失败: {e}")
 
@@ -118,7 +121,7 @@ class HotkeyManager(QObject):
         if self._listener:
             try:
                 self._listener.stop()
-            except Exception:
+            except Exception as e:
                 pass
             self._listener = None
         self._is_running = False
@@ -127,7 +130,7 @@ class HotkeyManager(QObject):
         """清理资源 — 供 PerformanceManager 调用"""
         self.stop()
         self._main_window = None
-        print("[HotkeyManager] cleanup completed")
+        logger.info("[HotkeyManager] cleanup completed")
 
     def update_hotkey(self, action: str, key_combo: str):
         """更新快捷键配置"""
