@@ -157,6 +157,8 @@ class Config:
         【返回值】
             无
         """
+        # 日志模块
+        self.logger = get_logger("config")
         # 如果调用者没传路径，自动探测默认配置文件位置
         self.config_path = config_path or self._get_default_config_path()
         # 加载并解析 YAML 配置
@@ -320,7 +322,7 @@ class Config:
                     # 恢复 provider
                     if provider_key in prefs:
                         section_cfg[provider_key] = prefs[provider_key]
-                        print(f"[Config] 恢复 {log_name} provider: {prefs[provider_key]}")
+                        self.logger.info(f"恢复 {log_name} provider: {prefs[provider_key]}")
                     # 恢复额外字段
                     if extra_fields:
                         for field in extra_fields:
@@ -333,10 +335,10 @@ class Config:
                             for field in provider_configs_fields:
                                 if field in pcfg:
                                     existing_sub[field] = pcfg[field]
-                    print(f"[Config] 从 {prefs_file} 恢复了 {log_name} 配置")
+                    self.logger.info(f"从 {prefs_file} 恢复了 {log_name} 配置")
                     return True
                 except Exception as e:
-                    print(f"[Config] 加载 {prefs_file} 失败(不影响使用): {e}")
+                    self.logger.warning(f"加载 {prefs_file} 失败(不影响使用): {e}")
                     return False
 
             # API Key 管理: 从 api_keys.json 恢复
@@ -363,9 +365,9 @@ class Config:
                             tts_mimo["api_key"] = key_value
                             vision_mimo = config.setdefault("vision", {}).setdefault("mimo_vision", {})
                             vision_mimo["api_key"] = key_value
-                    print(f"[Config] 从 api_keys.json 加载了 {len(saved_keys)} 个API Key")
+                    self.logger.info(f"从 api_keys.json 加载了 {len(saved_keys)} 个API Key")
                 except Exception as e:
-                    print(f"[Config] 加载 api_keys.json 失败(不影响使用): {e}")
+                    self.logger.warning(f"加载 api_keys.json 失败(不影响使用): {e}")
 
             # LLM 偏好持久化: 从 llm_preferences.json 加载用户上次选择的 LLM 配置
             # 优先级: llm_preferences.json > config.yaml
@@ -404,7 +406,7 @@ class Config:
                             provider_configs_fields=["base_url", "model", "voice", "project"],
                         )
                 except Exception as e:
-                    print(f"[Config] 加载 tts_preferences.json 失败(不影响使用): {e}")
+                    self.logger.warning(f"加载 tts_preferences.json 失败(不影响使用): {e}")
 
             # Vision 偏好持久化: 从 vision_preferences.json 加载
             _restore_preferences(
