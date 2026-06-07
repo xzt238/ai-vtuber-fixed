@@ -59,7 +59,7 @@ class AgentMessage:
     message_type: str = "text"  # text, image, action
     metadata: Dict[str, Any] = field(default_factory=dict)
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.id:
             self.id = str(uuid.uuid4())
         if not self.timestamp:
@@ -69,7 +69,7 @@ class AgentMessage:
 class Agent:
     """AI代理接口"""
     
-    def __init__(self, agent_id: str, personality: AgentPersonality, llm_callback: Callable = None):
+    def __init__(self, agent_id: str, personality: AgentPersonality, llm_callback: Callable = None) -> None:
         self.agent_id = agent_id
         self.personality = personality
         self.llm_callback = llm_callback
@@ -78,7 +78,7 @@ class Agent:
         
         logger.info(f" AI代理初始化完成: {personality.name}")
     
-    def set_llm_callback(self, callback: Callable):
+    def set_llm_callback(self, callback: Callable) -> None:
         """设置LLM回调函数"""
         self.llm_callback = callback
     
@@ -162,7 +162,7 @@ class Agent:
 class AgentManager:
     """代理管理器"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.agents: Dict[str, Agent] = {}
         logger.info(" 代理管理器初始化完成")
     
@@ -181,7 +181,7 @@ class AgentManager:
         """列出所有代理"""
         return list(self.agents.keys())
     
-    def remove_agent(self, agent_id: str):
+    def remove_agent(self, agent_id: str) -> None:
         """移除代理"""
         if agent_id in self.agents:
             del self.agents[agent_id]
@@ -198,7 +198,7 @@ class AgentManager:
 class ConversationManager:
     """对话管理器"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.conversations: Dict[str, List[AgentMessage]] = {}
         logger.info(" 对话管理器初始化完成")
     
@@ -209,7 +209,7 @@ class ConversationManager:
         self.conversations[conversation_id] = []
         return conversation_id
     
-    def add_message(self, conversation_id: str, message: AgentMessage):
+    def add_message(self, conversation_id: str, message: AgentMessage) -> None:
         """添加消息到对话"""
         if conversation_id not in self.conversations:
             self.conversations[conversation_id] = []
@@ -225,7 +225,7 @@ class ConversationManager:
         """列出所有对话"""
         return list(self.conversations.keys())
     
-    def delete_conversation(self, conversation_id: str):
+    def delete_conversation(self, conversation_id: str) -> None:
         """删除对话"""
         if conversation_id in self.conversations:
             del self.conversations[conversation_id]
@@ -234,7 +234,7 @@ class ConversationManager:
 class MultiAgentChat:
     """多Agent群聊"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.agent_manager = AgentManager()
         self.conversation_manager = ConversationManager()
@@ -248,15 +248,15 @@ class MultiAgentChat:
         
         logger.info(" 多Agent群聊初始化完成")
     
-    def add_message_callback(self, callback: Callable):
+    def add_message_callback(self, callback: Callable) -> None:
         """添加消息回调"""
         self._message_callbacks.append(callback)
     
-    def remove_message_callback(self, callback: Callable):
+    def remove_message_callback(self, callback: Callable) -> None:
         """移除消息回调"""
         self._message_callbacks = [cb for cb in self._message_callbacks if cb != callback]
     
-    def _notify_message(self, message: AgentMessage):
+    def _notify_message(self, message: AgentMessage) -> None:
         """通知消息回调"""
         for callback in self._message_callbacks:
             try:

@@ -39,7 +39,7 @@ class TranslationEntry:
 class I18nManager:
     """国际化管理器"""
     
-    def __init__(self, storage_dir: str = "./i18n"):
+    def __init__(self, storage_dir: str = "./i18n") -> None:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         
@@ -57,7 +57,7 @@ class I18nManager:
         
         logger.info(f"[I18n] 初始化完成，当前语言: {self.current_language.value}")
     
-    def _load_language_packages(self):
+    def _load_language_packages(self) -> None:
         """加载语言包"""
         try:
             # 扫描语言包文件
@@ -75,7 +75,7 @@ class I18nManager:
         except Exception as e:
             logger.info(f"[I18n] 加载语言包失败: {e}")
     
-    def set_language(self, language: Language):
+    def set_language(self, language: Language) -> None:
         """设置当前语言"""
         self.current_language = language
         logger.info(f"[I18n] 切换语言: {language.value}")
@@ -104,7 +104,7 @@ class I18nManager:
         # 返回key本身
         return key
     
-    def add_translation(self, key: str, translations: Dict[str, str]):
+    def add_translation(self, key: str, translations: Dict[str, str]) -> None:
         """添加翻译"""
         for lang_code, text in translations.items():
             if lang_code not in self.translations:
@@ -114,7 +114,7 @@ class I18nManager:
         # 保存到文件
         self._save_translations()
     
-    def _save_translations(self):
+    def _save_translations(self) -> None:
         """保存翻译到文件"""
         try:
             for lang_code, translations in self.translations.items():

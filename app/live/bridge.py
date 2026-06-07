@@ -40,7 +40,7 @@ class LiveResponse:
     tts_audio_path: Optional[str] = None
     timestamp: datetime = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.timestamp is None:
             self.timestamp = datetime.now()
 
@@ -48,7 +48,7 @@ class LiveResponse:
 class LiveBridge:
     """直播模块通信桥梁"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         # 直播平台实例
@@ -77,26 +77,26 @@ class LiveBridge:
         
         logger.info(" 直播通信桥梁初始化完成")
     
-    def set_llm(self, llm):
+    def set_llm(self, llm) -> None:
         """设置LLM引用"""
         self._llm = llm
         logger.info(" LLM已连接到直播桥梁")
     
-    def set_tts(self, tts):
+    def set_tts(self, tts) -> None:
         """设置TTS引用"""
         self._tts = tts
         logger.info(" TTS已连接到直播桥梁")
     
-    def set_memory(self, memory):
+    def set_memory(self, memory) -> None:
         """设置记忆系统引用"""
         self._memory = memory
         logger.info(" 记忆系统已连接到直播桥梁")
     
-    def add_response_callback(self, callback: Callable):
+    def add_response_callback(self, callback: Callable) -> None:
         """添加回复回调"""
         self._response_callbacks.append(callback)
     
-    def remove_response_callback(self, callback: Callable):
+    def remove_response_callback(self, callback: Callable) -> None:
         """移除回复回调"""
         self._response_callbacks = [cb for cb in self._response_callbacks if cb != callback]
     
@@ -131,7 +131,7 @@ class LiveBridge:
             self._stats["errors"] += 1
             return False
     
-    async def disconnect_platform(self, platform_type: PlatformType):
+    async def disconnect_platform(self, platform_type: PlatformType) -> None:
         """断开直播平台连接"""
         try:
             if platform_type in self._platforms:
@@ -144,7 +144,7 @@ class LiveBridge:
             logger.info(f" 断开直播平台失败: {e}")
             self._stats["errors"] += 1
     
-    async def disconnect_all(self):
+    async def disconnect_all(self) -> None:
         """断开所有直播平台连接"""
         try:
             for platform_type in list(self._platforms.keys()):
@@ -156,7 +156,7 @@ class LiveBridge:
             logger.info(f" 断开所有直播平台失败: {e}")
             self._stats["errors"] += 1
     
-    def _handle_danmaku(self, message: DanmakuMessage):
+    def _handle_danmaku(self, message: DanmakuMessage) -> None:
         """处理弹幕消息"""
         try:
             self._stats["total_danmaku"] += 1
@@ -171,7 +171,7 @@ class LiveBridge:
             logger.info(f" 处理弹幕失败: {e}")
             self._stats["errors"] += 1
     
-    def _handle_gift(self, message: GiftMessage):
+    def _handle_gift(self, message: GiftMessage) -> None:
         """处理礼物消息"""
         try:
             self._stats["total_gifts"] += 1
@@ -185,7 +185,7 @@ class LiveBridge:
             logger.info(f" 处理礼物失败: {e}")
             self._stats["errors"] += 1
     
-    def _handle_system(self, message: SystemMessage):
+    def _handle_system(self, message: SystemMessage) -> None:
         """处理系统消息"""
         try:
             logger.info(f" 系统消息 [{message.platform.value}] {message.message_type}: {message.content}")
@@ -194,7 +194,7 @@ class LiveBridge:
             logger.info(f" 处理系统消息失败: {e}")
             self._stats["errors"] += 1
     
-    async def _generate_and_send_reply(self, message: DanmakuMessage):
+    async def _generate_and_send_reply(self, message: DanmakuMessage) -> None:
         """生成并发送回复"""
         try:
             # 延迟回复
@@ -278,7 +278,7 @@ class LiveBridge:
         
         return prompt
     
-    async def _send_danmaku_reply(self, platform_type: PlatformType, room_id: str, content: str):
+    async def _send_danmaku_reply(self, platform_type: PlatformType, room_id: str, content: str) -> None:
         """发送弹幕回复"""
         try:
             if platform_type in self._platforms:
@@ -294,7 +294,7 @@ class LiveBridge:
             logger.info(f" 发送弹幕回复失败: {e}")
             self._stats["errors"] += 1
     
-    async def _send_gift_thanks(self, message: GiftMessage):
+    async def _send_gift_thanks(self, message: GiftMessage) -> None:
         """发送礼物感谢"""
         try:
             # 生成感谢消息
@@ -323,7 +323,7 @@ class LiveBridge:
             self._stats["errors"] += 1
             return None
     
-    def _notify_response(self, response: LiveResponse):
+    def _notify_response(self, response: LiveResponse) -> None:
         """通知回复回调"""
         for callback in self._response_callbacks:
             try:

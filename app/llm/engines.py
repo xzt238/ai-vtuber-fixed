@@ -95,7 +95,7 @@ class LLMEngine(ABC):
         """
         pass
 
-    def _init_common(self, config: dict, default_rate_limit: int = 60):
+    def _init_common(self, config: dict, default_rate_limit: int = 60) -> None:
         """
         【功能说明】公共初始化：HTTP 连接池 + 缓存 + 速率限制器
 
@@ -133,12 +133,12 @@ class LLMEngine(ABC):
         # 速率限制器（每分钟最多 rate_limit 次请求）
         self._rate_limiter = RateLimiter(max_requests=config.get("rate_limit", default_rate_limit))
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """释放 HTTP 连接池资源"""
         if hasattr(self, '_session') and self._session:
             try:
                 self._session.close()
-            except Exception:
+            except Exception as e:
                 pass
 
 
@@ -160,7 +160,7 @@ class MiniMaxLLM(LLMEngine):
     - 线程安全缓存（v1.8：加 Lock 防止并发写入竞态）
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【功能说明】初始化 MiniMax LLM 引擎
 
@@ -222,7 +222,7 @@ class MiniMaxLLM(LLMEngine):
         logger.info(f"  MiniMax LLM v2.0 初始化: max_tokens={self.max_tokens}")
 
     def _build_anthropic_messages(self, message: str, history: List[Dict] = None,
-                                  memory_system = None):
+                                  memory_system = None) -> None:
         """
         【功能说明】将对话数据转换为 Anthropic API 所需的消息格式
 
@@ -590,7 +590,7 @@ class MiniMaxLLM(LLMEngine):
 
                 if content:
                     acc.process_content(content)
-            except Exception:
+            except Exception as e:
                 continue  # 单行解析失败不中断流式处理
 
         # v2.0: FC — 检查 tool_calls + 流结束处理（委托 StreamAccumulator）
@@ -666,7 +666,7 @@ class MiniMaxLLM(LLMEngine):
                 # 【Anthropic 特有事件】消息生成完毕
                 elif event_type == "message_stop":
                     break
-            except Exception:
+            except Exception as e:
                 continue
         
         return acc.finish(response)
@@ -708,7 +708,7 @@ class OpenAILLM(LLMEngine):
     - 缓存 + 速率限制 + 线程安全（v1.8 升级）
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【功能说明】初始化 OpenAI LLM 引擎
 
@@ -942,7 +942,7 @@ class OpenAILLM(LLMEngine):
                     # 流结束标志
                     if chunk.get("done", False):
                         break
-                except Exception:
+                except Exception as e:
                     continue
 
             full_text, action_str = _clean_response(full_text)
@@ -1047,7 +1047,7 @@ class OpenAILLM(LLMEngine):
 
                     if content:
                         acc.process_content(content)
-                except Exception:
+                except Exception as e:
                     continue
 
             # v2.0: FC — 检查 tool_calls + 流结束处理（委托 StreamAccumulator）
@@ -1100,7 +1100,7 @@ class AnthropicLLM(LLMEngine):
     接口格式相同，但认证和端点地址不同。
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【功能说明】初始化 Anthropic Claude LLM 引擎
 
@@ -1298,7 +1298,7 @@ class AnthropicLLM(LLMEngine):
                     # 消息结束标志，退出流式循环
                     elif event_type == "message_stop":
                         break
-                except Exception:
+                except Exception as e:
                     continue
             
             return acc.finish(response, use_clean_response=False)

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 try:
     from .prompts import inject_memories
 except ImportError:
-    def inject_memories(t):
+    def inject_memories(t) -> None:
         return ""
 
 @dataclass
@@ -36,7 +36,7 @@ class PromptInjection:
     text: str           # 注入的文本内容
     priority: int = 0   # 排序优先级：0=最前（最先输出），100=最后（最重要）
     
-    def __lt__(self, other):
+    def __lt__(self, other) -> None:
         """
         【比较方法】实现 < 运算符，用于 list.sort() 按优先级排序
 
@@ -67,7 +67,7 @@ class PromptInjector:
     3. 任一模块出错不影响其他模块
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         """
         【功能说明】初始化 Prompt 注入器，创建空的模块注册列表
 
@@ -78,7 +78,7 @@ class PromptInjector:
         # 已注册的 Prompt 模块函数列表，每个函数返回 PromptInjection 对象
         self._modules: List[Callable[[], PromptInjection]] = []
     
-    def register(self, module_fn: Callable[[], PromptInjection]):
+    def register(self, module_fn: Callable[[], PromptInjection]) -> None:
         """
         【功能说明】注册一个 Prompt 模块函数
 
@@ -145,7 +145,7 @@ class MemoryRAGInjector:
     3. 格式化后通过 inject_memories() 注入到系统 Prompt
     """
     
-    def __init__(self, memory_system=None):
+    def __init__(self, memory_system=None) -> None:
         """
         【功能说明】初始化记忆 RAG 注入器
 
@@ -359,7 +359,7 @@ def _strip_thinking(text: str) -> str:
     return cleaned if cleaned else text  # 如果清理后为空，返回原文
 
 
-def _clean_response(text: str):
+def _clean_response(text: str) -> None:
     """
     【功能说明】统一清理 LLM 回复：去除 thinking 标签 + 解析动作指令
 

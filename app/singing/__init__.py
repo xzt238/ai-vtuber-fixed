@@ -41,7 +41,7 @@ class SingingConfig:
 class SingingManager:
     """唱歌管理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.engine = SingingEngine(self.config.get("engine", "gpt_sovits"))
         self.model_path = self.config.get("model_path", "")
@@ -257,7 +257,7 @@ class SingingManager:
             "ref_audio_path": self.ref_audio_path
         }
     
-    async def unload_model(self):
+    async def unload_model(self) -> None:
         """卸载模型"""
         self.is_singing = False
         self.current_song = None

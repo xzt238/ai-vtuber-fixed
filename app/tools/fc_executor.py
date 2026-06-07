@@ -139,7 +139,7 @@ def handle_tool_calls_stream(
             display_text = f"{display_info['icon']} 正在{display_info['name']}…"
             try:
                 on_tool_call(tool_name, display_text, arguments)
-            except Exception:
+            except Exception as e:
                 pass
 
         # 执行工具
@@ -209,7 +209,7 @@ def handle_tool_calls_stream(
                         if len(buffer) >= chunk_size:
                             on_chunk(buffer)
                             buffer = ""
-                except Exception:
+                except Exception as e:
                     continue
 
             if buffer and on_chunk:

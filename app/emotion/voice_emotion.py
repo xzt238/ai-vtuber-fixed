@@ -45,7 +45,7 @@ class VoiceEmotionParams:
 class EmotionVoiceMapper:
     """情感到语音参数的映射器"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         # 情感参数映射表
         self.emotion_params: Dict[VoiceEmotion, VoiceEmotionParams] = {
             VoiceEmotion.NEUTRAL: VoiceEmotionParams(
@@ -232,14 +232,14 @@ class EmotionVoiceMapper:
 class EmotionVoiceController:
     """情感语音控制器"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.mapper = EmotionVoiceMapper()
         self.current_emotion: VoiceEmotion = VoiceEmotion.NEUTRAL
         self.emotion_history: list = []
         
         logger.info("[EmotionVoiceController] 初始化完成")
     
-    def set_emotion(self, emotion: VoiceEmotion):
+    def set_emotion(self, emotion: VoiceEmotion) -> None:
         """设置当前情感"""
         self.current_emotion = emotion
         self.emotion_history.append(emotion)

@@ -19,7 +19,7 @@ class DanmakuSender:
     # Bilibili直播弹幕发送API
     SEND_API = "https://api.live.bilibili.com/msg/send"
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.session = None
         
@@ -92,7 +92,7 @@ class DanmakuSender:
         
         return False
     
-    async def close(self):
+    async def close(self) -> None:
         """关闭HTTP会话"""
         try:
             if self.session:
@@ -101,7 +101,7 @@ class DanmakuSender:
         except Exception as e:
             logger.info(f" 关闭HTTP会话失败: {e}")
     
-    def set_auth(self, csrf: str, cookie: str):
+    def set_auth(self, csrf: str, cookie: str) -> None:
         """设置认证信息"""
         self.csrf = csrf
         self.cookie = cookie

@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class KuaishouPlatform(LivePlatform):
     """快手直播平台"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__(config)
         
         # 快手配置
@@ -88,7 +88,7 @@ class KuaishouPlatform(LivePlatform):
             self._stats["error_count"] += 1
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         try:
             # 停止心跳
@@ -215,7 +215,7 @@ class KuaishouPlatform(LivePlatform):
             logger.info(f" 快手WebSocket连接失败: {e}")
             return False
     
-    async def _receive_messages(self):
+    async def _receive_messages(self) -> None:
         """接收消息"""
         try:
             async for message in self._ws:
@@ -242,7 +242,7 @@ class KuaishouPlatform(LivePlatform):
             logger.info(f" 消息接收失败: {e}")
             self._stats["error_count"] += 1
     
-    async def _process_message(self, data: Dict[str, Any]):
+    async def _process_message(self, data: Dict[str, Any]) -> None:
         """处理消息"""
         try:
             # 快手消息处理
@@ -301,7 +301,7 @@ class KuaishouPlatform(LivePlatform):
             logger.info(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
     
-    async def _heartbeat_loop(self):
+    async def _heartbeat_loop(self) -> None:
         """心跳循环"""
         try:
             while self.connected:

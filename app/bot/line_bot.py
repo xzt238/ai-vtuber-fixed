@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class LineBot(Bot):
     """LINE Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("line_bot", "line")
         self.config = config or {}
         
@@ -49,7 +49,7 @@ class LineBot(Bot):
             
             # 注册消息处理器
             @self._handler.add(MessageEvent, message=TextMessage)
-            def handle_text_message(event):
+            def handle_text_message(event) -> None:
                 # 创建BotMessage
                 bot_message = BotMessage(
                     id=event.message.id,
@@ -90,7 +90,7 @@ class LineBot(Bot):
             logger.info(f" LINE Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开LINE连接"""
         try:
             # 断开连接

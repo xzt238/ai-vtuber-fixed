@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class Retriever:
     """检索器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.top_k = self.config.get("top_k", 5)
         self.similarity_threshold = self.config.get("similarity_threshold", 0.7)
@@ -31,7 +31,7 @@ class Retriever:
         self._vector_store = None
     
     @property
-    def vector_store(self):
+    def vector_store(self) -> None:
         """延迟加载向量存储"""
         if self._vector_store is None:
             from app.memory import VectorStore

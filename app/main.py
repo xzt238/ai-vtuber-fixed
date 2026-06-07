@@ -54,7 +54,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 
 # ============ Windows subprocess 安全辅助函数 ============
-def _win_subprocess_args():
+def _win_subprocess_args() -> None:
     """返回 Windows 桌面模式下 subprocess 隐藏 CMD 窗口所需的额外参数。"""
     if sys.platform != "win32" or os.getenv("GUGUGAGA_DESKTOP") != "1":
         return {}
@@ -114,7 +114,7 @@ class Config:
         4. pyyaml 缺失时的备用硬编码配置
     """
 
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str = None) -> None:
         """初始化配置管理器"""
         self.logger = get_logger("config")
         self.config_path = config_path or self._get_default_config_path()
@@ -151,7 +151,7 @@ class Config:
             with open(config_file, "r", encoding="utf-8") as f:
                 raw_config = f.read()
 
-            def _expand_env(match):
+            def _expand_env(match) -> None:
                 return os.getenv(match.group(1), match.group(0))
             raw_config = re.sub(r'\$\{([^}]+)\}', _expand_env, raw_config)
             config = yaml.safe_load(raw_config)
@@ -167,7 +167,7 @@ class Config:
                         try:
                             with open(fpath, "r", encoding="utf-8") as pf:
                                 return (file_name, json.load(pf))
-                        except Exception:
+                        except Exception as e:
                             pass
                     return (file_name, None)
 
@@ -186,9 +186,9 @@ class Config:
                         try:
                             file_name, data = future.result()
                             prefs_data[file_name] = data
-                        except Exception:
+                        except Exception as e:
                             pass
-            except Exception:
+            except Exception as e:
                 prefs_data = {}
 
             # 恢复 API Keys
@@ -284,7 +284,7 @@ class ToolExecutor:
                             "nc", "ncat", "bash", "sh", "python", "python3",
                             "perl", "ruby", "node", "sudo", "su"})
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """初始化命令执行器"""
         self.config = config.get("execution", {})
         self.enabled = self.config.get("enabled", True)
@@ -341,7 +341,7 @@ class ToolExecutor:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """安全关闭线程池"""
         if hasattr(self, '_executor'):
             self._executor.shutdown(wait=True)
@@ -366,7 +366,7 @@ class AIVTuber:
         - 使用 InteractionManager 管理交互模式
     """
 
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str = None) -> None:
         """初始化咕咕嘎嘎主应用（懒加载模式）"""
         # 加载配置
         try:
@@ -435,171 +435,171 @@ class AIVTuber:
     # ============ 懒加载属性（委托给 LazyModuleManager）============
 
     @property
-    def asr(self):
+    def asr(self) -> None:
         """语音识别模块 (ASR) - 懒加载"""
         return self._module_manager.asr
 
     @property
-    def tts(self):
+    def tts(self) -> None:
         """语音合成模块 (TTS) - 懒加载"""
         return self._module_manager.tts
 
     @property
-    def llm(self):
+    def llm(self) -> None:
         """大语言模型模块 (LLM) - 懒加载"""
         return self._module_manager.llm
 
     @property
-    def memory(self):
+    def memory(self) -> None:
         """记忆系统模块 - 懒加载"""
         return self._module_manager.memory
 
     @property
-    def vision(self):
+    def vision(self) -> None:
         """视觉理解模块 - 懒加载"""
         return self._module_manager.vision
 
     @property
-    def live2d(self):
+    def live2d(self) -> None:
         """Live2D 虚拟形象模块 - 懒加载"""
         return self._module_manager.live2d
 
     @property
-    def voice(self):
+    def voice(self) -> None:
         """语音输入模块 - 懒加载"""
         return self._module_manager.voice
 
     @property
-    def voice_web(self):
+    def voice_web(self) -> None:
         """Web 语音模块 - 懒加载"""
         return self._module_manager.voice_web
 
     @property
-    def executor(self):
+    def executor(self) -> None:
         """命令执行器 - 懒加载"""
         return self._module_manager.executor
 
     @property
-    def tools(self):
+    def tools(self) -> None:
         """工具管理器 - 懒加载"""
         return self._module_manager.tools
 
     @property
-    def proactive(self):
+    def proactive(self) -> None:
         """主动对话模块 - 懒加载"""
         return self._module_manager.proactive
 
     @property
-    def diary(self):
+    def diary(self) -> None:
         """日记模块 - 懒加载"""
         return self._module_manager.diary
 
     @property
-    def mcp(self):
+    def mcp(self) -> None:
         """MCP 模块 - 懒加载"""
         return self._module_manager.mcp
 
     @property
-    def desktop_pet(self):
+    def desktop_pet(self) -> None:
         """桌面宠物模块 - 懒加载"""
         return self._module_manager.desktop_pet
 
     @property
-    def web_server(self):
+    def web_server(self) -> None:
         """HTTP 服务器 - 懒加载"""
         return self._module_manager.web_server
 
     @property
-    def ws_server(self):
+    def ws_server(self) -> None:
         """WebSocket 服务器 - 懒加载"""
         return self._module_manager.ws_server
 
     @property
-    def emotion(self):
+    def emotion(self) -> None:
         """情感分析模块 - 懒加载"""
         return self._module_manager.emotion
 
     @property
-    def roleplay(self):
+    def roleplay(self) -> None:
         """角色扮演模块 - 懒加载"""
         return self._module_manager.roleplay
 
     @property
-    def plugin(self):
+    def plugin(self) -> None:
         """插件系统 - 懒加载"""
         return self._module_manager.plugin
 
     @property
-    def rag(self):
+    def rag(self) -> None:
         """RAG 检索增强生成模块 - 懒加载"""
         return self._module_manager.rag
 
     @property
-    def live(self):
+    def live(self) -> None:
         """直播模块 - 懒加载"""
         return self._module_manager.live
 
     @property
-    def svc(self):
+    def svc(self) -> None:
         """SVC 变声模块 - 懒加载"""
         return self._module_manager.svc
 
     @property
-    def singing(self):
+    def singing(self) -> None:
         """唱歌模块 - 懒加载"""
         return self._module_manager.singing
 
     @property
-    def sd(self):
+    def sd(self) -> None:
         """Stable Diffusion 图像生成模块 - 懒加载"""
         return self._module_manager.sd
 
     @property
-    def game(self):
+    def game(self) -> None:
         """游戏模块 - 懒加载"""
         return self._module_manager.game
 
     @property
-    def multi_agent(self):
+    def multi_agent(self) -> None:
         """多智能体模块 - 懒加载"""
         return self._module_manager.multi_agent
 
     @property
-    def bot(self):
+    def bot(self) -> None:
         """机器人模块 - 懒加载"""
         return self._module_manager.bot
 
     @property
-    def vision_input(self):
+    def vision_input(self) -> None:
         """视觉输入模块 - 懒加载"""
         return self._module_manager.vision_input
 
     @property
-    def trainer(self):
+    def trainer(self) -> None:
         """训练管理模块 - 懒加载"""
         return self._module_manager.trainer
 
     # ============ 历史记录管理（委托给 HistoryManager）============
 
     @property
-    def history(self):
+    def history(self) -> None:
         """获取历史记录"""
         return self._history_manager.history
 
     @history.setter
-    def history(self, value):
+    def history(self, value) -> None:
         """设置历史记录"""
         self._history_manager.history = value
 
-    def _load_history(self):
+    def _load_history(self) -> None:
         """从磁盘恢复对话历史"""
         self._history_manager.load_history(self._memory)
 
-    def _save_history(self):
+    def _save_history(self) -> None:
         """保存对话历史到磁盘"""
         self._history_manager.save_history()
 
-    def record_interaction(self, user_text: str, assistant_text: str):
+    def record_interaction(self, user_text: str, assistant_text: str) -> None:
         """统一记录对话交互"""
         self._history_manager.record_interaction(
             user_text, assistant_text,
@@ -609,11 +609,11 @@ class AIVTuber:
 
     # ============ 交互模式（委托给 InteractionManager）============
 
-    def run_interactive(self):
+    def run_interactive(self) -> None:
         """交互模式 - 命令行文字/语音对话"""
         self._interaction_manager.run_interactive()
 
-    def run_web(self, desktop_mode: bool = False):
+    def run_web(self, desktop_mode: bool = False) -> None:
         """Web 模式 - 启动 HTTP + WebSocket 服务"""
         self._interaction_manager.run_web(desktop_mode)
 
@@ -852,23 +852,23 @@ class AIVTuber:
 
     # ============ 生命周期管理 ============
 
-    def _atexit_flush(self):
+    def _atexit_flush(self) -> None:
         """atexit 回调：确保异常退出时也能 flush 记忆系统和对话历史"""
         self._history_manager.flush()
         if hasattr(self, '_memory') and self._memory:
             try:
                 self._memory.flush()
-            except Exception:
+            except Exception as e:
                 pass
 
-    def _signal_handler(self, signum, frame):
+    def _signal_handler(self, signum, frame) -> None:
         """SIGTERM/SIGINT 信号处理，确保优雅关停"""
         sig_name = {2: "SIGINT", 15: "SIGTERM"}.get(signum, f"Signal {signum}")
         logger.info(f"\n[Signal] 收到 {sig_name}，正在优雅关停...")
         self.stop()
         sys.exit(0)
 
-    def stop(self):
+    def stop(self) -> None:
         """停止所有服务并释放资源"""
         self.logger.info("正在停止所有服务...")
         # 停止各种服务
@@ -881,7 +881,7 @@ class AIVTuber:
                     self.logger.warning(f"停止 {service_name} 失败: {e}")
         self.logger.info("所有服务已停止")
 
-    def _play_audio(self, audio_path: str):
+    def _play_audio(self, audio_path: str) -> None:
         """播放音频文件"""
         try:
             import subprocess
@@ -895,12 +895,12 @@ class AIVTuber:
         except Exception as e:
             self.logger.warning(f"播放音频失败: {e}")
 
-    def rebuild_llm(self):
+    def rebuild_llm(self) -> None:
         """重建 LLM 模块"""
         self._module_manager.clear_cache()
         self.logger.info("LLM 模块已重建")
 
-    def rebuild_tts(self):
+    def rebuild_tts(self) -> None:
         """重建 TTS 模块"""
         self._module_manager.clear_cache()
         self.logger.info("TTS 模块已重建")
@@ -912,11 +912,11 @@ class AIVTuber:
 
     # ============ 上下文管理器 ============
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """上下文管理器入口"""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """上下文管理器退出"""
         self.logger.info("清理资源...")
         self.stop()
@@ -925,7 +925,7 @@ class AIVTuber:
 
 # ============ CLI 入口 ============
 
-def main():
+def main() -> None:
     """CLI 入口点"""
     parser = argparse.ArgumentParser(description="咕咕嘎嘎 AI虚拟形象")
     parser.add_argument("--config", type=str, help="配置文件路径")

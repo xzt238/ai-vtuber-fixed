@@ -230,12 +230,12 @@ PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ============================================================
 # 端口配置（KI-002: 单一数据源，消除 5 处硬编码）
 # ============================================================
-def _load_ports():
+def _load_ports() -> None:
     """从 config.yaml 加载端口配置，提供默认值"""
     try:
         import yaml
         config_path = os.path.join(PROJECT_DIR, 'app', 'config.yaml')
-        if os.path.exists(config_path):
+        if Path(config_path).exists():
             with open(config_path, 'r', encoding='utf-8') as f:
                 cfg = yaml.safe_load(f) or {}
             web_cfg = cfg.get('web', {})
@@ -291,7 +291,7 @@ GPT_SOVITS_MODELS = [
 # 公共工具函数（KI-006: 消除重复代码模式）
 # ============================================================
 
-def unblock_dlls(directory: str, recursive: bool = True):
+def unblock_dlls(directory: str, recursive: bool = True) -> None:
     """Windows DLL 解锁（移除从网络下载时添加的 Zone.Identifier 标记）
 
     .NET/pywebview 等框架拒绝加载带有 Zone.Identifier 的 DLL，

@@ -38,7 +38,7 @@ class Danmaku:
     room_id: str
     extra: Dict[str, Any] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.extra is None:
             self.extra = {}
 
@@ -55,7 +55,7 @@ class Gift:
     room_id: str
     extra: Dict[str, Any] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.extra is None:
             self.extra = {}
 
@@ -71,7 +71,7 @@ class LiveMessage:
 class LiveSystem:
     """直播系统主类"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./memory/live")
         
@@ -100,7 +100,7 @@ class LiveSystem:
         logger.info(f" 存储目录: {self.storage_dir}")
     
     @property
-    def bilibili_client(self):
+    def bilibili_client(self) -> None:
         """延迟加载Bilibili客户端"""
         if self._bilibili_client is None:
             from .bilibili_client import BilibiliClient
@@ -108,7 +108,7 @@ class LiveSystem:
         return self._bilibili_client
     
     @property
-    def danmaku_parser(self):
+    def danmaku_parser(self) -> None:
         """延迟加载弹幕解析器"""
         if self._danmaku_parser is None:
             from .danmaku_parser import DanmakuParser
@@ -116,7 +116,7 @@ class LiveSystem:
         return self._danmaku_parser
     
     @property
-    def ai_responder(self):
+    def ai_responder(self) -> None:
         """延迟加载AI回复生成器"""
         if self._ai_responder is None:
             from .ai_responder import AIResponder
@@ -124,22 +124,22 @@ class LiveSystem:
         return self._ai_responder
     
     @property
-    def danmaku_sender(self):
+    def danmaku_sender(self) -> None:
         """延迟加载弹幕发送器"""
         if self._danmaku_sender is None:
             from .danmaku_sender import DanmakuSender
             self._danmaku_sender = DanmakuSender(self.config)
         return self._danmaku_sender
     
-    def add_message_callback(self, callback: Callable):
+    def add_message_callback(self, callback: Callable) -> None:
         """添加消息回调"""
         self._message_callbacks.append(callback)
     
-    def remove_message_callback(self, callback: Callable):
+    def remove_message_callback(self, callback: Callable) -> None:
         """移除消息回调"""
         self._message_callbacks = [cb for cb in self._message_callbacks if cb != callback]
     
-    def _notify_message(self, message: LiveMessage):
+    def _notify_message(self, message: LiveMessage) -> None:
         """通知消息回调"""
         for callback in self._message_callbacks:
             try:
@@ -170,7 +170,7 @@ class LiveSystem:
             logger.info(f" 连接直播间失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         try:
             if self._bilibili_client:
@@ -184,7 +184,7 @@ class LiveSystem:
         except Exception as e:
             logger.info(f" 断开连接失败: {e}")
     
-    def _handle_message(self, message: Dict[str, Any]):
+    def _handle_message(self, message: Dict[str, Any]) -> None:
         """处理接收到的消息"""
         try:
             # 解析消息
@@ -201,7 +201,7 @@ class LiveSystem:
         except Exception as e:
             logger.info(f" 消息处理失败: {e}")
     
-    def _handle_danmaku(self, danmaku: Danmaku):
+    def _handle_danmaku(self, danmaku: Danmaku) -> None:
         """处理弹幕消息"""
         try:
             # 生成AI回复
@@ -225,7 +225,7 @@ class LiveSystem:
         except Exception as e:
             logger.info(f" 弹幕处理失败: {e}")
     
-    async def _send_danmaku_response(self, response: str):
+    async def _send_danmaku_response(self, response: str) -> None:
         """发送弹幕回复"""
         try:
             if self._connected and self._room_id:
@@ -274,13 +274,13 @@ async def connect_to_live(room_id: str) -> bool:
     return await live.connect(room_id)
 
 
-async def disconnect_from_live():
+async def disconnect_from_live() -> None:
     """断开直播连接的便捷函数"""
     live = get_live_system()
     await live.disconnect()
 
 
-def add_live_message_callback(callback: Callable):
+def add_live_message_callback(callback: Callable) -> None:
     """添加直播消息回调的便捷函数"""
     live = get_live_system()
     live.add_message_callback(callback)

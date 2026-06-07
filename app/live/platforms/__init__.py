@@ -50,7 +50,7 @@ class DanmakuMessage:
     room_id: str
     extra: Dict[str, Any] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.extra is None:
             self.extra = {}
 
@@ -67,7 +67,7 @@ class GiftMessage:
     room_id: str
     extra: Dict[str, Any] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.extra is None:
             self.extra = {}
 
@@ -82,7 +82,7 @@ class SystemMessage:
     room_id: str
     extra: Dict[str, Any] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.extra is None:
             self.extra = {}
 
@@ -90,7 +90,7 @@ class SystemMessage:
 class LivePlatform(ABC):
     """直播平台基类"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.platform_type = self._get_platform_type()
         self.connected = False
@@ -120,7 +120,7 @@ class LivePlatform(ABC):
         pass
     
     @abstractmethod
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         pass
     
@@ -130,35 +130,35 @@ class LivePlatform(ABC):
         pass
     
     @abstractmethod
-    async def _receive_messages(self):
+    async def _receive_messages(self) -> None:
         """接收消息（内部实现）"""
         pass
     
-    def add_danmaku_callback(self, callback: Callable):
+    def add_danmaku_callback(self, callback: Callable) -> None:
         """添加弹幕回调"""
         self._danmaku_callbacks.append(callback)
     
-    def add_gift_callback(self, callback: Callable):
+    def add_gift_callback(self, callback: Callable) -> None:
         """添加礼物回调"""
         self._gift_callbacks.append(callback)
     
-    def add_system_callback(self, callback: Callable):
+    def add_system_callback(self, callback: Callable) -> None:
         """添加系统消息回调"""
         self._system_callbacks.append(callback)
     
-    def remove_danmaku_callback(self, callback: Callable):
+    def remove_danmaku_callback(self, callback: Callable) -> None:
         """移除弹幕回调"""
         self._danmaku_callbacks = [cb for cb in self._danmaku_callbacks if cb != callback]
     
-    def remove_gift_callback(self, callback: Callable):
+    def remove_gift_callback(self, callback: Callable) -> None:
         """移除礼物回调"""
         self._gift_callbacks = [cb for cb in self._gift_callbacks if cb != callback]
     
-    def remove_system_callback(self, callback: Callable):
+    def remove_system_callback(self, callback: Callable) -> None:
         """移除系统消息回调"""
         self._system_callbacks = [cb for cb in self._system_callbacks if cb != callback]
     
-    def _notify_danmaku(self, message: DanmakuMessage):
+    def _notify_danmaku(self, message: DanmakuMessage) -> None:
         """通知弹幕回调"""
         self._stats["danmaku_count"] += 1
         for callback in self._danmaku_callbacks:
@@ -167,7 +167,7 @@ class LivePlatform(ABC):
             except Exception as e:
                 logger.info(f" 弹幕回调失败: {e}")
     
-    def _notify_gift(self, message: GiftMessage):
+    def _notify_gift(self, message: GiftMessage) -> None:
         """通知礼物回调"""
         self._stats["gift_count"] += 1
         for callback in self._gift_callbacks:
@@ -176,7 +176,7 @@ class LivePlatform(ABC):
             except Exception as e:
                 logger.info(f" 礼物回调失败: {e}")
     
-    def _notify_system(self, message: SystemMessage):
+    def _notify_system(self, message: SystemMessage) -> None:
         """通知系统消息回调"""
         for callback in self._system_callbacks:
             try:
@@ -211,9 +211,9 @@ class LivePlatformFactory:
     _platforms: Dict[PlatformType, type] = {}
     
     @classmethod
-    def register(cls, platform_type: PlatformType):
+    def register(cls, platform_type: PlatformType) -> None:
         """注册平台装饰器"""
-        def decorator(platform_class):
+        def decorator(platform_class) -> None:
             cls._platforms[platform_type] = platform_class
             return platform_class
         return decorator

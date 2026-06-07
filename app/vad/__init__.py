@@ -30,7 +30,7 @@ class VADConfig:
 class SileroVAD:
     """Silero VAD 语音活动检测器"""
     
-    def __init__(self, config: VADConfig = None):
+    def __init__(self, config: VADConfig = None) -> None:
         self.config = config or VADConfig()
         self.state = VADState.IDLE
         self.model = None
@@ -180,7 +180,7 @@ class SileroVAD:
             with torch.no_grad():
                 prob = self.model(tensor, self.config.sample_rate).item()
             return prob
-        except Exception:
+        except Exception as e:
             return self._estimate_speech_probability(audio_chunk, self._calculate_volume_db(audio_chunk))
     
     def _estimate_speech_probability(self, audio_chunk: np.ndarray, volume_db: float) -> float:
@@ -214,7 +214,7 @@ class SileroVAD:
             "buffer_size": len(self.audio_buffer)
         }
     
-    def reset(self):
+    def reset(self) -> None:
         """重置状态"""
         self.state = VADState.IDLE
         self.hit_count = 0

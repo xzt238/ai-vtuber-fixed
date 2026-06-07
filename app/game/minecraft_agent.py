@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class MinecraftAgent(GameAgent):
     """Minecraft游戏代理"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__(GameType.MINECRAFT)
         self.config = config or {}
         
@@ -90,7 +90,7 @@ class MinecraftAgent(GameAgent):
             logger.info(f" Minecraft连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开Minecraft连接"""
         try:
             # 停止状态轮询
@@ -232,7 +232,7 @@ class MinecraftAgent(GameAgent):
             logger.info(f" Minecraft动作执行失败: {e}")
             return False
     
-    async def _move(self, parameters: Dict[str, Any]):
+    async def _move(self, parameters: Dict[str, Any]) -> None:
         """移动到指定位置"""
         x = parameters.get("x", 0)
         y = parameters.get("y", 0)
@@ -247,7 +247,7 @@ class MinecraftAgent(GameAgent):
             self._client.player.position.y = y
             self._client.player.position.z = z
     
-    async def _chat(self, parameters: Dict[str, Any]):
+    async def _chat(self, parameters: Dict[str, Any]) -> None:
         """发送聊天消息"""
         message = parameters.get("message", "")
         
@@ -258,7 +258,7 @@ class MinecraftAgent(GameAgent):
                 None, self._client.chat, message
             )
     
-    async def _attack(self, parameters: Dict[str, Any]):
+    async def _attack(self, parameters: Dict[str, Any]) -> None:
         """攻击目标"""
         target = parameters.get("target", "")
         
@@ -275,7 +275,7 @@ class MinecraftAgent(GameAgent):
                         )
                     break
     
-    async def _mine(self, parameters: Dict[str, Any]):
+    async def _mine(self, parameters: Dict[str, Any]) -> None:
         """挖掘方块"""
         block_type = parameters.get("block_type", "")
         x = parameters.get("x", 0)
@@ -287,7 +287,7 @@ class MinecraftAgent(GameAgent):
         # 发送挖掘命令
         await self.send_command(f"mine {x} {y} {z}")
     
-    async def _place(self, parameters: Dict[str, Any]):
+    async def _place(self, parameters: Dict[str, Any]) -> None:
         """放置方块"""
         block_type = parameters.get("block_type", "")
         x = parameters.get("x", 0)
@@ -299,7 +299,7 @@ class MinecraftAgent(GameAgent):
         # 发送放置命令
         await self.send_command(f"setblock {x} {y} {z} {block_type}")
     
-    async def _use(self, parameters: Dict[str, Any]):
+    async def _use(self, parameters: Dict[str, Any]) -> None:
         """使用物品"""
         item = parameters.get("item", "")
         
@@ -308,7 +308,7 @@ class MinecraftAgent(GameAgent):
         # 发送使用命令
         await self.send_command(f"use {item}")
     
-    async def _drop(self, parameters: Dict[str, Any]):
+    async def _drop(self, parameters: Dict[str, Any]) -> None:
         """丢弃物品"""
         item = parameters.get("item", "")
         count = parameters.get("count", 1)
@@ -376,7 +376,7 @@ class MinecraftAgent(GameAgent):
         )
         return await self.execute_action(action)
     
-    async def _poll_state(self):
+    async def _poll_state(self) -> None:
         """轮询游戏状态"""
         try:
             while self.connected:

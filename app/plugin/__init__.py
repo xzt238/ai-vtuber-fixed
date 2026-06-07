@@ -67,7 +67,7 @@ class PluginManifest:
 class PluginLoader:
     """插件加载器"""
     
-    def __init__(self, plugins_dir: str = "./plugins"):
+    def __init__(self, plugins_dir: str = "./plugins") -> None:
         self.plugins_dir = Path(plugins_dir)
         self.loaded_modules: Dict[str, Any] = {}
     
@@ -148,7 +148,7 @@ class PluginLoader:
             logger.info(f"[Plugin] 加载插件失败: {plugin_id}, {e}")
             return None
     
-    async def unload_plugin(self, plugin_id: str):
+    async def unload_plugin(self, plugin_id: str) -> None:
         """卸载插件"""
         if plugin_id in self.loaded_modules:
             del self.loaded_modules[plugin_id]
@@ -157,7 +157,7 @@ class PluginLoader:
 class PluginManager:
     """插件管理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         plugins_dir = self.config.get("plugins_dir", "./plugins")
@@ -179,7 +179,7 @@ class PluginManager:
         
         logger.info(f"[Plugin] 初始化完成: plugins_dir={plugins_dir}")
     
-    async def initialize(self):
+    async def initialize(self) -> None:
         """初始化插件系统"""
         # 发现插件
         manifests = await self.loader.discover_plugins()
@@ -207,7 +207,7 @@ class PluginManager:
         if self.auto_load:
             await self._auto_load_plugins()
     
-    async def _auto_load_plugins(self):
+    async def _auto_load_plugins(self) -> None:
         """自动加载插件"""
         for plugin_id, plugin_info in self.plugins.items():
             if plugin_info.enabled:

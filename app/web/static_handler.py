@@ -33,16 +33,16 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
 
     _cache_dir = None  # 由 WebServer 注入,提供 app/cache 目录路径
 
-    def __init__(self, *args, directory=None, **kwargs):
+    def __init__(self, *args, directory=None, **kwargs) -> None:
         """初始化静态文件处理器"""
         self._static_dir = directory
         super().__init__(*args, directory=directory, **kwargs)
 
-    def log_message(self, fmt, *args):
+    def log_message(self, fmt, *args) -> None:
         """静默日志(不输出请求日志)"""
         pass  # 静默日志
 
-    def end_headers(self):
+    def end_headers(self) -> None:
         """注入跨域隔离头，使 ONNX Runtime WASM 多线程模式可用
         
         COEP 使用 credentialless 而非 require-corp，
@@ -57,7 +57,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Expires", "0")
         super().end_headers()
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         """
         [功能说明]处理 GET 请求,提供静态文件和音频资源
 
@@ -105,7 +105,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
                     self.wfile.write(data)
                 else:
                     self.send_error(404, "Audio Not Found")
-            except Exception:
+            except Exception as e:
                 self.send_error(500, "Internal Server Error")
             return
         
@@ -124,7 +124,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
             if self._static_dir:
                 candidates.append(os.path.join(self._static_dir, "audio", filename))
             for fpath in candidates:
-                if os.path.exists(fpath):
+                if Path(fpath).exists():
                     try:
                         with open(fpath, "rb") as f:
                             data = f.read()
@@ -134,7 +134,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
                         self.send_header("Cache-Control", "no-cache")
                         self.end_headers()
                         self.wfile.write(data)
-                    except Exception:
+                    except Exception as e:
                         self.send_error(500, "Internal Server Error")
                     return
             self.send_error(404, "Audio Not Found")
@@ -164,7 +164,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
         # 其他请求走默认处理
         super().do_GET()
     
-    def do_POST(self):
+    def do_POST(self) -> None:
         """
         [功能说明]处理 POST 请求(训练音频上传、沙盒路径管理)
 
@@ -195,7 +195,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
         # 其他请求返回 405 Method Not Allowed
         self.send_error(405, "Method Not Allowed")
     
-    def _handle_sandbox_api(self):
+    def _handle_sandbox_api(self) -> None:
         """
         处理沙盒路径管理 API.
 
@@ -261,7 +261,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
             traceback.print_exc()
             self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
     
-    def _handle_train_upload(self):
+    def _handle_train_upload(self) -> None:
         """
         处理训练音频上传(multipart/form-data).
 
@@ -356,7 +356,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
             traceback.print_exc()
             self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
 
-    def _serve_config_js(self):
+    def _serve_config_js(self) -> None:
         """KI-001 FIX: 动态生成 config.js，从 shared_config.py 单一数据源
 
         前端通过 <script src="/api/config.js"> 加载此文件，
@@ -383,7 +383,7 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
         self.end_headers()
         self.wfile.write(js_code.encode('utf-8'))
 
-    def _handle_layout_api(self):
+    def _handle_layout_api(self) -> None:
         """
         处理布局存储 API.
 
@@ -405,7 +405,7 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
         # GET: 读取布局数据
         if self.command == "GET":
             try:
-                if _os.path.exists(layout_file):
+                if _Path(layout_file).exists():
                     with open(layout_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     self.send_json({"success": True, "data": data})
@@ -438,7 +438,7 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
                         json.dump(data, f, ensure_ascii=False, indent=2)
                     # Windows: os.rename 不能覆盖已存在文件，用 os.replace
                     _os.replace(tmp_path, layout_file)
-                except Exception:
+                except Exception as e:
                     # 清理临时文件
                     try:
                         _os.unlink(tmp_path)
@@ -458,7 +458,7 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
         # 其他方法
         self.send_error(405, "Method Not Allowed")
 
-    def _handle_sandbox_status(self):
+    def _handle_sandbox_status(self) -> None:
         """
         获取沙盒状态.
 
@@ -489,7 +489,7 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
             logger.error(f"状态错误: {e}")
             self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
     
-    def send_json(self, data):
+    def send_json(self, data) -> None:
         """
         [功能说明]发送 JSON 响应(统一封装)
 

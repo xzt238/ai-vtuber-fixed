@@ -41,7 +41,7 @@ class CacheEntry(Generic[T]):
 class LRUCache:
     """LRU缓存"""
     
-    def __init__(self, max_size: int = 1000, default_ttl: int = None):
+    def __init__(self, max_size: int = 1000, default_ttl: int = None) -> None:
         self.max_size = max_size
         self.default_ttl = default_ttl
         self.cache: OrderedDict[str, CacheEntry] = OrderedDict()
@@ -78,7 +78,7 @@ class LRUCache:
         self.stats["hits"] += 1
         return entry.value
     
-    def set(self, key: str, value: Any, ttl: int = None):
+    def set(self, key: str, value: Any, ttl: int = None) -> None:
         """设置缓存"""
         # 如果已存在，更新
         if key in self.cache:
@@ -107,7 +107,7 @@ class LRUCache:
             return True
         return False
     
-    def clear(self):
+    def clear(self) -> None:
         """清空缓存"""
         self.cache.clear()
     
@@ -141,7 +141,7 @@ class LRUCache:
 class DiskCache:
     """磁盘缓存"""
     
-    def __init__(self, cache_dir: str = "./cache", max_size_mb: int = 100):
+    def __init__(self, cache_dir: str = "./cache", max_size_mb: int = 100) -> None:
         self.cache_dir = Path(cache_dir)
         self.max_size_mb = max_size_mb
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -160,16 +160,16 @@ class DiskCache:
             "writes": 0
         }
     
-    def _load_index(self):
+    def _load_index(self) -> None:
         """加载索引"""
         try:
             if self.index_file.exists():
                 with open(self.index_file, "r", encoding="utf-8") as f:
                     self.index = json.load(f)
-        except Exception:
+        except Exception as e:
             self.index = {}
     
-    def _save_index(self):
+    def _save_index(self) -> None:
         """保存索引"""
         try:
             with open(self.index_file, "w", encoding="utf-8") as f:
@@ -225,7 +225,7 @@ class DiskCache:
             self.stats["misses"] += 1
             return None
     
-    def set(self, key: str, value: Any, ttl: int = None):
+    def set(self, key: str, value: Any, ttl: int = None) -> None:
         """设置缓存"""
         cache_path = self._get_cache_path(key)
         
@@ -267,10 +267,10 @@ class DiskCache:
             self._save_index()
             return True
             
-        except Exception:
+        except Exception as e:
             return False
     
-    def clear(self):
+    def clear(self) -> None:
         """清空缓存"""
         for cache_file in self.cache_dir.glob("*.cache"):
             cache_file.unlink()
@@ -278,7 +278,7 @@ class DiskCache:
         self.index.clear()
         self._save_index()
     
-    def _check_capacity(self):
+    def _check_capacity(self) -> None:
         """检查容量"""
         total_size = sum(
             entry.get("file_size", 0)
@@ -320,7 +320,7 @@ class CacheOptimizer:
     
     def __init__(self, memory_cache_size: int = 1000, 
                  disk_cache_dir: str = "./cache",
-                 disk_cache_size_mb: int = 100):
+                 disk_cache_size_mb: int = 100) -> None:
         # 内存缓存
         self.memory_cache = LRUCache(max_size=memory_cache_size)
         
@@ -364,7 +364,7 @@ class CacheOptimizer:
         return None
     
     def set(self, key: str, value: Any, ttl: int = None, 
-            memory_only: bool = False):
+            memory_only: bool = False) -> None:
         """设置缓存"""
         # 写入内存缓存
         self.memory_cache.set(key, value, ttl)
@@ -373,17 +373,17 @@ class CacheOptimizer:
         if not memory_only:
             self.disk_cache.set(key, value, ttl)
     
-    def delete(self, key: str):
+    def delete(self, key: str) -> None:
         """删除缓存"""
         self.memory_cache.delete(key)
         self.disk_cache.delete(key)
     
-    def clear(self):
+    def clear(self) -> None:
         """清空缓存"""
         self.memory_cache.clear()
         self.disk_cache.clear()
     
-    async def warmup(self):
+    async def warmup(self) -> None:
         """缓存预热"""
         logger.info("[CacheOptimizer] 开始缓存预热...")
         
@@ -398,7 +398,7 @@ class CacheOptimizer:
         
         logger.info("[CacheOptimizer] 缓存预热完成")
     
-    def register_warmup(self, func: Callable):
+    def register_warmup(self, func: Callable) -> None:
         """注册预热函数"""
         self.warmup_functions.append(func)
     
@@ -448,11 +448,11 @@ def get_cache_optimizer() -> CacheOptimizer:
     return _cache_optimizer
 
 # 缓存装饰器
-def cached(key_func: Callable = None, ttl: int = None, memory_only: bool = False):
+def cached(key_func: Callable = None, ttl: int = None, memory_only: bool = False) -> None:
     """缓存装饰器"""
-    def decorator(func):
+    def decorator(func) -> None:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> None:
             # 生成缓存键
             if key_func:
                 cache_key = key_func(*args, **kwargs)

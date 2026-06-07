@@ -14,7 +14,7 @@ from . import TextChunk
 class TextSplitter:
     """文本分块器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.chunk_size = self.config.get("chunk_size", 500)
         self.chunk_overlap = self.config.get("chunk_overlap", 50)

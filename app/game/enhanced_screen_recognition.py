@@ -56,7 +56,7 @@ class ScreenState:
 class EnhancedScreenRecognition:
     """增强版屏幕识别器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         # 识别模式
@@ -132,7 +132,7 @@ class EnhancedScreenRecognition:
             logger.info("[EnhancedScreenRecognition] EasyOCR未安装")
             return False
     
-    def register_game_template(self, game_name: str, template: Dict[str, Any]):
+    def register_game_template(self, game_name: str, template: Dict[str, Any]) -> None:
         """注册游戏模板"""
         self.game_templates[game_name] = template
         logger.info(f"[EnhancedScreenRecognition] 注册游戏模板: {game_name}")

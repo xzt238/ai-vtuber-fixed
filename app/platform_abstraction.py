@@ -52,7 +52,7 @@ def create_mutex(name: str) -> Optional[Any]:
             if _kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
                 return None
             return handle
-        except Exception:
+        except Exception as e:
             return None
     else:
         # Unix: 使用文件锁
@@ -76,12 +76,12 @@ def release_mutex(handle: Any) -> None:
     if is_windows():
         try:
             _kernel32.CloseHandle(handle)
-        except Exception:
+        except Exception as e:
             pass
     else:
         try:
             os.close(handle)
-        except Exception:
+        except Exception as e:
             pass
 
 
@@ -93,7 +93,7 @@ def show_message(title: str, message: str, level: str = "info") -> None:
         MB_ICONMAP = {"info": 0x40, "warning": 0x30, "error": 0x10}
         try:
             ctypes.windll.user32.MessageBoxW(0, message, title, MB_ICONMAP.get(level, 0x40))
-        except Exception:
+        except Exception as e:
             _logger.warning(f"消息弹窗失败: {title}")
     elif is_macos():
         subprocess.run(["osascript", "-e",

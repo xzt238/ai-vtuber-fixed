@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class QQBot(Bot):
     """QQ Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("qq_bot", "qq")
         self.config = config or {}
         
@@ -51,11 +51,11 @@ class QQBot(Bot):
             
             # 创建Bot客户端
             class MyClient(botpy.Client):
-                async def on_ready(self):
+                async def on_ready(self) -> None:
                     logger.info(f" QQ Bot已登录: {self.robot.name}")
                     self.parent.connected = True
                 
-                async def on_at_message_create(self, message: Message):
+                async def on_at_message_create(self, message: Message) -> None:
                     # 创建BotMessage
                     bot_message = BotMessage(
                         id=str(message.id),
@@ -105,7 +105,7 @@ class QQBot(Bot):
             logger.info(f" QQ Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开QQ连接"""
         try:
             # 断开连接

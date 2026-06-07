@@ -243,5 +243,5 @@ class HistoryManager:
         if self.history:
             try:
                 self.save_history()
-            except Exception:
+            except Exception as e:
                 pass

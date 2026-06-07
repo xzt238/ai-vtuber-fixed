@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class DanmakuParser:
     """弹幕解析器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
     
     def parse(self, message: Dict[str, Any]) -> Optional[LiveMessage]:

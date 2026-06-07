@@ -41,7 +41,7 @@ class BotMessage:
     message_type: str = "text"  # text, image, file
     metadata: Dict[str, Any] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.id:
             self.id = str(uuid.uuid4())
         if not self.timestamp:
@@ -53,7 +53,7 @@ class BotMessage:
 class Bot:
     """Bot接口"""
     
-    def __init__(self, bot_id: str, platform: str):
+    def __init__(self, bot_id: str, platform: str) -> None:
         self.bot_id = bot_id
         self.platform = platform
         self.connected = False
@@ -62,24 +62,24 @@ class Bot:
         
         logger.info(f" Bot初始化完成: {platform}")
     
-    def add_message_callback(self, callback: Callable):
+    def add_message_callback(self, callback: Callable) -> None:
         """添加消息回调"""
         self._message_callbacks.append(callback)
     
-    def remove_message_callback(self, callback: Callable):
+    def remove_message_callback(self, callback: Callable) -> None:
         """移除消息回调"""
         self._message_callbacks = [cb for cb in self._message_callbacks if cb != callback]
     
-    def add_command_callback(self, command: str, callback: Callable):
+    def add_command_callback(self, command: str, callback: Callable) -> None:
         """添加命令回调"""
         self._command_callbacks[command] = callback
     
-    def remove_command_callback(self, command: str):
+    def remove_command_callback(self, command: str) -> None:
         """移除命令回调"""
         if command in self._command_callbacks:
             del self._command_callbacks[command]
     
-    def _notify_message(self, message: BotMessage):
+    def _notify_message(self, message: BotMessage) -> None:
         """通知消息回调"""
         for callback in self._message_callbacks:
             try:
@@ -91,7 +91,7 @@ class Bot:
         """连接到平台"""
         raise NotImplementedError
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         raise NotImplementedError
     
@@ -111,7 +111,7 @@ class Bot:
 class DiscordBot(Bot):
     """Discord Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("discord_bot", "discord")
         self.config = config or {}
         self.token = self.config.get("token", "")
@@ -148,7 +148,7 @@ class DiscordBot(Bot):
             logger.info(f" Discord Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开Discord连接"""
         try:
             if self.connected:
@@ -201,7 +201,7 @@ class DiscordBot(Bot):
             logger.info(f" Discord文件发送失败: {e}")
             return False
     
-    async def handle_command(self, message: BotMessage):
+    async def handle_command(self, message: BotMessage) -> None:
         """处理Discord命令"""
         try:
             content = message.content
@@ -224,7 +224,7 @@ class DiscordBot(Bot):
 class TelegramBot(Bot):
     """Telegram Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("telegram_bot", "telegram")
         self.config = config or {}
         self.token = self.config.get("token", "")
@@ -259,7 +259,7 @@ class TelegramBot(Bot):
             logger.info(f" Telegram Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开Telegram连接"""
         try:
             if self.connected:
@@ -316,7 +316,7 @@ class TelegramBot(Bot):
 class BotManager:
     """Bot管理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./cache/bot")
         
@@ -354,7 +354,7 @@ class BotManager:
         """列出所有Bot"""
         return list(self.bots.keys())
     
-    def remove_bot(self, bot_id: str):
+    def remove_bot(self, bot_id: str) -> None:
         """移除Bot"""
         if bot_id in self.bots:
             bot = self.bots[bot_id]
@@ -362,7 +362,7 @@ class BotManager:
             del self.bots[bot_id]
             logger.info(f" Bot移除成功: {bot_id}")
     
-    async def connect_all(self):
+    async def connect_all(self) -> None:
         """连接所有Bot"""
         for bot_id, bot in self.bots.items():
             try:
@@ -370,7 +370,7 @@ class BotManager:
             except Exception as e:
                 logger.info(f" Bot连接失败 {bot_id}: {e}")
     
-    async def disconnect_all(self):
+    async def disconnect_all(self) -> None:
         """断开所有Bot"""
         for bot_id, bot in self.bots.items():
             try:

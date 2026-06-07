@@ -62,7 +62,7 @@ class _SuppressVerboseOutput:
     注意：异常信息仍会正常抛出（因为异常走 stderr 且不被 except 捕获）。
     """
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self._stdout = _io.StringIO()
         self._stderr = _io.StringIO()
         self._orig_stdout = sys.stdout
@@ -70,7 +70,7 @@ class _SuppressVerboseOutput:
         sys.stdout = self._stdout
         sys.stderr = self._stderr
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         sys.stdout = self._orig_stdout
         sys.stderr = self._orig_stderr
         # 如果有异常，把捕获的输出刷出来方便调试
@@ -123,13 +123,13 @@ class GPTSoVITSEngine:
 
     _instance = None
 
-    def __new__(cls, config: dict = None):
+    def __new__(cls, config: dict = None) -> None:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict = None) -> None:
         import traceback as tb
         try:
             logger.debug(f"__init__ called with config={config}")
@@ -475,7 +475,7 @@ class GPTSoVITSEngine:
             logger.error(f"识别参考音频失败: {e}")
         return ""
 
-    def _save_project_config(self, project_name: str, config: dict):
+    def _save_project_config(self, project_name: str, config: dict) -> None:
         """
         【功能说明】将项目配置字典序列化并保存到磁盘的 config.json 文件
 
@@ -505,13 +505,13 @@ class GPTSoVITSEngine:
             json.dump(save_config, f, ensure_ascii=False, indent=2)
         logger.info(f"项目配置已保存: {project_name}")
 
-    def _save_last_project(self, project_name: str):
+    def _save_last_project(self, project_name: str) -> None:
         """持久化上次使用的音色名称，供下次启动预热使用"""
         try:
             LAST_PROJECT_FILE.parent.mkdir(parents=True, exist_ok=True)
             with open(LAST_PROJECT_FILE, 'w', encoding='utf-8') as f:
                 json.dump({"last_project": project_name, "ts": time.time()}, f, ensure_ascii=False)
-        except Exception:
+        except Exception as e:
             pass  # 非关键功能，失败不影响使用
 
     def _load_last_project(self) -> Optional[str]:
@@ -520,11 +520,11 @@ class GPTSoVITSEngine:
             if LAST_PROJECT_FILE.exists():
                 data = json.load(open(LAST_PROJECT_FILE, 'r', encoding='utf-8'))
                 return data.get("last_project")
-        except Exception:
+        except Exception as e:
             pass
         return None
 
-    def set_project(self, project_name: str):
+    def set_project(self, project_name: str) -> None:
         """
         【功能说明】切换当前活跃项目，加载该项目的参考音频、配置和训练模型
 
@@ -616,7 +616,7 @@ class GPTSoVITSEngine:
             # C1修复: 释放旧模型占用的GPU显存
             try:
                 del self.tts_pipeline
-            except Exception:
+            except Exception as e:
                 pass
             self.tts_pipeline = None
             self._pipeline_project = None  # v1.9.62: 清除 pipeline 项目标记
@@ -641,17 +641,17 @@ class GPTSoVITSEngine:
         try:
             from app.tts.text_enhancer import enhance_text
             return enhance_text(text)
-        except Exception:
+        except Exception as e:
             return text
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """C2修复: 关停时释放GPU资源，防止显存泄漏"""
         try:
             if self.tts_pipeline is not None:
                 logger.info("[GPT-SoVITS] 正在释放GPU资源...")
                 try:
                     del self.tts_pipeline
-                except Exception:
+                except Exception as e:
                     pass
                 self.tts_pipeline = None
             # 释放模型权重占用的显存
@@ -660,7 +660,7 @@ class GPTSoVITSEngine:
                 if model is not None:
                     try:
                         del model
-                    except Exception:
+                    except Exception as e:
                         pass
                     setattr(self, attr_name, None)
             if torch.cuda.is_available():
@@ -669,7 +669,7 @@ class GPTSoVITSEngine:
         except Exception as e:
             logger.info(f"[GPT-SoVITS] 清理GPU资源时出错: {e}")
 
-    def stop(self):
+    def stop(self) -> None:
         """停止当前音频播放/生成
 
         GPT-SoVITS 不使用子进程播放，但需要：
@@ -707,12 +707,12 @@ class GPTSoVITSEngine:
                             "ref_text": cfg.get("ref_text", ""),
                             "has_trained": cfg.get("trained_gpt") is not None or cfg.get("trained_sovits") is not None,
                         })
-                    except Exception:
+                    except Exception as e:
                         pass
         
         return projects
 
-    def save_trained_models(self, project_name: str, gpt_path: str, sovits_path: str):
+    def save_trained_models(self, project_name: str, gpt_path: str, sovits_path: str) -> None:
         """
         保存训练后的模型路径到项目配置
 
@@ -733,7 +733,7 @@ class GPTSoVITSEngine:
             # 重置 TTS pipeline 以应用新模型
             self.tts_pipeline = None
 
-    def _lazy_init(self):
+    def _lazy_init(self) -> None:
         """
         延迟初始化 - 首次推理时才加载模型
 
@@ -800,7 +800,7 @@ class GPTSoVITSEngine:
                 # ============================================================
                 sovits_version = None
                 is_zip_lora = False  # 标记是否为 ZIP 格式的 LoRA
-                if os.path.exists(self.sovits_path):
+                if Path(self.sovits_path).exists():
                     try:
                         # 先检查文件头——ZIP 格式的模型一定是 v3/v4
                         with open(self.sovits_path, "rb") as f:
@@ -988,7 +988,7 @@ class GPTSoVITSEngine:
         # 连接词断点：和、而、但、所以、因为、虽然、如果、虽然、不过、然后
         connectives = {'和', '而', '但', '所以', '因为', '虽然', '如果', '不过', '然后', '于是', '可是', '不过', '然而', '并且', '或者', '还是'}
         
-        def find_best_break(text, max_len):
+        def find_best_break(text, max_len) -> None:
             """在 max_len 附近找最佳语义断点"""
             # 优先在标点处断开
             for i in range(max_len - 1, max(10, max_len - 20), -1):
@@ -1306,7 +1306,7 @@ class GPTSoVITSEngine:
             sf.write(tmp_path, silence, 24000)
             return tmp_path
 
-    def _append_wav_samples(self, path: str, samples: np.ndarray, sr: int):
+    def _append_wav_samples(self, path: str, samples: np.ndarray, sr: int) -> None:
         """追加音频样本到已有 WAV 文件（每次重写完整文件，包含更新后的 header）"""
         import soundfile as sf
         sf.write(path, samples, sr)
@@ -1350,16 +1350,16 @@ class GPTSoVITSEngine:
         """
         try:
             # 检查模型文件是否存在
-            if not os.path.exists(self.gpt_path):
+            if not Path(self.gpt_path).exists():
                 logger.info(f"[GPT-SoVITS] GPT模型不存在: {self.gpt_path}")
                 return False
-            if not os.path.exists(self.sovits_path):
+            if not Path(self.sovits_path).exists():
                 logger.info(f"[GPT-SoVITS] SoVITS模型不存在: {self.sovits_path}")
                 return False
-            if not os.path.exists(self.cnhubert_path):
+            if not Path(self.cnhubert_path).exists():
                 logger.info(f"[GPT-SoVITS] CNHuBERT模型不存在: {self.cnhubert_path}")
                 return False
-            if not os.path.exists(self.bert_path):
+            if not Path(self.bert_path).exists():
                 logger.info(f"[GPT-SoVITS] BERT模型不存在: {self.bert_path}")
                 return False
             return True

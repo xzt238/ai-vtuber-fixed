@@ -88,7 +88,7 @@ class PluginEntry:
 class EnhancedPluginMarketplace:
     """增强版插件市场"""
     
-    def __init__(self, storage_dir: str = "./plugins/marketplace"):
+    def __init__(self, storage_dir: str = "./plugins/marketplace") -> None:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         
@@ -104,7 +104,7 @@ class EnhancedPluginMarketplace:
         
         logger.info(f"[EnhancedMarketplace] 初始化完成，插件数量: {len(self.plugins)}")
     
-    def _load_index(self):
+    def _load_index(self) -> None:
         """加载插件索引"""
         try:
             if self.index_file.exists():
@@ -130,7 +130,7 @@ class EnhancedPluginMarketplace:
         except Exception as e:
             logger.info(f"[EnhancedMarketplace] 加载索引失败: {e}")
     
-    def _save_index(self):
+    def _save_index(self) -> None:
         """保存插件索引"""
         try:
             data = {}
@@ -273,7 +273,7 @@ class EnhancedPluginMarketplace:
             self.download_stats[plugin_id] = self.download_stats.get(plugin_id, 0) + 1
             self._save_index()
             return True
-        except Exception:
+        except Exception as e:
             return False
     
     def get_categories(self) -> Dict[str, int]:

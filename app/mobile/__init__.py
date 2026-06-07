@@ -47,7 +47,7 @@ class MobileConfig:
 class MobileAPIServer:
     """移动端API服务器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         # API配置
@@ -70,7 +70,7 @@ class MobileAPIServer:
         
         logger.info("[MobileAPI] 初始化完成")
     
-    async def start(self):
+    async def start(self) -> None:
         """启动API服务器"""
         try:
             from aiohttp import web
@@ -94,7 +94,7 @@ class MobileAPIServer:
             logger.info(f"[MobileAPI] 服务器启动失败: {e}")
             return False
     
-    def _register_routes(self, app):
+    def _register_routes(self, app) -> None:
         """注册API路由"""
         from aiohttp import web
         
@@ -116,7 +116,7 @@ class MobileAPIServer:
         # 状态接口
         app.router.add_get(f"{self.api_prefix}/status", self._handle_get_status)
     
-    async def _handle_device_register(self, request):
+    async def _handle_device_register(self, request) -> None:
         """处理设备注册"""
         try:
             data = await request.json()
@@ -149,7 +149,7 @@ class MobileAPIServer:
             from aiohttp import web
             return web.json_response({"success": False, "error": str(e)}, status=400)
     
-    async def _handle_send_message(self, request):
+    async def _handle_send_message(self, request) -> None:
         """处理发送消息"""
         try:
             data = await request.json()
@@ -174,7 +174,7 @@ class MobileAPIServer:
             from aiohttp import web
             return web.json_response({"success": False, "error": str(e)}, status=400)
     
-    async def _handle_get_history(self, request):
+    async def _handle_get_history(self, request) -> None:
         """处理获取历史记录"""
         try:
             device_id = request.query.get("device_id")
@@ -193,7 +193,7 @@ class MobileAPIServer:
             from aiohttp import web
             return web.json_response({"success": False, "error": str(e)}, status=400)
     
-    async def _handle_voice_upload(self, request):
+    async def _handle_voice_upload(self, request) -> None:
         """处理语音上传"""
         try:
             # 这里应该处理语音文件上传
@@ -207,7 +207,7 @@ class MobileAPIServer:
             from aiohttp import web
             return web.json_response({"success": False, "error": str(e)}, status=400)
     
-    async def _handle_voice_synthesize(self, request):
+    async def _handle_voice_synthesize(self, request) -> None:
         """处理语音合成"""
         try:
             text = request.query.get("text")
@@ -223,7 +223,7 @@ class MobileAPIServer:
             from aiohttp import web
             return web.json_response({"success": False, "error": str(e)}, status=400)
     
-    async def _handle_get_config(self, request):
+    async def _handle_get_config(self, request) -> None:
         """处理获取配置"""
         try:
             device_id = request.query.get("device_id")
@@ -245,7 +245,7 @@ class MobileAPIServer:
             from aiohttp import web
             return web.json_response({"success": False, "error": str(e)}, status=400)
     
-    async def _handle_update_config(self, request):
+    async def _handle_update_config(self, request) -> None:
         """处理更新配置"""
         try:
             data = await request.json()
@@ -262,7 +262,7 @@ class MobileAPIServer:
             from aiohttp import web
             return web.json_response({"success": False, "error": str(e)}, status=400)
     
-    async def _handle_get_status(self, request):
+    async def _handle_get_status(self, request) -> None:
         """处理获取状态"""
         try:
             status = {

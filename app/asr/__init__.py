@@ -54,10 +54,10 @@ import logging
 logger = logging.getLogger(__name__)
 if _os.name == 'nt':
     _SP_ORIG = _sp.check_output
-    def _sp_patched(cmd, **kw):
+    def _sp_patched(cmd, **kw) -> None:
         try:
             prog = (cmd[0] if isinstance(cmd, (list, tuple)) else str(cmd).split()[0]).lower()
-        except Exception:
+        except Exception as e:
             return _SP_ORIG(cmd, **kw)
         if prog in ('ffmpeg', 'ffmpeg.exe', 'avconv', 'avconv.exe', 'ffprobe', 'ffprobe.exe'):
             raise FileNotFoundError(f"[ASR] {prog} not needed, skipping PATH scan")
@@ -144,7 +144,7 @@ class FasterWhisperASR(ASREngine):
         language: 识别语言，默认 zh（中文）
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化 Faster-Whisper ASR 引擎
 
@@ -162,7 +162,7 @@ class FasterWhisperASR(ASREngine):
         self._warmed_up = False     # 预热标记，避免重复预热
         self._load_model()          # 构造时立即加载模型
     
-    def _load_model(self):
+    def _load_model(self) -> None:
         """
         【内部方法】加载 Faster-Whisper 模型
 
@@ -210,7 +210,7 @@ class FasterWhisperASR(ASREngine):
             logger.info(f"️ Faster-Whisper 加载失败: {e}")
             self.model = None
     
-    def _warmup(self):
+    def _warmup(self) -> None:
         """
         【内部方法】模型预热 —— 消除首次推理的冷启动延迟
 
@@ -339,7 +339,7 @@ class WhisperASR(ASREngine):
         base_url: API 基础 URL，默认 https://api.openai.com/v1
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化 Whisper API 客户端
 
@@ -424,7 +424,7 @@ class FunASRASR(ASREngine):
     # v1.11.29 P1-1: 模型加载状态缓存 — 避免重复检查模型文件
     _model_cache = {}  # 类级别缓存: {model_name: model_instance}
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化 FunASR 配置，但不加载模型（懒加载）
 
@@ -434,7 +434,7 @@ class FunASRASR(ASREngine):
         self.config = config
         self.model = None  # 延迟加载标志：None 表示模型尚未初始化
     
-    def _ensure_model(self):
+    def _ensure_model(self) -> None:
         """
         【懒加载守卫】确保模型已加载
 
@@ -456,7 +456,7 @@ class FunASRASR(ASREngine):
             logger.info(f"️ FunASR 加载失败: {e}")
             tb.print_exc()
     
-    def _load_model(self):
+    def _load_model(self) -> None:
         """
         【内部方法】加载 FunASR 模型
 
@@ -597,7 +597,7 @@ class MimoASR(ASREngine):
         language: 提示语言（auto/zh/en/ja/ko），默认 auto
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化 MiMo ASR 引擎
 
@@ -615,18 +615,18 @@ class MimoASR(ASREngine):
         if not self.api_key:
             self._try_load_api_key_from_config()
 
-    def _try_load_api_key_from_config(self):
+    def _try_load_api_key_from_config(self) -> None:
         """尝试从 config.yaml 的 llm.mimo 配置中读取 API Key"""
         try:
             import yaml
             config_path = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), "config.yaml"
             )
-            if os.path.exists(config_path):
+            if Path(config_path).exists():
                 with open(config_path, "r", encoding="utf-8") as f:
                     cfg = yaml.safe_load(f)
                 self.api_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
-        except Exception:
+        except Exception as e:
             pass
 
     def recognize(self, audio_path: str) -> Optional[str]:
@@ -648,7 +648,7 @@ class MimoASR(ASREngine):
             logger.info("⚠️ 请配置 MiMo API Key")
             return None
 
-        if not os.path.exists(audio_path):
+        if not Path(audio_path).exists():
             logger.info(f"⚠️ 音频文件不存在: {audio_path}")
             return None
 
@@ -807,14 +807,14 @@ class ASRFactory:
                     config_path = os.path.join(
                         os.path.dirname(os.path.dirname(__file__)), "config.yaml"
                     )
-                    if os.path.exists(config_path):
+                    if Path(config_path).exists():
                         with open(config_path, "r", encoding="utf-8") as f:
                             cfg = yaml.safe_load(f)
                         llm_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
                         if llm_key:
                             mimo_config = dict(mimo_config)
                             mimo_config["api_key"] = llm_key
-                except Exception:
+                except Exception as e:
                     pass
             return MimoASR(mimo_config)
         else:
@@ -851,7 +851,7 @@ class ASRManager:
     # 支持的 Provider 列表（预加载时按此顺序尝试）
     SUPPORTED_PROVIDERS = ["funasr", "faster_whisper", "whisper", "mimo"]
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化 ASR 管理器
 
@@ -871,7 +871,7 @@ class ASRManager:
         # 预加载所有配置了的 Provider
         self._preload_engines()
     
-    def _preload_engines(self):
+    def _preload_engines(self) -> None:
         """
         【内部方法】预加载所有已配置的 ASR Provider
 

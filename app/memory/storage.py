@@ -28,7 +28,7 @@ except ImportError:
 class LRUCache:
     """LRU 缓存"""
     
-    def __init__(self, capacity: int = 100):
+    def __init__(self, capacity: int = 100) -> None:
         self.cache = OrderedDict()
         self.capacity = capacity
     
@@ -38,7 +38,7 @@ class LRUCache:
         self.cache.move_to_end(key)
         return self.cache[key]
     
-    def put(self, key: str, value: Any):
+    def put(self, key: str, value: Any) -> None:
         if key in self.cache:
             self.cache.move_to_end(key)
         self.cache[key] = value
@@ -56,7 +56,7 @@ class VectorStore:
     - 确保 flush 逻辑完善
     """
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./memory/vectors")
         if not os.path.isabs(self.storage_dir):
@@ -97,7 +97,7 @@ class VectorStore:
             self._norms[doc_id] = sum(x * x for x in emb) ** 0.5
         return self._norms[doc_id]
     
-    def _ensure_matrix(self):
+    def _ensure_matrix(self) -> None:
         if not _HAS_NUMPY:
             return
         if not self._matrix_dirty and self._vectors_matrix is not None:
@@ -114,7 +114,7 @@ class VectorStore:
         self._norms_array = np.linalg.norm(self._vectors_matrix, axis=1)
         self._matrix_dirty = False
     
-    def _load_from_disk(self):
+    def _load_from_disk(self) -> None:
         npy_loaded = False
         if _HAS_NUMPY and self._vectors_npy_file.exists() and self._vectors_meta_file.exists():
             try:
@@ -156,7 +156,7 @@ class VectorStore:
         
         self._matrix_dirty = True
     
-    def _save_to_disk(self):
+    def _save_to_disk(self) -> None:
         try:
             if _HAS_NUMPY and self.vectors:
                 self._ensure_matrix()
@@ -232,7 +232,7 @@ class VectorStore:
                             return full_path
         return ""
     
-    def _load_embedding_model(self):
+    def _load_embedding_model(self) -> None:
         if self._model_loaded:
             return
         self._model_loaded = True
@@ -301,7 +301,7 @@ class VectorStore:
                     if max_sim > self._dedup_threshold:
                         return True
                     return False
-            except Exception:
+            except Exception as e:
                 pass
         
         norm_a = sum(x * x for x in embedding) ** 0.5
@@ -352,7 +352,7 @@ class VectorStore:
                 if results is not None:
                     self._search_cache.put(cache_key, results)
                     return results
-            except Exception:
+            except Exception as e:
                 pass
         
         norm_a = sum(x * x for x in query_embedding) ** 0.5
@@ -483,7 +483,7 @@ class VectorStore:
     def get_stats(self) -> Dict[str, Any]:
         return {"total_docs": len(self.texts), "embedding_dim": self.embedding_dim}
     
-    def flush(self):
+    def flush(self) -> None:
         if self._pending_save and self.texts:
             self._save_to_disk()
             self._pending_save = False
@@ -491,7 +491,7 @@ class VectorStore:
         elif self.texts:
             self._save_to_disk()
     
-    def clear(self):
+    def clear(self) -> None:
         self.flush()
         self.vectors.clear()
         self.texts.clear()
@@ -513,7 +513,7 @@ class VectorStore:
 class FileStorage:
     """文件系统存储"""
     
-    def __init__(self, base_dir: str = "./memory"):
+    def __init__(self, base_dir: str = "./memory") -> None:
         if not os.path.isabs(base_dir):
             base_dir = str(Path(base_dir).resolve())
         self.base_dir = Path(base_dir)
@@ -527,7 +527,7 @@ class FileStorage:
         if not self.index_file.exists():
             self._init_index()
     
-    def _init_index(self):
+    def _init_index(self) -> None:
         content = """# 记忆系统入口
 
 ## 结构
@@ -547,7 +547,7 @@ class FileStorage:
             date = datetime.now().strftime("%Y-%m-%d")
         return self.daily_dir / f"{date}.md"
     
-    def append_interaction(self, role: str, content: str, importance: int = 0, tags: List[str] = None):
+    def append_interaction(self, role: str, content: str, importance: int = 0, tags: List[str] = None) -> None:
         daily_file = self.get_daily_file()
         timestamp = datetime.now().strftime("%H:%M")
         star = "⭐" * importance if importance > 0 else ""
@@ -568,7 +568,7 @@ class FileStorage:
         files = sorted(self.daily_dir.glob("*.md"), reverse=True)
         return [f.stem for f in files]
     
-    def append_long_term(self, content: str):
+    def append_long_term(self, content: str) -> None:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         line = f"\n## {timestamp}\n\n{content}\n"
         with open(self.long_term_file, 'a', encoding='utf-8') as f:
@@ -606,10 +606,10 @@ class FileStorage:
                 output += f"## {date}\n\n" + content + "\n\n"
         return output
     
-    def import_backup(self, content: str):
+    def import_backup(self, content: str) -> None:
         self.append_long_term("\n[导入备份]\n" + content)
     
-    def clear(self):
+    def clear(self) -> None:
         if self.daily_dir.exists():
             for f in self.daily_dir.glob("*.md"):
                 f.unlink()

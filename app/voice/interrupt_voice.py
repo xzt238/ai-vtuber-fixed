@@ -39,7 +39,7 @@ class InterruptibleVoiceInput:
     3. 实时语音处理
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """初始化"""
         self.config = config
         
@@ -107,15 +107,15 @@ class InterruptibleVoiceInput:
                 return False
             default_input = sd.query_devices(kind='input')
             return default_input is not None and default_input.get('max_input_channels', 0) > 0
-        except Exception:
+        except Exception as e:
             return False
     
-    def set_callbacks(self, on_speech_ready: Callable = None, on_interrupt: Callable = None):
+    def set_callbacks(self, on_speech_ready: Callable = None, on_interrupt: Callable = None) -> None:
         """设置回调函数"""
         self.on_speech_ready = on_speech_ready
         self.on_interrupt = on_interrupt
     
-    def set_ai_speaking(self, is_speaking: bool, response: str = ""):
+    def set_ai_speaking(self, is_speaking: bool, response: str = "") -> None:
         """设置AI说话状态"""
         self.is_ai_speaking = is_speaking
         self.current_ai_response = response
@@ -138,7 +138,7 @@ class InterruptibleVoiceInput:
             self.speech_audio = []
             
             # 定义音频回调
-            def audio_callback(indata, frames, time, status):
+            def audio_callback(indata, frames, time, status) -> None:
                 if status:
                     logger.info(f"[InterruptibleVoice] 录音状态: {status}")
                 
@@ -173,7 +173,7 @@ class InterruptibleVoiceInput:
             self.is_recording = False
             return False
     
-    async def _process_audio(self, audio_chunk: np.ndarray):
+    async def _process_audio(self, audio_chunk: np.ndarray) -> None:
         """处理音频块"""
         # 添加到语音音频缓冲
         self.speech_audio.append(audio_chunk)
@@ -186,7 +186,7 @@ class InterruptibleVoiceInput:
         # 处理VAD
         await self.vad.process_audio(audio_chunk)
     
-    async def _on_vad_speech_start(self):
+    async def _on_vad_speech_start(self) -> None:
         """VAD检测到语音开始"""
         logger.info("[InterruptibleVoice] 检测到用户开始说话")
         
@@ -202,7 +202,7 @@ class InterruptibleVoiceInput:
             if self.on_interrupt:
                 await self.on_interrupt(self.current_ai_response)
     
-    async def _on_vad_speech_end(self):
+    async def _on_vad_speech_end(self) -> None:
         """VAD检测到语音结束"""
         logger.info("[InterruptibleVoice] 检测到用户停止说话")
         

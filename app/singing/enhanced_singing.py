@@ -49,7 +49,7 @@ class SongConfig:
 class EnhancedSingingManager:
     """增强版唱歌管理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         # 唱歌引擎

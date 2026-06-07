@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class TwitchPlatform(LivePlatform):
     """Twitch直播平台"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__(config)
         
         # Twitch配置
@@ -72,7 +72,7 @@ class TwitchPlatform(LivePlatform):
             self._stats["error_count"] += 1
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         try:
             # 停止消息接收
@@ -138,7 +138,7 @@ class TwitchPlatform(LivePlatform):
             logger.info(f" Twitch IRC连接失败: {e}")
             return False
     
-    async def _receive_messages(self):
+    async def _receive_messages(self) -> None:
         """接收消息"""
         try:
             while self.connected:
@@ -168,7 +168,7 @@ class TwitchPlatform(LivePlatform):
         except asyncio.CancelledError:
             pass
     
-    async def _process_message(self, message: str):
+    async def _process_message(self, message: str) -> None:
         """处理消息"""
         try:
             # 解析IRC消息

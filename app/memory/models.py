@@ -31,7 +31,7 @@ class MemoryItem:
     facts: List[str] = field(default_factory=list)  # 从此条提取的事实
     summary_text: str = ""  # LLM 生成的摘要文本
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """数据类初始化后处理(确保字段不为 None)"""
         if self.tags is None:
             self.tags = []
@@ -56,11 +56,11 @@ class MemoryItem:
             return True
         return RetentionScorer.should_forget(self.get_retention_score())
     
-    def touch(self):
+    def touch(self) -> None:
         """记忆被访问时调用,增加访问计数"""
         self.access_count += 1
     
-    def link(self, other_mem_id: str):
+    def link(self, other_mem_id: str) -> None:
         """与其他记忆建立关联,增加关联计数"""
         self.connectivity += 1
 
@@ -75,6 +75,6 @@ class FactItem:
     access_count: int = 1
     tags: List[str] = field(default_factory=list)
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.tags is None:
             self.tags = []

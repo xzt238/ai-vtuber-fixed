@@ -37,7 +37,7 @@ class DeviceManager:
         return device
 
     @staticmethod
-    def to_device(model_or_tensor, device: str = None):
+    def to_device(model_or_tensor, device: str = None) -> None:
         """将模型/张量移动到最优设备
 
         示例: model = DeviceManager.to_device(model)

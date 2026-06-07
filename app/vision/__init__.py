@@ -50,7 +50,7 @@ class VisionProviderType(Enum):
 class VisionProvider(ABC):
     """视觉理解 Provider 基类"""
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         """
         【功能说明】初始化视觉 Provider 基类
 
@@ -139,7 +139,7 @@ class VisionProvider(ABC):
             logger.error(f"图片编码失败: {e}")
             return None
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """清理资源（子类可覆盖）"""
         pass
 
@@ -149,7 +149,7 @@ class VisionProvider(ABC):
 class RapidOCRProvider(VisionProvider):
     """RapidOCR - 本地文字识别"""
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         """
         【功能说明】初始化 RapidOCR Provider
 
@@ -193,7 +193,7 @@ class RapidOCRProvider(VisionProvider):
         """
         return "RapidOCR（本地 OCR，仅识别文字）"
 
-    def _get_engine(self):
+    def _get_engine(self) -> None:
         """懒加载引擎 — 兼容 rapidocr 和 rapidocr_onnxruntime 两个包名"""
         if self._engine is None:
             try:
@@ -257,7 +257,7 @@ class MiniMaxVLProvider(VisionProvider):
     - 超时建议 120s（大图 base64 上传较慢）
     """
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         """
         【功能说明】初始化 MiniMax VL Provider
 
@@ -286,7 +286,7 @@ class MiniMaxVLProvider(VisionProvider):
                     cfg = yaml.safe_load(f)
                     llm_cfg = cfg.get("llm", {}).get("minimax", {})
                     self.api_key = llm_cfg.get("api_key", "")
-            except Exception:
+            except Exception as e:
                 pass
 
     @property
@@ -439,7 +439,7 @@ class MiniCPMProvider(VisionProvider):
 
     DEFAULT_MODEL_ID = "OpenBMB/MiniCPM-V-2"
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         """
         【功能说明】初始化 MiniCPM Provider
 
@@ -531,7 +531,7 @@ class MiniCPMProvider(VisionProvider):
             return False
 
 
-    def _load_model(self):
+    def _load_model(self) -> None:
         """
         【功能说明】懒加载 MiniCPM-V 2 模型
 
@@ -645,7 +645,7 @@ class MiniCPMProvider(VisionProvider):
                 _original_to = PreTrainedModel.to
                 _is_loading_quantized = True  # 闭包标志
 
-                def _patched_to(self_model, *args, **kwargs):
+                def _patched_to(self_model, *args, **kwargs) -> None:
                     """
                     【内部函数】绕过 bitsandbytes 量化模型的 .to() 调用兼容性 bug
 
@@ -686,7 +686,7 @@ class MiniCPMProvider(VisionProvider):
                 import bitsandbytes as bnb
                 target_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
                 
-                def _dequantize_module(module):
+                def _dequantize_module(module) -> None:
                     """递归替换模块中所有 Linear4bit/Linear8bitLt 为标准 nn.Linear"""
                     for name, child in module.named_children():
                         if isinstance(child, (bnb.nn.Linear4bit, bnb.nn.Linear8bitLt)):
@@ -855,7 +855,7 @@ class MiniCPMProvider(VisionProvider):
         if result:
             yield result
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """
         【功能说明】释放 MiniCPM 模型资源（显存和内存）
 
@@ -871,7 +871,7 @@ class MiniCPMProvider(VisionProvider):
         try:
             import torch
             torch.cuda.empty_cache()
-        except Exception:
+        except Exception as e:
             pass
         logger.info("[Vision] MiniCPM 资源已释放")
 
@@ -890,7 +890,7 @@ class MimoVisionProvider(VisionProvider):
     - mimo-v2.5-pro: 增强推理能力
     """
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         """
         【功能说明】初始化 MiMo Vision Provider
 
@@ -910,7 +910,7 @@ class MimoVisionProvider(VisionProvider):
         if not self.api_key:
             self._try_load_api_key_from_config()
 
-    def _try_load_api_key_from_config(self):
+    def _try_load_api_key_from_config(self) -> None:
         """尝试从 config.yaml 的 llm.mimo 配置中读取 API Key"""
         try:
             import yaml
@@ -921,7 +921,7 @@ class MimoVisionProvider(VisionProvider):
                 with open(config_path, "r", encoding="utf-8") as f:
                     cfg = yaml.safe_load(f)
                 self.api_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
-        except Exception:
+        except Exception as e:
             pass
 
     @property
@@ -1072,7 +1072,7 @@ class VisionManager:
     统一管理多个 Provider，支持动态切换
     """
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         """
         【功能说明】初始化视觉理解管理器
 
@@ -1094,7 +1094,7 @@ class VisionManager:
         default = self.config.get("default_provider", "minimax_vl")
         self.set_provider(default)
 
-    def _init_providers(self):
+    def _init_providers(self) -> None:
         """
         【功能说明】初始化所有视觉理解 Provider
 
@@ -1122,7 +1122,7 @@ class VisionManager:
             self.config.get("mimo_vision", {})
         )
 
-    def set_provider(self, provider: str):
+    def set_provider(self, provider: str) -> None:
         """
         切换 Provider
 
@@ -1166,7 +1166,7 @@ class VisionManager:
             logger.info(f"[Vision] ⚠️ 未知 Provider: {provider}")
 
     @property
-    def current_provider(self):
+    def current_provider(self) -> None:
         """当前活跃的 Provider 实例（只读）"""
         return self._current_provider
 
@@ -1175,7 +1175,7 @@ class VisionManager:
         """是否已配置任意 Provider"""
         return self._current_provider is not None
 
-    def get_provider(self, provider_type):
+    def get_provider(self, provider_type) -> None:
         """
         按类型获取 Provider 实例
 
@@ -1219,7 +1219,7 @@ class VisionManager:
             return None
         return self._current_provider.understand(image_path, prompt)
 
-    def understand_stream(self, image_path: str, prompt: str = None):
+    def understand_stream(self, image_path: str, prompt: str = None) -> None:
         """流式图像理解"""
         if not self._current_provider:
             return None
@@ -1243,7 +1243,7 @@ class VisionManager:
             })
         return result
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """清理所有 Provider"""
         for provider in self._providers.values():
             provider.cleanup()
@@ -1261,7 +1261,7 @@ def create_vision_manager(config: Dict[str, Any] = None) -> VisionManager:
 class VisionSystem(VisionManager):
     """兼容旧接口"""
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         """
         【功能说明】初始化 VisionSystem（兼容旧接口）
 

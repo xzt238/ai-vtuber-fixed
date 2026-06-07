@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class SlackBot(Bot):
     """Slack Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("slack_bot", "slack")
         self.config = config or {}
         
@@ -59,7 +59,7 @@ class SlackBot(Bot):
             )
             
             # 定义事件处理器
-            def process(client: SocketModeClient, req: SocketModeRequest):
+            def process(client: SocketModeClient, req: SocketModeRequest) -> None:
                 if req.type == "events_api":
                     # 响应Socket Mode请求
                     response = SocketModeResponse(envelope_id=req.envelope_id)
@@ -110,7 +110,7 @@ class SlackBot(Bot):
             logger.info(f" Slack Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开Slack连接"""
         try:
             # 断开连接

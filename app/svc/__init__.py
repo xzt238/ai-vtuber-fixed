@@ -41,12 +41,12 @@ class SVCConfig:
 class AudioBuffer:
     """音频缓冲区"""
     
-    def __init__(self, max_size: int = 100):
+    def __init__(self, max_size: int = 100) -> None:
         self.max_size = max_size
         self.buffer = []
         self.lock = asyncio.Lock()
     
-    async def push(self, chunk: AudioChunk):
+    async def push(self, chunk: AudioChunk) -> None:
         """推入音频块"""
         async with self.lock:
             self.buffer.append(chunk)
@@ -60,7 +60,7 @@ class AudioBuffer:
                 return self.buffer.pop(0)
             return None
     
-    async def clear(self):
+    async def clear(self) -> None:
         """清空缓冲区"""
         async with self.lock:
             self.buffer.clear()
@@ -72,7 +72,7 @@ class AudioBuffer:
 class SVCManager:
     """SVC管理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.model_type = SVCModelType(self.config.get("model_type", "so_vits_svc"))
         self.model_path = self.config.get("model_path", "")
@@ -228,7 +228,7 @@ class SVCManager:
         # 返回转换后的音频（这里返回原始音频作为示例）
         return audio_data
     
-    async def start_processing(self):
+    async def start_processing(self) -> None:
         """开始处理音频流"""
         if self.is_processing:
             return
@@ -237,7 +237,7 @@ class SVCManager:
         self.processing_task = asyncio.create_task(self._processing_loop())
         logger.info("[SVC] 开始音频处理")
     
-    async def stop_processing(self):
+    async def stop_processing(self) -> None:
         """停止处理音频流"""
         self.is_processing = False
         if self.processing_task:
@@ -248,7 +248,7 @@ class SVCManager:
                 pass
         logger.info("[SVC] 停止音频处理")
     
-    async def _processing_loop(self):
+    async def _processing_loop(self) -> None:
         """处理循环"""
         try:
             while self.is_processing:
@@ -277,7 +277,7 @@ class SVCManager:
             "output_buffer_size": self.output_buffer.size()
         }
     
-    async def unload_model(self):
+    async def unload_model(self) -> None:
         """卸载模型"""
         await self.stop_processing()
         self.model = None

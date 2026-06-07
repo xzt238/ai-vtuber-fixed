@@ -61,7 +61,7 @@ class ProactiveSpeechManager:
     默认值: enabled=false, idle_timeout=120, min_interval=300, max_daily_count=15
     """
 
-    def __init__(self, app: "AIVTuber"):
+    def __init__(self, app: "AIVTuber") -> None:
         self.app = app
         self.logger = app.logger
 
@@ -89,7 +89,7 @@ class ProactiveSpeechManager:
         else:
             self.logger.info("[主动说话] 未启用 (proactive_speech.enabled=false)")
 
-    def start(self, interval=None):
+    def start(self, interval=None) -> None:
         """启动主动说话定时器
 
         Args:
@@ -108,7 +108,7 @@ class ProactiveSpeechManager:
         self._schedule_next()
         self.logger.info("[主动说话] 定时器已启动")
 
-    def stop(self):
+    def stop(self) -> None:
         """停止主动说话定时器"""
         with self._lock:
             self._running = False
@@ -117,14 +117,14 @@ class ProactiveSpeechManager:
             self._timer = None
         self.logger.info("[主动说话] 定时器已停止")
 
-    def notify_user_activity(self):
+    def notify_user_activity(self) -> None:
         """
         通知用户有活动（发消息/说话等）
         更新 last_user_activity_time，防止在用户刚说完就主动开口
         """
         self._last_user_activity = time.time()
 
-    def _schedule_next(self):
+    def _schedule_next(self) -> None:
         """安排下一次检查"""
         with self._lock:
             if not self._running:
@@ -133,7 +133,7 @@ class ProactiveSpeechManager:
         self._timer.daemon = True
         self._timer.start()
 
-    def _check_and_trigger(self):
+    def _check_and_trigger(self) -> None:
         """定时检查是否应该主动说话
 
         v1.9.64 修复：移除 try 块内的 _schedule_next() 调用，
@@ -197,7 +197,7 @@ class ProactiveSpeechManager:
                 for client_id, running in text_gens.items():
                     if running:
                         return True
-        except Exception:
+        except Exception as e:
             pass
         return False
 
@@ -212,11 +212,11 @@ class ProactiveSpeechManager:
             if ws_server and hasattr(ws_server, 'server'):
                 clients = getattr(ws_server.server, 'clients', [])
                 return len(clients) > 0
-        except Exception:
+        except Exception as e:
             pass
         return False
 
-    def _check_daily_reset(self, now: float):
+    def _check_daily_reset(self, now: float) -> None:
         """检查是否需要重置每日计数"""
         import datetime
         today = datetime.date.fromtimestamp(now).isoformat()
@@ -239,7 +239,7 @@ class ProactiveSpeechManager:
         else:
             return TIME_CONTEXT_TEMPLATE["late_night"]
 
-    def _do_proactive_speech(self):
+    def _do_proactive_speech(self) -> None:
         """执行主动说话"""
         try:
             # 更新状态
@@ -324,10 +324,10 @@ class ProactiveSpeechManager:
                 return "\n".join(items)
 
             return ""
-        except Exception:
+        except Exception as e:
             return ""
 
-    def _push_to_clients(self, text: str):
+    def _push_to_clients(self, text: str) -> None:
         """通过 WebSocket 推送消息给所有连接的客户端"""
         try:
             ws_server = getattr(self.app, '_lazy_modules', {}).get('ws_server')
@@ -343,12 +343,12 @@ class ProactiveSpeechManager:
                         "text": text,
                         "proactive": True  # 标记为主动说话
                     }))
-                except Exception:
+                except Exception as e:
                     pass
         except Exception as e:
             self.logger.error(f"[主动说话] 推送失败: {e}")
 
-    def _trigger_tts(self, text: str):
+    def _trigger_tts(self, text: str) -> None:
         """触发 TTS 语音合成，发送音频给前端"""
         try:
             ws_server = getattr(self.app, '_lazy_modules', {}).get('ws_server')
@@ -378,7 +378,7 @@ class ProactiveSpeechManager:
                         "audio": audio_url,
                         "proactive": True
                     }))
-                except Exception:
+                except Exception as e:
                     pass
 
         except Exception as e:

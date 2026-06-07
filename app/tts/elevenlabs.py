@@ -24,7 +24,7 @@ class ElevenLabsTTS(TTSEngine):
     # 默认语音ID
     DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__()
         self.config = config or {}
         
@@ -62,13 +62,13 @@ class ElevenLabsTTS(TTSEngine):
         """检查引擎是否可用"""
         return bool(self.api_key)
     
-    async def _ensure_session(self):
+    async def _ensure_session(self) -> None:
         """确保HTTP会话存在"""
         if self.session is None:
             import aiohttp
             self.session = aiohttp.ClientSession()
     
-    async def _close_session(self):
+    async def _close_session(self) -> None:
         """关闭HTTP会话"""
         if self.session:
             await self.session.close()
@@ -176,18 +176,18 @@ class ElevenLabsTTS(TTSEngine):
             logger.info(f" 获取语音列表失败: {e}")
             return []
     
-    def set_voice(self, voice_id: str):
+    def set_voice(self, voice_id: str) -> None:
         """设置语音ID"""
         self.voice_id = voice_id
         logger.info(f" 语音ID已更新: {voice_id}")
     
-    def set_model(self, model_id: str):
+    def set_model(self, model_id: str) -> None:
         """设置模型ID"""
         self.model_id = model_id
         logger.info(f" 模型ID已更新: {model_id}")
     
     def set_voice_settings(self, stability: float = None, similarity_boost: float = None, 
-                          style: float = None, use_speaker_boost: bool = None):
+                          style: float = None, use_speaker_boost: bool = None) -> None:
         """设置语音参数"""
         if stability is not None:
             self.stability = stability

@@ -58,7 +58,7 @@ class MemorySystem:
     - 记忆管理 (删除/编辑/标重要)
     """
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         """初始化记忆系统"""
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./memory")
@@ -113,17 +113,17 @@ class MemorySystem:
         self._start_flush_timer()
         self._embedding_warmed = False
     
-    def set_llm_callback(self, chat_func):
+    def set_llm_callback(self, chat_func) -> None:
         """设置 LLM 回调函数"""
         self._llm_chat_func = chat_func
         logger.info(f" [记忆系统] LLM 回调已设置")
     
-    def _warmup_embedding(self):
+    def _warmup_embedding(self) -> None:
         """后台预热 embedding 模型"""
         if self._embedding_warmed:
             return
         
-        def _warmup_worker():
+        def _warmup_worker() -> None:
             try:
                 _ = self.vector_store.get_embedding("warmup")
                 self._embedding_warmed = True
@@ -134,11 +134,11 @@ class MemorySystem:
         warmup_thread = threading.Thread(target=_warmup_worker, daemon=True)
         warmup_thread.start()
     
-    def _start_flush_timer(self):
-        def _flush_worker():
+    def _start_flush_timer(self) -> None:
+        def _flush_worker() -> None:
             try:
                 self._save_memory_state()
-            except Exception:
+            except Exception as e:
                 pass
             finally:
                 if self._flush_timer is not None:
@@ -150,7 +150,7 @@ class MemorySystem:
         self._flush_timer.daemon = True
         self._flush_timer.start()
     
-    def _load_memory_state(self):
+    def _load_memory_state(self) -> None:
         """从磁盘恢复"""
         if self._working_memory_file.exists():
             try:
@@ -175,7 +175,7 @@ class MemorySystem:
                 with open(self._forgotten_count_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 self.forgotten_count = data.get("count", 0)
-            except Exception:
+            except Exception as e:
                 pass
         
         if self._facts_file.exists():
@@ -216,7 +216,7 @@ class MemorySystem:
             tags=d.get("tags", []),
         )
     
-    def _save_memory_state(self):
+    def _save_memory_state(self) -> None:
         """保存到磁盘（原子写入）"""
         try:
             with self._memory_lock:
@@ -229,13 +229,13 @@ class MemorySystem:
         except Exception as e:
             logger.info(f" [记忆] 保存状态失败: {e}")
     
-    def _atomic_write_json(self, target_path: Path, data: Any):
+    def _atomic_write_json(self, target_path: Path, data: Any) -> None:
         tmp_path = target_path.with_suffix('.tmp')
         with open(tmp_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         os.replace(tmp_path, target_path)
     
-    def flush(self):
+    def flush(self) -> None:
         """强制将所有未持久化的记忆数据写入磁盘"""
         if self._flush_timer is not None:
             self._flush_timer.cancel()
@@ -245,7 +245,7 @@ class MemorySystem:
         logger.info(f"[Memory] 全部记忆已 flush (工作:{len(self.working_memory)} 情景:{len(self.episodic_memory)} "
               f"语义:{self.vector_store.get_stats()['total_docs']} 事实:{len(self.facts)})")
     
-    def add_interaction(self, role: str, content: str, importance: int = None):
+    def add_interaction(self, role: str, content: str, importance: int = None) -> None:
         """添加对话记录"""
         if importance is None:
             importance = ImportanceScorer.score(role, content)
@@ -299,7 +299,7 @@ class MemorySystem:
         if len(self.working_memory) % 5 == 0:
             self._save_memory_state()
     
-    def _compress_early_memory(self):
+    def _compress_early_memory(self) -> None:
         """摘要压缩 v2 — LLM 语义摘要 + 规则降级"""
         if len(self.working_memory) <= self.summarize_threshold:
             return
@@ -348,7 +348,7 @@ class MemorySystem:
         logger.info(f" 记忆压缩: {len(batch)}条 → 1条摘要 (剩余工作记忆: {len(self.working_memory)})")
         self._save_memory_state()
     
-    def _forgetting_sweep(self):
+    def _forgetting_sweep(self) -> None:
         """遗忘扫描 v2 — 跳过保护期内的新记忆"""
         forgotten = 0
         now = time.time()
@@ -376,7 +376,7 @@ class MemorySystem:
             logger.info(f" 遗忘扫描: 清理了 {forgotten} 条过期情景记忆 (累计: {self.forgotten_count})")
         return forgotten
     
-    def _merge_fact(self, new_fact: FactItem):
+    def _merge_fact(self, new_fact: FactItem) -> None:
         """合并事实(去重 + 更新)"""
         for existing in self.facts:
             if self._text_similarity(existing.content, new_fact.content) > 0.7:
@@ -666,10 +666,10 @@ class MemorySystem:
     def export(self) -> str:
         return self.file_storage.export_all()
     
-    def import_backup(self, content: str):
+    def import_backup(self, content: str) -> None:
         return self.file_storage.import_backup(content)
     
-    def clear_all(self):
+    def clear_all(self) -> None:
         self.working_memory.clear()
         self.episodic_memory.clear()
         self.facts.clear()

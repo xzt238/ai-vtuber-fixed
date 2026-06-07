@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 
 
 # v1.9.60: Windows 桌面模式隐藏 CMD 窗口的辅助函数
-def _win_subprocess_kwargs():
+def _win_subprocess_kwargs() -> None:
     """桌面模式下 subprocess 调用添加 SW_HIDE + CREATE_NO_WINDOW"""
     if sys.platform != "win32" or os.getenv("GUGUGAGA_DESKTOP") != "1":
         return {}
@@ -703,7 +703,7 @@ class ToolFactory:
     _companion_tools_loaded = False
 
     @classmethod
-    def _ensure_companion_tools(cls):
+    def _ensure_companion_tools(cls) -> None:
         """延迟加载伴侣工具（避免启动时导入所有依赖）"""
         if not cls._companion_tools_loaded:
             try:

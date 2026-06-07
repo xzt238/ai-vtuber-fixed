@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class FeishuBot(Bot):
     """飞书 Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("feishu_bot", "feishu")
         self.config = config or {}
         
@@ -81,7 +81,7 @@ class FeishuBot(Bot):
             logger.info(f" 飞书 Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开飞书连接"""
         try:
             # 断开连接

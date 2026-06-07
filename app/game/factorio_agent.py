@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class FactorioAgent(GameAgent):
     """Factorio游戏代理"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__(GameType.FACTORIO)
         self.config = config or {}
         
@@ -76,7 +76,7 @@ class FactorioAgent(GameAgent):
             logger.info(f" Factorio RCON连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开Factorio RCON连接"""
         try:
             # 停止状态轮询
@@ -198,7 +198,7 @@ class FactorioAgent(GameAgent):
             logger.info(f" Factorio动作执行失败: {e}")
             return False
     
-    async def _chat(self, parameters: Dict[str, Any]):
+    async def _chat(self, parameters: Dict[str, Any]) -> None:
         """发送聊天消息"""
         message = parameters.get("message", "")
         
@@ -207,7 +207,7 @@ class FactorioAgent(GameAgent):
         # 发送聊天命令
         await self.send_command(f"/say {message}")
     
-    async def _command(self, parameters: Dict[str, Any]):
+    async def _command(self, parameters: Dict[str, Any]) -> None:
         """执行命令"""
         command = parameters.get("command", "")
         
@@ -216,7 +216,7 @@ class FactorioAgent(GameAgent):
         # 发送命令
         await self.send_command(command)
     
-    async def _give(self, parameters: Dict[str, Any]):
+    async def _give(self, parameters: Dict[str, Any]) -> None:
         """给予物品"""
         player = parameters.get("player", "")
         item = parameters.get("item", "")
@@ -227,7 +227,7 @@ class FactorioAgent(GameAgent):
         # 发送给予命令
         await self.send_command(f"/give {player} {item} {count}")
     
-    async def _teleport(self, parameters: Dict[str, Any]):
+    async def _teleport(self, parameters: Dict[str, Any]) -> None:
         """传送玩家"""
         player = parameters.get("player", "")
         x = parameters.get("x", 0)
@@ -279,7 +279,7 @@ class FactorioAgent(GameAgent):
         )
         return await self.execute_action(action)
     
-    async def _poll_state(self):
+    async def _poll_state(self) -> None:
         """轮询游戏状态"""
         try:
             while self.connected:

@@ -24,7 +24,7 @@ class BilibiliClient:
     # 心跳包间隔（秒）
     HEARTBEAT_INTERVAL = 30
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.room_id = None
         self.session = None
@@ -38,7 +38,7 @@ class BilibiliClient:
         self.uid = self.config.get("uid", 0)
         self.token = self.config.get("token", "")
     
-    def set_message_handler(self, handler: Callable):
+    def set_message_handler(self, handler: Callable) -> None:
         """设置消息处理回调"""
         self._message_handler = handler
     
@@ -77,7 +77,7 @@ class BilibiliClient:
             logger.info(f" Bilibili直播客户端连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         try:
             self._connected = False
@@ -118,7 +118,7 @@ class BilibiliClient:
             logger.info(f" 获取直播间信息失败: {e}")
             return None
     
-    async def _send_auth_packet(self, room_info: Dict[str, Any]):
+    async def _send_auth_packet(self, room_info: Dict[str, Any]) -> None:
         """发送认证包"""
         try:
             # 构建认证数据
@@ -147,7 +147,7 @@ class BilibiliClient:
         except Exception as e:
             logger.info(f" 发送认证包失败: {e}")
     
-    async def _heartbeat_loop(self):
+    async def _heartbeat_loop(self) -> None:
         """心跳循环"""
         try:
             while self._connected:
@@ -163,7 +163,7 @@ class BilibiliClient:
         except Exception as e:
             logger.info(f" 心跳循环失败: {e}")
     
-    async def _receive_loop(self):
+    async def _receive_loop(self) -> None:
         """接收消息循环"""
         try:
             async for message in self.websocket:
@@ -183,7 +183,7 @@ class BilibiliClient:
         except Exception as e:
             logger.info(f" 接收消息循环失败: {e}")
     
-    def _process_binary_message(self, data: bytes):
+    def _process_binary_message(self, data: bytes) -> None:
         """处理二进制消息"""
         try:
             # 解析数据包
@@ -202,7 +202,7 @@ class BilibiliClient:
         except Exception as e:
             logger.info(f" 处理二进制消息失败: {e}")
     
-    def _process_text_message(self, data: str):
+    def _process_text_message(self, data: str) -> None:
         """处理文本消息"""
         try:
             message_data = json.loads(data)

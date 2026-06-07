@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class YouTubePlatform(LivePlatform):
     """YouTube直播平台"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__(config)
         
         # YouTube配置
@@ -77,7 +77,7 @@ class YouTubePlatform(LivePlatform):
             self._stats["error_count"] += 1
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         try:
             # 停止轮询
@@ -151,13 +151,13 @@ class YouTubePlatform(LivePlatform):
             logger.info(f" 获取直播聊天ID失败: {e}")
             return None
     
-    async def _receive_messages(self):
+    async def _receive_messages(self) -> None:
         """接收消息（实现抽象方法）"""
         # YouTube使用轮询方式，而不是WebSocket
         # 这个方法在connect中通过_poll_task调用
         pass
     
-    async def _poll_messages(self):
+    async def _poll_messages(self) -> None:
         """轮询消息"""
         try:
             while self.connected:
@@ -214,7 +214,7 @@ class YouTubePlatform(LivePlatform):
             logger.info(f" 获取聊天消息失败: {e}")
             return []
     
-    async def _process_message(self, message: Dict[str, Any]):
+    async def _process_message(self, message: Dict[str, Any]) -> None:
         """处理消息"""
         try:
             snippet = message.get("snippet", {})

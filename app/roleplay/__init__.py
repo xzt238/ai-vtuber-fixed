@@ -81,7 +81,7 @@ class RoleplaySession:
 class CharacterManager:
     """角色管理器"""
     
-    def __init__(self, storage_dir: str = "./memory/characters"):
+    def __init__(self, storage_dir: str = "./memory/characters") -> None:
         self.storage_dir = Path(storage_dir)
         self.characters_file = self.storage_dir / "characters.json"
         self.characters: Dict[str, Character] = {}
@@ -93,7 +93,7 @@ class CharacterManager:
         if not self.characters:
             self._create_preset_characters()
     
-    def _load_characters(self):
+    def _load_characters(self) -> None:
         """加载角色"""
         try:
             if self.characters_file.exists():
@@ -105,7 +105,7 @@ class CharacterManager:
         except Exception as e:
             logger.error(f"加载角色失败: {e}")
     
-    def _save_characters(self):
+    def _save_characters(self) -> None:
         """保存角色"""
         try:
             self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -132,7 +132,7 @@ class CharacterManager:
         except Exception as e:
             logger.error(f"保存角色失败: {e}")
     
-    def _create_preset_characters(self):
+    def _create_preset_characters(self) -> None:
         """创建预设角色"""
         presets = [
             Character(
@@ -300,14 +300,14 @@ class CharacterManager:
 class StoryManager:
     """剧情管理器"""
     
-    def __init__(self, storage_dir: str = "./memory/stories"):
+    def __init__(self, storage_dir: str = "./memory/stories") -> None:
         self.storage_dir = Path(storage_dir)
         self.stories_file = self.storage_dir / "stories.json"
         self.stories: Dict[str, Story] = {}
         
         self._load_stories()
     
-    def _load_stories(self):
+    def _load_stories(self) -> None:
         """加载剧情"""
         try:
             if self.stories_file.exists():
@@ -319,7 +319,7 @@ class StoryManager:
         except Exception as e:
             logger.error(f"加载剧情失败: {e}")
     
-    def _save_stories(self):
+    def _save_stories(self) -> None:
         """保存剧情"""
         try:
             self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -392,7 +392,7 @@ class StoryManager:
 class RoleplayManager:
     """角色扮演管理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         storage_dir = self.config.get("storage_dir", "./memory/roleplay")

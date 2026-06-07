@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class DingTalkBot(Bot):
     """钉钉 Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("dingtalk_bot", "dingtalk")
         self.config = config or {}
         
@@ -71,7 +71,7 @@ class DingTalkBot(Bot):
             logger.info(f" 钉钉 Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开钉钉连接"""
         try:
             # 断开连接

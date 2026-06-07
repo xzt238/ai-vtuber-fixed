@@ -72,7 +72,7 @@ class Live2DModel:
         expressions (dict): 自定义表情映射
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化 Live2D 模型管理器
 
@@ -403,7 +403,7 @@ class Live2DModel:
 </html>
 """
     
-    def start_server(self):
+    def start_server(self) -> None:
         """
         【服务启动】启动 Live2D Web 服务
 
@@ -466,10 +466,10 @@ assets/model/
         _web_dir = str(web_dir)  # 闭包捕获
 
         class Handler(http.server.SimpleHTTPRequestHandler):
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args, **kwargs) -> None:
                 super().__init__(*args, directory=_web_dir, **kwargs)
 
-            def log_message(self, format, *args):
+            def log_message(self, format, *args) -> None:
                 pass  # 抑制每条请求的日志输出
 
         # 启动 TCP 服务器（allow_reuse_address 避免端口占用重启失败）

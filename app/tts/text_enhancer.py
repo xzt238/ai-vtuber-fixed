@@ -40,7 +40,7 @@ _config = {
 }
 
 
-def configure_enhancement(config: dict):
+def configure_enhancement(config: dict) -> None:
     """从外部配置更新增强参数（由 app 启动时调用）"""
     _config.update(config)
 
@@ -298,7 +298,7 @@ def _enhance_chinese_features(text: str, style: str = "companion") -> str:
         for pattern in patterns:
             # 在句末标点前的匹配句式后追加语气词
             # 模式：匹配句式 + 句末标点 → 匹配句式 + 语气词 + 标点
-            def _add_particle(match, p=particle):
+            def _add_particle(match, p=particle) -> None:
                 matched = match.group(0)
                 # 如果已有语气词，不重复添加
                 if matched.endswith(p):

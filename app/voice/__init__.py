@@ -81,7 +81,7 @@ class VoiceInput:
         path = voice.stop()  # 停止录音，返回 WAV 文件路径
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化语音输入管理器
 
@@ -141,7 +141,7 @@ class VoiceInput:
             logger.info(f"️ 麦克风错误: {e}")
             return False
     
-    def set_callback(self, callback: Callable):
+    def set_callback(self, callback: Callable) -> None:
         """
         【设置回调】注册录音完成时的回调函数
 
@@ -190,7 +190,7 @@ class VoiceInput:
             self.audio_data = []  # 重置音频缓冲区
             
             # 定义音频数据回调函数（sounddevice 在收到数据时自动调用）
-            def callback(indata, frames, time, status):
+            def callback(indata, frames, time, status) -> None:
                 """
                 【内部回调】音频录制数据回调函数（sounddevice 自动调用）
 
@@ -301,7 +301,7 @@ class VoiceInput:
             logger.info(f"️ 停止录音失败: {e}")
             return None
     
-    def cancel(self):
+    def cancel(self) -> None:
         """
         【取消录音】停止录音并丢弃所有数据
 
@@ -312,7 +312,7 @@ class VoiceInput:
             try:
                 self.recorder.stop()
                 self.recorder.close()
-            except Exception:
+            except Exception as e:
                 pass  # 忽略关闭时的异常
             self.is_recording = False
             self.audio_data = []  # 清空缓冲区，丢弃所有数据
@@ -350,7 +350,7 @@ class WebVoiceInput:
     服务端（web/__init__.py）接收后解码为 WAV，传给 ASR 识别。
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化 Web 语音输入
 
@@ -580,7 +580,7 @@ class VoiceInputFactory:
     """
     
     @staticmethod
-    def create(config: Dict[str, Any], use_web: bool = False):
+    def create(config: Dict[str, Any], use_web: bool = False) -> None:
         """
         【静态工厂方法】创建语音输入实例
 

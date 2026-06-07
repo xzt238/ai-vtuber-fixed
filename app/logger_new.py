@@ -63,7 +63,7 @@ class ColoredFormatter(logging.Formatter):
     }
     RESET = '\033[0m'  # 重置颜色代码，确保颜色不会"泄漏"到后续输出
 
-    def format(self, record):
+    def format(self, record) -> None:
         """
         重写格式化方法，为日志级别名称添加颜色
 

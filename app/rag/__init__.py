@@ -74,7 +74,7 @@ class RAGConfig:
 class DocumentProcessor:
     """文档处理器"""
     
-    def __init__(self, config: RAGConfig):
+    def __init__(self, config: RAGConfig) -> None:
         self.config = config
     
     def process_document(self, content: str, doc_type: DocumentType, 
@@ -114,7 +114,7 @@ class DocumentProcessor:
 class ChunkingEngine:
     """分块引擎"""
     
-    def __init__(self, config: RAGConfig):
+    def __init__(self, config: RAGConfig) -> None:
         self.config = config
     
     def chunk_document(self, document: Document) -> List[Chunk]:
@@ -277,7 +277,7 @@ class ChunkingEngine:
 class VectorStore:
     """向量存储"""
     
-    def __init__(self, config: RAGConfig):
+    def __init__(self, config: RAGConfig) -> None:
         self.config = config
         self.storage_dir = Path(config.storage_dir)
         self.vectors_file = self.storage_dir / "vectors.json"
@@ -290,7 +290,7 @@ class VectorStore:
         # 加载已有的向量和块
         self._load_from_disk()
     
-    def _load_from_disk(self):
+    def _load_from_disk(self) -> None:
         """从磁盘加载"""
         try:
             if self.vectors_file.exists():
@@ -307,7 +307,7 @@ class VectorStore:
         except Exception as e:
             logger.info(f"[RAG] 加载失败: {e}")
     
-    def _save_to_disk(self):
+    def _save_to_disk(self) -> None:
         """保存到磁盘"""
         try:
             self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -332,7 +332,7 @@ class VectorStore:
         except Exception as e:
             logger.info(f"[RAG] 保存失败: {e}")
     
-    async def add_chunk(self, chunk: Chunk, embedding: List[float] = None):
+    async def add_chunk(self, chunk: Chunk, embedding: List[float] = None) -> None:
         """添加块"""
         self.chunks[chunk.id] = chunk
         if embedding:
@@ -381,7 +381,7 @@ class VectorStore:
         
         return dot_product / (norm1 * norm2)
     
-    async def delete_document(self, document_id: str):
+    async def delete_document(self, document_id: str) -> None:
         """删除文档的所有块"""
         chunk_ids_to_delete = [
             chunk_id for chunk_id, chunk in self.chunks.items()
@@ -406,7 +406,7 @@ class VectorStore:
 class RAGSystem:
     """RAG系统"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config_data = config or {}
         
         # 创建配置
@@ -428,7 +428,7 @@ class RAGSystem:
         
         logger.info(f"[RAG] 初始化完成: storage={self.config.storage_dir}")
     
-    async def load_embedding_model(self, model_path: str = None):
+    async def load_embedding_model(self, model_path: str = None) -> None:
         """加载嵌入模型"""
         try:
             # 这里应该加载真实的嵌入模型
@@ -557,7 +557,7 @@ class RAGSystem:
             logger.info(f"[RAG] 生成失败: {e}")
             return f"生成失败: {e}"
     
-    async def delete_document(self, document_id: str):
+    async def delete_document(self, document_id: str) -> None:
         """删除文档"""
         await self.vector_store.delete_document(document_id)
         logger.info(f"[RAG] 文档已删除: {document_id}")

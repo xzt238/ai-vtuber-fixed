@@ -36,7 +36,7 @@ class AudioPreprocessorConfig:
 class AudioPreprocessor:
     """音频预处理器"""
     
-    def __init__(self, config: AudioPreprocessorConfig = None, sample_rate: int = 16000):
+    def __init__(self, config: AudioPreprocessorConfig = None, sample_rate: int = 16000) -> None:
         self.config = config or AudioPreprocessorConfig()
         self.sample_rate = sample_rate
         

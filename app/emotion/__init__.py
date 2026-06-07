@@ -63,7 +63,7 @@ class UserProfile:
 class TextEmotionAnalyzer:
     """文本情感分析器"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         # 情感关键词库
         self.emotion_keywords = {
             EmotionType.HAPPY: ["开心", "快乐", "高兴", "幸福", "愉快", "欢乐", "兴奋", "棒", "好", "喜欢", "爱", "哈哈", "嘻嘻"],
@@ -175,7 +175,7 @@ class TextEmotionAnalyzer:
 class EmotionExpression:
     """情感表达器"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         # 情感化回复模板
         self.response_templates = {
             EmotionType.HAPPY: [
@@ -292,14 +292,14 @@ class EmotionExpression:
 class EmotionMemory:
     """情感记忆器"""
     
-    def __init__(self, storage_dir: str = "./memory/emotion"):
+    def __init__(self, storage_dir: str = "./memory/emotion") -> None:
         self.storage_dir = Path(storage_dir)
         self.profiles_file = self.storage_dir / "user_profiles.json"
         self.profiles: Dict[str, UserProfile] = {}
         
         self._load_profiles()
     
-    def _load_profiles(self):
+    def _load_profiles(self) -> None:
         """加载用户档案"""
         try:
             if self.profiles_file.exists():
@@ -311,7 +311,7 @@ class EmotionMemory:
         except Exception as e:
             logger.info(f"[Emotion] 加载用户档案失败: {e}")
     
-    def _save_profiles(self):
+    def _save_profiles(self) -> None:
         """保存用户档案"""
         try:
             self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -336,7 +336,7 @@ class EmotionMemory:
             self.profiles[user_id] = UserProfile(user_id=user_id)
         return self.profiles[user_id]
     
-    async def record_emotion(self, user_id: str, emotion_state: EmotionState):
+    async def record_emotion(self, user_id: str, emotion_state: EmotionState) -> None:
         """记录情感"""
         profile = self.get_or_create_profile(user_id)
         
@@ -356,7 +356,7 @@ class EmotionMemory:
         
         self._save_profiles()
     
-    def _update_dominant_emotions(self, profile: UserProfile):
+    def _update_dominant_emotions(self, profile: UserProfile) -> None:
         """更新主导情感"""
         emotion_counts = {}
         for state in profile.emotion_history[-20:]:  # 最近20条
@@ -402,7 +402,7 @@ class EmotionMemory:
 class EmotionManager:
     """情感管理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         storage_dir = self.config.get("storage_dir", "./memory/emotion")

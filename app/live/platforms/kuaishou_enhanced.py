@@ -36,7 +36,7 @@ class KuaishouConfig:
 class KuaishouPlatformEnhanced(LivePlatform):
     """快手直播平台增强版"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__(config)
         
         # 快手配置
@@ -223,7 +223,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
             logger.info(f"[KuaishouEnhanced] WebSocket连接失败: {e}")
             return False
     
-    async def _heartbeat_loop(self):
+    async def _heartbeat_loop(self) -> None:
         """心跳循环"""
         try:
             while self.connected:
@@ -247,7 +247,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
         except asyncio.CancelledError:
             pass
     
-    async def _receive_messages(self):
+    async def _receive_messages(self) -> None:
         """接收消息"""
         try:
             while self.connected:
@@ -270,7 +270,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
         except asyncio.CancelledError:
             pass
     
-    async def _process_message(self, raw_message: str):
+    async def _process_message(self, raw_message: str) -> None:
         """处理消息"""
         try:
             data = json.loads(raw_message)
@@ -300,7 +300,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
         except Exception as e:
             logger.info(f"[KuaishouEnhanced] 消息处理失败: {e}")
     
-    async def _handle_danmaku(self, data: Dict[str, Any]):
+    async def _handle_danmaku(self, data: Dict[str, Any]) -> None:
         """处理弹幕消息"""
         try:
             user = data.get("user", {})
@@ -338,7 +338,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
         except Exception as e:
             logger.info(f"[KuaishouEnhanced] 弹幕处理失败: {e}")
     
-    async def _handle_gift(self, data: Dict[str, Any]):
+    async def _handle_gift(self, data: Dict[str, Any]) -> None:
         """处理礼物消息"""
         try:
             user = data.get("user", {})
@@ -377,11 +377,11 @@ class KuaishouPlatformEnhanced(LivePlatform):
         except Exception as e:
             logger.info(f"[KuaishouEnhanced] 礼物处理失败: {e}")
     
-    async def _handle_like(self, data: Dict[str, Any]):
+    async def _handle_like(self, data: Dict[str, Any]) -> None:
         """处理点赞消息"""
         self.stats["total_likes"] += 1
     
-    async def _handle_follow(self, data: Dict[str, Any]):
+    async def _handle_follow(self, data: Dict[str, Any]) -> None:
         """处理关注消息"""
         self.stats["total_follows"] += 1
     
@@ -409,7 +409,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
             logger.info(f"[KuaishouEnhanced] 发送弹幕失败: {e}")
             return False
     
-    async def _reconnect(self):
+    async def _reconnect(self) -> None:
         """重连"""
         if self.connection_state == KuaishouConnectionState.RECONNECTING:
             return

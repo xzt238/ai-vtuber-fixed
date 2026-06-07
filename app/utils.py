@@ -80,7 +80,7 @@ def validate_path(path: Union[str, Path], base_dir: Optional[Union[str, Path]] =
         raise ValueError(f"无效路径: {e}")
 
 
-def setup_python_path(app_dir: Optional[Union[str, Path]] = None):
+def setup_python_path(app_dir: Optional[Union[str, Path]] = None) -> None:
     """
     统一的 Python 路径设置 —— 动态模块导入支持
 
@@ -132,7 +132,7 @@ def setup_python_path(app_dir: Optional[Union[str, Path]] = None):
 # ============================================
 
 @contextmanager
-def temp_file(suffix: str = "", prefix: str = "tmp", dir: Optional[str] = None, delete: bool = True):
+def temp_file(suffix: str = "", prefix: str = "tmp", dir: Optional[str] = None, delete: bool = True) -> None:
     """
     临时文件上下文管理器（确保清理）
 
@@ -181,7 +181,7 @@ def temp_file(suffix: str = "", prefix: str = "tmp", dir: Optional[str] = None, 
 
 
 @contextmanager
-def temp_dir(suffix: str = "", prefix: str = "tmp", dir: Optional[str] = None, delete: bool = True):
+def temp_dir(suffix: str = "", prefix: str = "tmp", dir: Optional[str] = None, delete: bool = True) -> None:
     """
     临时目录上下文管理器（确保清理）
 
@@ -372,7 +372,7 @@ def safe_filename(filename: str, max_length: int = 255) -> str:
 # 配置加载辅助
 # ============================================
 
-def load_env_or_config(key: str, config: dict, default=None):
+def load_env_or_config(key: str, config: dict, default=None) -> None:
     """
     优先从环境变量加载，其次从配置字典
 

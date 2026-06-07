@@ -37,7 +37,7 @@ class VADConfig:
 class OptimizedSileroVAD:
     """优化版 Silero VAD 语音活动检测器"""
     
-    def __init__(self, config: VADConfig = None):
+    def __init__(self, config: VADConfig = None) -> None:
         self.config = config or VADConfig()
         self.state = VADState.IDLE
         self.model = None
@@ -203,7 +203,7 @@ class OptimizedSileroVAD:
         rms = np.sqrt(np.mean(audio_chunk ** 2) + 1e-10)
         return 20 * np.log10(rms + 1e-10)
     
-    def _update_noise_level(self, volume_db: float):
+    def _update_noise_level(self, volume_db: float) -> None:
         """更新噪声水平"""
         self.noise_samples.append(volume_db)
         if len(self.noise_samples) >= 10:
@@ -248,7 +248,7 @@ class OptimizedSileroVAD:
             with torch.no_grad():
                 prob = self.model(tensor, self.config.sample_rate).item()
             return prob
-        except Exception:
+        except Exception as e:
             return self._estimate_speech_probability(audio_chunk, self._calculate_volume_db(audio_chunk))
     
     def _estimate_speech_probability(self, audio_chunk: np.ndarray, volume_db: float) -> float:
@@ -288,7 +288,7 @@ class OptimizedSileroVAD:
             "adaptive_threshold_db": self.stats["adaptive_threshold_db"]
         }
     
-    def reset(self):
+    def reset(self) -> None:
         """重置状态"""
         self.state = VADState.IDLE
         self.hit_count = 0

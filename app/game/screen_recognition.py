@@ -51,7 +51,7 @@ class GameState:
 class ScreenRecognition:
     """屏幕识别器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         # 配置参数

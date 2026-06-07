@@ -33,7 +33,7 @@ class SpeedConfig:
     # 情感语速
     emotion_speed_map: Dict[str, float] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.emotion_speed_map is None:
             self.emotion_speed_map = {
                 "happy": 1.1,      # 开心时稍快
@@ -48,7 +48,7 @@ class SpeedConfig:
 class SpeedController:
     """语速控制器"""
     
-    def __init__(self, config: SpeedConfig = None):
+    def __init__(self, config: SpeedConfig = None) -> None:
         self.config = config or SpeedConfig()
         
         # 语速预设
@@ -176,7 +176,7 @@ class SpeedController:
             "pause_after_question": self.config.pause_after_question
         }
     
-    def update_config(self, config: Dict[str, Any]):
+    def update_config(self, config: Dict[str, Any]) -> None:
         """更新配置"""
         if "mode" in config:
             self.config.mode = SpeedMode(config["mode"])

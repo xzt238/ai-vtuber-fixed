@@ -34,7 +34,7 @@ class ConfigChange:
 class ConfigHotReload:
     """配置热重载管理器"""
     
-    def __init__(self, config_dir: str = ".", watch_interval: float = 1.0):
+    def __init__(self, config_dir: str = ".", watch_interval: float = 1.0) -> None:
         self.config_dir = Path(config_dir)
         self.watch_interval = watch_interval
         
@@ -97,10 +97,10 @@ class ConfigHotReload:
         try:
             with open(path, "rb") as f:
                 return hashlib.md5(f.read()).hexdigest()
-        except Exception:
+        except Exception as e:
             return ""
     
-    async def start_watching(self):
+    async def start_watching(self) -> None:
         """开始监听"""
         if self.is_watching:
             return
@@ -113,7 +113,7 @@ class ConfigHotReload:
         
         logger.info("[ConfigHotReload] 开始监听配置文件")
     
-    async def stop_watching(self):
+    async def stop_watching(self) -> None:
         """停止监听"""
         self.is_watching = False
         
@@ -129,7 +129,7 @@ class ConfigHotReload:
         
         logger.info("[ConfigHotReload] 停止监听配置文件")
     
-    async def _watch_loop(self):
+    async def _watch_loop(self) -> None:
         """监听循环"""
         try:
             while self.is_watching:
@@ -140,7 +140,7 @@ class ConfigHotReload:
         except Exception as e:
             logger.info(f"[ConfigHotReload] 监听循环错误: {e}")
     
-    async def _check_changes(self):
+    async def _check_changes(self) -> None:
         """检查文件变更"""
         self.stats["total_watches"] += 1
         
@@ -183,7 +183,7 @@ class ConfigHotReload:
             except Exception as e:
                 logger.info(f"[ConfigHotReload] 检查文件失败 {file_path}: {e}")
     
-    async def _reload_config(self, file_path: str):
+    async def _reload_config(self, file_path: str) -> None:
         """重载配置"""
         try:
             # 触发重载回调
@@ -213,7 +213,7 @@ class ConfigHotReload:
             
             logger.info(f"[ConfigHotReload] 重载失败 {file_path}: {e}")
     
-    async def _notify_callbacks(self, event: ReloadEvent, data: Dict[str, Any]):
+    async def _notify_callbacks(self, event: ReloadEvent, data: Dict[str, Any]) -> None:
         """通知回调函数"""
         for callback in self.on_change_callbacks:
             try:
@@ -224,15 +224,15 @@ class ConfigHotReload:
             except Exception as e:
                 logger.info(f"[ConfigHotReload] 回调执行失败: {e}")
     
-    def on_change(self, callback: Callable):
+    def on_change(self, callback: Callable) -> None:
         """注册变更回调"""
         self.on_change_callbacks.append(callback)
     
-    def on_reload(self, callback: Callable):
+    def on_reload(self, callback: Callable) -> None:
         """注册重载回调"""
         self.on_reload_callbacks.append(callback)
     
-    def on_error(self, callback: Callable):
+    def on_error(self, callback: Callable) -> None:
         """注册错误回调"""
         self.on_error_callbacks.append(callback)
     

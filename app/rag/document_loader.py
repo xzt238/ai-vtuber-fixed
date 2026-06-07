@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class DocumentLoader:
     """文档加载器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.supported_formats = self.config.get("supported_formats", ["pdf", "txt", "md", "docx"])
     
@@ -207,7 +207,7 @@ class DocumentLoader:
                         "creator": info.creator,
                         "pages": len(reader.pages),
                     }
-        except Exception:
+        except Exception as e:
             pass
         
         return {}
@@ -226,7 +226,7 @@ class DocumentLoader:
                 "subject": props.subject,
                 "keywords": props.keywords,
             }
-        except Exception:
+        except Exception as e:
             pass
         
         return {}

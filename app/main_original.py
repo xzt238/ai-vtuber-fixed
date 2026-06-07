@@ -70,7 +70,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # ============ Windows subprocess 安全辅助函数 ============
 # 桌面模式下所有 subprocess 调用必须隐藏 CMD 窗口，否则会闪现控制台
-def _win_subprocess_args():
+def _win_subprocess_args() -> None:
     """返回 Windows 桌面模式下 subprocess 隐藏 CMD 窗口所需的额外参数。
     返回 dict，可直接 **解包到 subprocess.run() 或 subprocess.Popen()。
     在非 Windows 或非桌面模式下返回空 dict。"""
@@ -150,7 +150,7 @@ class Config:
         本类在初始化后仅做读取，不需要额外同步。如需运行时热更新需加锁。
     """
 
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str = None) -> None:
         """
         【功能说明】初始化配置管理器，自动探测并加载配置文件
 
@@ -240,7 +240,7 @@ class Config:
             # 展开 ${VAR} 环境变量引用
             # 例如: api_key: ${MINIMAX_API_KEY} → api_key: 实际的 key 值
             # 如果环境变量不存在，保留原始 ${VAR} 字符串不变
-            def _expand_env(match):
+            def _expand_env(match) -> None:
                 """
                 【内部函数】展开环境变量占位符 ${VAR}
 
@@ -271,7 +271,7 @@ class Config:
                         try:
                             with open(fpath, "r", encoding="utf-8") as pf:
                                 return (file_name, json.load(pf))
-                        except Exception:
+                        except Exception as e:
                             pass
                     return (file_name, None)
                 
@@ -292,9 +292,9 @@ class Config:
                         try:
                             file_name, data = future.result()
                             prefs_data[file_name] = data
-                        except Exception:
+                        except Exception as e:
                             pass
-            except Exception:
+            except Exception as e:
                 prefs_data = {}
             
             # 【通用偏好恢复方法】消除 5 种偏好加载中的重复代码
@@ -535,7 +535,7 @@ class ToolExecutor:
                             "nc", "ncat", "bash", "sh", "python", "python3",
                             "perl", "ruby", "node", "sudo", "su"})
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【功能说明】初始化命令执行器
 
@@ -664,7 +664,7 @@ class ToolExecutor:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """
         安全关闭线程池
 
@@ -730,7 +730,7 @@ class AIVTuber:
         Web 模式下由 web 模块的消息队列保证串行处理。
     """
 
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str = None) -> None:
         """
         【功能说明】初始化咕咕嘎嘎主应用（懒加载模式）
 
@@ -828,7 +828,7 @@ class AIVTuber:
 
     # ============ R-006: 对象池 ============
 
-    def _pool_get(self, obj_type: str):
+    def _pool_get(self, obj_type: str) -> None:
         """从对象池获取一个可复用的对象
 
         Args:
@@ -853,7 +853,7 @@ class AIVTuber:
             return []
         return None
 
-    def _pool_put(self, obj, obj_type: str):
+    def _pool_put(self, obj, obj_type: str) -> None:
         """将对象归还到对象池
 
         Args:
@@ -872,7 +872,7 @@ class AIVTuber:
 
     # ============ S-001: 模型预加载并行化 ============
 
-    def preload_models_parallel(self):
+    def preload_models_parallel(self) -> None:
         """并行预加载 ASR、TTS、Memory 模型，减少启动串行等待时间
 
         v1.11.25 新增: 使用 ThreadPoolExecutor 并行加载三个模型模块，
@@ -881,7 +881,7 @@ class AIVTuber:
         from concurrent.futures import ThreadPoolExecutor, as_completed
         import time
 
-        def _load_asr():
+        def _load_asr() -> None:
             """后台线程加载 ASR"""
             start = time.time()
             try:
@@ -894,7 +894,7 @@ class AIVTuber:
             except Exception as e:
                 return "asr", time.time() - start, str(e)
 
-        def _load_tts():
+        def _load_tts() -> None:
             """后台线程加载 TTS"""
             start = time.time()
             try:
@@ -906,7 +906,7 @@ class AIVTuber:
             except Exception as e:
                 return "tts", time.time() - start, str(e)
 
-        def _load_memory():
+        def _load_memory() -> None:
             """后台线程加载 Memory（仅加载配置和持久化数据，不加载嵌入模型）
 
             v1.11.30: 嵌入模型（SentenceTransformer ~10-15s）改为首次搜索时懒加载，
@@ -958,7 +958,7 @@ class AIVTuber:
     # 后续访问直接返回缓存的实例（_lazy_modules dict 查找 O(1)）
 
     @property
-    def asr(self):
+    def asr(self) -> None:
         """
         语音识别模块 (ASR) - 懒加载
 
@@ -982,7 +982,7 @@ class AIVTuber:
         return self._lazy_modules['asr']
 
     @property
-    def tts(self):
+    def tts(self) -> None:
         """
         语音合成模块 (TTS) - 懒加载
 
@@ -1005,7 +1005,7 @@ class AIVTuber:
                 enhancement_config = self.config.config.get("text_enhancement", {})
                 if enhancement_config:
                     configure_enhancement(enhancement_config)
-            except Exception:
+            except Exception as e:
                 pass
             if self._lazy_modules['tts'].is_available():
                 game_ok(f"TTS [{type(self._lazy_modules['tts']).__name__}]", "就绪")
@@ -1014,7 +1014,7 @@ class AIVTuber:
         return self._lazy_modules['tts']
 
     @property
-    def trainer(self):
+    def trainer(self) -> None:
         """
         GPT-SoVITS 声音训练管理器 - 懒加载
 
@@ -1031,7 +1031,7 @@ class AIVTuber:
         return self._lazy_modules['trainer']
 
     @property
-    def llm(self):
+    def llm(self) -> None:
         """
         大语言模型模块 (LLM) - 懒加载
 
@@ -1055,7 +1055,7 @@ class AIVTuber:
         return self._lazy_modules['llm']
 
     @property
-    def live2d(self):
+    def live2d(self) -> None:
         """
         Live2D 虚拟形象模块 - 懒加载
 
@@ -1079,7 +1079,7 @@ class AIVTuber:
         return self._lazy_modules['live2d']
 
     @property
-    def voice(self):
+    def voice(self) -> None:
         """
         本地语音输入模块 - 懒加载
 
@@ -1101,7 +1101,7 @@ class AIVTuber:
         return self._lazy_modules['voice']
 
     @property
-    def voice_web(self):
+    def voice_web(self) -> None:
         """
         Web 语音输入模块 - 懒加载
 
@@ -1120,7 +1120,7 @@ class AIVTuber:
         return self._lazy_modules['voice_web']
 
     @property
-    def executor(self):
+    def executor(self) -> None:
         """
         命令执行器 (ToolExecutor) - 懒加载
 
@@ -1141,7 +1141,7 @@ class AIVTuber:
         return self._executor
 
     @property
-    def memory(self):
+    def memory(self) -> None:
         """
         记忆系统模块 - 懒加载
 
@@ -1184,7 +1184,7 @@ class AIVTuber:
         return self._memory
 
     @property
-    def tools(self):
+    def tools(self) -> None:
         """
         本地工具系统 - 懒加载
 
@@ -1205,7 +1205,7 @@ class AIVTuber:
         return self._lazy_modules['tools']
 
     @property
-    def vision(self):
+    def vision(self) -> None:
         """
         视觉理解系统 - 懒加载
 
@@ -1228,7 +1228,7 @@ class AIVTuber:
         return self._lazy_modules['vision']
 
     @property
-    def proactive(self):
+    def proactive(self) -> None:
         """
         AI 主动说话管理器 - 懒加载
 
@@ -1257,7 +1257,7 @@ class AIVTuber:
         return self._lazy_modules['proactive']
 
     @property
-    def diary(self):
+    def diary(self) -> None:
         """
         AI 每日日记系统 - 懒加载 (v1.11.1)
 
@@ -1288,7 +1288,7 @@ class AIVTuber:
         return self._lazy_modules['diary']
 
     @property
-    def mcp(self):
+    def mcp(self) -> None:
         """
         MCP 工具桥接器 - 懒加载
 
@@ -1322,7 +1322,7 @@ class AIVTuber:
         return self._lazy_modules['mcp']
 
     @property
-    def desktop_pet(self):
+    def desktop_pet(self) -> None:
         """
         桌面宠物管理器 - 懒加载
 
@@ -1353,7 +1353,7 @@ class AIVTuber:
         return self._lazy_modules['desktop_pet']
 
     @property
-    def web_server(self):
+    def web_server(self) -> None:
         """
         Web HTTP 服务器 - 懒加载
 
@@ -1376,7 +1376,7 @@ class AIVTuber:
         return self._lazy_modules['web_server']
 
     @property
-    def ws_server(self):
+    def ws_server(self) -> None:
         """
         WebSocket 服务器 - 懒加载
 
@@ -1397,7 +1397,7 @@ class AIVTuber:
         return self._lazy_modules['ws_server']
 
     @property
-    def emotion(self):
+    def emotion(self) -> None:
         """
         情感理解模块 - 懒加载
 
@@ -1422,7 +1422,7 @@ class AIVTuber:
         return self._lazy_modules['emotion']
 
     @property
-    def roleplay(self):
+    def roleplay(self) -> None:
         """
         角色扮演模块 - 懒加载
 
@@ -1447,7 +1447,7 @@ class AIVTuber:
         return self._lazy_modules['roleplay']
 
     @property
-    def plugin(self):
+    def plugin(self) -> None:
         """
         插件系统模块 - 懒加载
 
@@ -1472,7 +1472,7 @@ class AIVTuber:
         return self._lazy_modules['plugin']
 
     @property
-    def rag(self):
+    def rag(self) -> None:
         """
         RAG知识库模块 - 懒加载
 
@@ -1497,7 +1497,7 @@ class AIVTuber:
         return self._lazy_modules['rag']
 
     @property
-    def live(self):
+    def live(self) -> None:
         """
         直播平台集成模块 - 懒加载
 
@@ -1522,7 +1522,7 @@ class AIVTuber:
         return self._lazy_modules['live']
 
     @property
-    def svc(self):
+    def svc(self) -> None:
         """
         SVC声音转换模块 - 懒加载
 
@@ -1547,7 +1547,7 @@ class AIVTuber:
         return self._lazy_modules['svc']
 
     @property
-    def singing(self):
+    def singing(self) -> None:
         """
         唱歌模块 - 懒加载
 
@@ -1572,7 +1572,7 @@ class AIVTuber:
         return self._lazy_modules['singing']
 
     @property
-    def sd(self):
+    def sd(self) -> None:
         """
         Stable Diffusion模块 - 懒加载
 
@@ -1597,7 +1597,7 @@ class AIVTuber:
         return self._lazy_modules['sd']
 
     @property
-    def game(self):
+    def game(self) -> None:
         """
         游戏感知框架模块 - 懒加载
 
@@ -1622,7 +1622,7 @@ class AIVTuber:
         return self._lazy_modules['game']
 
     @property
-    def multi_agent(self):
+    def multi_agent(self) -> None:
         """
         多AI群聊模块 - 懒加载
 
@@ -1647,7 +1647,7 @@ class AIVTuber:
         return self._lazy_modules['multi_agent']
 
     @property
-    def bot(self):
+    def bot(self) -> None:
         """
         社交Bot模块 - 懒加载
 
@@ -1672,7 +1672,7 @@ class AIVTuber:
         return self._lazy_modules['bot']
 
     @property
-    def vision_input(self):
+    def vision_input(self) -> None:
         """
         摄像头视觉输入模块 - 懒加载
 
@@ -1696,11 +1696,11 @@ class AIVTuber:
                 self._lazy_modules['vision_input'] = None
         return self._lazy_modules['vision_input']
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """上下文管理器入口 - 支持 with 语句自动资源管理"""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """
         上下文管理器退出
 
@@ -2029,7 +2029,7 @@ class AIVTuber:
             self.logger.exception(f"处理消息错误: {e}")
             return {"text": "抱歉，处理消息时出错了喵~"}
 
-    def run_interactive(self):
+    def run_interactive(self) -> None:
         """
         交互模式 - 命令行文字/语音对话
 
@@ -2112,7 +2112,7 @@ class AIVTuber:
         except KeyboardInterrupt:
             logger.info("\n 再见喵~")
 
-    def run_web(self, desktop_mode: bool = False):
+    def run_web(self, desktop_mode: bool = False) -> None:
         """
         Web 模式 - 启动 HTTP + WebSocket 服务
 
@@ -2168,7 +2168,7 @@ class AIVTuber:
         self.logger.info(f"WebSocket 服务已启动: 端口 {self.config.config.get('web.ws_port', 12394)}")
 
         # 后台预加载核心模块（不再阻塞 WebServer 启动）
-        def _background_preload():
+        def _background_preload() -> None:
             game_section("预加载核心模块（后台）")
             try:
                 _ = self.llm  # 预热 LLM（纯 API 客户端，很快 <0.5s）
@@ -2255,7 +2255,7 @@ class AIVTuber:
             logger.info("\n 服务已停止")
             self.stop()
 
-    def _load_history(self):
+    def _load_history(self) -> None:
         """v1.9.50: 从磁盘恢复对话历史，若无则从记忆系统恢复
 
         v1.11.25 M-002: 分页加载 — 只加载最近的 N 条到内存，历史从磁盘按需读取
@@ -2297,7 +2297,7 @@ class AIVTuber:
             logger.info(f"  [历史] 从工作记忆恢复失败: {e}")
         self.history = []
 
-    def _save_history(self):
+    def _save_history(self) -> None:
         """v1.9.50: 保存对话历史到磁盘
 
         v1.11.29 P1-3: 异步文件 I/O — 使用后台线程写入，不阻塞主线程
@@ -2316,7 +2316,7 @@ class AIVTuber:
                 self._save_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="history-save")
 
             history_file = self._history_file
-            def _async_write():
+            def _async_write() -> None:
                 try:
                     tmp_file = history_file.with_suffix('.tmp')
                     with open(tmp_file, 'w', encoding='utf-8') as f:
@@ -2329,7 +2329,7 @@ class AIVTuber:
         except Exception as e:
             logger.info(f"  [历史] 保存对话历史失败: {e}")
 
-    def record_interaction(self, user_text: str, assistant_text: str):
+    def record_interaction(self, user_text: str, assistant_text: str) -> None:
         """
         v1.9.55: 统一记录对话交互（记忆 + 历史 + 持久化）
         消除 main.py / web/__init__.py 三处重复的 mem.add_interaction + history.append + _save_history 逻辑。
@@ -2365,7 +2365,7 @@ class AIVTuber:
         except Exception as e:
             self.logger.debug(f"历史更新错误（可忽略）: {e}")
 
-    def _compress_history(self, keep_recent: int = 40):
+    def _compress_history(self, keep_recent: int = 40) -> None:
         """v1.11.25 (R-001): 对话历史流式压缩
 
         将旧对话（keep_recent 之前的）压缩为一条摘要消息，
@@ -2422,28 +2422,28 @@ class AIVTuber:
         self.history = [compressed] + recent_messages
         self.logger.info(f"历史压缩: {old_turns}轮 → 1条摘要 + {len(recent_messages)//2}轮最近对话")
 
-    def _atexit_flush(self):
+    def _atexit_flush(self) -> None:
         """atexit 回调：确保异常退出时也能 flush 记忆系统和对话历史"""
         # v1.9.50: 保存对话历史
         if self.history:
             try:
                 self._save_history()
-            except Exception:
+            except Exception as e:
                 pass  # atexit 中不能抛异常
         if self._memory_initialized and self._memory:
             try:
                 self._memory.flush()
-            except Exception:
+            except Exception as e:
                 pass  # atexit 中不能抛异常
 
-    def _signal_handler(self, signum, frame):
+    def _signal_handler(self, signum, frame) -> None:
         """M1修复: SIGTERM/SIGINT 信号处理，确保优雅关停"""
         sig_name = {2: "SIGINT", 15: "SIGTERM"}.get(signum, f"Signal {signum}")
         logger.info(f"\n[Signal] 收到 {sig_name}，正在优雅关停...")
         self.stop()
         sys.exit(0)
 
-    def stop(self):
+    def stop(self) -> None:
         """
         停止所有服务并释放资源
 
@@ -2561,7 +2561,7 @@ class AIVTuber:
 
         self.logger.info("所有服务已停止")
 
-    def _play_audio(self, audio_path: str):
+    def _play_audio(self, audio_path: str) -> None:
         """
         播放音频文件 - 跨平台支持
 
@@ -2606,7 +2606,7 @@ class AIVTuber:
     # KI-013 FIX: 提供线程安全的 rebuild 方法，供 settings_page.py 的 RebuildWorker 调用
     # 避免后台线程直接操作 _lazy_modules 字典导致竞态
 
-    def rebuild_llm(self):
+    def rebuild_llm(self) -> None:
         """线程安全地重建 LLM 引擎
 
         清除缓存中的旧 LLM 实例，触发懒加载重新创建。
@@ -2621,7 +2621,7 @@ class AIVTuber:
                 if old_llm and hasattr(old_llm, 'cleanup') and callable(old_llm.cleanup):
                     try:
                         old_llm.cleanup()
-                    except Exception:
+                    except Exception as e:
                         pass
             try:
                 _ = self.llm  # 触发懒加载重建
@@ -2631,7 +2631,7 @@ class AIVTuber:
                 self.logger.error(f"LLM 引擎重建失败: {e}")
                 return False
 
-    def rebuild_tts(self):
+    def rebuild_tts(self) -> None:
         """线程安全地重建 TTS 引擎
 
         清除缓存中的旧 TTS 实例，触发懒加载重新创建。
@@ -2646,7 +2646,7 @@ class AIVTuber:
                 if old_tts and hasattr(old_tts, 'cleanup') and callable(old_tts.cleanup):
                     try:
                         old_tts.cleanup()
-                    except Exception:
+                    except Exception as e:
                         pass
             try:
                 _ = self.tts  # 触发懒加载重建
@@ -2711,7 +2711,7 @@ class AIVTuber:
         return None
 
 
-def main():
+def main() -> None:
     """
     CLI 入口函数 - 解析命令行参数并启动对应模式
 

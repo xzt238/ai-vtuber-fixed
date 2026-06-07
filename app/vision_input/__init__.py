@@ -42,7 +42,7 @@ class CameraFrame:
     format: str = "bgr"
     metadata: Dict[str, Any] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.metadata is None:
             self.metadata = {}
 
@@ -58,7 +58,7 @@ class VisionResult:
     timestamp: datetime
     metadata: Dict[str, Any] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.metadata is None:
             self.metadata = {}
 
@@ -66,7 +66,7 @@ class VisionResult:
 class CameraInput:
     """摄像头输入接口"""
     
-    def __init__(self, camera_id: str, config: Dict[str, Any] = None):
+    def __init__(self, camera_id: str, config: Dict[str, Any] = None) -> None:
         self.camera_id = camera_id
         self.config = config or {}
         self.device_id = self.config.get("device_id", 0)
@@ -85,15 +85,15 @@ class CameraInput:
         logger.info(f"摄像头输入初始化完成: {camera_id}")
         logger.info(f"设备ID: {device_id}, 分辨率: {self.width}x{self.height}, FPS: {self.fps}")
     
-    def add_frame_callback(self, callback: Callable):
+    def add_frame_callback(self, callback: Callable) -> None:
         """添加帧回调"""
         self._frame_callbacks.append(callback)
     
-    def remove_frame_callback(self, callback: Callable):
+    def remove_frame_callback(self, callback: Callable) -> None:
         """移除帧回调"""
         self._frame_callbacks = [cb for cb in self._frame_callbacks if cb != callback]
     
-    def _notify_frame(self, frame: CameraFrame):
+    def _notify_frame(self, frame: CameraFrame) -> None:
         """通知帧回调"""
         for callback in self._frame_callbacks:
             try:
@@ -120,7 +120,7 @@ class CameraInput:
             logger.error(f"摄像头打开失败: {e}")
             return False
     
-    async def close(self):
+    async def close(self) -> None:
         """关闭摄像头"""
         try:
             if self.is_open:
@@ -191,7 +191,7 @@ class CameraInput:
 class CameraManager:
     """摄像头管理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./cache/camera")
         
@@ -223,7 +223,7 @@ class CameraManager:
         """列出所有摄像头"""
         return list(self.cameras.keys())
     
-    def remove_camera(self, camera_id: str):
+    def remove_camera(self, camera_id: str) -> None:
         """移除摄像头"""
         if camera_id in self.cameras:
             camera = self.cameras[camera_id]
@@ -231,7 +231,7 @@ class CameraManager:
             del self.cameras[camera_id]
             logger.info(f"摄像头移除成功: {camera_id}")
     
-    async def open_all(self):
+    async def open_all(self) -> None:
         """打开所有摄像头"""
         for camera_id, camera in self.cameras.items():
             try:
@@ -239,7 +239,7 @@ class CameraManager:
             except Exception as e:
                 logger.error(f"摄像头打开失败 {camera_id}: {e}")
     
-    async def close_all(self):
+    async def close_all(self) -> None:
         """关闭所有摄像头"""
         for camera_id, camera in self.cameras.items():
             try:
@@ -259,7 +259,7 @@ class CameraManager:
 class VisionProcessor:
     """视觉处理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./cache/vision")
         
@@ -294,7 +294,7 @@ class VisionProcessor:
             logger.error(f"视觉模型加载失败: {e}")
             return False
     
-    def unload_model(self, model_name: str):
+    def unload_model(self, model_name: str) -> None:
         """卸载视觉模型"""
         if model_name in self.models:
             del self.models[model_name]

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class Generator:
     """生成器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.llm_callback = None
         
@@ -25,7 +25,7 @@ class Generator:
             "请提供准确、详细的回答："
         )
     
-    def set_llm_callback(self, callback):
+    def set_llm_callback(self, callback) -> None:
         """设置LLM回调函数"""
         self.llm_callback = callback
     

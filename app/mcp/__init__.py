@@ -48,7 +48,7 @@ class MCPTransport:
     每个请求是一个 JSON-RPC 消息，响应也是 JSON-RPC。
     """
 
-    def __init__(self, command: str, args: List[str] = None, env: Dict[str, str] = None):
+    def __init__(self, command: str, args: List[str] = None, env: Dict[str, str] = None) -> None:
         self.command = command
         self.args = args or []
         self.env = env or {}
@@ -108,21 +108,21 @@ class MCPTransport:
             self._close_process()
             return False
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """断开与 MCP 服务器的连接"""
         self._connected = False
         self._close_process()
 
-    def _close_process(self):
+    def _close_process(self) -> None:
         """安全关闭子进程"""
         if self._process:
             try:
                 self._process.terminate()
                 self._process.wait(timeout=5)
-            except Exception:
+            except Exception as e:
                 try:
                     self._process.kill()
-                except Exception:
+                except Exception as e:
                     pass
             self._process = None
 
@@ -181,7 +181,7 @@ class MCPTransport:
                     # 忽略不匹配的响应（可能是通知等）
                 except json.JSONDecodeError:
                     continue
-                except Exception:
+                except Exception as e:
                     time.sleep(0.1)
                     continue
 
@@ -192,7 +192,7 @@ class MCPTransport:
             logger.info(f"[MCP] 发送请求异常: {e}")
             return None
 
-    def _send_notification(self, method: str, params: dict = None):
+    def _send_notification(self, method: str, params: dict = None) -> None:
         """发送 JSON-RPC 通知（不期望响应）"""
         if not self._process or self._process.poll() is not None:
             return
@@ -239,7 +239,7 @@ class MCPTransport:
 class MCPServerConfig:
     """MCP 服务器配置"""
 
-    def __init__(self, name: str, config: dict):
+    def __init__(self, name: str, config: dict) -> None:
         self.name = name
         self.command = config.get("command", "")
         self.args = config.get("args", [])
@@ -275,7 +275,7 @@ class MCPToolBridge:
         result = bridge.execute("MCP:github:create_issue", title="hello")
     """
 
-    def __init__(self, app: "AIVTuber"):
+    def __init__(self, app: "AIVTuber") -> None:
         self.app = app
         self.logger = getattr(app, 'logger', None) or print
         self._servers: Dict[str, MCPServerConfig] = {}
@@ -291,7 +291,7 @@ class MCPToolBridge:
             if cfg.enabled and cfg.command:
                 self._servers[name] = cfg
 
-    def start(self):
+    def start(self) -> None:
         """启动所有 MCP 服务器连接"""
         if self._running:
             return
@@ -305,7 +305,7 @@ class MCPToolBridge:
         for name, cfg in self._servers.items():
             self._connect_server(name, cfg)
 
-    def stop(self):
+    def stop(self) -> None:
         """停止所有 MCP 服务器连接"""
         self._running = False
         for name, transport in list(self._transports.items()):
@@ -317,7 +317,7 @@ class MCPToolBridge:
         self._transports.clear()
         self._tool_cache.clear()
 
-    def _connect_server(self, name: str, cfg: MCPServerConfig):
+    def _connect_server(self, name: str, cfg: MCPServerConfig) -> None:
         """连接单个 MCP 服务器"""
         try:
             transport = MCPTransport(

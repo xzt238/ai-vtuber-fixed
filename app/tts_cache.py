@@ -40,7 +40,7 @@ class TTSCache:
     4. 自动在合适的时机执行过期清理和容量清理
     """
 
-    def __init__(self, cache_dir: str = "cache/tts", max_age_days: int = 7, max_size_mb: int = 100):
+    def __init__(self, cache_dir: str = "cache/tts", max_age_days: int = 7, max_size_mb: int = 100) -> None:
         """
         初始化 TTS 缓存管理器
 
@@ -144,7 +144,7 @@ class TTSCache:
 
         return None  # 未命中，返回 None 表示需要重新合成
 
-    def set(self, text: str, voice: str, audio_path: str, provider: str = ""):
+    def set(self, text: str, voice: str, audio_path: str, provider: str = "") -> None:
         """
         保存音频到缓存
 
@@ -176,7 +176,7 @@ class TTSCache:
         except Exception as e:
             logger.info(f"️ 缓存保存失败: {e}")
 
-    def clear(self):
+    def clear(self) -> None:
         """
         清空所有缓存
 
@@ -190,7 +190,7 @@ class TTSCache:
         except Exception as e:
             logger.info(f"️ 清空缓存失败: {e}")
 
-    def _cleanup_expired(self):
+    def _cleanup_expired(self) -> None:
         """
         清理过期缓存（内部方法）
 
@@ -217,7 +217,7 @@ class TTSCache:
         if removed_count > 0:
             logger.info(f" [TTSCache] 惰性清理: {removed_count} 个过期缓存")
 
-    def _check_size_limit(self):
+    def _check_size_limit(self) -> None:
         """
         检查缓存大小限制并按需清理（内部方法）
 

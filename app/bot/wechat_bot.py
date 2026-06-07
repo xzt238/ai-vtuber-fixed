@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class WeChatBot(Bot):
     """微信 Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("wechat_bot", "wechat")
         self.config = config or {}
         
@@ -73,7 +73,7 @@ class WeChatBot(Bot):
             logger.info(f" 微信 Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开微信连接"""
         try:
             # 断开连接

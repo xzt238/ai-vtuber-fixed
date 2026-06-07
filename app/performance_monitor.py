@@ -40,7 +40,7 @@ class LatencyMetric:
 class PerformanceMonitor:
     """性能监控器"""
     
-    def __init__(self, history_size: int = 1000):
+    def __init__(self, history_size: int = 1000) -> None:
         self.history_size = history_size
         
         # 指标历史
@@ -72,7 +72,7 @@ class PerformanceMonitor:
         
         logger.info("[PerformanceMonitor] 初始化完成")
     
-    async def start_monitoring(self, interval: float = 1.0):
+    async def start_monitoring(self, interval: float = 1.0) -> None:
         """开始监控"""
         if self.is_monitoring:
             return
@@ -84,7 +84,7 @@ class PerformanceMonitor:
         self.monitor_task = asyncio.create_task(self._monitor_loop())
         logger.info(f"[PerformanceMonitor] 开始监控 (间隔: {interval}秒)")
     
-    async def stop_monitoring(self):
+    async def stop_monitoring(self) -> None:
         """停止监控"""
         self.is_monitoring = False
         
@@ -97,7 +97,7 @@ class PerformanceMonitor:
         
         logger.info("[PerformanceMonitor] 停止监控")
     
-    async def _monitor_loop(self):
+    async def _monitor_loop(self) -> None:
         """监控循环"""
         try:
             while self.is_monitoring:
@@ -157,7 +157,7 @@ class PerformanceMonitor:
         
         return metrics
     
-    async def _check_alerts(self, metrics: PerformanceMetrics):
+    async def _check_alerts(self, metrics: PerformanceMetrics) -> None:
         """检查警报"""
         alerts = []
         
@@ -183,7 +183,7 @@ class PerformanceMonitor:
                 except Exception as e:
                     logger.info(f"[PerformanceMonitor] 警报回调失败: {e}")
     
-    def record_latency(self, operation: str, latency_ms: float):
+    def record_latency(self, operation: str, latency_ms: float) -> None:
         """记录延迟"""
         metric = LatencyMetric(
             operation=operation,
@@ -239,11 +239,11 @@ class PerformanceMonitor:
             "p99_ms": sorted(latencies)[int(len(latencies) * 0.99)]
         }
     
-    def on_alert(self, callback: Callable):
+    def on_alert(self, callback: Callable) -> None:
         """注册警报回调"""
         self.alert_callbacks.append(callback)
     
-    def set_threshold(self, metric: str, value: float):
+    def set_threshold(self, metric: str, value: float) -> None:
         """设置警报阈值"""
         if metric in self.alert_thresholds:
             self.alert_thresholds[metric] = value
@@ -315,10 +315,10 @@ def get_performance_monitor() -> PerformanceMonitor:
     return _performance_monitor
 
 # 性能计时装饰器
-def measure_latency(operation: str):
+def measure_latency(operation: str) -> None:
     """测量延迟装饰器"""
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
+    def decorator(func) -> None:
+        async def wrapper(*args, **kwargs) -> None:
             start_time = time.time()
             try:
                 result = await func(*args, **kwargs)

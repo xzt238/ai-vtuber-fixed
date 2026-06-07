@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class TelegramBot(Bot):
     """Telegram Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("telegram_bot", "telegram")
         self.config = config or {}
         
@@ -50,10 +50,10 @@ class TelegramBot(Bot):
             self._application = Application.builder().token(self.token).build()
             
             # 注册命令处理器
-            async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 await update.message.reply_text("你好！我是AI VTuber Bot！")
             
-            async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 help_text = """
 **可用命令:**
 /start - 开始对话
@@ -63,7 +63,7 @@ class TelegramBot(Bot):
 """
                 await update.message.reply_text(help_text, parse_mode=self.parse_mode)
             
-            async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 status_text = f"""
 **Bot状态:**
 - 连接状态: {'已连接' if self.connected else '未连接'}
@@ -71,7 +71,7 @@ class TelegramBot(Bot):
 """
                 await update.message.reply_text(status_text, parse_mode=self.parse_mode)
             
-            async def chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            async def chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 if context.args:
                     message = ' '.join(context.args)
                     # 这里应该调用LLM生成回复
@@ -80,7 +80,7 @@ class TelegramBot(Bot):
                 else:
                     await update.message.reply_text("请提供消息内容")
             
-            async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 # 创建BotMessage
                 bot_message = BotMessage(
                     id=str(update.message.message_id),
@@ -126,7 +126,7 @@ class TelegramBot(Bot):
             logger.info(f" Telegram Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开Telegram连接"""
         try:
             # 断开连接

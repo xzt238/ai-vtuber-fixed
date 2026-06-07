@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class DouyuPlatform(LivePlatform):
     """斗鱼直播平台"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__(config)
         
         # 斗鱼配置
@@ -86,7 +86,7 @@ class DouyuPlatform(LivePlatform):
             self._stats["error_count"] += 1
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         try:
             # 停止心跳
@@ -204,7 +204,7 @@ class DouyuPlatform(LivePlatform):
             logger.info(f" 斗鱼WebSocket连接失败: {e}")
             return False
     
-    async def _receive_messages(self):
+    async def _receive_messages(self) -> None:
         """接收消息"""
         try:
             async for message in self._ws:
@@ -226,7 +226,7 @@ class DouyuPlatform(LivePlatform):
             logger.info(f" 消息接收失败: {e}")
             self._stats["error_count"] += 1
     
-    async def _process_message(self, message: str):
+    async def _process_message(self, message: str) -> None:
         """处理消息"""
         try:
             # 斗鱼消息格式：type@=xxx/content@=xxx/
@@ -274,7 +274,7 @@ class DouyuPlatform(LivePlatform):
             logger.info(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
     
-    async def _heartbeat_loop(self):
+    async def _heartbeat_loop(self) -> None:
         """心跳循环"""
         try:
             while self.connected:

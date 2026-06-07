@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class AIResponder:
     """AI回复生成器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.llm_callback = None
         
@@ -50,7 +50,7 @@ class AIResponder:
             "farewell": ["再见", "拜拜", "bye", "goodbye", "下次见"],
         }
     
-    def set_llm_callback(self, callback):
+    def set_llm_callback(self, callback) -> None:
         """设置LLM回调函数"""
         self.llm_callback = callback
     

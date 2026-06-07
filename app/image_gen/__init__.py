@@ -61,7 +61,7 @@ class ImageResponse:
     created_at: datetime
     metadata: Dict[str, Any] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.metadata is None:
             self.metadata = {}
 
@@ -69,7 +69,7 @@ class ImageResponse:
 class ImageGenerator:
     """文生图生成器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         # 提供商配置
@@ -423,7 +423,7 @@ class ImageGenerator:
             {"id": "mimo", "name": "小米MiMo", "description": "小米MiMo文生图"},
         ]
     
-    async def close(self):
+    async def close(self) -> None:
         """关闭HTTP会话"""
         if self._session:
             await self._session.close()

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class DiscordBot(Bot):
     """Discord Bot实现"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__("discord_bot", "discord")
         self.config = config or {}
         
@@ -63,12 +63,12 @@ class DiscordBot(Bot):
             
             # 注册事件
             @self._client.event
-            async def on_ready():
+            async def on_ready() -> None:
                 logger.info(f" Discord Bot已登录: {self._client.user}")
                 self.connected = True
             
             @self._client.event
-            async def on_message(message):
+            async def on_message(message) -> None:
                 # 忽略自己的消息
                 if message.author == self._client.user:
                     return
@@ -97,11 +97,11 @@ class DiscordBot(Bot):
             
             # 注册命令
             @self._client.command(name="ping")
-            async def ping(ctx):
+            async def ping(ctx) -> None:
                 await ctx.send("Pong!")
             
             @self._client.command(name="help")
-            async def help_command(ctx):
+            async def help_command(ctx) -> None:
                 help_text = """
 **可用命令:**
 !ping - 测试连接
@@ -112,7 +112,7 @@ class DiscordBot(Bot):
                 await ctx.send(help_text)
             
             @self._client.command(name="status")
-            async def status(ctx):
+            async def status(ctx) -> None:
                 status_text = f"""
 **Bot状态:**
 - 连接状态: {'已连接' if self.connected else '未连接'}
@@ -122,7 +122,7 @@ class DiscordBot(Bot):
                 await ctx.send(status_text)
             
             @self._client.command(name="chat")
-            async def chat(ctx, *, message: str):
+            async def chat(ctx, *, message: str) -> None:
                 # 这里应该调用LLM生成回复
                 # 简化实现，直接回复
                 await ctx.send(f"收到消息: {message}")
@@ -153,7 +153,7 @@ class DiscordBot(Bot):
             logger.info(f" Discord Bot连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开Discord连接"""
         try:
             # 停止轮询

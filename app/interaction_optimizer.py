@@ -43,11 +43,11 @@ class ActionFeedback:
 class Debouncer:
     """防抖器"""
     
-    def __init__(self, delay_ms: int = 300):
+    def __init__(self, delay_ms: int = 300) -> None:
         self.delay_ms = delay_ms
         self.timers: Dict[str, asyncio.Task] = {}
     
-    async def debounce(self, key: str, func: Callable[..., Awaitable], *args, **kwargs):
+    async def debounce(self, key: str, func: Callable[..., Awaitable], *args, **kwargs) -> None:
         """防抖执行"""
         # 取消之前的定时器
         if key in self.timers and not self.timers[key].done():
@@ -58,14 +58,14 @@ class Debouncer:
                 pass
         
         # 创建新的定时器
-        async def delayed_execution():
+        async def delayed_execution() -> None:
             await asyncio.sleep(self.delay_ms / 1000)
             return await func(*args, **kwargs)
         
         self.timers[key] = asyncio.create_task(delayed_execution())
         return await self.timers[key]
     
-    def cancel(self, key: str):
+    def cancel(self, key: str) -> None:
         """取消防抖"""
         if key in self.timers and not self.timers[key].done():
             self.timers[key].cancel()
@@ -73,7 +73,7 @@ class Debouncer:
 class Throttler:
     """节流器"""
     
-    def __init__(self, interval_ms: int = 100):
+    def __init__(self, interval_ms: int = 100) -> None:
         self.interval_ms = interval_ms
         self.last_execution: Dict[str, float] = {}
     
@@ -93,7 +93,7 @@ class Throttler:
         
         return False
     
-    async def throttle(self, key: str, func: Callable[..., Awaitable], *args, **kwargs):
+    async def throttle(self, key: str, func: Callable[..., Awaitable], *args, **kwargs) -> None:
         """节流执行"""
         if self.should_execute(key):
             return await func(*args, **kwargs)
@@ -102,7 +102,7 @@ class Throttler:
 class ActionQueue:
     """操作队列"""
     
-    def __init__(self, max_size: int = 100):
+    def __init__(self, max_size: int = 100) -> None:
         self.max_size = max_size
         self.queue: asyncio.Queue = asyncio.Queue(maxsize=max_size)
         self.is_processing = False
@@ -125,14 +125,14 @@ class ActionQueue:
             self.stats["total_dropped"] += 1
             return False
     
-    async def start_processing(self, handler: Callable[[UserAction], Awaitable]):
+    async def start_processing(self, handler: Callable[[UserAction], Awaitable]) -> None:
         """开始处理队列"""
         if self.is_processing:
             return
         
         self.is_processing = True
         
-        async def process_loop():
+        async def process_loop() -> None:
             while self.is_processing:
                 try:
                     action = await asyncio.wait_for(self.queue.get(), timeout=1.0)
@@ -145,7 +145,7 @@ class ActionQueue:
         
         self.process_task = asyncio.create_task(process_loop())
     
-    async def stop_processing(self):
+    async def stop_processing(self) -> None:
         """停止处理队列"""
         self.is_processing = False
         
@@ -169,17 +169,17 @@ class ActionQueue:
 class FeedbackManager:
     """反馈管理器"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.feedback_history: deque = deque(maxlen=100)
         self.feedback_handlers: Dict[FeedbackType, List[Callable]] = {
             feedback_type: [] for feedback_type in FeedbackType
         }
     
-    def register_handler(self, feedback_type: FeedbackType, handler: Callable):
+    def register_handler(self, feedback_type: FeedbackType, handler: Callable) -> None:
         """注册反馈处理器"""
         self.feedback_handlers[feedback_type].append(handler)
     
-    async def show_feedback(self, feedback: ActionFeedback):
+    async def show_feedback(self, feedback: ActionFeedback) -> None:
         """显示反馈"""
         self.feedback_history.append(feedback)
         
@@ -193,7 +193,7 @@ class FeedbackManager:
             except Exception as e:
                 logger.info(f"[FeedbackManager] 反馈处理失败: {e}")
     
-    async def show_success(self, action_id: str, message: str):
+    async def show_success(self, action_id: str, message: str) -> None:
         """显示成功反馈"""
         feedback = ActionFeedback(
             action_id=action_id,
@@ -203,7 +203,7 @@ class FeedbackManager:
         )
         await self.show_feedback(feedback)
     
-    async def show_error(self, action_id: str, message: str):
+    async def show_error(self, action_id: str, message: str) -> None:
         """显示错误反馈"""
         feedback = ActionFeedback(
             action_id=action_id,
@@ -220,7 +220,7 @@ class FeedbackManager:
 class InteractionOptimizer:
     """用户交互优化器"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         # 防抖器
         self.debouncer = Debouncer(delay_ms=300)
         
@@ -286,7 +286,7 @@ class InteractionOptimizer:
         """防抖操作"""
         self.stats["debounced_actions"] += 1
         
-        async def wrapped_handler():
+        async def wrapped_handler() -> None:
             return await self.process_action(action, handler)
         
         return await self.debouncer.debounce(key, wrapped_handler)
@@ -300,11 +300,11 @@ class InteractionOptimizer:
         
         return await self.process_action(action, handler)
     
-    async def start_queue_processing(self, handler: Callable[[UserAction], Awaitable]):
+    async def start_queue_processing(self, handler: Callable[[UserAction], Awaitable]) -> None:
         """开始队列处理"""
         await self.action_queue.start_processing(handler)
     
-    async def stop_queue_processing(self):
+    async def stop_queue_processing(self) -> None:
         """停止队列处理"""
         await self.action_queue.stop_processing()
     
@@ -334,20 +334,20 @@ def get_interaction_optimizer() -> InteractionOptimizer:
     return _interaction_optimizer
 
 # 便捷装饰器
-def debounce(key: str, delay_ms: int = 300):
+def debounce(key: str, delay_ms: int = 300) -> None:
     """防抖装饰器"""
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
+    def decorator(func) -> None:
+        async def wrapper(*args, **kwargs) -> None:
             optimizer = get_interaction_optimizer()
             optimizer.debouncer.delay_ms = delay_ms
             return await optimizer.debouncer.debounce(key, func, *args, **kwargs)
         return wrapper
     return decorator
 
-def throttle(key: str, interval_ms: int = 100):
+def throttle(key: str, interval_ms: int = 100) -> None:
     """节流装饰器"""
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
+    def decorator(func) -> None:
+        async def wrapper(*args, **kwargs) -> None:
             optimizer = get_interaction_optimizer()
             optimizer.throttler.interval_ms = interval_ms
             return await optimizer.throttler.throttle(key, func, *args, **kwargs)

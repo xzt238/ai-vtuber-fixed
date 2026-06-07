@@ -42,7 +42,7 @@ class GiftResponse:
 class DanmakuEnhancer:
     """弹幕增强器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         
         # 回复策略
@@ -206,7 +206,7 @@ class DanmakuEnhancer:
         
         return min(10, priority)
     
-    def _add_to_recent(self, danmaku: Dict[str, Any]):
+    def _add_to_recent(self, danmaku: Dict[str, Any]) -> None:
         """添加到最近弹幕"""
         self.recent_danmaku.append(danmaku)
         if len(self.recent_danmaku) > self.max_recent:
@@ -257,7 +257,7 @@ class DanmakuEnhancer:
             "recent_count": len(self.recent_danmaku)
         }
     
-    def update_config(self, config: Dict[str, Any]):
+    def update_config(self, config: Dict[str, Any]) -> None:
         """更新配置"""
         if "reply_strategy" in config:
             self.reply_strategy = ReplyStrategy(config["reply_strategy"])

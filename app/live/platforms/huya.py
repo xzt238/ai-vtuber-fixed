@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class HuyaPlatform(LivePlatform):
     """虎牙直播平台"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__(config)
         
         # 虎牙配置
@@ -86,7 +86,7 @@ class HuyaPlatform(LivePlatform):
             self._stats["error_count"] += 1
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         try:
             # 停止心跳
@@ -200,7 +200,7 @@ class HuyaPlatform(LivePlatform):
             logger.info(f" 虎牙WebSocket连接失败: {e}")
             return False
     
-    async def _receive_messages(self):
+    async def _receive_messages(self) -> None:
         """接收消息"""
         try:
             async for message in self._ws:
@@ -222,7 +222,7 @@ class HuyaPlatform(LivePlatform):
             logger.info(f" 消息接收失败: {e}")
             self._stats["error_count"] += 1
     
-    async def _process_message(self, message: str):
+    async def _process_message(self, message: str) -> None:
         """处理消息"""
         try:
             # 虎牙消息处理
@@ -233,7 +233,7 @@ class HuyaPlatform(LivePlatform):
             logger.info(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
     
-    async def _heartbeat_loop(self):
+    async def _heartbeat_loop(self) -> None:
         """心跳循环"""
         try:
             while self.connected:

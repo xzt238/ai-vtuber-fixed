@@ -46,7 +46,7 @@ class GameState:
     entities: List[Dict[str, Any]] = None
     timestamp: float = 0.0
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.player_position is None:
             self.player_position = {"x": 0.0, "y": 0.0, "z": 0.0}
         if self.player_inventory is None:
@@ -64,7 +64,7 @@ class GameAction:
     parameters: Dict[str, Any] = None
     priority: int = 0
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.parameters is None:
             self.parameters = {}
 
@@ -72,30 +72,30 @@ class GameAction:
 class GameAgent:
     """游戏代理接口"""
     
-    def __init__(self, game_type: GameType):
+    def __init__(self, game_type: GameType) -> None:
         self.game_type = game_type
         self.connected = False
         self.state = None
         self._state_callbacks: List[Callable] = []
         self._action_callbacks: List[Callable] = []
     
-    def add_state_callback(self, callback: Callable):
+    def add_state_callback(self, callback: Callable) -> None:
         """添加状态回调"""
         self._state_callbacks.append(callback)
     
-    def remove_state_callback(self, callback: Callable):
+    def remove_state_callback(self, callback: Callable) -> None:
         """移除状态回调"""
         self._state_callbacks = [cb for cb in self._state_callbacks if cb != callback]
     
-    def add_action_callback(self, callback: Callable):
+    def add_action_callback(self, callback: Callable) -> None:
         """添加动作回调"""
         self._action_callbacks.append(callback)
     
-    def remove_action_callback(self, callback: Callable):
+    def remove_action_callback(self, callback: Callable) -> None:
         """移除动作回调"""
         self._action_callbacks = [cb for cb in self._action_callbacks if cb != callback]
     
-    def _notify_state(self, state: GameState):
+    def _notify_state(self, state: GameState) -> None:
         """通知状态回调"""
         for callback in self._state_callbacks:
             try:
@@ -103,7 +103,7 @@ class GameAgent:
             except Exception as e:
                 logger.info(f" 状态回调失败: {e}")
     
-    def _notify_action(self, action: GameAction):
+    def _notify_action(self, action: GameAction) -> None:
         """通知动作回调"""
         for callback in self._action_callbacks:
             try:
@@ -115,7 +115,7 @@ class GameAgent:
         """连接到游戏"""
         raise NotImplementedError
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开连接"""
         raise NotImplementedError
     
@@ -139,7 +139,7 @@ class GameAgent:
 class MinecraftAgent(GameAgent):
     """Minecraft游戏代理"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__(GameType.MINECRAFT)
         self.config = config or {}
         self.host = self.config.get("host", "localhost")
@@ -175,7 +175,7 @@ class MinecraftAgent(GameAgent):
             logger.info(f" Minecraft连接失败: {e}")
             return False
     
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """断开Minecraft连接"""
         try:
             if self.connected:
@@ -317,7 +317,7 @@ class MinecraftAgent(GameAgent):
 class GameAgentManager:
     """游戏代理管理器"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./cache/game")
         
@@ -373,7 +373,7 @@ class GameAgentManager:
         """列出所有代理"""
         return list(self.agents.keys())
     
-    def remove_agent(self, agent_id: str):
+    def remove_agent(self, agent_id: str) -> None:
         """移除游戏代理"""
         try:
             if agent_id in self.agents:

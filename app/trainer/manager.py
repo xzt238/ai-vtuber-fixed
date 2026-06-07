@@ -122,7 +122,7 @@ def _clean_text_for_g2p(text: str) -> str:
 class TrainingManager:
     """训练管理器 - 处理训练请求、队列和进度"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         """
         【功能说明】初始化训练管理器
 
@@ -145,11 +145,11 @@ class TrainingManager:
         import atexit
         atexit.register(self._cleanup_processes)
     
-    def set_progress_callback(self, callback):
+    def set_progress_callback(self, callback) -> None:
         """设置进度回调函数"""
         self.progress_callback = callback
     
-    def _report_progress(self, task_id, step, message, progress=0, total=100, action=""):
+    def _report_progress(self, task_id, step, message, progress=0, total=100, action="") -> None:
         """报告训练进度
         
         Args:
@@ -202,7 +202,7 @@ class TrainingManager:
             "path": str(project_dir)
         }
     
-    def update_project_config(self, project_name: str, key: str, value):
+    def update_project_config(self, project_name: str, key: str, value) -> None:
         """更新项目配置"""
         project_dir = self.projects_dir / project_name
         config_file = project_dir / "config.json"
@@ -340,7 +340,7 @@ class TrainingManager:
             "text_length": len(text)
         }
     
-    def _get_asr_engine(self):
+    def _get_asr_engine(self) -> None:
         """获取 ASR 引擎（延迟加载）"""
         if self._asr_engine is None:
             try:
@@ -618,7 +618,7 @@ class TrainingManager:
             "message": f"已删除 {filename}"
         }
     
-    def save_project_config(self, project_name: str, config: dict):
+    def save_project_config(self, project_name: str, config: dict) -> None:
         """保存项目完整配置"""
         project_dir = self.projects_dir / project_name
         config_file = project_dir / "config.json"
@@ -1043,7 +1043,7 @@ class TrainingManager:
             else:
                 bert_model = bert_model.to(device)
             
-            def get_bert_feature(text, word2ph):
+            def get_bert_feature(text, word2ph) -> None:
                 """官方 1-get-text.py 中的 BERT 特征提取方法"""
                 with torch.no_grad():
                     inputs = tokenizer(text, return_tensors="pt")
@@ -1254,7 +1254,7 @@ class TrainingManager:
             "message": "训练已启动"
         }
     
-    def _run_training(self, task_id: str, project_name: str, config: dict = None):
+    def _run_training(self, task_id: str, project_name: str, config: dict = None) -> None:
         """执行真正的 GPT-SoVITS 训练（后台线程）
         
         严格遵循官方 webui.py open1Bb() 的流程：
@@ -1743,7 +1743,7 @@ class TrainingManager:
                         _sys.path.insert(0, _gptsovits_subdir)
                     from text.symbols2 import symbols as _symbols2
                     _phoneme_vocab_size = len(_symbols2)
-                except Exception:
+                except Exception as e:
                     _phoneme_vocab_size = 512
                 logger.info(f"[TRAIN] S1 phoneme_vocab_size = {_phoneme_vocab_size}")
                 yaml_config = {
@@ -1802,7 +1802,7 @@ class TrainingManager:
                     _sys.path.insert(0, _gptsovits_subdir)
                 from text.symbols2 import symbols as _symbols2
                 _phoneme_vocab_size = len(_symbols2)
-            except Exception:
+            except Exception as e:
                 _phoneme_vocab_size = 512
             if "model" not in yaml_config:
                 yaml_config["model"] = {}
@@ -2031,7 +2031,7 @@ class TrainingManager:
         
         return {"success": True, "message": "训练已停止"}
     
-    def _cleanup_processes(self):
+    def _cleanup_processes(self) -> None:
         """C3修复: 清理所有活跃训练子进程，防止孤儿进程"""
         for proc in self._active_processes[:]:
             try:
@@ -2285,7 +2285,7 @@ class TrainingManager:
             "message": "S2 训练已启动"
         }
     
-    def _run_s2_training(self, task_id: str, project_name: str, config: dict = None):
+    def _run_s2_training(self, task_id: str, project_name: str, config: dict = None) -> None:
         """执行 S2 训练（后台线程）
 
         严格遵循官方 webui.py open1Ba() 的流程：

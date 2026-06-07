@@ -63,7 +63,7 @@ class PluginEntry:
 class PluginMarketplace:
     """插件市场"""
     
-    def __init__(self, storage_dir: str = "./plugins/marketplace"):
+    def __init__(self, storage_dir: str = "./plugins/marketplace") -> None:
         self.storage_dir = Path(storage_dir)
         self.index_file = self.storage_dir / "index.json"
         self.reviews_dir = self.storage_dir / "reviews"
@@ -76,7 +76,7 @@ class PluginMarketplace:
         
         logger.info("[PluginMarketplace] 初始化完成")
     
-    def _load_index(self):
+    def _load_index(self) -> None:
         """加载插件索引"""
         try:
             if self.index_file.exists():
@@ -106,7 +106,7 @@ class PluginMarketplace:
         except Exception as e:
             logger.info(f"[PluginMarketplace] 加载索引失败: {e}")
     
-    def _save_index(self):
+    def _save_index(self) -> None:
         """保存插件索引"""
         try:
             self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -252,7 +252,7 @@ class PluginMarketplace:
             self.plugins[plugin_id].downloads += 1
             self._save_index()
             return True
-        except Exception:
+        except Exception as e:
             return False
     
     def get_categories(self) -> Dict[str, int]:

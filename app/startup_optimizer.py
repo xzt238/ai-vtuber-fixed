@@ -35,7 +35,7 @@ class ModuleInfo:
 class StartupOptimizer:
     """启动优化器"""
     
-    def __init__(self, max_workers: int = 4):
+    def __init__(self, max_workers: int = 4) -> None:
         self.max_workers = max_workers
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         
@@ -67,7 +67,7 @@ class StartupOptimizer:
     
     def register_module(self, name: str, loader: Callable, 
                        priority: LoadPriority = LoadPriority.MEDIUM,
-                       dependencies: List[str] = None):
+                       dependencies: List[str] = None) -> None:
         """注册模块"""
         module = ModuleInfo(
             name=name,
@@ -102,7 +102,7 @@ class StartupOptimizer:
         
         return loaded
     
-    async def load_all_modules(self):
+    async def load_all_modules(self) -> None:
         """加载所有模块"""
         self.is_loading = True
         self.start_time = time.time()
@@ -197,7 +197,7 @@ class StartupOptimizer:
             logger.info(f"❌ {name}: {e}")
             return False
     
-    def _print_stats(self):
+    def _print_stats(self) -> None:
         """打印统计信息"""
         logger.info("\n" + "="*50)
         logger.info("模块加载完成")

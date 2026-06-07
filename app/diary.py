@@ -20,7 +20,7 @@ _logger = logging.getLogger('Diary')
 class DiaryManager:
     """日记管理器 —— 定时自动写日记 + 周度总结"""
 
-    def __init__(self, app):
+    def __init__(self, app) -> None:
         """初始化日记管理器
 
         Args:
@@ -44,7 +44,7 @@ class DiaryManager:
 
     # ========== 调度控制 ==========
 
-    def start(self):
+    def start(self) -> None:
         """启动定时器"""
         if not self.enabled:
             _logger.info("日记系统未启用")
@@ -53,7 +53,7 @@ class DiaryManager:
         _logger.info(f"日记系统已启动，每天 {self.diary_time} 自动写日记")
         self._schedule_next()
 
-    def stop(self):
+    def stop(self) -> None:
         """停止定时器"""
         self._running = False
         if self._timer:
@@ -61,7 +61,7 @@ class DiaryManager:
             self._timer = None
         _logger.info("日记系统已停止")
 
-    def _schedule_next(self):
+    def _schedule_next(self) -> None:
         """计算距离下一次触发时间的秒数，启动 Timer"""
         if not self._running:
             return
@@ -84,7 +84,7 @@ class DiaryManager:
         _logger.debug(f"下一次日记触发: {target.strftime('%Y-%m-%d %H:%M')} "
                       f"(约 {delay/3600:.1f} 小时后)")
 
-    def _check_and_write(self):
+    def _check_and_write(self) -> None:
         """Timer 回调 — 检查是否需要写日记，写完后重新调度"""
         try:
             today = datetime.now().strftime("%Y-%m-%d")
@@ -98,7 +98,7 @@ class DiaryManager:
 
     # ========== 日记编写 ==========
 
-    def _write_diary(self):
+    def _write_diary(self) -> None:
         """收集上下文 → 调 LLM → 保存"""
         context = self._collect_today_context()
         if not context or len(context.strip()) < 20:
@@ -181,7 +181,7 @@ class DiaryManager:
 
 请开始写今天的日记："""
 
-    def _save_diary(self, content: str):
+    def _save_diary(self, content: str) -> None:
         """保存日记文件（v1.12.0 AUDIT-3-2: 原子写入）"""
         today = datetime.now().strftime("%Y-%m-%d")
         filepath = os.path.join(self.storage_dir, f"{today}.md")

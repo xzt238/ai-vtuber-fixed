@@ -304,10 +304,10 @@ PET_HTML_TEMPLATE = """<!DOCTYPE html>
 class PetAPI:
     """pywebview JS → Python API 桥接"""
 
-    def __init__(self, pet_manager):
+    def __init__(self, pet_manager) -> None:
         self._pet = pet_manager
 
-    def onPetClick(self):
+    def onPetClick(self) -> None:
         """宠物被点击"""
         click_action = self._pet._config.get("click_action", "greet")
         if click_action == "greet":
@@ -315,7 +315,7 @@ class PetAPI:
         else:
             self.triggerRandomMotion()
 
-    def triggerGreet(self):
+    def triggerGreet(self) -> None:
         """触发打招呼"""
         greets = [
             "喵~", "你好呀！", "嗯？怎么了？", "嘻嘻~",
@@ -327,38 +327,38 @@ class PetAPI:
         self._pet._trigger_speech(text)
         return text
 
-    def triggerRandomMotion(self):
+    def triggerRandomMotion(self) -> None:
         """触发随机动作"""
         if self._pet._window:
             try:
                 self._pet._window.evaluate_js(
                     "if(model&&model.internalModel){try{model.internalModel.motionManager.startRandomMotion('TapBody');}catch(e){}}"
                 )
-            except Exception:
+            except Exception as e:
                 pass
 
-    def openWebUI(self):
+    def openWebUI(self) -> None:
         """打开完整 WebUI"""
         import webbrowser
         webbrowser.open(f"http://localhost:{self._pet._backend_port}")
 
-    def toggleAlwaysOnTop(self):
+    def toggleAlwaysOnTop(self) -> None:
         """切换窗口置顶"""
         if self._pet._window:
             try:
                 self._pet._window.on_top = not getattr(self._pet._window, 'on_top', True)
-            except Exception:
+            except Exception as e:
                 pass
 
-    def hide(self):
+    def hide(self) -> None:
         """隐藏宠物窗口"""
         if self._pet._window:
             try:
                 self._pet._window.hide()
-            except Exception:
+            except Exception as e:
                 pass
 
-    def exit(self):
+    def exit(self) -> None:
         """退出桌面宠物"""
         self._pet.stop()
 
@@ -371,7 +371,7 @@ class DesktopPetManager:
     使用 pywebview 创建无边框透明窗口。
     """
 
-    def __init__(self, app: "AIVTuber"):
+    def __init__(self, app: "AIVTuber") -> None:
         self.app = app
         self._config = app.config.config.get("desktop_pet", {})
         self.enabled = self._config.get("enabled", False)
@@ -380,7 +380,7 @@ class DesktopPetManager:
         self._running = False
         self._backend_port = app.config.config.get("web", {}).get("port", 12393)
 
-    def start(self):
+    def start(self) -> None:
         """启动桌面宠物窗口"""
         if not self.enabled:
             logger.info("[桌面宠物] 未启用 (config.yaml → desktop_pet.enabled)")
@@ -394,18 +394,18 @@ class DesktopPetManager:
         self._thread = threading.Thread(target=self._run_window, daemon=True, name="desktop-pet")
         self._thread.start()
 
-    def stop(self):
+    def stop(self) -> None:
         """停止桌面宠物窗口"""
         self._running = False
         if self._window:
             try:
                 self._window.destroy()
-            except Exception:
+            except Exception as e:
                 pass
         self._window = None
         logger.info("[桌面宠物] 已停止")
 
-    def _run_window(self):
+    def _run_window(self) -> None:
         """在独立线程中运行 pywebview 窗口"""
         try:
             import webview
@@ -447,7 +447,7 @@ class DesktopPetManager:
         finally:
             self._running = False
 
-    def _trigger_speech(self, text: str):
+    def _trigger_speech(self, text: str) -> None:
         """通过 WebSocket 触发 AI 说话"""
         try:
             ws_server = getattr(self.app, '_lazy_modules', {}).get('ws')
@@ -463,25 +463,25 @@ class DesktopPetManager:
                         "text": text,
                         "proactive": True
                     }))
-                except Exception:
+                except Exception as e:
                     pass
         except Exception as e:
             logger.info(f"[桌面宠物] 触发说话失败: {e}")
 
-    def show(self):
+    def show(self) -> None:
         """显示宠物窗口"""
         if self._window:
             try:
                 self._window.show()
-            except Exception:
+            except Exception as e:
                 pass
 
-    def show_bubble(self, text: str):
+    def show_bubble(self, text: str) -> None:
         """在宠物上方显示气泡"""
         if self._window:
             try:
                 import json
                 js_text = json.dumps(text)
                 self._window.evaluate_js(f"showBubble({js_text})")
-            except Exception:
+            except Exception as e:
                 pass

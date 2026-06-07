@@ -87,27 +87,27 @@ class TTSEngine(ABC):
     _cls_is_playing = False           # 是否正在播放
 
     @property
-    def _is_playing(self):
+    def _is_playing(self) -> None:
         return TTSEngine._cls_is_playing
 
     @_is_playing.setter
-    def _is_playing(self, value):
+    def _is_playing(self, value) -> None:
         TTSEngine._cls_is_playing = value
 
     @property
-    def _current_process(self):
+    def _current_process(self) -> None:
         return TTSEngine._cls_current_process
 
     @_current_process.setter
-    def _current_process(self, value):
+    def _current_process(self, value) -> None:
         TTSEngine._cls_current_process = value
 
     @property
-    def _current_audio_file(self):
+    def _current_audio_file(self) -> None:
         return TTSEngine._cls_current_audio_file
 
     @_current_audio_file.setter
-    def _current_audio_file(self, value):
+    def _current_audio_file(self, value) -> None:
         TTSEngine._cls_current_audio_file = value
 
     @abstractmethod
@@ -134,7 +134,7 @@ class TTSEngine(ABC):
         """
         pass
 
-    def stop(self):
+    def stop(self) -> None:
         """
         【打断方法】停止当前正在播放的音频
 
@@ -148,7 +148,7 @@ class TTSEngine(ABC):
             try:
                 self._current_process.terminate()  # 终止播放子进程
                 self._current_process = None
-            except Exception:
+            except Exception as e:
                 pass
         self._is_playing = False
 
@@ -173,7 +173,7 @@ class TTSEngine(ABC):
         os.makedirs(audio_dir, exist_ok=True)
         return os.path.join(audio_dir, f'response_{int(time.time()*1000)}.wav')
 
-    def _interrupt_current(self):
+    def _interrupt_current(self) -> None:
         """
         【公共方法】打断当前正在播放的音频
 
@@ -185,7 +185,7 @@ class TTSEngine(ABC):
             try:
                 self._current_process.terminate()
                 self._current_process = None
-            except Exception:
+            except Exception as e:
                 pass
             self._is_playing = False
 
@@ -206,7 +206,7 @@ class TTSEngine(ABC):
         try:
             from app.tts.text_enhancer import enhance_text
             return enhance_text(text)
-        except Exception:
+        except Exception as e:
             return text
 
 
@@ -259,7 +259,7 @@ class EdgeTTS(TTSEngine):
         }
     }
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化 Edge TTS 引擎
 
@@ -382,7 +382,7 @@ class EdgeTTS(TTSEngine):
 
         return None
 
-    def _save_to_cache(self, text: str, output_path: str):
+    def _save_to_cache(self, text: str, output_path: str) -> None:
         """
         【内部方法】将合成结果记录到内存缓存
 
@@ -397,7 +397,7 @@ class EdgeTTS(TTSEngine):
         text_hash = self._get_text_hash(text)
         self._text_cache[text_hash] = str(Path(output_path).resolve())
 
-    def _cleanup_old_audio(self):
+    def _cleanup_old_audio(self) -> None:
         """
         【内部方法】清理旧音频文件（保留最近 N 个）
 
@@ -418,10 +418,10 @@ class EdgeTTS(TTSEngine):
                     f.unlink()
                 except OSError:
                     pass
-        except Exception:
+        except Exception as e:
             pass
 
-    def _cleanup_cache(self):
+    def _cleanup_cache(self) -> None:
         """
         【内部方法】清理缓存目录（保留最近 100 个）
 
@@ -438,7 +438,7 @@ class EdgeTTS(TTSEngine):
                     f.unlink()
                 except OSError:
                     pass
-        except Exception:
+        except Exception as e:
             pass
 
     def speak(self, text: str, output_path: str = None, **kwargs) -> Optional[str]:
@@ -526,7 +526,7 @@ class EdgeTTS(TTSEngine):
         import edge_tts
 
         # 定义异步合成函数
-        async def synthesize():
+        async def synthesize() -> None:
             communicate = edge_tts.Communicate(
                 text,
                 self.voice,     # 音色
@@ -645,7 +645,7 @@ class MimoTTS(TTSEngine):
         }
     }
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         【构造函数】初始化 MiMo TTS 引擎
 
@@ -668,18 +668,18 @@ class MimoTTS(TTSEngine):
         # 音频输出目录
         self._max_audio_files = 50
 
-    def _try_load_api_key_from_config(self):
+    def _try_load_api_key_from_config(self) -> None:
         """尝试从 config.yaml 的 llm.mimo 配置中读取 API Key"""
         try:
             import yaml
             config_path = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), "config.yaml"
             )
-            if os.path.exists(config_path):
+            if Path(config_path).exists():
                 with open(config_path, "r", encoding="utf-8") as f:
                     cfg = yaml.safe_load(f)
                 self.api_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
-        except Exception:
+        except Exception as e:
             pass
 
     def speak(self, text: str, output_path: str = None, **kwargs) -> Optional[str]:
@@ -880,14 +880,14 @@ class TTSFactory:
                     config_path = os.path.join(
                         os.path.dirname(os.path.dirname(__file__)), "config.yaml"
                     )
-                    if os.path.exists(config_path):
+                    if Path(config_path).exists():
                         with open(config_path, "r", encoding="utf-8") as f:
                             cfg = yaml.safe_load(f)
                         llm_mimo_key = cfg.get("llm", {}).get("mimo", {}).get("api_key", "")
                         if llm_mimo_key:
                             provider_config = dict(provider_config)
                             provider_config["api_key"] = llm_mimo_key
-                except Exception:
+                except Exception as e:
                     pass
             return MimoTTS(provider_config)
         elif provider == "elevenlabs":

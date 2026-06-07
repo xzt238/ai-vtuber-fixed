@@ -36,7 +36,7 @@ class WebServer:
     这样首次实时语音时 TTS pipeline 已加载完毕,消除 200ms 冷启动延迟.
     """
 
-    def __init__(self, config, app=None):
+    def __init__(self, config, app=None) -> None:
         """
         [功能说明]初始化 Web HTTP 服务器
 
@@ -58,7 +58,7 @@ class WebServer:
         self.thread = None
         self._app = app  # 保存 App 实例引用用于访问 subagent
 
-    def start(self):
+    def start(self) -> None:
         """
         [功能说明]启动 HTTP 服务器
 
@@ -80,7 +80,7 @@ class WebServer:
         os.makedirs(cache_dir, exist_ok=True)
         logger.info(f"Audio cache dir: {cache_dir}")
 
-        def handler_factory(*args, **kwargs):
+        def handler_factory(*args, **kwargs) -> None:
             """
             【功能说明】HTTP静态文件处理器工厂,为每个请求创建注入App引用的Handler实例
 
@@ -108,7 +108,7 @@ class WebServer:
         # 这样第一次实时语音时,TTS pipeline 已经加载好了
         self._prewarm_tts()
 
-    def _prewarm_tts(self):
+    def _prewarm_tts(self) -> None:
         """
         TTS 引擎预热:WebServer 启动后在后台合成短音频.
 
@@ -120,7 +120,7 @@ class WebServer:
 
         [注意]如果项目没有参考音频(ref_audio 为空),跳过预热避免报错.
         """
-        def prewarm_single_voice(voice_name, tts):
+        def prewarm_single_voice(voice_name, tts) -> None:
             """预热单个音色(独立线程)"""
             try:
                 # v1.6.7: 检查是否有有效的参考音频,没有则跳过(避免报错刷屏)
@@ -131,7 +131,7 @@ class WebServer:
                         return
                 warm_text = "你好."
                 path = tts.speak(warm_text)
-                if path and os.path.exists(path):
+                if path and Path(path).exists():
                     try:
                         os.unlink(path)
                     except OSError:
@@ -142,7 +142,7 @@ class WebServer:
             except Exception as e:
                 logger.error(f"{voice_name} 预热失败: {e}")
 
-        def do_prewarm():
+        def do_prewarm() -> None:
             """后台预热主逻辑（串行，避免并发推理冲突）"""
             try:
                 if not self._app or not self._app.tts:
@@ -182,12 +182,12 @@ class WebServer:
 
         threading.Thread(target=do_prewarm, daemon=True).start()
 
-    def stop(self):
+    def stop(self) -> None:
         """停止 HTTP 服务器"""
         if self.server:
             self.server.shutdown()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """关闭服务器(别名)"""
         self.stop()
 

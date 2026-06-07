@@ -50,7 +50,7 @@ class OCRSystem:
     使用 mss 进行屏幕截图。
     """
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         """
         初始化 OCR 系统
         
@@ -82,7 +82,7 @@ class OCRSystem:
         )
         os.makedirs(self._screenshot_dir, exist_ok=True)
     
-    def _get_ocr_engine(self):
+    def _get_ocr_engine(self) -> None:
         """延迟获取 OCR 引擎（使用 vision 模块的 RapidOCR）"""
         if self._ocr_engine is None:
             try:
@@ -124,11 +124,11 @@ class OCRSystem:
             logger.info(f"[OCR] 识别失败: {e}")
             return None
 
-    def set_event_callback(self, callback: Callable):
+    def set_event_callback(self, callback: Callable) -> None:
         """设置事件回调函数"""
         self._event_callback = callback
 
-    def start_monitor(self, interval: float = 1.0):
+    def start_monitor(self, interval: float = 1.0) -> None:
         """
         启动定时 OCR 监控
         
@@ -150,7 +150,7 @@ class OCRSystem:
         self._monitor_thread.start()
         logger.info(f"[OCR] 监控已启动，间隔: {self.interval}s")
 
-    def stop_monitor(self):
+    def stop_monitor(self) -> None:
         """停止监控"""
         self._running = False
         if self._monitor_thread and self._monitor_thread.is_alive():
@@ -158,7 +158,7 @@ class OCRSystem:
         self._monitor_thread = None
         logger.info("[OCR] 监控已停止")
 
-    def _monitor_loop(self):
+    def _monitor_loop(self) -> None:
         """监控循环（后台线程）"""
         while self._running:
             try:
@@ -274,7 +274,7 @@ class OCRSystem:
             "last_ocr_time": self._last_ocr.timestamp if self._last_ocr else None
         }
 
-    def close(self):
+    def close(self) -> None:
         """关闭系统"""
         self.stop_monitor()
         self._ocr_engine = None

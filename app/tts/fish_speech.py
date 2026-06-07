@@ -24,7 +24,7 @@ class FishSpeechTTS(TTSEngine):
     # 默认语音ID
     DEFAULT_VOICE_ID = "default"
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         super().__init__()
         self.config = config or {}
         
@@ -61,13 +61,13 @@ class FishSpeechTTS(TTSEngine):
         """检查引擎是否可用"""
         return bool(self.api_key)
     
-    async def _ensure_session(self):
+    async def _ensure_session(self) -> None:
         """确保HTTP会话存在"""
         if self.session is None:
             import aiohttp
             self.session = aiohttp.ClientSession()
     
-    async def _close_session(self):
+    async def _close_session(self) -> None:
         """关闭HTTP会话"""
         if self.session:
             await self.session.close()
@@ -173,22 +173,22 @@ class FishSpeechTTS(TTSEngine):
             logger.info(f" 获取语音列表失败: {e}")
             return []
     
-    def set_voice(self, voice_id: str):
+    def set_voice(self, voice_id: str) -> None:
         """设置语音ID"""
         self.voice_id = voice_id
         logger.info(f" 语音ID已更新: {voice_id}")
     
-    def set_model(self, model_id: str):
+    def set_model(self, model_id: str) -> None:
         """设置模型ID"""
         self.model_id = model_id
         logger.info(f" 模型ID已更新: {model_id}")
     
-    def set_speed(self, speed: float):
+    def set_speed(self, speed: float) -> None:
         """设置语速"""
         self.speed = speed
         logger.info(f" 语速已更新: {speed}")
     
-    def set_pitch(self, pitch: float):
+    def set_pitch(self, pitch: float) -> None:
         """设置音调"""
         self.pitch = pitch
         logger.info(f" 音调已更新: {pitch}")

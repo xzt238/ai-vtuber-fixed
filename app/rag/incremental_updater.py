@@ -44,7 +44,7 @@ class UpdateResult:
 class IncrementalUpdater:
     """增量更新器"""
     
-    def __init__(self, storage_dir: str = "./memory/knowledge_base"):
+    def __init__(self, storage_dir: str = "./memory/knowledge_base") -> None:
         self.storage_dir = Path(storage_dir)
         self.versions_file = self.storage_dir / "versions.json"
         self.changelog_file = self.storage_dir / "changelog.json"
@@ -61,7 +61,7 @@ class IncrementalUpdater:
         
         logger.info("[IncrementalUpdater] 初始化完成")
     
-    def _load_versions(self):
+    def _load_versions(self) -> None:
         """加载版本历史"""
         try:
             if self.versions_file.exists():
@@ -80,7 +80,7 @@ class IncrementalUpdater:
         except Exception as e:
             logger.info(f"[IncrementalUpdater] 加载版本失败: {e}")
     
-    def _save_versions(self):
+    def _save_versions(self) -> None:
         """保存版本历史"""
         try:
             self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -102,7 +102,7 @@ class IncrementalUpdater:
         except Exception as e:
             logger.info(f"[IncrementalUpdater] 保存版本失败: {e}")
     
-    def _load_changelog(self):
+    def _load_changelog(self) -> None:
         """加载变更日志"""
         try:
             if self.changelog_file.exists():
@@ -112,7 +112,7 @@ class IncrementalUpdater:
         except Exception as e:
             logger.info(f"[IncrementalUpdater] 加载变更日志失败: {e}")
     
-    def _save_changelog(self):
+    def _save_changelog(self) -> None:
         """保存变更日志"""
         try:
             self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -234,7 +234,7 @@ class IncrementalUpdater:
         
         return result
     
-    def _log_change(self, doc_id: str, change_type: ChangeType):
+    def _log_change(self, doc_id: str, change_type: ChangeType) -> None:
         """记录变更日志"""
         self.changelog.append({
             "doc_id": doc_id,

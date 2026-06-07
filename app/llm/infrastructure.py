@@ -34,7 +34,7 @@ class RateLimiter:
     3. 否则用 Condition.wait() 等待最旧的请求"过期"后重试
     """
     
-    def __init__(self, max_requests: int = 60, window_seconds: int = 60):
+    def __init__(self, max_requests: int = 60, window_seconds: int = 60) -> None:
         """
         【功能说明】初始化速率限制器
 
@@ -102,7 +102,7 @@ class RateLimiter:
                 # 等待时间结束后（或被 notify() 唤醒）重新获取锁，继续循环
                 self._condition.wait(timeout=min(wait_time, remaining))
     
-    def reset(self):
+    def reset(self) -> None:
         """
         【功能说明】重置速率限制器（清空所有请求记录并唤醒等待中的线程）
 
@@ -133,7 +133,7 @@ class RetryStrategy:
     第1次重试：~1s，第2次：~2s，第3次：~4s（上限 max_delay）
     """
     
-    def __init__(self, max_retries: int = 3, base_delay: float = 1.0, max_delay: float = 10.0):
+    def __init__(self, max_retries: int = 3, base_delay: float = 1.0, max_delay: float = 10.0) -> None:
         """
         【功能说明】初始化重试策略
 
@@ -240,7 +240,7 @@ class StreamAccumulator:
     return acc.finish_with_fc(messages, session, base_url, model, api_key, max_tokens)
     """
 
-    def __init__(self, chunk_size: int = 10, callback=None, on_tool_call=None, filter_thinking: bool = True):
+    def __init__(self, chunk_size: int = 10, callback=None, on_tool_call=None, filter_thinking: bool = True) -> None:
         """
         【功能说明】初始化流式累积器
 
@@ -261,7 +261,7 @@ class StreamAccumulator:
         self.filter_thinking: bool = filter_thinking
         self.finish_reason: str = ""        # 外部设置：SSE 流的 finish_reason
 
-    def process_content(self, content: str):
+    def process_content(self, content: str) -> None:
         """
         【功能说明】处理一个 content 片段：thinking 过滤 + 累积 + 触发回调
 
@@ -293,7 +293,7 @@ class StreamAccumulator:
             self.callback(self.buffer)
             self.buffer = ""
 
-    def accumulate_tool_call(self, tc_delta: dict):
+    def accumulate_tool_call(self, tc_delta: dict) -> None:
         """
         【功能说明】累积一个 tool_call delta（FC Function Calling）
 
@@ -323,7 +323,7 @@ class StreamAccumulator:
         if func_delta.get("arguments"):
             self.tool_calls_accum[idx]["function"]["arguments"] += func_delta["arguments"]
 
-    def flush(self):
+    def flush(self) -> None:
         """【功能说明】发送缓冲区中剩余的文本片段"""
         if self.buffer and self.callback:
             self.callback(self.buffer)

@@ -60,7 +60,7 @@ def _load_language(lang: str) -> Dict[str, str]:
         return {}
 
 
-def set_language(lang: str):
+def set_language(lang: str) -> None:
     """设置当前语言
 
     Args:

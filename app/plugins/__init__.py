@@ -46,7 +46,7 @@ class PluginInfo:
     enabled: bool = True
     dependencies: List[str] = None  # 依赖的其他插件
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.dependencies is None:
             self.dependencies = []
 
@@ -66,7 +66,7 @@ class Plugin(ABC):
         pass
 
     @abstractmethod
-    def on_load(self, context: Dict[str, Any]):
+    def on_load(self, context: Dict[str, Any]) -> None:
         """插件加载时调用
 
         Args:
@@ -79,15 +79,15 @@ class Plugin(ABC):
         pass
 
     @abstractmethod
-    def on_unload(self):
+    def on_unload(self) -> None:
         """插件卸载时调用"""
         pass
 
-    def on_ready(self):
+    def on_ready(self) -> None:
         """应用就绪后调用（可选）"""
         pass
 
-    def on_config_change(self, config: Dict[str, Any]):
+    def on_config_change(self, config: Dict[str, Any]) -> None:
         """配置变更时调用（可选）"""
         pass
 
@@ -100,10 +100,10 @@ class HookManager:
     允许插件注册钩子，在特定事件发生时被调用。
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._hooks: Dict[str, List[Callable]] = {}
 
-    def register(self, event: str, callback: Callable):
+    def register(self, event: str, callback: Callable) -> None:
         """注册钩子
 
         Args:
@@ -115,12 +115,12 @@ class HookManager:
         self._hooks[event].append(callback)
         logger.debug(f"钩子已注册: {event}")
 
-    def unregister(self, event: str, callback: Callable):
+    def unregister(self, event: str, callback: Callable) -> None:
         """取消注册钩子"""
         if event in self._hooks:
             self._hooks[event] = [h for h in self._hooks[event] if h != callback]
 
-    def trigger(self, event: str, **kwargs):
+    def trigger(self, event: str, **kwargs) -> None:
         """触发钩子
 
         Args:
@@ -160,7 +160,7 @@ class PluginManager:
         "on_shutdown",          # 应用关闭
     ]
 
-    def __init__(self, plugin_dirs: List[str] = None):
+    def __init__(self, plugin_dirs: List[str] = None) -> None:
         """
         Args:
             plugin_dirs: 插件目录列表
@@ -183,7 +183,7 @@ class PluginManager:
         """钩子管理器"""
         return self._hook_manager
 
-    def set_context(self, context: Dict[str, Any]):
+    def set_context(self, context: Dict[str, Any]) -> None:
         """设置应用上下文"""
         self._context = context
 
@@ -304,14 +304,14 @@ class PluginManager:
             logger.error(f"插件卸载失败 ({name}): {e}")
             return False
 
-    def load_all(self):
+    def load_all(self) -> None:
         """加载所有发现的插件"""
         discovered = self.discover_plugins()
         for info in discovered:
             if info.enabled:
                 self.load_plugin(info)
 
-    def unload_all(self):
+    def unload_all(self) -> None:
         """卸载所有插件"""
         for name in list(self._plugins.keys()):
             self.unload_plugin(name)
@@ -333,11 +333,11 @@ class PluginManager:
             for name, info in self._plugin_infos.items()
         ]
 
-    def trigger_event(self, event: str, **kwargs):
+    def trigger_event(self, event: str, **kwargs) -> None:
         """触发事件"""
         self._hook_manager.trigger(event, **kwargs)
 
-    def on_ready(self):
+    def on_ready(self) -> None:
         """通知所有插件应用就绪"""
         for plugin in self._plugins.values():
             try:
@@ -359,7 +359,7 @@ def get_plugin_manager() -> PluginManager:
     return _plugin_manager
 
 
-def init_plugins(context: Dict[str, Any] = None):
+def init_plugins(context: Dict[str, Any] = None) -> None:
     """初始化插件系统
 
     Args:

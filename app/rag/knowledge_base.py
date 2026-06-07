@@ -20,7 +20,7 @@ from . import Document, RetrievalResult, SearchResult
 class KnowledgeBase:
     """知识库管理"""
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None) -> None:
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./memory/knowledge_base")
         
@@ -52,7 +52,7 @@ class KnowledgeBase:
         logger.info(f"文档数量: {len(self.documents)}")
     
     @property
-    def vector_store(self):
+    def vector_store(self) -> None:
         """延迟加载向量存储"""
         if self._vector_store is None:
             from app.memory import VectorStore
@@ -60,7 +60,7 @@ class KnowledgeBase:
         return self._vector_store
     
     @property
-    def retriever(self):
+    def retriever(self) -> None:
         """延迟加载检索器"""
         if self._retriever is None:
             from .retriever import Retriever
@@ -273,7 +273,7 @@ class KnowledgeBase:
             logger.error(f"文档更新失败: {e}")
             return False
     
-    def _load_index(self):
+    def _load_index(self) -> None:
         """加载索引"""
         try:
             if self.index_file.exists():
@@ -299,7 +299,7 @@ class KnowledgeBase:
         except Exception as e:
             logger.error(f"索引加载失败: {e}")
     
-    def _save_index(self):
+    def _save_index(self) -> None:
         """保存索引"""
         try:
             index_data = {
@@ -324,7 +324,7 @@ class KnowledgeBase:
         except Exception as e:
             logger.error(f"索引保存失败: {e}")
     
-    def _save_document(self, document: Document):
+    def _save_document(self, document: Document) -> None:
         """保存文档内容"""
         try:
             doc_dir = Path(self.storage_dir) / "documents"
@@ -359,7 +359,7 @@ class KnowledgeBase:
         except Exception as e:
             logger.error(f"文档保存失败: {e}")
     
-    def _delete_document_file(self, doc_id: str):
+    def _delete_document_file(self, doc_id: str) -> None:
         """删除文档文件"""
         try:
             doc_file = Path(self.storage_dir) / "documents" / f"{doc_id}.json"

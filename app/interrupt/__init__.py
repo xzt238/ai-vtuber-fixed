@@ -30,17 +30,17 @@ class InterruptEvent:
 class TaskRegistry:
     """任务注册表 - 管理可取消的异步任务"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.tasks: Dict[str, asyncio.Task] = {}
         self.task_info: Dict[str, Dict[str, Any]] = {}
     
-    def register(self, key: str, task: asyncio.Task, info: Dict[str, Any] = None):
+    def register(self, key: str, task: asyncio.Task, info: Dict[str, Any] = None) -> None:
         """注册任务"""
         self.tasks[key] = task
         self.task_info[key] = info or {}
         logger.info(f"[TaskRegistry] 注册任务: {key}")
     
-    def unregister(self, key: str):
+    def unregister(self, key: str) -> None:
         """注销任务"""
         if key in self.tasks:
             del self.tasks[key]
@@ -86,7 +86,7 @@ class TaskRegistry:
 class InterruptionHandler:
     """打断处理器 - 处理用户打断AI说话的逻辑"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.task_registry = TaskRegistry()
         self.is_interrupted = False
         self.current_response = ""
@@ -185,7 +185,7 @@ class InterruptionHandler:
         """获取已听到的回复"""
         return self.current_response
     
-    def clear_heard_response(self):
+    def clear_heard_response(self) -> None:
         """清除已听到的回复"""
         self.current_response = ""
     
@@ -221,7 +221,7 @@ class InterruptionHandler:
             "config": self.config
         }
     
-    def update_config(self, config: Dict[str, Any]):
+    def update_config(self, config: Dict[str, Any]) -> None:
         """更新配置"""
         self.config.update(config)
         logger.info(f"[Interrupt] 配置已更新: {config}")

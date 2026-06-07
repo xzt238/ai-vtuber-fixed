@@ -55,11 +55,11 @@ except ImportError:
     else:
         SYSTEM_PROMPT = "你是一个AI助手。"
         AGENT_PROMPT = ""
-        def get_system_prompt(e=""):
+        def get_system_prompt(e="") -> None:
             return SYSTEM_PROMPT
-        def build_system_prompt(e=""):
+        def build_system_prompt(e="") -> None:
             return SYSTEM_PROMPT
-        def inject_memories(t):
+        def inject_memories(t) -> None:
             return ""
 
 # ==================== 从子模块导入公开类 ====================
