@@ -7,9 +7,13 @@
 import os
 import json
 import hashlib
+import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+
+# 日志模块
+logger = logging.getLogger("rag.knowledge_base")
 
 from . import Document, TextChunk, RetrievalResult, SearchResult
 
@@ -44,9 +48,9 @@ class KnowledgeBase:
         # 加载索引
         self._load_index()
         
-        print(f" 知识库初始化完成")
-        print(f" 存储目录: {self.storage_dir}")
-        print(f" 文档数量: {len(self.documents)}")
+        logger.info(f"知识库初始化完成")
+        logger.info(f"存储目录: {self.storage_dir}")
+        logger.info(f"文档数量: {len(self.documents)}")
     
     @property
     def vector_store(self):
@@ -69,7 +73,7 @@ class KnowledgeBase:
         try:
             # 检查文档是否已存在
             if document.id in self.documents:
-                print(f" 文档已存在: {document.file_name}")
+                logger.warning(f"文档已存在: {document.file_name}")
                 return False
             
             # 添加到内存
@@ -99,21 +103,21 @@ class KnowledgeBase:
             # 保存文档内容
             self._save_document(document)
             
-            print(f" 文档添加成功: {document.file_name}")
-            print(f" 文档ID: {document.id}")
-            print(f" 分块数量: {len(document.chunks)}")
+            logger.info(f"文档添加成功: {document.file_name}")
+            logger.info(f"文档ID: {document.id}")
+            logger.info(f"分块数量: {len(document.chunks)}")
             
             return True
             
         except Exception as e:
-            print(f" 文档添加失败: {e}")
+            logger.error(f"文档添加失败: {e}")
             return False
     
     def remove_document(self, doc_id: str) -> bool:
         """删除文档"""
         try:
             if doc_id not in self.documents:
-                print(f" 文档不存在: {doc_id}")
+                logger.warning(f"文档不存在: {doc_id}")
                 return False
             
             document = self.documents[doc_id]
@@ -148,12 +152,12 @@ class KnowledgeBase:
             if hasattr(self.vector_store, '_matrix_dirty'):
                 self.vector_store._matrix_dirty = True
             
-            print(f" 文档删除成功: {document.file_name}")
+            logger.info(f"文档删除成功: {document.file_name}")
             
             return True
             
         except Exception as e:
-            print(f" 文档删除失败: {e}")
+            logger.error(f"文档删除失败: {e}")
             return False
     
     def search(self, query: str, top_k: int = 5) -> List[SearchResult]:
@@ -191,7 +195,7 @@ class KnowledgeBase:
             return search_results[:top_k]
             
         except Exception as e:
-            print(f" 搜索失败: {e}")
+            logger.error(f"搜索失败: {e}")
             return []
     
     def get_document(self, doc_id: str) -> Optional[Document]:
@@ -228,7 +232,7 @@ class KnowledgeBase:
         """更新文档内容"""
         try:
             if doc_id not in self.documents:
-                print(f" 文档不存在: {doc_id}")
+                logger.warning(f"文档不存在: {doc_id}")
                 return False
             
             document = self.documents[doc_id]
@@ -262,12 +266,12 @@ class KnowledgeBase:
             # 保存更新
             self._save_document(document)
             
-            print(f" 文档更新成功: {document.file_name}")
+            logger.info(f"文档更新成功: {document.file_name}")
             
             return True
             
         except Exception as e:
-            print(f" 文档更新失败: {e}")
+            logger.error(f"文档更新失败: {e}")
             return False
     
     def _load_index(self):
@@ -291,10 +295,10 @@ class KnowledgeBase:
                     )
                     self.documents[doc_id] = document
                 
-                print(f" 索引加载成功: {len(self.documents)} 个文档")
+                logger.info(f"索引加载成功: {len(self.documents)} 个文档")
                 
         except Exception as e:
-            print(f" 索引加载失败: {e}")
+            logger.error(f"索引加载失败: {e}")
     
     def _save_index(self):
         """保存索引"""
@@ -316,10 +320,10 @@ class KnowledgeBase:
             with open(self.index_file, 'w', encoding='utf-8') as f:
                 json.dump(index_data, f, ensure_ascii=False, indent=2)
             
-            print(f" 索引保存成功")
+            logger.info(f"索引保存成功")
             
         except Exception as e:
-            print(f" 索引保存失败: {e}")
+            logger.error(f"索引保存失败: {e}")
     
     def _save_document(self, document: Document):
         """保存文档内容"""
@@ -351,10 +355,10 @@ class KnowledgeBase:
             with open(doc_file, 'w', encoding='utf-8') as f:
                 json.dump(doc_data, f, ensure_ascii=False, indent=2)
             
-            print(f" 文档保存成功: {document.file_name}")
+            logger.info(f"文档保存成功: {document.file_name}")
             
         except Exception as e:
-            print(f" 文档保存失败: {e}")
+            logger.error(f"文档保存失败: {e}")
     
     def _delete_document_file(self, doc_id: str):
         """删除文档文件"""
@@ -362,6 +366,6 @@ class KnowledgeBase:
             doc_file = Path(self.storage_dir) / "documents" / f"{doc_id}.json"
             if doc_file.exists():
                 doc_file.unlink()
-                print(f" 文档文件删除成功: {doc_id}")
+                logger.info(f"文档文件删除成功: {doc_id}")
         except Exception as e:
-            print(f" 文档文件删除失败: {e}")
+            logger.error(f"文档文件删除失败: {e}")
