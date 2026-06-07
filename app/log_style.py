@@ -131,7 +131,7 @@ def game_progress(current, total, module=""):
 
 def game_section(title):
     """游戏风格分节标题"""
-    logger.info()
+    logger.info("")
     logger.info(_color(f"  ▸ {title}", LogStyle.MAGENTA))
 
 
