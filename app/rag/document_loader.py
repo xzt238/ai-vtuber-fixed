@@ -19,6 +19,7 @@ class DocumentLoader:
     """文档加载器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.supported_formats = self.config.get("supported_formats", ["pdf", "txt", "md", "docx"])
     

@@ -62,6 +62,7 @@ class ProactiveSpeechManager:
     """
 
     def __init__(self, app: "AIVTuber") -> None:
+        """内部方法"""
         self.app = app
         self.logger = app.logger
 

@@ -26,6 +26,7 @@ class DiscordBot(Bot):
     """Discord Bot实现"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__("discord_bot", "discord")
         self.config = config or {}
         
@@ -64,11 +65,13 @@ class DiscordBot(Bot):
             # 注册事件
             @self._client.event
             async def on_ready() -> None:
+                """On ready"""
                 logger.info(f" Discord Bot已登录: {self._client.user}")
                 self.connected = True
             
             @self._client.event
             async def on_message(message) -> None:
+                """On message"""
                 # 忽略自己的消息
                 if message.author == self._client.user:
                     return
@@ -98,10 +101,12 @@ class DiscordBot(Bot):
             # 注册命令
             @self._client.command(name="ping")
             async def ping(ctx) -> None:
+                """Ping"""
                 await ctx.send("Pong!")
             
             @self._client.command(name="help")
             async def help_command(ctx) -> None:
+                """Help command"""
                 help_text = """
 **可用命令:**
 !ping - 测试连接
@@ -113,6 +118,7 @@ class DiscordBot(Bot):
             
             @self._client.command(name="status")
             async def status(ctx) -> None:
+                """Status"""
                 status_text = f"""
 **Bot状态:**
 - 连接状态: {'已连接' if self.connected else '未连接'}
@@ -123,6 +129,7 @@ class DiscordBot(Bot):
             
             @self._client.command(name="chat")
             async def chat(ctx, *, message: str) -> None:
+                """Chat"""
                 # 这里应该调用LLM生成回复
                 # 简化实现，直接回复
                 await ctx.send(f"收到消息: {message}")

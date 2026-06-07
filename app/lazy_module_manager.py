@@ -61,6 +61,7 @@ class LazyModuleManager:
     def asr(self) -> Any:
         """语音识别模块 (ASR) - 懒加载"""
         def _create_asr() -> Any:
+            """内部方法"""
             from asr import ASRFactory
             asr_config = self.config.config.get("asr", {})
             return ASRFactory.create(asr_config)
@@ -70,6 +71,7 @@ class LazyModuleManager:
     def tts(self) -> Any:
         """语音合成模块 (TTS) - 懒加载"""
         def _create_tts() -> Any:
+            """内部方法"""
             from tts import TTSFactory
             tts_config = self.config.config.get("tts", {})
             return TTSFactory.create(tts_config)
@@ -79,6 +81,7 @@ class LazyModuleManager:
     def llm(self) -> Any:
         """大语言模型模块 (LLM) - 懒加载"""
         def _create_llm() -> Any:
+            """内部方法"""
             from llm import LLMFactory
             llm_config = self.config.config.get("llm", {})
             return LLMFactory.create(llm_config)
@@ -88,6 +91,7 @@ class LazyModuleManager:
     def memory(self) -> Any:
         """记忆系统模块 - 懒加载"""
         def _create_memory() -> Any:
+            """内部方法"""
             from memory import MemorySystem
             memory_config = self.config.config.get("memory", {})
             return MemorySystem(memory_config)
@@ -97,6 +101,7 @@ class LazyModuleManager:
     def vision(self) -> Any:
         """视觉理解模块 - 懒加载"""
         def _create_vision() -> Any:
+            """内部方法"""
             from vision import VisionManager
             vision_config = self.config.config.get("vision", {})
             return VisionManager(vision_config)
@@ -106,6 +111,7 @@ class LazyModuleManager:
     def live2d(self) -> Any:
         """Live2D 虚拟形象模块 - 懒加载"""
         def _create_live2d() -> Any:
+            """内部方法"""
             from live2d import Live2DModel
             live2d_config = self.config.config.get("live2d", {})
             return Live2DModel(live2d_config)
@@ -115,6 +121,7 @@ class LazyModuleManager:
     def voice(self) -> Any:
         """语音输入模块 - 懒加载"""
         def _create_voice() -> Any:
+            """内部方法"""
             from voice import VoiceInputFactory
             voice_config = self.config.config.get("voice", {})
             return VoiceInputFactory.create(voice_config)
@@ -124,6 +131,7 @@ class LazyModuleManager:
     def voice_web(self) -> Any:
         """Web 语音模块 - 懒加载"""
         def _create_voice_web() -> Any:
+            """内部方法"""
             from voice import VoiceInputFactory
             voice_config = self.config.config.get("voice", {})
             return VoiceInputFactory.create(voice_config)
@@ -133,6 +141,7 @@ class LazyModuleManager:
     def executor(self) -> Any:
         """命令执行器 - 懒加载"""
         def _create_executor() -> Any:
+            """内部方法"""
             from main import ToolExecutor
             tools_config = self.config.config.get("tools", {})
             return ToolExecutor(tools_config)
@@ -142,6 +151,7 @@ class LazyModuleManager:
     def tools(self) -> Any:
         """工具管理器 - 懒加载"""
         def _create_tools() -> Any:
+            """内部方法"""
             from tools import ToolFactory
             tools_config = self.config.config.get("tools", {})
             return ToolFactory.create(tools_config)
@@ -151,6 +161,7 @@ class LazyModuleManager:
     def proactive(self) -> Any:
         """主动对话模块 - 懒加载"""
         def _create_proactive() -> Any:
+            """内部方法"""
             from proactive import ProactiveSpeechManager
             proactive_config = self.config.config.get("proactive", {})
             return ProactiveSpeechManager(proactive_config)
@@ -160,6 +171,7 @@ class LazyModuleManager:
     def diary(self) -> Any:
         """日记模块 - 懒加载"""
         def _create_diary() -> Any:
+            """内部方法"""
             from diary import DiaryManager
             diary_config = self.config.config.get("diary", {})
             return DiaryManager(diary_config)
@@ -169,6 +181,7 @@ class LazyModuleManager:
     def mcp(self) -> Any:
         """MCP 模块 - 懒加载"""
         def _create_mcp() -> Any:
+            """内部方法"""
             from mcp import MCPToolBridge
             mcp_config = self.config.config.get("mcp", {})
             return MCPToolBridge(mcp_config)
@@ -178,6 +191,7 @@ class LazyModuleManager:
     def desktop_pet(self) -> Any:
         """桌面宠物模块 - 懒加载"""
         def _create_desktop_pet() -> Any:
+            """内部方法"""
             from desktop_pet import DesktopPetManager
             pet_config = self.config.config.get("desktop_pet", {})
             return DesktopPetManager(pet_config)
@@ -187,6 +201,7 @@ class LazyModuleManager:
     def web_server(self) -> Any:
         """HTTP 服务器 - 懒加载"""
         def _create_web_server() -> Any:
+            """内部方法"""
             from web import WebServer
             web_config = self.config.config.get("web", {})
             return WebServer(web_config)
@@ -196,6 +211,7 @@ class LazyModuleManager:
     def ws_server(self) -> Any:
         """WebSocket 服务器 - 懒加载"""
         def _create_ws_server() -> Any:
+            """内部方法"""
             from web import WebSocketServer
             web_config = self.config.config.get("web", {})
             return WebSocketServer(web_config)
@@ -205,6 +221,7 @@ class LazyModuleManager:
     def emotion(self) -> Any:
         """情感分析模块 - 懒加载"""
         def _create_emotion() -> Any:
+            """内部方法"""
             from emotion import EmotionManager
             emotion_config = self.config.config.get("emotion", {})
             return EmotionManager(emotion_config)
@@ -214,6 +231,7 @@ class LazyModuleManager:
     def roleplay(self) -> Any:
         """角色扮演模块 - 懒加载"""
         def _create_roleplay() -> Any:
+            """内部方法"""
             from roleplay import RoleplayManager
             roleplay_config = self.config.config.get("roleplay", {})
             return RoleplayManager(roleplay_config)
@@ -223,6 +241,7 @@ class LazyModuleManager:
     def plugin(self) -> Any:
         """插件系统 - 懒加载"""
         def _create_plugin() -> Any:
+            """内部方法"""
             from plugin import PluginManager
             plugin_config = self.config.config.get("plugin", {})
             return PluginManager(plugin_config)
@@ -232,6 +251,7 @@ class LazyModuleManager:
     def rag(self) -> Any:
         """RAG 检索增强生成模块 - 懒加载"""
         def _create_rag() -> Any:
+            """内部方法"""
             from rag import RAGSystem
             rag_config = self.config.config.get("rag", {})
             return RAGSystem(rag_config)
@@ -241,6 +261,7 @@ class LazyModuleManager:
     def live(self) -> Any:
         """直播模块 - 懒加载"""
         def _create_live() -> Any:
+            """内部方法"""
             from live import LiveSystem
             live_config = self.config.config.get("live", {})
             return LiveSystem(live_config)
@@ -250,6 +271,7 @@ class LazyModuleManager:
     def svc(self) -> Any:
         """SVC 变声模块 - 懒加载"""
         def _create_svc() -> Any:
+            """内部方法"""
             from svc import SVCManager
             svc_config = self.config.config.get("svc", {})
             return SVCManager(svc_config)
@@ -259,6 +281,7 @@ class LazyModuleManager:
     def singing(self) -> Any:
         """唱歌模块 - 懒加载"""
         def _create_singing() -> Any:
+            """内部方法"""
             from singing import SingingManager
             singing_config = self.config.config.get("singing", {})
             return SingingManager(singing_config)
@@ -268,6 +291,7 @@ class LazyModuleManager:
     def sd(self) -> Any:
         """Stable Diffusion 图像生成模块 - 懒加载"""
         def _create_sd() -> Any:
+            """内部方法"""
             from image_gen import ImageGenerator
             sd_config = self.config.config.get("image_gen", {})
             return ImageGenerator(sd_config)
@@ -277,6 +301,7 @@ class LazyModuleManager:
     def game(self) -> Any:
         """游戏模块 - 懒加载"""
         def _create_game() -> Any:
+            """内部方法"""
             from app.game import GameAgentManager
             game_config = self.config.config.get("game", {})
             return GameAgentManager(game_config)
@@ -286,6 +311,7 @@ class LazyModuleManager:
     def multi_agent(self) -> Any:
         """多智能体模块 - 懒加载"""
         def _create_multi_agent() -> Any:
+            """内部方法"""
             from app.multi_agent import MultiAgentChat
             agent_config = self.config.config.get("multi_agent", {})
             return MultiAgentChat(agent_config)
@@ -295,6 +321,7 @@ class LazyModuleManager:
     def bot(self) -> Any:
         """机器人模块 - 懒加载"""
         def _create_bot() -> Any:
+            """内部方法"""
             from bot import BotManager
             bot_config = self.config.config.get("bot", {})
             return BotManager(bot_config)
@@ -304,6 +331,7 @@ class LazyModuleManager:
     def vision_input(self) -> Any:
         """视觉输入模块 - 懒加载"""
         def _create_vision_input() -> Any:
+            """内部方法"""
             from app.vision_input import get_vision_input_manager
             vision_config = self.config.config.get("vision_input", {})
             return get_vision_input_manager(vision_config)
@@ -313,6 +341,7 @@ class LazyModuleManager:
     def trainer(self) -> Any:
         """训练管理模块 - 懒加载"""
         def _create_trainer() -> Any:
+            """内部方法"""
             from trainer.manager import TrainingManager
             return TrainingManager()
         return self._get_module("trainer", _create_trainer)

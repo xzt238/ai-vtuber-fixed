@@ -467,9 +467,11 @@ assets/model/
 
         class Handler(http.server.SimpleHTTPRequestHandler):
             def __init__(self, *args, **kwargs) -> None:
+                """内部方法"""
                 super().__init__(*args, directory=_web_dir, **kwargs)
 
             def log_message(self, format, *args) -> None:
+                """Log message"""
                 pass  # 抑制每条请求的日志输出
 
         # 启动 TCP 服务器（allow_reuse_address 避免端口占用重启失败）

@@ -42,6 +42,7 @@ class SingingManager:
     """唱歌管理器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.engine = SingingEngine(self.config.get("engine", "gpt_sovits"))
         self.model_path = self.config.get("model_path", "")

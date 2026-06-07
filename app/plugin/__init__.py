@@ -68,6 +68,7 @@ class PluginLoader:
     """插件加载器"""
     
     def __init__(self, plugins_dir: str = "./plugins") -> None:
+        """内部方法"""
         self.plugins_dir = Path(plugins_dir)
         self.loaded_modules: Dict[str, Any] = {}
     
@@ -158,6 +159,7 @@ class PluginManager:
     """插件管理器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         
         plugins_dir = self.config.get("plugins_dir", "./plugins")

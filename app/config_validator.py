@@ -40,6 +40,7 @@ class ConfigValidator:
     """配置验证器"""
     
     def __init__(self) -> None:
+        """内部方法"""
         self.validation_rules = {
             ConfigType.PROVIDER: self._validate_provider_config,
             ConfigType.VOICE: self._validate_voice_config,

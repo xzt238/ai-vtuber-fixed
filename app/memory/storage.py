@@ -29,16 +29,19 @@ class LRUCache:
     """LRU 缓存"""
     
     def __init__(self, capacity: int = 100) -> None:
+        """内部方法"""
         self.cache = OrderedDict()
         self.capacity = capacity
     
     def get(self, key: str) -> Optional[Any]:
+        """Get"""
         if key not in self.cache:
             return None
         self.cache.move_to_end(key)
         return self.cache[key]
     
     def put(self, key: str, value: Any) -> None:
+        """Put"""
         if key in self.cache:
             self.cache.move_to_end(key)
         self.cache[key] = value
@@ -57,6 +60,7 @@ class VectorStore:
     """
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./memory/vectors")
         if not os.path.isabs(self.storage_dir):
@@ -92,12 +96,14 @@ class VectorStore:
         self._load_from_disk()
     
     def _get_norm(self, doc_id: str) -> float:
+        """内部方法"""
         if doc_id not in self._norms:
             emb = self.vectors[doc_id]
             self._norms[doc_id] = sum(x * x for x in emb) ** 0.5
         return self._norms[doc_id]
     
     def _ensure_matrix(self) -> None:
+        """内部方法"""
         if not _HAS_NUMPY:
             return
         if not self._matrix_dirty and self._vectors_matrix is not None:
@@ -115,6 +121,7 @@ class VectorStore:
         self._matrix_dirty = False
     
     def _load_from_disk(self) -> None:
+        """内部方法"""
         npy_loaded = False
         if _HAS_NUMPY and self._vectors_npy_file.exists() and self._vectors_meta_file.exists():
             try:
@@ -157,6 +164,7 @@ class VectorStore:
         self._matrix_dirty = True
     
     def _save_to_disk(self) -> None:
+        """内部方法"""
         try:
             if _HAS_NUMPY and self.vectors:
                 self._ensure_matrix()
@@ -188,6 +196,7 @@ class VectorStore:
             logger.error(f"保存记忆失败: {e}")
     
     def _get_local_model_path(self) -> str:
+        """内部方法"""
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         model_name = self._embed_model_name
         hf_style = model_name.replace("/", "--")
@@ -233,6 +242,7 @@ class VectorStore:
         return ""
     
     def _load_embedding_model(self) -> None:
+        """内部方法"""
         if self._model_loaded:
             return
         self._model_loaded = True
@@ -261,6 +271,7 @@ class VectorStore:
             self.embedding_model = "simple"
     
     def get_embedding(self, text: str) -> List[float]:
+        """Get embedding"""
         cached = self._embedding_cache.get(text)
         if cached is not None:
             return cached
@@ -277,6 +288,7 @@ class VectorStore:
         return embedding
     
     def _simple_embedding(self, text: str) -> List[float]:
+        """内部方法"""
         words = text.lower().split()
         vector = [0.0] * self.embedding_dim
         for i, word in enumerate(words[:self.embedding_dim]):
@@ -285,6 +297,7 @@ class VectorStore:
         return [v / total for v in vector]
     
     def _is_duplicate(self, text: str, embedding: List[float]) -> bool:
+        """内部方法"""
         if not self.vectors:
             return False
         
@@ -314,6 +327,7 @@ class VectorStore:
         return False
     
     def add(self, text: str, metadata: Dict[str, Any] = None) -> Optional[str]:
+        """Add"""
         import uuid
         
         embedding = self.get_embedding(text)
@@ -338,6 +352,7 @@ class VectorStore:
         return doc_id
     
     def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+        """Search"""
         cache_key = f"{query}:{top_k}"
         cached = self._search_cache.get(cache_key)
         if cached is not None:
@@ -398,6 +413,7 @@ class VectorStore:
         return final_results
     
     def _search_numpy(self, query_embedding: List[float], query: str, top_k: int) -> Optional[List[Dict[str, Any]]]:
+        """内部方法"""
         self._ensure_matrix()
         if self._vectors_matrix is None or len(self._vectors_matrix) == 0:
             return None
@@ -451,6 +467,7 @@ class VectorStore:
         return final_results
     
     def delete(self, doc_id: str) -> bool:
+        """Delete"""
         if doc_id not in self.vectors:
             return False
         del self.vectors[doc_id]
@@ -463,6 +480,7 @@ class VectorStore:
         return True
     
     def _bm25_keyword_score(self, query: str, text: str) -> float:
+        """内部方法"""
         if not query or not text:
             return 0.0
         query_words = set(query.lower().split())
@@ -473,6 +491,7 @@ class VectorStore:
         return matches / len(query_words)
     
     def _cosine_similarity(self, a: List[float], norm_a: float, b: List[float], norm_b: float = None) -> float:
+        """内部方法"""
         if norm_b is None:
             norm_b = sum(x * x for x in b) ** 0.5
         if norm_a == 0 or norm_b == 0:
@@ -481,9 +500,11 @@ class VectorStore:
         return dot / (norm_a * norm_b)
     
     def get_stats(self) -> Dict[str, Any]:
+        """Get stats"""
         return {"total_docs": len(self.texts), "embedding_dim": self.embedding_dim}
     
     def flush(self) -> None:
+        """Flush"""
         if self._pending_save and self.texts:
             self._save_to_disk()
             self._pending_save = False
@@ -492,6 +513,7 @@ class VectorStore:
             self._save_to_disk()
     
     def clear(self) -> None:
+        """Clear"""
         self.flush()
         self.vectors.clear()
         self.texts.clear()
@@ -514,6 +536,7 @@ class FileStorage:
     """文件系统存储"""
     
     def __init__(self, base_dir: str = "./memory") -> None:
+        """内部方法"""
         if not os.path.isabs(base_dir):
             base_dir = str(Path(base_dir).resolve())
         self.base_dir = Path(base_dir)
@@ -528,6 +551,7 @@ class FileStorage:
             self._init_index()
     
     def _init_index(self) -> None:
+        """内部方法"""
         content = """# 记忆系统入口
 
 ## 结构
@@ -543,11 +567,13 @@ class FileStorage:
         self.index_file.write_text(content, encoding='utf-8')
     
     def get_daily_file(self, date: str = None) -> Path:
+        """Get daily file"""
         if date is None:
             date = datetime.now().strftime("%Y-%m-%d")
         return self.daily_dir / f"{date}.md"
     
     def append_interaction(self, role: str, content: str, importance: int = 0, tags: List[str] = None) -> None:
+        """Append interaction"""
         daily_file = self.get_daily_file()
         timestamp = datetime.now().strftime("%H:%M")
         star = "⭐" * importance if importance > 0 else ""
@@ -557,29 +583,34 @@ class FileStorage:
             f.write(line)
     
     def read_daily(self, date: str = None) -> str:
+        """Read daily"""
         daily_file = self.get_daily_file(date)
         if not daily_file.exists():
             return ""
         return daily_file.read_text(encoding='utf-8')
     
     def list_daily_files(self) -> List[str]:
+        """List daily files"""
         if not self.daily_dir.exists():
             return []
         files = sorted(self.daily_dir.glob("*.md"), reverse=True)
         return [f.stem for f in files]
     
     def append_long_term(self, content: str) -> None:
+        """Append long term"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         line = f"\n## {timestamp}\n\n{content}\n"
         with open(self.long_term_file, 'a', encoding='utf-8') as f:
             f.write(line)
     
     def read_long_term(self) -> str:
+        """Read long term"""
         if not self.long_term_file.exists():
             return ""
         return self.long_term_file.read_text(encoding='utf-8')
     
     def search_in_files(self, query: str, days: int = 7) -> List[Dict[str, Any]]:
+        """Search in files"""
         results = []
         query_lower = query.lower()
         for i in range(days):
@@ -596,6 +627,7 @@ class FileStorage:
         return results
     
     def export_all(self) -> str:
+        """Export all"""
         output = f"# 记忆导出 - {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
         long_term = self.read_long_term()
         if long_term:
@@ -607,9 +639,11 @@ class FileStorage:
         return output
     
     def import_backup(self, content: str) -> None:
+        """Import backup"""
         self.append_long_term("\n[导入备份]\n" + content)
     
     def clear(self) -> None:
+        """Clear"""
         if self.daily_dir.exists():
             for f in self.daily_dir.glob("*.md"):
                 f.unlink()

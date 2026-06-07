@@ -139,6 +139,7 @@ class InterruptibleVoiceInput:
             
             # 定义音频回调
             def audio_callback(indata, frames, time, status) -> None:
+                """Audio callback"""
                 if status:
                     logger.info(f"[InterruptibleVoice] 录音状态: {status}")
                 

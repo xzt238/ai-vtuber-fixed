@@ -26,6 +26,7 @@ class SlackBot(Bot):
     """Slack Bot实现"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__("slack_bot", "slack")
         self.config = config or {}
         
@@ -60,6 +61,7 @@ class SlackBot(Bot):
             
             # 定义事件处理器
             def process(client: SocketModeClient, req: SocketModeRequest) -> None:
+                """Process"""
                 if req.type == "events_api":
                     # 响应Socket Mode请求
                     response = SocketModeResponse(envelope_id=req.envelope_id)

@@ -29,6 +29,7 @@ class KuaishouPlatform(LivePlatform):
     """快手直播平台"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__(config)
         
         # 快手配置
@@ -46,6 +47,7 @@ class KuaishouPlatform(LivePlatform):
         self._api_base = "https://live.kuaishou.com"
     
     def _get_platform_type(self) -> PlatformType:
+        """内部方法"""
         return PlatformType.KUAISHOU
     
     async def connect(self, room_id: str, **kwargs) -> bool:

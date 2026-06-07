@@ -26,6 +26,7 @@ class QQBot(Bot):
     """QQ Bot实现"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__("qq_bot", "qq")
         self.config = config or {}
         
@@ -52,10 +53,12 @@ class QQBot(Bot):
             # 创建Bot客户端
             class MyClient(botpy.Client):
                 async def on_ready(self) -> None:
+                    """On ready"""
                     logger.info(f" QQ Bot已登录: {self.robot.name}")
                     self.parent.connected = True
                 
                 async def on_at_message_create(self, message: Message) -> None:
+                    """On at message create"""
                     # 创建BotMessage
                     bot_message = BotMessage(
                         id=str(message.id),

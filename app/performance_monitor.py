@@ -41,6 +41,7 @@ class PerformanceMonitor:
     """性能监控器"""
     
     def __init__(self, history_size: int = 1000) -> None:
+        """内部方法"""
         self.history_size = history_size
         
         # 指标历史
@@ -318,7 +319,9 @@ def get_performance_monitor() -> PerformanceMonitor:
 def measure_latency(operation: str) -> None:
     """测量延迟装饰器"""
     def decorator(func) -> None:
+        """Decorator"""
         async def wrapper(*args, **kwargs) -> None:
+            """Wrapper"""
             start_time = time.time()
             try:
                 result = await func(*args, **kwargs)

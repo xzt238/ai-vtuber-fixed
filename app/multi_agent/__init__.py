@@ -38,6 +38,7 @@ class AgentPersonality:
     avatar: str = ""
     
     def to_dict(self) -> Dict[str, Any]:
+        """To dict"""
         return {
             "name": self.name,
             "description": self.description,
@@ -60,6 +61,7 @@ class AgentMessage:
     metadata: Dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self) -> None:
+        """内部方法"""
         if not self.id:
             self.id = str(uuid.uuid4())
         if not self.timestamp:
@@ -70,6 +72,7 @@ class Agent:
     """AI代理接口"""
     
     def __init__(self, agent_id: str, personality: AgentPersonality, llm_callback: Callable = None) -> None:
+        """内部方法"""
         self.agent_id = agent_id
         self.personality = personality
         self.llm_callback = llm_callback
@@ -163,6 +166,7 @@ class AgentManager:
     """代理管理器"""
     
     def __init__(self) -> None:
+        """内部方法"""
         self.agents: Dict[str, Agent] = {}
         logger.info(" 代理管理器初始化完成")
     
@@ -199,6 +203,7 @@ class ConversationManager:
     """对话管理器"""
     
     def __init__(self) -> None:
+        """内部方法"""
         self.conversations: Dict[str, List[AgentMessage]] = {}
         logger.info(" 对话管理器初始化完成")
     
@@ -235,6 +240,7 @@ class MultiAgentChat:
     """多Agent群聊"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.agent_manager = AgentManager()
         self.conversation_manager = ConversationManager()

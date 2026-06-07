@@ -49,6 +49,7 @@ class MCPTransport:
     """
 
     def __init__(self, command: str, args: List[str] = None, env: Dict[str, str] = None) -> None:
+        """内部方法"""
         self.command = command
         self.args = args or []
         self.env = env or {}
@@ -240,6 +241,7 @@ class MCPServerConfig:
     """MCP 服务器配置"""
 
     def __init__(self, name: str, config: dict) -> None:
+        """内部方法"""
         self.name = name
         self.command = config.get("command", "")
         self.args = config.get("args", [])
@@ -248,6 +250,7 @@ class MCPServerConfig:
         self.description = config.get("description", "")
 
     def to_dict(self) -> dict:
+        """To dict"""
         return {
             "name": self.name,
             "command": self.command,
@@ -276,6 +279,7 @@ class MCPToolBridge:
     """
 
     def __init__(self, app: "AIVTuber") -> None:
+        """内部方法"""
         self.app = app
         self.logger = getattr(app, 'logger', None) or print
         self._servers: Dict[str, MCPServerConfig] = {}
@@ -492,12 +496,15 @@ class MCPToolBridge:
 
     @property
     def is_running(self) -> bool:
+        """Is running"""
         return self._running
 
     @property
     def server_count(self) -> int:
+        """Server count"""
         return len(self._servers)
 
     @property
     def connected_count(self) -> int:
+        """Connected count"""
         return sum(1 for t in self._transports.values() if t.is_connected)

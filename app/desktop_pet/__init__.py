@@ -305,6 +305,7 @@ class PetAPI:
     """pywebview JS → Python API 桥接"""
 
     def __init__(self, pet_manager) -> None:
+        """内部方法"""
         self._pet = pet_manager
 
     def onPetClick(self) -> None:
@@ -372,6 +373,7 @@ class DesktopPetManager:
     """
 
     def __init__(self, app: "AIVTuber") -> None:
+        """内部方法"""
         self.app = app
         self._config = app.config.config.get("desktop_pet", {})
         self.enabled = self._config.get("enabled", False)

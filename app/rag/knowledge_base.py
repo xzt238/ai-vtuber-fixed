@@ -21,6 +21,7 @@ class KnowledgeBase:
     """知识库管理"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./memory/knowledge_base")
         

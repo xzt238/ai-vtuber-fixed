@@ -39,6 +39,7 @@ class Danmaku:
     extra: Dict[str, Any] = None
     
     def __post_init__(self) -> None:
+        """内部方法"""
         if self.extra is None:
             self.extra = {}
 
@@ -56,6 +57,7 @@ class Gift:
     extra: Dict[str, Any] = None
     
     def __post_init__(self) -> None:
+        """内部方法"""
         if self.extra is None:
             self.extra = {}
 
@@ -72,6 +74,7 @@ class LiveSystem:
     """直播系统主类"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./memory/live")
         

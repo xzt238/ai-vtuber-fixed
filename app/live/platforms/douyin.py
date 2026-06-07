@@ -29,6 +29,7 @@ class DouyinPlatform(LivePlatform):
     """抖音直播平台"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__(config)
         
         # 抖音配置
@@ -45,6 +46,7 @@ class DouyinPlatform(LivePlatform):
         self._api_base = "https://live.douyin.com"
     
     def _get_platform_type(self) -> PlatformType:
+        """内部方法"""
         return PlatformType.DOUYIN
     
     async def connect(self, room_id: str, **kwargs) -> bool:

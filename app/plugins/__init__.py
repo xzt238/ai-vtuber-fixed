@@ -47,6 +47,7 @@ class PluginInfo:
     dependencies: List[str] = None  # 依赖的其他插件
 
     def __post_init__(self) -> None:
+        """内部方法"""
         if self.dependencies is None:
             self.dependencies = []
 
@@ -101,6 +102,7 @@ class HookManager:
     """
 
     def __init__(self) -> None:
+        """内部方法"""
         self._hooks: Dict[str, List[Callable]] = {}
 
     def register(self, event: str, callback: Callable) -> None:

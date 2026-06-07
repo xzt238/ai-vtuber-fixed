@@ -24,6 +24,7 @@ class LineBot(Bot):
     """LINE Bot实现"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__("line_bot", "line")
         self.config = config or {}
         
@@ -50,6 +51,7 @@ class LineBot(Bot):
             # 注册消息处理器
             @self._handler.add(MessageEvent, message=TextMessage)
             def handle_text_message(event) -> None:
+                """Handle text message"""
                 # 创建BotMessage
                 bot_message = BotMessage(
                     id=event.message.id,

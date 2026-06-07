@@ -29,6 +29,7 @@ class BilibiliPlatform(LivePlatform):
     """Bilibili直播平台"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__(config)
         
         # Bilibili配置
@@ -46,6 +47,7 @@ class BilibiliPlatform(LivePlatform):
         self._api_base = "https://api.live.bilibili.com"
     
     def _get_platform_type(self) -> PlatformType:
+        """内部方法"""
         return PlatformType.BILIBILI
     
     async def connect(self, room_id: str, **kwargs) -> bool:

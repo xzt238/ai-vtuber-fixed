@@ -55,6 +55,7 @@ logger = logging.getLogger(__name__)
 if _os.name == 'nt':
     _SP_ORIG = _sp.check_output
     def _sp_patched(cmd, **kw) -> None:
+        """内部方法"""
         try:
             prog = (cmd[0] if isinstance(cmd, (list, tuple)) else str(cmd).split()[0]).lower()
         except Exception as e:

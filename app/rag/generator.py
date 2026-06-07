@@ -14,6 +14,7 @@ class Generator:
     """生成器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.llm_callback = None
         

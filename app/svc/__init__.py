@@ -42,6 +42,7 @@ class AudioBuffer:
     """音频缓冲区"""
     
     def __init__(self, max_size: int = 100) -> None:
+        """内部方法"""
         self.max_size = max_size
         self.buffer = []
         self.lock = asyncio.Lock()
@@ -73,6 +74,7 @@ class SVCManager:
     """SVC管理器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.model_type = SVCModelType(self.config.get("model_type", "so_vits_svc"))
         self.model_path = self.config.get("model_path", "")

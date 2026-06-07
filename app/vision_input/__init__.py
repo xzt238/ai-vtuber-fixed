@@ -43,6 +43,7 @@ class CameraFrame:
     metadata: Dict[str, Any] = None
     
     def __post_init__(self) -> None:
+        """内部方法"""
         if self.metadata is None:
             self.metadata = {}
 
@@ -59,6 +60,7 @@ class VisionResult:
     metadata: Dict[str, Any] = None
     
     def __post_init__(self) -> None:
+        """内部方法"""
         if self.metadata is None:
             self.metadata = {}
 
@@ -67,6 +69,7 @@ class CameraInput:
     """摄像头输入接口"""
     
     def __init__(self, camera_id: str, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.camera_id = camera_id
         self.config = config or {}
         self.device_id = self.config.get("device_id", 0)
@@ -192,6 +195,7 @@ class CameraManager:
     """摄像头管理器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./cache/camera")
         
@@ -260,6 +264,7 @@ class VisionProcessor:
     """视觉处理器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./cache/vision")
         

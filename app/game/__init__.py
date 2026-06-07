@@ -47,6 +47,7 @@ class GameState:
     timestamp: float = 0.0
     
     def __post_init__(self) -> None:
+        """内部方法"""
         if self.player_position is None:
             self.player_position = {"x": 0.0, "y": 0.0, "z": 0.0}
         if self.player_inventory is None:
@@ -65,6 +66,7 @@ class GameAction:
     priority: int = 0
     
     def __post_init__(self) -> None:
+        """内部方法"""
         if self.parameters is None:
             self.parameters = {}
 
@@ -73,6 +75,7 @@ class GameAgent:
     """游戏代理接口"""
     
     def __init__(self, game_type: GameType) -> None:
+        """内部方法"""
         self.game_type = game_type
         self.connected = False
         self.state = None
@@ -140,6 +143,7 @@ class MinecraftAgent(GameAgent):
     """Minecraft游戏代理"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__(GameType.MINECRAFT)
         self.config = config or {}
         self.host = self.config.get("host", "localhost")
@@ -318,6 +322,7 @@ class GameAgentManager:
     """游戏代理管理器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.storage_dir = self.config.get("storage_dir", "./cache/game")
         

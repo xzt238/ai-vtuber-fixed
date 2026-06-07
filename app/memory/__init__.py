@@ -124,6 +124,7 @@ class MemorySystem:
             return
         
         def _warmup_worker() -> None:
+            """内部方法"""
             try:
                 _ = self.vector_store.get_embedding("warmup")
                 self._embedding_warmed = True
@@ -135,7 +136,9 @@ class MemorySystem:
         warmup_thread.start()
     
     def _start_flush_timer(self) -> None:
+        """内部方法"""
         def _flush_worker() -> None:
+            """内部方法"""
             try:
                 self._save_memory_state()
             except Exception as e:
@@ -230,6 +233,7 @@ class MemorySystem:
             logger.info(f" [记忆] 保存状态失败: {e}")
     
     def _atomic_write_json(self, target_path: Path, data: Any) -> None:
+        """内部方法"""
         tmp_path = target_path.with_suffix('.tmp')
         with open(tmp_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -593,9 +597,11 @@ class MemorySystem:
         return self.search(context, top_k)
     
     def get_working_memory(self) -> List[Dict[str, Any]]:
+        """Get working memory"""
         return [asdict(item) for item in self.working_memory]
     
     def get_episodic_memory(self) -> List[Dict[str, Any]]:
+        """Get episodic memory"""
         return [asdict(item) for item in self.episodic_memory]
     
     def get_facts(self, source: str = None) -> List[Dict[str, Any]]:
@@ -605,9 +611,11 @@ class MemorySystem:
         return [asdict(f) for f in self.facts]
     
     def search_by_time(self, days: int = 7) -> List[Dict[str, Any]]:
+        """Search by time"""
         return self.file_storage.search_in_files("", days)
     
     def search_by_role(self, role: str) -> List[Dict[str, Any]]:
+        """Search by role"""
         results = []
         for item in self.working_memory:
             if item.role == role:
@@ -642,6 +650,7 @@ class MemorySystem:
         return summary
     
     def get_stats(self) -> Dict[str, Any]:
+        """Get stats"""
         retention_scores = [m.get_retention_score() for m in self.episodic_memory]
         avg_retention = sum(retention_scores) / len(retention_scores) if retention_scores else 0
         
@@ -664,12 +673,15 @@ class MemorySystem:
         }
     
     def export(self) -> str:
+        """Export"""
         return self.file_storage.export_all()
     
     def import_backup(self, content: str) -> None:
+        """Import backup"""
         return self.file_storage.import_backup(content)
     
     def clear_all(self) -> None:
+        """Clear all"""
         self.working_memory.clear()
         self.episodic_memory.clear()
         self.facts.clear()
@@ -684,6 +696,7 @@ class MemorySystem:
         logger.info(" 所有记忆已清空")
     
     def get_decay_preview(self) -> Dict[str, Any]:
+        """Get decay preview"""
         return {
             "now": RetentionScorer.get_decay_stats(0),
             "1day": RetentionScorer.get_decay_stats(24),

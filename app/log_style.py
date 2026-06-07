@@ -45,6 +45,7 @@ class LogStyle:
 
     @staticmethod
     def is_supported() -> None:
+        """Is supported"""
         return sys.platform != "win32" or os.getenv("TERM") or True
 
 

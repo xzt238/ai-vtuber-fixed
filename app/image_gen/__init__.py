@@ -62,6 +62,7 @@ class ImageResponse:
     metadata: Dict[str, Any] = None
     
     def __post_init__(self) -> None:
+        """内部方法"""
         if self.metadata is None:
             self.metadata = {}
 
@@ -70,6 +71,7 @@ class ImageGenerator:
     """文生图生成器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         
         # 提供商配置

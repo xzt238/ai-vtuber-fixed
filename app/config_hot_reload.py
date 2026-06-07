@@ -35,6 +35,7 @@ class ConfigHotReload:
     """配置热重载管理器"""
     
     def __init__(self, config_dir: str = ".", watch_interval: float = 1.0) -> None:
+        """内部方法"""
         self.config_dir = Path(config_dir)
         self.watch_interval = watch_interval
         

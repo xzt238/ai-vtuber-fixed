@@ -48,6 +48,7 @@ class MobileAPIServer:
     """移动端API服务器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         
         # API配置

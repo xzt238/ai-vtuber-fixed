@@ -88,26 +88,32 @@ class TTSEngine(ABC):
 
     @property
     def _is_playing(self) -> None:
+        """内部方法"""
         return TTSEngine._cls_is_playing
 
     @_is_playing.setter
     def _is_playing(self, value) -> None:
+        """内部方法"""
         TTSEngine._cls_is_playing = value
 
     @property
     def _current_process(self) -> None:
+        """内部方法"""
         return TTSEngine._cls_current_process
 
     @_current_process.setter
     def _current_process(self, value) -> None:
+        """内部方法"""
         TTSEngine._cls_current_process = value
 
     @property
     def _current_audio_file(self) -> None:
+        """内部方法"""
         return TTSEngine._cls_current_audio_file
 
     @_current_audio_file.setter
     def _current_audio_file(self, value) -> None:
+        """内部方法"""
         TTSEngine._cls_current_audio_file = value
 
     @abstractmethod
@@ -527,6 +533,7 @@ class EdgeTTS(TTSEngine):
 
         # 定义异步合成函数
         async def synthesize() -> None:
+            """Synthesize"""
             communicate = edge_tts.Communicate(
                 text,
                 self.voice,     # 音色

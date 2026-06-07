@@ -25,6 +25,7 @@ class TelegramBot(Bot):
     """Telegram Bot实现"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__("telegram_bot", "telegram")
         self.config = config or {}
         
@@ -51,9 +52,11 @@ class TelegramBot(Bot):
             
             # 注册命令处理器
             async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+                """Start command"""
                 await update.message.reply_text("你好！我是AI VTuber Bot！")
             
             async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+                """Help command"""
                 help_text = """
 **可用命令:**
 /start - 开始对话
@@ -64,6 +67,7 @@ class TelegramBot(Bot):
                 await update.message.reply_text(help_text, parse_mode=self.parse_mode)
             
             async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+                """Status command"""
                 status_text = f"""
 **Bot状态:**
 - 连接状态: {'已连接' if self.connected else '未连接'}
@@ -72,6 +76,7 @@ class TelegramBot(Bot):
                 await update.message.reply_text(status_text, parse_mode=self.parse_mode)
             
             async def chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+                """Chat command"""
                 if context.args:
                     message = ' '.join(context.args)
                     # 这里应该调用LLM生成回复
@@ -81,6 +86,7 @@ class TelegramBot(Bot):
                     await update.message.reply_text("请提供消息内容")
             
             async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+                """Handle message"""
                 # 创建BotMessage
                 bot_message = BotMessage(
                     id=str(update.message.message_id),

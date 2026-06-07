@@ -38,6 +38,7 @@ class ConfigManager:
     """配置管理器"""
     
     def __init__(self, config_dir: str = None) -> None:
+        """内部方法"""
         self.config_dir = config_dir or os.path.join(os.path.dirname(__file__), 'cache')
         self.config_cache: Dict[str, ConfigItem] = {}
         self.watchers: Dict[str, List[Callable]] = {}

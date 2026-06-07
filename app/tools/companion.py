@@ -27,9 +27,11 @@ class GetTimeTool(Tool):
 
     @property
     def description(self) -> str:
+        """Description"""
         return "获取当前日期和时间"
 
     def execute(self, **kwargs) -> Dict[str, Any]:
+        """Execute"""
         now = datetime.datetime.now()
         weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
         weekday = weekdays[now.weekday()]
@@ -42,6 +44,7 @@ class GetTimeTool(Tool):
         }
 
     def is_read_only(self) -> bool:
+        """Is read only"""
         return True
 
     @staticmethod
@@ -66,9 +69,11 @@ class GetWeatherTool(Tool):
 
     @property
     def description(self) -> str:
+        """Description"""
         return "查询指定城市的天气"
 
     def execute(self, city: str = "北京", **kwargs) -> Dict[str, Any]:
+        """Execute"""
         try:
             import urllib.request
             url = f"https://wttr.in/{city}?format=j1&lang=zh"
@@ -97,10 +102,12 @@ class GetWeatherTool(Tool):
             return {"success": False, "error": f"天气查询失败: {str(e)}", "content": f"抱歉，暂时查不到{city}的天气呢~"}
 
     def is_read_only(self) -> bool:
+        """Is read only"""
         return True
 
     @staticmethod
     def get_schema() -> Dict[str, Any]:
+        """Get schema"""
         return {
             "type": "function",
             "function": {
@@ -125,9 +132,11 @@ class SetReminderTool(Tool):
 
     @property
     def description(self) -> str:
+        """Description"""
         return "设置提醒事项"
 
     def execute(self, content: str = "", remind_time: str = "", **kwargs) -> Dict[str, Any]:
+        """Execute"""
         if not content:
             return {"success": False, "error": "提醒内容不能为空"}
 
@@ -173,6 +182,7 @@ class SetReminderTool(Tool):
 
     @staticmethod
     def get_schema() -> Dict[str, Any]:
+        """Get schema"""
         return {
             "type": "function",
             "function": {
@@ -201,9 +211,11 @@ class RememberThingTool(Tool):
 
     @property
     def description(self) -> str:
+        """Description"""
         return "主动记住用户说的重要事情"
 
     def execute(self, content: str = "", category: str = "important", **kwargs) -> Dict[str, Any]:
+        """Execute"""
         if not content:
             return {"success": False, "error": "要记住的内容不能为空"}
 
@@ -243,6 +255,7 @@ class RememberThingTool(Tool):
 
     @staticmethod
     def get_schema() -> Dict[str, Any]:
+        """Get schema"""
         return {
             "type": "function",
             "function": {
@@ -272,9 +285,11 @@ class ChangeExpressionTool(Tool):
 
     @property
     def description(self) -> str:
+        """Description"""
         return "切换 AI 的表情"
 
     def execute(self, emotion: str = "neutral", **kwargs) -> Dict[str, Any]:
+        """Execute"""
         # 这个工具的执行结果会通过信号传到 UI 层
         # 在 FC 执行循环中会特殊处理
         return {
@@ -285,6 +300,7 @@ class ChangeExpressionTool(Tool):
 
     @staticmethod
     def get_schema() -> Dict[str, Any]:
+        """Get schema"""
         return {
             "type": "function",
             "function": {
@@ -310,9 +326,11 @@ class SearchWebTool(Tool):
 
     @property
     def description(self) -> str:
+        """Description"""
         return "搜索网页信息"
 
     def execute(self, query: str = "", **kwargs) -> Dict[str, Any]:
+        """Execute"""
         if not query:
             return {"success": False, "error": "搜索关键词不能为空"}
 
@@ -349,10 +367,12 @@ class SearchWebTool(Tool):
             return {"success": False, "error": str(e), "content": "搜索出了点问题，稍后再试试吧~"}
 
     def is_read_only(self) -> bool:
+        """Is read only"""
         return True
 
     @staticmethod
     def get_schema() -> Dict[str, Any]:
+        """Get schema"""
         return {
             "type": "function",
             "function": {
@@ -377,9 +397,11 @@ class PlayMusicTool(Tool):
 
     @property
     def description(self) -> str:
+        """Description"""
         return "播放音乐"
 
     def execute(self, action: str = "play", **kwargs) -> Dict[str, Any]:
+        """Execute"""
         # 这是一个占位实现 — 后续可接入实际音乐播放
         return {
             "success": True,
@@ -389,6 +411,7 @@ class PlayMusicTool(Tool):
 
     @staticmethod
     def get_schema() -> Dict[str, Any]:
+        """Get schema"""
         return {
             "type": "function",
             "function": {

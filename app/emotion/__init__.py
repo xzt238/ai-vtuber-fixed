@@ -64,6 +64,7 @@ class TextEmotionAnalyzer:
     """文本情感分析器"""
     
     def __init__(self) -> None:
+        """内部方法"""
         # 情感关键词库
         self.emotion_keywords = {
             EmotionType.HAPPY: ["开心", "快乐", "高兴", "幸福", "愉快", "欢乐", "兴奋", "棒", "好", "喜欢", "爱", "哈哈", "嘻嘻"],
@@ -176,6 +177,7 @@ class EmotionExpression:
     """情感表达器"""
     
     def __init__(self) -> None:
+        """内部方法"""
         # 情感化回复模板
         self.response_templates = {
             EmotionType.HAPPY: [
@@ -293,6 +295,7 @@ class EmotionMemory:
     """情感记忆器"""
     
     def __init__(self, storage_dir: str = "./memory/emotion") -> None:
+        """内部方法"""
         self.storage_dir = Path(storage_dir)
         self.profiles_file = self.storage_dir / "user_profiles.json"
         self.profiles: Dict[str, UserProfile] = {}
@@ -403,6 +406,7 @@ class EmotionManager:
     """情感管理器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         
         storage_dir = self.config.get("storage_dir", "./memory/emotion")

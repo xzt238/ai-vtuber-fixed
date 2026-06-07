@@ -38,6 +38,7 @@ class OptimizedSileroVAD:
     """优化版 Silero VAD 语音活动检测器"""
     
     def __init__(self, config: VADConfig = None) -> None:
+        """内部方法"""
         self.config = config or VADConfig()
         self.state = VADState.IDLE
         self.model = None

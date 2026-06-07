@@ -26,6 +26,7 @@ class TwitchPlatform(LivePlatform):
     """Twitch直播平台"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         super().__init__(config)
         
         # Twitch配置
@@ -44,6 +45,7 @@ class TwitchPlatform(LivePlatform):
         self._irc_port = 6667
     
     def _get_platform_type(self) -> PlatformType:
+        """内部方法"""
         return PlatformType.TWITCH
     
     async def connect(self, room_id: str, **kwargs) -> bool:

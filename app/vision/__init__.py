@@ -937,6 +937,7 @@ class MimoVisionProvider(VisionProvider):
 
     @property
     def description(self) -> str:
+        """Description"""
         return f"MiMo Vision（{self.model}，云端多模态）"
 
     def is_available(self) -> bool:

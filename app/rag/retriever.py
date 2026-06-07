@@ -18,6 +18,7 @@ class Retriever:
     """检索器"""
     
     def __init__(self, config: Dict[str, Any] = None) -> None:
+        """内部方法"""
         self.config = config or {}
         self.top_k = self.config.get("top_k", 5)
         self.similarity_threshold = self.config.get("similarity_threshold", 0.7)
