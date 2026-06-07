@@ -430,6 +430,18 @@ class GuguGagaApp(FluentWindow):
         except ImportError:
             pass
 
+        # 日志查看页面
+        try:
+            from gugu_native.pages.log_page import LogPage
+            self.log_page = LogPage(self)
+            self.addSubInterface(
+                self.log_page,
+                FluentIcon.DOCUMENT,
+                "日志"
+            )
+        except ImportError:
+            pass
+
         from gugu_native.pages.settings_page import SettingsPage
         self.settings_page = SettingsPage(self)
         # autostart_switch 绑定已移至 SettingsPage.lazy_init() 中
