@@ -24,10 +24,14 @@ import os
 import base64
 import json
 import time
+import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, Union, Iterator
 from enum import Enum
 from threading import Thread
+
+# 日志模块
+logger = logging.getLogger("vision")
 from copy import deepcopy
 
 
@@ -132,7 +136,7 @@ class VisionProvider(ABC):
             with open(image_path, "rb") as f:
                 return base64.b64encode(f.read()).decode("utf-8")
         except Exception as e:
-            print(f"[VisionProvider] 图片编码失败: {e}")
+            logger.error(f"图片编码失败: {e}")
             return None
 
     def cleanup(self):
@@ -200,9 +204,9 @@ class RapidOCRProvider(VisionProvider):
                     from rapidocr_onnxruntime import RapidOCR
                     self._engine = RapidOCR()
                 except ImportError:
-                    print("[Vision] ⚠️ RapidOCR 未安装: pip install rapidocr-onnxruntime")
+                    logger.warning("RapidOCR 未安装: pip install rapidocr-onnxruntime")
                     return None
-            print("[Vision] RapidOCR 引擎已加载")
+            logger.info("RapidOCR 引擎已加载")
         return self._engine
 
     def recognize_text(self, image_path: str) -> Optional[str]:
@@ -227,7 +231,7 @@ class RapidOCRProvider(VisionProvider):
             return "\n".join(lines)
 
         except Exception as e:
-            print(f"[Vision] RapidOCR 识别失败: {e}")
+            logger.error(f"RapidOCR 识别失败: {e}")
             return None
 
 
@@ -337,11 +341,11 @@ class MiniMaxVLProvider(VisionProvider):
             media_type = "image/jpeg"
             data_uri = f"data:{media_type};base64,{b64}"
 
-            print(f"[Vision] MiniMax VL 图片编码: {os.path.getsize(image_path)} -> {len(img_bytes)} bytes (JPEG q={self.jpeg_quality})")
+            logger.info(f"MiniMax VL 图片编码: {os.path.getsize(image_path)} -> {len(img_bytes)} bytes (JPEG q={self.jpeg_quality})")
             return data_uri
         except ImportError:
             # 没有 Pillow，回退到原始 base64
-            print("[Vision] MiniMax VL Pillow 未安装，使用原始 base64")
+            logger.warning("MiniMax VL Pillow 未安装，使用原始 base64")
             b64 = self._encode_image_base64(image_path)
             if b64:
                 # 检测格式
@@ -355,7 +359,7 @@ class MiniMaxVLProvider(VisionProvider):
                 return f"data:{media_type};base64,{b64}"
             return None
         except Exception as e:
-            print(f"[Vision] MiniMax VL 图片编码失败: {e}")
+            logger.error(f"MiniMax VL 图片编码失败: {e}")
             return None
 
     def recognize_text(self, image_path: str) -> Optional[str]:
@@ -365,7 +369,7 @@ class MiniMaxVLProvider(VisionProvider):
     def understand(self, image_path: str, prompt: str = None) -> Optional[str]:
         """MiniMax VL 图像理解（v2.2 VLM API）"""
         if not self.api_key:
-            print("[Vision] 请配置 MiniMax API Key")
+            logger.error("请配置 MiniMax API Key")
             return None
 
         data_uri = self._encode_image_data_uri(image_path)
@@ -392,7 +396,7 @@ class MiniMaxVLProvider(VisionProvider):
             }
 
             url = f"{self.api_host}/v1/coding_plan/vlm"
-            print(f"[Vision] MiniMax VL 调用: {url} (prompt: {full_prompt[:30]}...)")
+            logger.info(f"MiniMax VL 调用: {url} (prompt: {full_prompt[:30]}...)")
 
             response = requests.post(url, headers=headers, json=data, timeout=self.timeout)
 
@@ -402,7 +406,7 @@ class MiniMaxVLProvider(VisionProvider):
                 status_code = base_resp.get("status_code", -1)
 
                 if status_code != 0:
-                    print(f"[Vision] MiniMax VL API 错误: {base_resp.get('status_msg', 'unknown')}")
+                    logger.error(f"MiniMax VL API 错误: {base_resp.get('status_msg', 'unknown')}")
                     return None
 
                 content = result.get("content", "")
