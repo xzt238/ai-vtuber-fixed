@@ -178,7 +178,7 @@ class ConfigManager:
         try:
             value_str = json.dumps(value, sort_keys=True, ensure_ascii=False)
             return hashlib.md5(value_str.encode('utf-8')).hexdigest()
-        except:
+        except (TypeError, ValueError, json.JSONDecodeError):
             return hashlib.md5(str(value).encode('utf-8')).hexdigest()
     
     def _notify_watchers(self, key: str, value: Any) -> None:
@@ -195,14 +195,14 @@ class ConfigManager:
         # 尝试解析为JSON
         try:
             return json.loads(value)
-        except:
+        except json.JSONDecodeError:
             # 尝试解析为数字
             try:
                 if '.' in value:
                     return float(value)
                 else:
                     return int(value)
-            except:
+            except (ValueError, TypeError):
                 # 返回字符串
                 return value
     

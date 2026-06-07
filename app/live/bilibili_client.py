@@ -249,7 +249,7 @@ class BilibiliClient:
                 # zlib压缩
                 try:
                     packet_data = zlib.decompress(packet_data)
-                except:
+                except zlib.error:
                     pass
             
             packets.append({

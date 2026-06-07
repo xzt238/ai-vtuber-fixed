@@ -110,7 +110,7 @@ class DocumentLoader:
             try:
                 with open(file_path, 'r', encoding='gbk') as f:
                     return f.read()
-            except:
+            except (UnicodeDecodeError, IOError, OSError):
                 return None
     
     def _load_markdown(self, file_path: Path) -> Optional[str]:
@@ -205,7 +205,7 @@ class DocumentLoader:
                         "creator": info.creator,
                         "pages": len(reader.pages),
                     }
-        except:
+        except Exception:
             pass
         
         return {}
@@ -224,7 +224,7 @@ class DocumentLoader:
                 "subject": props.subject,
                 "keywords": props.keywords,
             }
-        except:
+        except Exception:
             pass
         
         return {}
