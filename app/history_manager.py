@@ -27,7 +27,7 @@ class HistoryManager:
     管理对话历史的持久化、加载、压缩等操作。
     """
 
-    def __init__(self, max_history: int = 100, history_file: Optional[Path] = None):
+    def __init__(self, max_history: int = 100, history_file: Optional[Path] = None) -> None:
         """
         初始化历史记录管理器
 
@@ -51,7 +51,7 @@ class HistoryManager:
         # 确保目录存在
         self._history_file.parent.mkdir(parents=True, exist_ok=True)
 
-    def load_history(self, memory=None):
+    def load_history(self, memory: Optional[Any] = None) -> None:
         """
         从磁盘恢复对话历史
 
@@ -92,7 +92,7 @@ class HistoryManager:
             logger.info(f"  [历史] 从工作记忆恢复失败: {e}")
         self.history = []
 
-    def save_history(self):
+    def save_history(self) -> None:
         """
         保存对话历史到磁盘
 
@@ -111,7 +111,7 @@ class HistoryManager:
                 self._save_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="history-save")
 
             history_file = self._history_file
-            def _async_write():
+            def _async_write() -> None:
                 try:
                     tmp_file = history_file.with_suffix('.tmp')
                     with open(tmp_file, 'w', encoding='utf-8') as f:
@@ -124,7 +124,7 @@ class HistoryManager:
         except Exception as e:
             logger.info(f"  [历史] 保存对话历史失败: {e}")
 
-    def record_interaction(self, user_text: str, assistant_text: str, memory=None, llm=None):
+    def record_interaction(self, user_text: str, assistant_text: str, memory: Optional[Any] = None, llm: Optional[Any] = None) -> None:
         """
         统一记录对话交互
 
@@ -163,7 +163,7 @@ class HistoryManager:
         except Exception as e:
             logger.debug(f"历史更新错误（可忽略）: {e}")
 
-    def _compress_history(self, keep_recent: int = 40, llm=None):
+    def _compress_history(self, keep_recent: int = 40, llm: Optional[Any] = None) -> None:
         """
         对话历史流式压缩
 
@@ -231,14 +231,14 @@ class HistoryManager:
         with self._history_lock:
             return list(self.history)
 
-    def clear_history(self):
+    def clear_history(self) -> None:
         """清空历史记录"""
         with self._history_lock:
             self.history.clear()
         self.save_history()
         logger.info("已清空对话历史")
 
-    def flush(self):
+    def flush(self) -> None:
         """强制保存历史记录到磁盘"""
         if self.history:
             try:

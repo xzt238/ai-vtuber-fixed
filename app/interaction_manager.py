@@ -24,7 +24,7 @@ class InteractionManager:
     管理 AIVTuber 的各种交互模式，包括命令行交互、Web 模式等。
     """
 
-    def __init__(self, aivtuber_instance):
+    def __init__(self, aivtuber_instance: Any) -> None:
         """
         初始化交互模式管理器
 
@@ -34,7 +34,7 @@ class InteractionManager:
         self.aivtuber = aivtuber_instance
         self.logger = aivtuber_instance.logger
 
-    def run_interactive(self):
+    def run_interactive(self) -> None:
         """
         交互模式 - 命令行文字/语音对话
 
@@ -122,7 +122,7 @@ class InteractionManager:
             logger.error(f"交互模式错误: {e}")
             raise
 
-    def run_web(self, desktop_mode: bool = False):
+    def run_web(self, desktop_mode: bool = False) -> None:
         """
         Web 模式 - 启动 HTTP + WebSocket 服务
 
@@ -160,7 +160,7 @@ class InteractionManager:
             logger.error(f"Web 服务启动失败: {e}")
             raise
 
-    def run_live(self, platform: str = "bilibili"):
+    def run_live(self, platform: str = "bilibili") -> None:
         """
         直播模式 - 启动直播平台集成
 
@@ -194,7 +194,7 @@ class InteractionManager:
             logger.error(f"直播模式启动失败: {e}")
             raise
 
-    def run_bot(self, platform: str = "telegram"):
+    def run_bot(self, platform: str = "telegram") -> None:
         """
         机器人模式 - 启动聊天机器人
 
@@ -228,7 +228,7 @@ class InteractionManager:
             logger.error(f"机器人模式启动失败: {e}")
             raise
 
-    def run_game(self, game_name: str = "minecraft"):
+    def run_game(self, game_name: str = "minecraft") -> None:
         """
         游戏模式 - 启动游戏集成
 
@@ -262,7 +262,7 @@ class InteractionManager:
             logger.error(f"游戏模式启动失败: {e}")
             raise
 
-    def run_multi_mode(self, modes: list):
+    def run_multi_mode(self, modes: list) -> None:
         """
         多模式运行 - 同时启动多个服务
 
