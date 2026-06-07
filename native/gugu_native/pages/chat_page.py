@@ -86,13 +86,27 @@ except ImportError:
 from gugu_native.workers.chat_workers import StreamChatWorker, TTSWorker, ASRWorker
 from gugu_native.workers.vision_workers import OCRWorker, VisionWorker
 
+# 导入 Mixin 类
+from gugu_native.pages.chat_page_mixins.live2d_mixin import ChatPageLive2DMixin
+from gugu_native.pages.chat_page_mixins.audio_mixin import ChatPageAudioMixin
+from gugu_native.pages.chat_page_mixins.message_mixin import ChatPageMessageMixin
+from gugu_native.pages.chat_page_mixins.vision_mixin import ChatPageVisionMixin
+from gugu_native.pages.chat_page_mixins.tts_config_mixin import ChatPageTTSConfigMixin
+
 
 # ============================================================================
 # ChatPage — 对话页面主控件
 # ============================================================================
 
-class ChatPage(QWidget):
-    """对话页面 v2.0 — 完全重构版"""
+class ChatPage(
+    ChatPageLive2DMixin,
+    ChatPageAudioMixin,
+    ChatPageMessageMixin,
+    ChatPageVisionMixin,
+    ChatPageTTSConfigMixin,
+    QWidget
+):
+    """对话页面 v2.0 — 完全重构版（使用 Mixin 模式拆分功能）"""
 
     # 优化 #13: 线程安全的 TTS 音频就绪信号
     # v14 FIX: Signal 携带序号 (audio_path, seq)，用于流式 TTS 句子排序
