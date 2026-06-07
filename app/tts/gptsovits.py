@@ -14,12 +14,16 @@ import os
 import sys
 import time
 import json
+import logging
 from pathlib import Path
 from typing import Optional, Tuple, List
 from contextlib import redirect_stdout, redirect_stderr, contextmanager
 import io as _io
 import torch
 import numpy as np
+
+# 日志模块
+logger = logging.getLogger("tts.gptsovits")
 
 # 添加 GPT-SoVITS 到路径
 GPT_SOVITS_DIR = Path(__file__).parent.parent.parent / "GPT-SoVITS"
@@ -126,7 +130,7 @@ class GPTSoVITSEngine:
     def __init__(self, config: dict = None):
         import traceback as tb
         try:
-            print(f"[GPT-SoVITS] __init__ called with config={config}")
+            logger.debug(f"__init__ called with config={config}")
             if self._initialized:
                 if config:
                     self.config.update(config)
@@ -134,7 +138,7 @@ class GPTSoVITSEngine:
                     new_project = config.get('project')
                     if new_project and new_project != self.current_project:
                         self.set_project(new_project)
-                print("[GPT-SoVITS] Already initialized, returning")
+                logger.debug("Already initialized, returning")
                 return
 
             self.config = config or {}
@@ -142,13 +146,13 @@ class GPTSoVITSEngine:
             # 防止 config 写死 'cuda' 但实际 CUDA 不可用时崩溃
             configured_device = self.config.get('device', 'cuda')
             if configured_device == 'cuda' and not torch.cuda.is_available():
-                print(f"[GPT-SoVITS] ⚠️ config 指定 device=cuda 但 CUDA 不可用，自动回退到 CPU")
+                logger.warning(f"config 指定 device=cuda 但 CUDA 不可用，自动回退到 CPU")
                 self.device = 'cpu'
             else:
                 self.device = configured_device
             self.is_half = self.config.get('is_half', self.device == 'cuda')
             if self.device == 'cpu' and self.is_half:
-                print(f"[GPT-SoVITS] ⚠️ CPU 不支持半精度，自动关闭 is_half")
+                logger.warning(f"CPU 不支持半精度，自动关闭 is_half")
                 self.is_half = False
 
             # 模型路径配置
@@ -191,9 +195,9 @@ class GPTSoVITSEngine:
             self._stop_requested = False
             self._is_playing = False
             self._initialized = True
-            print("[GPT-SoVITS] __init__ completed successfully")
+            logger.info("__init__ completed successfully")
         except Exception as e:
-            print(f"[GPT-SoVITS] __init__ error: {e}")
+            logger.error(f"__init__ error: {e}")
             tb.print_exc()
             raise
 
@@ -241,7 +245,7 @@ class GPTSoVITSEngine:
 
             sovits_file = Path(sovits_path)
             if not sovits_file.exists():
-                print(f"[GPT-SoVITS] SoVITS 文件不存在: {sovits_path}")
+                logger.error(f"SoVITS 文件不存在: {sovits_path}")
                 return False
 
             # 使用官方函数检测版本（读取前2字节的版本标识）
@@ -258,7 +262,7 @@ class GPTSoVITSEngine:
                 # ZIP 格式 = v3/v4 LoRA，一定有效
                 filename_lower = os.path.basename(sovits_path).lower()
                 version_str = "v4" if "_l16" in filename_lower else "v3"
-                print(f"[GPT-SoVITS] SoVITS 文件版本: {version_str} (ZIP LoRA, {os.path.basename(sovits_path)})")
+                logger.info(f"SoVITS 文件版本: {version_str} (ZIP LoRA, {os.path.basename(sovits_path)})")
                 return True
 
             # 非 ZIP 格式，使用官方检测
@@ -266,10 +270,10 @@ class GPTSoVITSEngine:
             ver_info = get_sovits_version_from_path_fast(sovits_path)
             # ver_info: [version, model_version, if_lora_v3]
             version, model_version, if_lora_v3 = ver_info
-            print(f"[GPT-SoVITS] SoVITS 文件版本: {model_version}, LoRA={if_lora_v3}")
+            logger.info(f"SoVITS 文件版本: {model_version}, LoRA={if_lora_v3}")
             return True
         except Exception as e:
-            print(f"[GPT-SoVITS] 检查 SoVITS 配置失败: {e}")
+            logger.error(f"检查 SoVITS 配置失败: {e}")
             return False
 
     def _resolve_project_path(self, path: str, project_name: str) -> str:
@@ -302,14 +306,14 @@ class GPTSoVITSEngine:
             for subdir in ['', '32k', 'ckpt', 's2_ckpt']:
                 candidate = os.path.join(project_dir, subdir, basename)
                 if os.path.isfile(candidate):
-                    print(f"[GPT-SoVITS] 路径修正: {os.path.basename(path)} → {candidate.replace(chr(92), '/')}")
+                    logger.debug(f"路径修正: {os.path.basename(path)} → {candidate.replace(chr(92), '/')}")
                     return candidate.replace('\\', '/')
             # v1.9.61: 搜索全局权重目录（GPT_weights_v3/ 和 SoVITS_weights_v3/）
             # 训练完成后 ckpt 保存在全局目录，项目目录的 ckpt/ 子目录可能不存在
             for weights_dir in ['GPT_weights_v3', 'GPT_weights_v2', 'SoVITS_weights_v3', 'SoVITS_weights_v2']:
                 candidate = str(GPT_SOVITS_DIR / weights_dir / basename)
                 if os.path.isfile(candidate):
-                    print(f"[GPT-SoVITS] 路径修正(全局权重): {os.path.basename(path)} → {candidate.replace(chr(92), '/')}")
+                    logger.debug(f"路径修正(全局权重): {os.path.basename(path)} → {candidate.replace(chr(92), '/')}")
                     return candidate.replace('\\', '/')
             # 搜索不到也返回原路径（后续 _check_sovits_config 会处理）
             return path.replace('\\', '/')
@@ -323,7 +327,7 @@ class GPTSoVITSEngine:
             for weights_dir in ['GPT_weights_v3', 'GPT_weights_v2', 'SoVITS_weights_v3', 'SoVITS_weights_v2']:
                 candidate = str(GPT_SOVITS_DIR / weights_dir / basename)
                 if os.path.isfile(candidate):
-                    print(f"[GPT-SoVITS] 相对路径修正: {path} → {candidate.replace(chr(92), '/')}")
+                    logger.debug(f"相对路径修正: {path} → {candidate.replace(chr(92), '/')}")
                     return candidate.replace('\\', '/')
 
         return abs_path
@@ -404,14 +408,14 @@ class GPTSoVITSEngine:
                         config["ref_text"] = ref_text
                         # 保存识别结果
                         self._save_project_config(project_name, config)
-                        print(f"[GPT-SoVITS] 已识别参考音频文本: {ref_text[:30]}...")
+                        logger.info(f"已识别参考音频文本: {ref_text[:30]}...")
                     else:
                         # 识别失败，使用默认文本
                         config["ref_text"] = "你好欢迎使用"
-                        print(f"[GPT-SoVITS] 参考音频文本识别失败，使用默认文本")
+                        logger.warning(f"参考音频文本识别失败，使用默认文本")
                 return config
             except Exception as e:
-                print(f"[GPT-SoVITS] 加载项目配置失败: {e}")
+                logger.error(f"加载项目配置失败: {e}")
         
         # 返回默认配置（空配置，需要项目先上传音频）
         return {
@@ -455,9 +459,9 @@ class GPTSoVITSEngine:
                             "compute_type": "float16" if self.is_half else "float32"
                         }
                     })
-                    print(f"[GPT-SoVITS] ASR 引擎创建成功: {type(self._asr_engine).__name__}")
+                    logger.info(f"ASR 引擎创建成功: {type(self._asr_engine).__name__}")
                 except Exception as e:
-                    print(f"[GPT-SoVITS] ASR 引擎创建失败: {e}")
+                    logger.error(f"ASR 引擎创建失败: {e}")
                     return ""
 
             if self._asr_engine and self._asr_engine.is_available():
@@ -466,7 +470,7 @@ class GPTSoVITSEngine:
                     # 清理空格
                     return text.replace(" ", "").strip()
         except Exception as e:
-            print(f"[GPT-SoVITS] 识别参考音频失败: {e}")
+            logger.error(f"识别参考音频失败: {e}")
         return ""
 
     def _save_project_config(self, project_name: str, config: dict):
@@ -497,7 +501,7 @@ class GPTSoVITSEngine:
         config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(save_config, f, ensure_ascii=False, indent=2)
-        print(f"[GPT-SoVITS] 项目配置已保存: {project_name}")
+        logger.info(f"项目配置已保存: {project_name}")
 
     def _save_last_project(self, project_name: str):
         """持久化上次使用的音色名称，供下次启动预热使用"""
