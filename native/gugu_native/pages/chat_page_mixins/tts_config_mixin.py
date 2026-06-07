@@ -13,6 +13,7 @@ from datetime import datetime
 from PySide6.QtCore import Slot
 
 from gugu_native.workers.chat_workers import TTSWorker
+from gugu_native.utils.path_utils import get_history_path, get_tts_prefs_path, path_exists
 
 logger = logging.getLogger('ChatPage.TTSConfig')
 
@@ -122,11 +123,8 @@ class ChatPageTTSConfigMixin:
 
         # 持久化
         try:
-            from app.shared_config import PROJECT_DIR
             tts_prefs = {"engine": engine, "provider": provider, "voice": voice_id}
-            cache_dir = os.path.join(PROJECT_DIR, "app", "cache")
-            os.makedirs(cache_dir, exist_ok=True)
-            prefs_file = os.path.join(cache_dir, "tts_preferences.json")
+            prefs_file = get_tts_prefs_path()
             with open(prefs_file, "w", encoding="utf-8") as f:
                 json.dump(tts_prefs, f, ensure_ascii=False, indent=2)
         except Exception as e:
@@ -158,10 +156,7 @@ class ChatPageTTSConfigMixin:
 
     def _get_history_path(self):
         """获取对话历史文件路径"""
-        from app.shared_config import PROJECT_DIR
-        state_dir = os.path.join(PROJECT_DIR, "app", "state")
-        os.makedirs(state_dir, exist_ok=True)
-        return os.path.join(state_dir, "native_chat_history.json")
+        return get_history_path()
 
     def _save_chat_history(self):
         """保存对话历史到 JSON"""
@@ -185,7 +180,7 @@ class ChatPageTTSConfigMixin:
             return
         try:
             path = self._get_history_path()
-            if not os.path.exists(path):
+            if not path_exists(path):
                 return
             with open(path, "r", encoding="utf-8") as f:
                 messages = json.load(f)

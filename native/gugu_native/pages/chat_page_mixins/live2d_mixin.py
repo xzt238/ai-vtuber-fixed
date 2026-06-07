@@ -14,6 +14,11 @@ from PySide6.QtWidgets import QFileDialog
 
 from qfluentwidgets import InfoBar
 
+from gugu_native.utils.path_utils import (
+    get_model_dir, get_live2d_model_path, get_vrm_model_path,
+    get_vrm_display_config_path, path_exists
+)
+
 logger = logging.getLogger('ChatPage.Live2D')
 
 
@@ -115,12 +120,8 @@ class ChatPageLive2DMixin:
         if self.live2d_widget is None:
             return
 
-        from app.shared_config import PROJECT_DIR
-        model_path = os.path.join(
-            PROJECT_DIR, "app", "web", "static", "assets", "model",
-            "hiyori", "Hiyori.model3.json"
-        )
-        if os.path.exists(model_path):
+        model_path = get_live2d_model_path("hiyori")
+        if path_exists(model_path):
             self.live2d_widget.load_model(model_path)
             if self._animation_controller:
                 self._animation_controller.start()
@@ -133,12 +134,8 @@ class ChatPageLive2DMixin:
         if self._vrm_widget is None:
             return
 
-        from app.shared_config import PROJECT_DIR
-        vrm_path = os.path.join(
-            PROJECT_DIR, "app", "web", "static", "assets", "model",
-            "default.vrm"
-        )
-        if os.path.exists(vrm_path):
+        vrm_path = get_vrm_model_path("default")
+        if path_exists(vrm_path):
             self._vrm_widget.load_model(vrm_path)
             logger.info(f"VRM default model loaded: {vrm_path}")
         else:
@@ -183,7 +180,6 @@ class ChatPageLive2DMixin:
         if not self._vrm_widget:
             return
 
-        from app.shared_config import PROJECT_DIR
         variant_files = {
             "default": "default.vrm",
             "cow": "Asmodeus_cow.vrm",
@@ -194,8 +190,9 @@ class ChatPageLive2DMixin:
         if not filename:
             return
 
-        vrm_path = os.path.join(PROJECT_DIR, "app", "web", "static", "assets", "model", filename)
-        if os.path.exists(vrm_path):
+        model_dir = get_model_dir("vrm")
+        vrm_path = os.path.join(model_dir, filename)
+        if path_exists(vrm_path):
             self._vrm_widget.load_model(vrm_path)
             for name, btn in self._btn_vrm_variants.items():
                 btn.setChecked(name == variant)
@@ -210,10 +207,9 @@ class ChatPageLive2DMixin:
         if not path:
             return
 
-        from app.shared_config import PROJECT_DIR
         model_name = os.path.splitext(os.path.basename(path))[0]
-        dest_dir = os.path.join(PROJECT_DIR, "app", "web", "static", "assets", "model")
-        dest = os.path.join(dest_dir, f"user_{model_name}.vrm")
+        model_dir = get_model_dir("vrm")
+        dest = os.path.join(model_dir, f"user_{model_name}.vrm")
         shutil.copy2(path, dest)
 
         if self._vrm_widget and self._current_model_type == "vrm":
@@ -230,9 +226,9 @@ class ChatPageLive2DMixin:
         if not path:
             return
 
-        from app.shared_config import PROJECT_DIR
         model_name = os.path.basename(path)
-        dest_dir = os.path.join(PROJECT_DIR, "app", "web", "static", "assets", "model", f"l2d_{model_name}")
+        model_dir = get_model_dir("live2d")
+        dest_dir = os.path.join(model_dir, f"l2d_{model_name}")
         if os.path.exists(dest_dir):
             shutil.rmtree(dest_dir)
         shutil.copytree(path, dest_dir)
@@ -253,12 +249,11 @@ class ChatPageLive2DMixin:
             return
 
         import json
-        from app.shared_config import PROJECT_DIR
-        cache_path = os.path.join(PROJECT_DIR, "app", "cache", "vrm_display.json")
+        config_path = get_vrm_display_config_path()
         config = {}
-        if os.path.exists(cache_path):
+        if path_exists(config_path):
             try:
-                with open(cache_path, "r", encoding="utf-8") as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     config = json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load VRM display config: {e}")
