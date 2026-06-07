@@ -88,45 +88,45 @@ class LazyModuleManager:
     def memory(self) -> Any:
         """记忆系统模块 - 懒加载"""
         def _create_memory() -> Any:
-            from memory import MemoryManager
+            from memory import MemorySystem
             memory_config = self.config.config.get("memory", {})
-            return MemoryManager(memory_config)
+            return MemorySystem(memory_config)
         return self._get_module("memory", _create_memory)
 
     @property
     def vision(self) -> Any:
         """视觉理解模块 - 懒加载"""
         def _create_vision() -> Any:
-            from vision import VisionFactory
+            from vision import VisionManager
             vision_config = self.config.config.get("vision", {})
-            return VisionFactory.create(vision_config)
+            return VisionManager(vision_config)
         return self._get_module("vision", _create_vision)
 
     @property
     def live2d(self) -> Any:
         """Live2D 虚拟形象模块 - 懒加载"""
         def _create_live2d() -> Any:
-            from live2d import Live2DManager
+            from live2d import Live2DModel
             live2d_config = self.config.config.get("live2d", {})
-            return Live2DManager(live2d_config)
+            return Live2DModel(live2d_config)
         return self._get_module("live2d", _create_live2d)
 
     @property
     def voice(self) -> Any:
         """语音输入模块 - 懒加载"""
         def _create_voice() -> Any:
-            from voice import VoiceManager
+            from voice import VoiceInputFactory
             voice_config = self.config.config.get("voice", {})
-            return VoiceManager(voice_config)
+            return VoiceInputFactory.create(voice_config)
         return self._get_module("voice", _create_voice)
 
     @property
     def voice_web(self) -> Any:
         """Web 语音模块 - 懒加载"""
         def _create_voice_web() -> Any:
-            from voice import VoiceWebManager
+            from voice import VoiceInputFactory
             voice_config = self.config.config.get("voice", {})
-            return VoiceWebManager(voice_config)
+            return VoiceInputFactory.create(voice_config)
         return self._get_module("voice_web", _create_voice_web)
 
     @property
@@ -142,18 +142,18 @@ class LazyModuleManager:
     def tools(self) -> Any:
         """工具管理器 - 懒加载"""
         def _create_tools() -> Any:
-            from tools import ToolManager
+            from tools import ToolFactory
             tools_config = self.config.config.get("tools", {})
-            return ToolManager(tools_config)
+            return ToolFactory.create(tools_config)
         return self._get_module("tools", _create_tools)
 
     @property
     def proactive(self) -> Any:
         """主动对话模块 - 懒加载"""
         def _create_proactive() -> Any:
-            from proactive import ProactiveManager
+            from proactive import ProactiveSpeechManager
             proactive_config = self.config.config.get("proactive", {})
-            return ProactiveManager(proactive_config)
+            return ProactiveSpeechManager(proactive_config)
         return self._get_module("proactive", _create_proactive)
 
     @property
@@ -169,9 +169,9 @@ class LazyModuleManager:
     def mcp(self) -> Any:
         """MCP 模块 - 懒加载"""
         def _create_mcp() -> Any:
-            from mcp import MCPManager
+            from mcp import MCPToolBridge
             mcp_config = self.config.config.get("mcp", {})
-            return MCPManager(mcp_config)
+            return MCPToolBridge(mcp_config)
         return self._get_module("mcp", _create_mcp)
 
     @property
@@ -232,18 +232,18 @@ class LazyModuleManager:
     def rag(self) -> Any:
         """RAG 检索增强生成模块 - 懒加载"""
         def _create_rag() -> Any:
-            from rag import RAGManager
+            from rag import RAGSystem
             rag_config = self.config.config.get("rag", {})
-            return RAGManager(rag_config)
+            return RAGSystem(rag_config)
         return self._get_module("rag", _create_rag)
 
     @property
     def live(self) -> Any:
         """直播模块 - 懒加载"""
         def _create_live() -> Any:
-            from live import LiveManager
+            from live import LiveSystem
             live_config = self.config.config.get("live", {})
-            return LiveManager(live_config)
+            return LiveSystem(live_config)
         return self._get_module("live", _create_live)
 
     @property
@@ -268,27 +268,27 @@ class LazyModuleManager:
     def sd(self) -> Any:
         """Stable Diffusion 图像生成模块 - 懒加载"""
         def _create_sd() -> Any:
-            from image_gen import ImageGenManager
+            from image_gen import ImageGenerator
             sd_config = self.config.config.get("image_gen", {})
-            return ImageGenManager(sd_config)
+            return ImageGenerator(sd_config)
         return self._get_module("sd", _create_sd)
 
     @property
     def game(self) -> Any:
         """游戏模块 - 懒加载"""
         def _create_game() -> Any:
-            from game import GameManager
+            from app.game import GameAgentManager
             game_config = self.config.config.get("game", {})
-            return GameManager(game_config)
+            return GameAgentManager(game_config)
         return self._get_module("game", _create_game)
 
     @property
     def multi_agent(self) -> Any:
         """多智能体模块 - 懒加载"""
         def _create_multi_agent() -> Any:
-            from multi_agent import MultiAgentManager
+            from app.multi_agent import MultiAgentChat
             agent_config = self.config.config.get("multi_agent", {})
-            return MultiAgentManager(agent_config)
+            return MultiAgentChat(agent_config)
         return self._get_module("multi_agent", _create_multi_agent)
 
     @property
@@ -304,18 +304,17 @@ class LazyModuleManager:
     def vision_input(self) -> Any:
         """视觉输入模块 - 懒加载"""
         def _create_vision_input() -> Any:
-            from vision_input import VisionInputManager
+            from app.vision_input import get_vision_input_manager
             vision_config = self.config.config.get("vision_input", {})
-            return VisionInputManager(vision_config)
+            return get_vision_input_manager(vision_config)
         return self._get_module("vision_input", _create_vision_input)
 
     @property
     def trainer(self) -> Any:
         """训练管理模块 - 懒加载"""
         def _create_trainer() -> Any:
-            from trainer.manager import TrainerManager
-            trainer_config = self.config.config.get("trainer", {})
-            return TrainerManager(trainer_config)
+            from trainer.manager import TrainingManager
+            return TrainingManager()
         return self._get_module("trainer", _create_trainer)
 
     def get_module(self, module_name: str) -> Optional[Any]:
