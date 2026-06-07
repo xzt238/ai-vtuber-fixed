@@ -6,11 +6,15 @@
 import os
 import json
 import asyncio
+import logging
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from datetime import datetime
+
+# 日志模块
+logger = logging.getLogger("roleplay")
 
 class CharacterPersonality(Enum):
     """角色性格"""
@@ -98,9 +102,9 @@ class CharacterManager:
                     data = json.load(f)
                     for char_id, char_dict in data.items():
                         self.characters[char_id] = Character(**char_dict)
-                print(f"[Roleplay] 加载了 {len(self.characters)} 个角色")
+                logger.info(f"加载了 {len(self.characters)} 个角色")
         except Exception as e:
-            print(f"[Roleplay] 加载角色失败: {e}")
+            logger.error(f"加载角色失败: {e}")
     
     def _save_characters(self):
         """保存角色"""
@@ -127,7 +131,7 @@ class CharacterManager:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             
         except Exception as e:
-            print(f"[Roleplay] 保存角色失败: {e}")
+            logger.error(f"保存角色失败: {e}")
     
     def _create_preset_characters(self):
         """创建预设角色"""
@@ -208,7 +212,7 @@ class CharacterManager:
             self.characters[char.id] = char
         
         self._save_characters()
-        print(f"[Roleplay] 创建了 {len(presets)} 个预设角色")
+        logger.info(f"创建了 {len(presets)} 个预设角色")
     
     def create_character(self, character_data: Dict[str, Any]) -> Optional[Character]:
         """创建角色"""
@@ -232,11 +236,11 @@ class CharacterManager:
             self.characters[char_id] = character
             self._save_characters()
             
-            print(f"[Roleplay] 角色创建成功: {char_id}")
+            logger.info(f"角色创建成功: {char_id}")
             return character
             
         except Exception as e:
-            print(f"[Roleplay] 角色创建失败: {e}")
+            logger.error(f"角色创建失败: {e}")
             return None
     
     def get_character(self, character_id: str) -> Optional[Character]:
@@ -273,11 +277,11 @@ class CharacterManager:
             char.updated_at = datetime.now()
             self._save_characters()
             
-            print(f"[Roleplay] 角色更新成功: {character_id}")
+            logger.info(f"角色更新成功: {character_id}")
             return True
             
         except Exception as e:
-            print(f"[Roleplay] 角色更新失败: {e}")
+            logger.error(f"角色更新失败: {e}")
             return False
     
     def delete_character(self, character_id: str) -> bool:
@@ -288,10 +292,10 @@ class CharacterManager:
         try:
             del self.characters[character_id]
             self._save_characters()
-            print(f"[Roleplay] 角色删除成功: {character_id}")
+            logger.info(f"角色删除成功: {character_id}")
             return True
         except Exception as e:
-            print(f"[Roleplay] 角色删除失败: {e}")
+            logger.error(f"角色删除失败: {e}")
             return False
 
 class StoryManager:
@@ -312,9 +316,9 @@ class StoryManager:
                     data = json.load(f)
                     for story_id, story_dict in data.items():
                         self.stories[story_id] = Story(**story_dict)
-                print(f"[Roleplay] 加载了 {len(self.stories)} 个剧情")
+                logger.info(f"加载了 {len(self.stories)} 个剧情")
         except Exception as e:
-            print(f"[Roleplay] 加载剧情失败: {e}")
+            logger.error(f"加载剧情失败: {e}")
     
     def _save_stories(self):
         """保存剧情"""
@@ -337,7 +341,7 @@ class StoryManager:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             
         except Exception as e:
-            print(f"[Roleplay] 保存剧情失败: {e}")
+            logger.error(f"保存剧情失败: {e}")
     
     def create_story(self, story_data: Dict[str, Any]) -> Optional[Story]:
         """创建剧情"""
@@ -357,11 +361,11 @@ class StoryManager:
             self.stories[story_id] = story
             self._save_stories()
             
-            print(f"[Roleplay] 剧情创建成功: {story_id}")
+            logger.info(f"剧情创建成功: {story_id}")
             return story
             
         except Exception as e:
-            print(f"[Roleplay] 剧情创建失败: {e}")
+            logger.error(f"剧情创建失败: {e}")
             return None
     
     def get_story(self, story_id: str) -> Optional[Story]:
@@ -380,10 +384,10 @@ class StoryManager:
         try:
             del self.stories[story_id]
             self._save_stories()
-            print(f"[Roleplay] 剧情删除成功: {story_id}")
+            logger.info(f"剧情删除成功: {story_id}")
             return True
         except Exception as e:
-            print(f"[Roleplay] 剧情删除失败: {e}")
+            logger.error(f"剧情删除失败: {e}")
             return False
 
 class RoleplayManager:
@@ -402,7 +406,7 @@ class RoleplayManager:
         # 活跃会话
         self.sessions: Dict[str, RoleplaySession] = {}
         
-        print(f"[Roleplay] 初始化完成")
+        logger.info(f"初始化完成")
     
     def start_session(self, character_id: str, user_id: str = "", 
                      story_id: str = None) -> Optional[RoleplaySession]:
@@ -410,7 +414,7 @@ class RoleplayManager:
         # 检查角色是否存在
         character = self.character_manager.get_character(character_id)
         if not character:
-            print(f"[Roleplay] 角色不存在: {character_id}")
+            logger.warning(f"角色不存在: {character_id}")
             return None
         
         # 创建会话
@@ -431,7 +435,7 @@ class RoleplayManager:
         
         self.sessions[session_id] = session
         
-        print(f"[Roleplay] 会话开始: {session_id}, 角色: {character.name}")
+        logger.info(f"会话开始: {session_id}, 角色: {character.name}")
         return session
     
     def get_session(self, session_id: str) -> Optional[RoleplaySession]:
@@ -442,7 +446,7 @@ class RoleplayManager:
         """结束会话"""
         if session_id in self.sessions:
             del self.sessions[session_id]
-            print(f"[Roleplay] 会话结束: {session_id}")
+            logger.info(f"会话结束: {session_id}")
             return True
         return False
     
