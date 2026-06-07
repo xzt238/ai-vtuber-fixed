@@ -1,7 +1,10 @@
+import logging
 """
 通用屏幕识别模块
 支持屏幕截图、OCR文字识别、游戏状态推断
 """
+
+logger = logging.getLogger(__name__)
 
 import os
 import asyncio
@@ -76,7 +79,7 @@ class ScreenRecognition:
             "average_ocr_time_ms": 0
         }
         
-        print("[ScreenRecognition] 初始化完成")
+        logger.info("[ScreenRecognition] 初始化完成")
     
     async def initialize(self) -> bool:
         """初始化OCR引擎"""
@@ -88,10 +91,10 @@ class ScreenRecognition:
             elif self.ocr_engine == "tesseract":
                 return await self._init_tesseract()
             else:
-                print(f"[ScreenRecognition] 不支持的OCR引擎: {self.ocr_engine}")
+                logger.info(f"[ScreenRecognition] 不支持的OCR引擎: {self.ocr_engine}")
                 return False
         except Exception as e:
-            print(f"[ScreenRecognition] 初始化失败: {e}")
+            logger.info(f"[ScreenRecognition] 初始化失败: {e}")
             return False
     
     async def _init_rapidocr(self) -> bool:
@@ -99,10 +102,10 @@ class ScreenRecognition:
         try:
             from rapidocr_onnxruntime import RapidOCR
             self.ocr_engine_instance = RapidOCR()
-            print("[ScreenRecognition] RapidOCR初始化成功")
+            logger.info("[ScreenRecognition] RapidOCR初始化成功")
             return True
         except ImportError:
-            print("[ScreenRecognition] RapidOCR未安装: pip install rapidocr-onnxruntime")
+            logger.info("[ScreenRecognition] RapidOCR未安装: pip install rapidocr-onnxruntime")
             return False
     
     async def _init_paddleocr(self) -> bool:
@@ -110,10 +113,10 @@ class ScreenRecognition:
         try:
             from paddleocr import PaddleOCR
             self.ocr_engine_instance = PaddleOCR(use_angle_cls=True, lang="ch")
-            print("[ScreenRecognition] PaddleOCR初始化成功")
+            logger.info("[ScreenRecognition] PaddleOCR初始化成功")
             return True
         except ImportError:
-            print("[ScreenRecognition] PaddleOCR未安装: pip install paddleocr")
+            logger.info("[ScreenRecognition] PaddleOCR未安装: pip install paddleocr")
             return False
     
     async def _init_tesseract(self) -> bool:
@@ -121,10 +124,10 @@ class ScreenRecognition:
         try:
             import pytesseract
             self.ocr_engine_instance = pytesseract
-            print("[ScreenRecognition] Tesseract初始化成功")
+            logger.info("[ScreenRecognition] Tesseract初始化成功")
             return True
         except ImportError:
-            print("[ScreenRecognition] Tesseract未安装: pip install pytesseract")
+            logger.info("[ScreenRecognition] Tesseract未安装: pip install pytesseract")
             return False
     
     async def capture_screen(self, region: ScreenRegion = None) -> Optional[np.ndarray]:
@@ -164,10 +167,10 @@ class ScreenRecognition:
                 return img
                 
         except ImportError:
-            print("[ScreenRecognition] mss未安装: pip install mss")
+            logger.info("[ScreenRecognition] mss未安装: pip install mss")
             return None
         except Exception as e:
-            print(f"[ScreenRecognition] 截图失败: {e}")
+            logger.info(f"[ScreenRecognition] 截图失败: {e}")
             return None
     
     async def recognize_text(self, image: np.ndarray = None, 
@@ -202,7 +205,7 @@ class ScreenRecognition:
             return results
             
         except Exception as e:
-            print(f"[ScreenRecognition] OCR识别失败: {e}")
+            logger.info(f"[ScreenRecognition] OCR识别失败: {e}")
             return []
     
     async def _ocr_rapidocr(self, image: np.ndarray) -> List[OCRResult]:
@@ -239,7 +242,7 @@ class ScreenRecognition:
             return results
             
         except Exception as e:
-            print(f"[ScreenRecognition] RapidOCR识别失败: {e}")
+            logger.info(f"[ScreenRecognition] RapidOCR识别失败: {e}")
             return []
     
     async def _ocr_paddleocr(self, image: np.ndarray) -> List[OCRResult]:
@@ -276,7 +279,7 @@ class ScreenRecognition:
             return results
             
         except Exception as e:
-            print(f"[ScreenRecognition] PaddleOCR识别失败: {e}")
+            logger.info(f"[ScreenRecognition] PaddleOCR识别失败: {e}")
             return []
     
     async def _ocr_tesseract(self, image: np.ndarray) -> List[OCRResult]:
@@ -312,7 +315,7 @@ class ScreenRecognition:
             return results
             
         except Exception as e:
-            print(f"[ScreenRecognition] Tesseract识别失败: {e}")
+            logger.info(f"[ScreenRecognition] Tesseract识别失败: {e}")
             return []
     
     async def detect_game_state(self, game_name: str, 
@@ -348,17 +351,17 @@ class ScreenRecognition:
             from PIL import Image
             template = np.array(Image.open(template_path))
             self.templates[name] = template
-            print(f"[ScreenRecognition] 模板已加载: {name}")
+            logger.info(f"[ScreenRecognition] 模板已加载: {name}")
             return True
         except Exception as e:
-            print(f"[ScreenRecognition] 模板加载失败: {e}")
+            logger.info(f"[ScreenRecognition] 模板加载失败: {e}")
             return False
     
     async def match_template(self, template_name: str, 
                             image: np.ndarray = None) -> Optional[Tuple[int, int, float]]:
         """模板匹配"""
         if template_name not in self.templates:
-            print(f"[ScreenRecognition] 模板不存在: {template_name}")
+            logger.info(f"[ScreenRecognition] 模板不存在: {template_name}")
             return None
         
         if image is None:
@@ -384,10 +387,10 @@ class ScreenRecognition:
             return (max_loc[0], max_loc[1], max_val)
             
         except ImportError:
-            print("[ScreenRecognition] OpenCV未安装: pip install opencv-python")
+            logger.info("[ScreenRecognition] OpenCV未安装: pip install opencv-python")
             return None
         except Exception as e:
-            print(f"[ScreenRecognition] 模板匹配失败: {e}")
+            logger.info(f"[ScreenRecognition] 模板匹配失败: {e}")
             return None
     
     def get_stats(self) -> Dict[str, Any]:

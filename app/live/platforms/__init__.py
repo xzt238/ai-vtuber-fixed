@@ -1,5 +1,8 @@
+import logging
 """
 直播平台统一接口
+
+logger = logging.getLogger(__name__)
 
 提供统一的直播平台接口，支持多平台扩展。
 
@@ -164,7 +167,7 @@ class LivePlatform(ABC):
             try:
                 callback(message)
             except Exception as e:
-                print(f" 弹幕回调失败: {e}")
+                logger.info(f" 弹幕回调失败: {e}")
     
     def _notify_gift(self, message: GiftMessage):
         """通知礼物回调"""
@@ -173,7 +176,7 @@ class LivePlatform(ABC):
             try:
                 callback(message)
             except Exception as e:
-                print(f" 礼物回调失败: {e}")
+                logger.info(f" 礼物回调失败: {e}")
     
     def _notify_system(self, message: SystemMessage):
         """通知系统消息回调"""
@@ -181,7 +184,7 @@ class LivePlatform(ABC):
             try:
                 callback(message)
             except Exception as e:
-                print(f" 系统消息回调失败: {e}")
+                logger.info(f" 系统消息回调失败: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""

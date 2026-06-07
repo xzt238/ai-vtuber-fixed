@@ -1,8 +1,11 @@
+import logging
 #!/usr/bin/env python3
 """
 =====================================
 MCP (Model Context Protocol) 工具桥接模块
 =====================================
+
+logger = logging.getLogger(__name__)
 
 v1.9.52: 新增功能
 将 Anthropic 的 MCP 协议集成到咕咕嘎嘎工具系统中，
@@ -91,7 +94,7 @@ class MCPTransport:
             })
 
             if result is None:
-                print(f"[MCP] 初始化握手失败: {self.command}")
+                logger.info(f"[MCP] 初始化握手失败: {self.command}")
                 self._close_process()
                 return False
 
@@ -99,11 +102,11 @@ class MCPTransport:
             self._send_notification("notifications/initialized", {})
 
             self._connected = True
-            print(f"[MCP] 连接成功: {self.command}")
+            logger.info(f"[MCP] 连接成功: {self.command}")
             return True
 
         except Exception as e:
-            print(f"[MCP] 连接异常: {e}")
+            logger.info(f"[MCP] 连接异常: {e}")
             self._close_process()
             return False
 
@@ -173,7 +176,7 @@ class MCPTransport:
                     # 检查是否是我们请求的响应
                     if response.get("id") == req_id:
                         if "error" in response:
-                            print(f"[MCP] 请求错误: {response['error']}")
+                            logger.info(f"[MCP] 请求错误: {response['error']}")
                             return None
                         return response.get("result")
 
@@ -184,11 +187,11 @@ class MCPTransport:
                     time.sleep(0.1)
                     continue
 
-            print(f"[MCP] 请求超时: {method}")
+            logger.info(f"[MCP] 请求超时: {method}")
             return None
 
         except Exception as e:
-            print(f"[MCP] 发送请求异常: {e}")
+            logger.info(f"[MCP] 发送请求异常: {e}")
             return None
 
     def _send_notification(self, method: str, params: dict = None):
@@ -208,7 +211,7 @@ class MCPTransport:
             self._process.stdin.write(msg.encode("utf-8"))
             self._process.stdin.flush()
         except Exception as e:
-            print(f"[MCP] 发送通知异常: {e}")
+            logger.info(f"[MCP] 发送通知异常: {e}")
 
     def call_tool(self, tool_name: str, arguments: dict = None) -> Optional[dict]:
         """调用 MCP 服务器上的工具"""
@@ -297,10 +300,10 @@ class MCPToolBridge:
         self._running = True
 
         if not self._servers:
-            print("[MCP] 未配置 MCP 服务器 (config.yaml → mcp.servers)")
+            logger.info("[MCP] 未配置 MCP 服务器 (config.yaml → mcp.servers)")
             return
 
-        print(f"[MCP] 启动 {len(self._servers)} 个 MCP 服务器...")
+        logger.info(f"[MCP] 启动 {len(self._servers)} 个 MCP 服务器...")
         for name, cfg in self._servers.items():
             self._connect_server(name, cfg)
 
@@ -310,9 +313,9 @@ class MCPToolBridge:
         for name, transport in list(self._transports.items()):
             try:
                 transport.disconnect()
-                print(f"[MCP] 已断开: {name}")
+                logger.info(f"[MCP] 已断开: {name}")
             except Exception as e:
-                print(f"[MCP] 断开异常 ({name}): {e}")
+                logger.info(f"[MCP] 断开异常 ({name}): {e}")
         self._transports.clear()
         self._tool_cache.clear()
 
@@ -330,11 +333,11 @@ class MCPToolBridge:
                 # 缓存工具列表
                 tools = transport.list_tools()
                 self._tool_cache[name] = tools
-                print(f"[MCP] {name}: {len(tools)} 个工具可用")
+                logger.info(f"[MCP] {name}: {len(tools)} 个工具可用")
             else:
-                print(f"[MCP] {name}: 连接失败")
+                logger.info(f"[MCP] {name}: 连接失败")
         except Exception as e:
-            print(f"[MCP] {name}: 连接异常 - {e}")
+            logger.info(f"[MCP] {name}: 连接异常 - {e}")
 
     def list_all_tools(self) -> List[dict]:
         """列出所有可用工具（本地 + MCP）"""

@@ -1,8 +1,11 @@
+import logging
 #!/usr/bin/env python3
 """
 =====================================
 工具函数模块 - 统一常用功能
 =====================================
+
+logger = logging.getLogger(__name__)
 
 本模块是整个 AI VTuber 项目的公共工具层，旨在将分散在各处的通用逻辑集中管理，
 避免代码重复，降低维护成本。
@@ -179,7 +182,7 @@ def temp_file(suffix: str = "", prefix: str = "tmp", dir: Optional[str] = None, 
                 os.unlink(temp_path)  # 删除临时文件
             except OSError as e:
                 # 删除失败不应影响主流程（如文件被其他进程占用）
-                print(f"️ 清理临时文件失败: {e}")
+                logger.info(f"️ 清理临时文件失败: {e}")
 
 
 @contextmanager
@@ -219,7 +222,7 @@ def temp_dir(suffix: str = "", prefix: str = "tmp", dir: Optional[str] = None, d
             try:
                 shutil.rmtree(temp_path)  # 递归删除整个目录及其内容
             except OSError as e:
-                print(f"️ 清理临时目录失败: {e}")
+                logger.info(f"️ 清理临时目录失败: {e}")
 
 
 # ============================================
@@ -429,18 +432,18 @@ def load_env_or_config(key: str, config: dict, default=None):
 if __name__ == "__main__":
     # ===== 模块自测入口 =====
     # 直接运行此脚本时，执行基本的功能测试
-    print(" 测试工具函数...")
+    logger.info(" 测试工具函数...")
 
     # 测试路径验证
     try:
         path = validate_path("test.txt")
-        print(f" 路径验证: {path}")
+        logger.info(f" 路径验证: {path}")
     except ValueError as e:
-        print(f" 路径验证: {e}")
+        logger.info(f" 路径验证: {e}")
 
     # 测试临时文件
     with temp_file(suffix=".txt") as tmp:
-        print(f" 临时文件: {tmp}")
+        logger.info(f" 临时文件: {tmp}")
         with open(tmp, 'w') as f:
             f.write("test")
 
@@ -448,6 +451,6 @@ if __name__ == "__main__":
     try:
         raise FileNotFoundError("test.txt")
     except Exception as e:
-        print(f" 友好错误: {friendly_error(e)}")
+        logger.info(f" 友好错误: {friendly_error(e)}")
 
-    print(" 测试完成")
+    logger.info(" 测试完成")

@@ -1,5 +1,8 @@
+import logging
 """
 AI回复生成器
+
+logger = logging.getLogger(__name__)
 
 提供基于弹幕内容的AI生成功能。
 """
@@ -72,7 +75,7 @@ class AIResponder:
             return response
             
         except Exception as e:
-            print(f" AI回复生成失败: {e}")
+            logger.info(f" AI回复生成失败: {e}")
             return None
     
     def _should_respond(self, content: str) -> bool:
@@ -123,7 +126,7 @@ class AIResponder:
             return response
             
         except Exception as e:
-            print(f" 回复生成失败: {e}")
+            logger.info(f" 回复生成失败: {e}")
             return f"谢谢{username}的弹幕！"
     
     def generate_response_with_llm(self, danmaku: Danmaku) -> Optional[str]:
@@ -147,7 +150,7 @@ class AIResponder:
                 return str(response)
                 
         except Exception as e:
-            print(f" LLM回复生成失败: {e}")
+            logger.info(f" LLM回复生成失败: {e}")
             return self.generate_response(danmaku)
     
     def _build_prompt(self, danmaku: Danmaku) -> str:
@@ -198,7 +201,7 @@ class AIResponder:
             }
             
         except Exception as e:
-            print(f" 情感分析失败: {e}")
+            logger.info(f" 情感分析失败: {e}")
             return {
                 "sentiment": "neutral",
                 "score": 0.5,
@@ -225,5 +228,5 @@ class AIResponder:
             return keywords
             
         except Exception as e:
-            print(f" 关键词提取失败: {e}")
+            logger.info(f" 关键词提取失败: {e}")
             return []

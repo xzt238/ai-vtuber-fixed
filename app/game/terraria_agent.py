@@ -1,5 +1,8 @@
+import logging
 """
 Terraria游戏代理实现
+
+logger = logging.getLogger(__name__)
 
 提供Terraria游戏的完整集成，包括：
 - 通过tModLoader API连接到Terraria
@@ -40,8 +43,8 @@ class TerrariaAgent(GameAgent):
         # 状态轮询任务
         self._poll_task = None
         
-        print(f" Terraria代理初始化完成")
-        print(f" 服务器: {self.host}:{self.port}")
+        logger.info(f" Terraria代理初始化完成")
+        logger.info(f" 服务器: {self.host}:{self.port}")
     
     async def connect(self) -> bool:
         """连接到Terraria服务器"""
@@ -53,7 +56,7 @@ class TerrariaAgent(GameAgent):
             self._rcon = RCONClient(self.host, self.port)
             
             # 连接到服务器
-            print(f" 正在连接到Terraria服务器: {self.host}:{self.port}")
+            logger.info(f" 正在连接到Terraria服务器: {self.host}:{self.port}")
             
             # 使用asyncio运行同步的连接操作
             await asyncio.get_event_loop().run_in_executor(
@@ -61,7 +64,7 @@ class TerrariaAgent(GameAgent):
             )
             
             self.connected = True
-            print(" Terraria连接成功")
+            logger.info(" Terraria连接成功")
             
             # 启动状态轮询
             self._poll_task = asyncio.create_task(self._poll_state())
@@ -69,10 +72,10 @@ class TerrariaAgent(GameAgent):
             return True
             
         except ImportError:
-            print(" 未安装rcon库，请执行: pip install rcon")
+            logger.info(" 未安装rcon库，请执行: pip install rcon")
             return False
         except Exception as e:
-            print(f" Terraria连接失败: {e}")
+            logger.info(f" Terraria连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -94,16 +97,16 @@ class TerrariaAgent(GameAgent):
                 self._rcon = None
             
             self.connected = False
-            print(" Terraria连接已断开")
+            logger.info(" Terraria连接已断开")
             
         except Exception as e:
-            print(f" Terraria断开连接失败: {e}")
+            logger.info(f" Terraria断开连接失败: {e}")
     
     async def get_state(self) -> Optional[GameState]:
         """获取Terraria游戏状态"""
         try:
             if not self.connected or not self._rcon:
-                print(" 未连接到Terraria")
+                logger.info(" 未连接到Terraria")
                 return None
             
             # 获取游戏状态
@@ -136,7 +139,7 @@ class TerrariaAgent(GameAgent):
             return state
             
         except Exception as e:
-            print(f" 获取Terraria状态失败: {e}")
+            logger.info(f" 获取Terraria状态失败: {e}")
             return None
     
     def _parse_players(self, players_info: str) -> List[Dict[str, Any]]:
@@ -158,14 +161,14 @@ class TerrariaAgent(GameAgent):
         """执行Terraria动作"""
         try:
             if not self.connected or not self._rcon:
-                print(" 未连接到Terraria")
+                logger.info(" 未连接到Terraria")
                 return False
             
             action_type = action.action_type
             parameters = action.parameters
             
-            print(f" 执行Terraria动作: {action_type}")
-            print(f" 参数: {parameters}")
+            logger.info(f" 执行Terraria动作: {action_type}")
+            logger.info(f" 参数: {parameters}")
             
             # 根据动作类型执行
             if action_type == "chat":
@@ -179,24 +182,24 @@ class TerrariaAgent(GameAgent):
             elif action_type == "tp":
                 await self._teleport(parameters)
             else:
-                print(f" 未知的动作类型: {action_type}")
+                logger.info(f" 未知的动作类型: {action_type}")
                 return False
             
             # 通知动作回调
             self._notify_action(action)
             
-            print(f" Terraria动作执行成功: {action_type}")
+            logger.info(f" Terraria动作执行成功: {action_type}")
             return True
             
         except Exception as e:
-            print(f" Terraria动作执行失败: {e}")
+            logger.info(f" Terraria动作执行失败: {e}")
             return False
     
     async def _chat(self, parameters: Dict[str, Any]):
         """发送聊天消息"""
         message = parameters.get("message", "")
         
-        print(f" 发送聊天: {message}")
+        logger.info(f" 发送聊天: {message}")
         
         # 发送聊天命令
         await self.send_command(f"/say {message}")
@@ -205,7 +208,7 @@ class TerrariaAgent(GameAgent):
         """执行命令"""
         command = parameters.get("command", "")
         
-        print(f" 执行命令: {command}")
+        logger.info(f" 执行命令: {command}")
         
         # 发送命令
         await self.send_command(command)
@@ -216,7 +219,7 @@ class TerrariaAgent(GameAgent):
         item = parameters.get("item", "")
         count = parameters.get("count", 1)
         
-        print(f" 给予物品: {player} {item} x{count}")
+        logger.info(f" 给予物品: {player} {item} x{count}")
         
         # 发送给予命令
         await self.send_command(f"/give {player} {item} {count}")
@@ -226,7 +229,7 @@ class TerrariaAgent(GameAgent):
         entity = parameters.get("entity", "")
         count = parameters.get("count", 1)
         
-        print(f" 生成实体: {entity} x{count}")
+        logger.info(f" 生成实体: {entity} x{count}")
         
         # 发送生成命令
         await self.send_command(f"/spawn {entity} {count}")
@@ -237,7 +240,7 @@ class TerrariaAgent(GameAgent):
         x = parameters.get("x", 0)
         y = parameters.get("y", 0)
         
-        print(f" 传送玩家: {player} to ({x}, {y})")
+        logger.info(f" 传送玩家: {player} to ({x}, {y})")
         
         # 发送传送命令
         await self.send_command(f"/tp {player} {x} {y}")
@@ -246,21 +249,21 @@ class TerrariaAgent(GameAgent):
         """发送RCON命令"""
         try:
             if not self.connected or not self._rcon:
-                print(" 未连接到Terraria")
+                logger.info(" 未连接到Terraria")
                 return None
             
-            print(f" 发送命令: {command}")
+            logger.info(f" 发送命令: {command}")
             
             # 发送命令
             response = await asyncio.get_event_loop().run_in_executor(
                 None, self._rcon.command, command
             )
             
-            print(f" 命令响应: {response}")
+            logger.info(f" 命令响应: {response}")
             return response
             
         except Exception as e:
-            print(f" 命令发送失败: {e}")
+            logger.info(f" 命令发送失败: {e}")
             return None
     
     async def chat(self, message: str) -> bool:
@@ -305,7 +308,7 @@ class TerrariaAgent(GameAgent):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    print(f" 状态轮询失败: {e}")
+                    logger.info(f" 状态轮询失败: {e}")
                     await asyncio.sleep(10)
             
         except asyncio.CancelledError:

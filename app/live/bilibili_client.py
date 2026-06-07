@@ -1,5 +1,8 @@
+import logging
 """
 Bilibili直播客户端
+
+logger = logging.getLogger(__name__)
 
 提供Bilibili直播弹幕接收功能。
 """
@@ -50,7 +53,7 @@ class BilibiliClient:
             # 获取直播间信息
             room_info = await self._get_room_info(room_id)
             if not room_info:
-                print(f" 获取直播间信息失败: {room_id}")
+                logger.info(f" 获取直播间信息失败: {room_id}")
                 return False
             
             # 连接WebSocket
@@ -66,12 +69,12 @@ class BilibiliClient:
             self._receive_task = asyncio.create_task(self._receive_loop())
             
             self._connected = True
-            print(f" Bilibili直播客户端连接成功: {room_id}")
+            logger.info(f" Bilibili直播客户端连接成功: {room_id}")
             
             return True
             
         except Exception as e:
-            print(f" Bilibili直播客户端连接失败: {e}")
+            logger.info(f" Bilibili直播客户端连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -93,10 +96,10 @@ class BilibiliClient:
             if self.session:
                 await self.session.close()
             
-            print(f" Bilibili直播客户端断开连接")
+            logger.info(f" Bilibili直播客户端断开连接")
             
         except Exception as e:
-            print(f" Bilibili直播客户端断开失败: {e}")
+            logger.info(f" Bilibili直播客户端断开失败: {e}")
     
     async def _get_room_info(self, room_id: str) -> Optional[Dict[str, Any]]:
         """获取直播间信息"""
@@ -112,7 +115,7 @@ class BilibiliClient:
             return None
             
         except Exception as e:
-            print(f" 获取直播间信息失败: {e}")
+            logger.info(f" 获取直播间信息失败: {e}")
             return None
     
     async def _send_auth_packet(self, room_info: Dict[str, Any]):
@@ -139,10 +142,10 @@ class BilibiliClient:
             # 发送认证包
             await self.websocket.send_bytes(packet)
             
-            print(f" 发送认证包成功")
+            logger.info(f" 发送认证包成功")
             
         except Exception as e:
-            print(f" 发送认证包失败: {e}")
+            logger.info(f" 发送认证包失败: {e}")
     
     async def _heartbeat_loop(self):
         """心跳循环"""
@@ -158,7 +161,7 @@ class BilibiliClient:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f" 心跳循环失败: {e}")
+            logger.info(f" 心跳循环失败: {e}")
     
     async def _receive_loop(self):
         """接收消息循环"""
@@ -172,13 +175,13 @@ class BilibiliClient:
                     self._process_text_message(message.data)
                 elif message.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                     # 连接关闭或错误
-                    print(f" WebSocket连接关闭: {message.type}")
+                    logger.info(f" WebSocket连接关闭: {message.type}")
                     break
                     
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f" 接收消息循环失败: {e}")
+            logger.info(f" 接收消息循环失败: {e}")
     
     def _process_binary_message(self, data: bytes):
         """处理二进制消息"""
@@ -197,7 +200,7 @@ class BilibiliClient:
                         pass
                         
         except Exception as e:
-            print(f" 处理二进制消息失败: {e}")
+            logger.info(f" 处理二进制消息失败: {e}")
     
     def _process_text_message(self, data: str):
         """处理文本消息"""

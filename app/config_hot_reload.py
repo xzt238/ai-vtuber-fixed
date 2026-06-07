@@ -1,7 +1,10 @@
+import logging
 """
 配置热重载模块
 支持配置文件监听、自动重载、变更通知
 """
+
+logger = logging.getLogger(__name__)
 
 import os
 import asyncio
@@ -59,25 +62,25 @@ class ConfigHotReload:
             "total_errors": 0
         }
         
-        print("[ConfigHotReload] 初始化完成")
+        logger.info("[ConfigHotReload] 初始化完成")
     
     def add_watch(self, file_path: str) -> bool:
         """添加监听文件"""
         try:
             path = Path(file_path)
             if not path.exists():
-                print(f"[ConfigHotReload] 文件不存在: {file_path}")
+                logger.info(f"[ConfigHotReload] 文件不存在: {file_path}")
                 return False
             
             # 计算初始哈希
             content_hash = self._calculate_hash(path)
             self.watched_files[str(path)] = content_hash
             
-            print(f"[ConfigHotReload] 添加监听: {file_path}")
+            logger.info(f"[ConfigHotReload] 添加监听: {file_path}")
             return True
             
         except Exception as e:
-            print(f"[ConfigHotReload] 添加监听失败: {e}")
+            logger.info(f"[ConfigHotReload] 添加监听失败: {e}")
             return False
     
     def remove_watch(self, file_path: str) -> bool:
@@ -85,7 +88,7 @@ class ConfigHotReload:
         path = str(Path(file_path))
         if path in self.watched_files:
             del self.watched_files[path]
-            print(f"[ConfigHotReload] 移除监听: {file_path}")
+            logger.info(f"[ConfigHotReload] 移除监听: {file_path}")
             return True
         return False
     
@@ -108,7 +111,7 @@ class ConfigHotReload:
         # 触发回调
         await self._notify_callbacks(ReloadEvent.WATCHER_STARTED, {})
         
-        print("[ConfigHotReload] 开始监听配置文件")
+        logger.info("[ConfigHotReload] 开始监听配置文件")
     
     async def stop_watching(self):
         """停止监听"""
@@ -124,7 +127,7 @@ class ConfigHotReload:
         # 触发回调
         await self._notify_callbacks(ReloadEvent.WATCHER_STOPPED, {})
         
-        print("[ConfigHotReload] 停止监听配置文件")
+        logger.info("[ConfigHotReload] 停止监听配置文件")
     
     async def _watch_loop(self):
         """监听循环"""
@@ -135,7 +138,7 @@ class ConfigHotReload:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f"[ConfigHotReload] 监听循环错误: {e}")
+            logger.info(f"[ConfigHotReload] 监听循环错误: {e}")
     
     async def _check_changes(self):
         """检查文件变更"""
@@ -178,7 +181,7 @@ class ConfigHotReload:
                     await self._reload_config(file_path)
                     
             except Exception as e:
-                print(f"[ConfigHotReload] 检查文件失败 {file_path}: {e}")
+                logger.info(f"[ConfigHotReload] 检查文件失败 {file_path}: {e}")
     
     async def _reload_config(self, file_path: str):
         """重载配置"""
@@ -197,7 +200,7 @@ class ConfigHotReload:
                 "file_path": file_path
             })
             
-            print(f"[ConfigHotReload] 配置已重载: {file_path}")
+            logger.info(f"[ConfigHotReload] 配置已重载: {file_path}")
             
         except Exception as e:
             self.stats["total_errors"] += 1
@@ -208,7 +211,7 @@ class ConfigHotReload:
                 "error": str(e)
             })
             
-            print(f"[ConfigHotReload] 重载失败 {file_path}: {e}")
+            logger.info(f"[ConfigHotReload] 重载失败 {file_path}: {e}")
     
     async def _notify_callbacks(self, event: ReloadEvent, data: Dict[str, Any]):
         """通知回调函数"""
@@ -219,7 +222,7 @@ class ConfigHotReload:
                 else:
                     callback(event, data)
             except Exception as e:
-                print(f"[ConfigHotReload] 回调执行失败: {e}")
+                logger.info(f"[ConfigHotReload] 回调执行失败: {e}")
     
     def on_change(self, callback: Callable):
         """注册变更回调"""

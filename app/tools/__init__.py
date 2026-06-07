@@ -1,8 +1,11 @@
+import logging
 #!/usr/bin/env python3
 """
 =====================================
 工具系统 - 统一管理 (参考 Claude Code)
 =====================================
+
+logger = logging.getLogger(__name__)
 
 【模块功能概述】
 本模块实现了 AI VTuber 系统的"工具系统"——让 AI 能够执行各种操作，
@@ -348,7 +351,7 @@ class EditTool(Tool):
             # 检查匹配次数，多处匹配时发出警告
             count = content.count(old_text)
             if count > 1:
-                print(f"⚠️ 警告: 找到 {count} 处匹配，只替换第一处")
+                logger.info(f"⚠️ 警告: 找到 {count} 处匹配，只替换第一处")
             
             # 只替换第一次出现（count=1 限制替换次数）
             content = content.replace(old_text, new_text, 1)
@@ -708,7 +711,7 @@ class ToolFactory:
                 cls._tools.update(COMPANION_TOOLS)
                 cls._companion_tools_loaded = True
             except Exception as e:
-                print(f"[ToolFactory] 伴侣工具加载失败: {e}")
+                logger.info(f"[ToolFactory] 伴侣工具加载失败: {e}")
 
     @classmethod
     def create(cls, tool_name: str) -> Optional[Tool]:
@@ -765,6 +768,6 @@ class ToolFactory:
 
 if __name__ == "__main__":
     # 列出所有可用工具
-    print("可用工具:")
+    logger.info("可用工具:")
     for tool in ToolFactory.list_tools():
-        print(f"  - {tool['name']}: {tool['description']}")
+        logger.info(f"  - {tool['name']}: {tool['description']}")

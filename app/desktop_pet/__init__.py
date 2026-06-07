@@ -1,8 +1,11 @@
+import logging
 #!/usr/bin/env python3
 """
 =====================================
 桌面宠物模式模块
 =====================================
+
+logger = logging.getLogger(__name__)
 
 v1.9.52: 新增功能
 将 Live2D 角色以桌面宠物的形式悬浮在桌面上。
@@ -380,13 +383,13 @@ class DesktopPetManager:
     def start(self):
         """启动桌面宠物窗口"""
         if not self.enabled:
-            print("[桌面宠物] 未启用 (config.yaml → desktop_pet.enabled)")
+            logger.info("[桌面宠物] 未启用 (config.yaml → desktop_pet.enabled)")
             return
 
         if self._running:
             return
 
-        print("[桌面宠物] 启动中...")
+        logger.info("[桌面宠物] 启动中...")
         self._running = True
         self._thread = threading.Thread(target=self._run_window, daemon=True, name="desktop-pet")
         self._thread.start()
@@ -400,14 +403,14 @@ class DesktopPetManager:
             except Exception:
                 pass
         self._window = None
-        print("[桌面宠物] 已停止")
+        logger.info("[桌面宠物] 已停止")
 
     def _run_window(self):
         """在独立线程中运行 pywebview 窗口"""
         try:
             import webview
         except ImportError:
-            print("[桌面宠物] pywebview 未安装，请运行: pip install pywebview")
+            logger.info("[桌面宠物] pywebview 未安装，请运行: pip install pywebview")
             self._running = False
             return
 
@@ -436,11 +439,11 @@ class DesktopPetManager:
                 js_api=api,
             )
 
-            print(f"[桌面宠物] 窗口已创建 ({width}x{height})")
+            logger.info(f"[桌面宠物] 窗口已创建 ({width}x{height})")
             webview.start(debug=False)
 
         except Exception as e:
-            print(f"[桌面宠物] 窗口异常: {e}")
+            logger.info(f"[桌面宠物] 窗口异常: {e}")
         finally:
             self._running = False
 
@@ -463,7 +466,7 @@ class DesktopPetManager:
                 except Exception:
                     pass
         except Exception as e:
-            print(f"[桌面宠物] 触发说话失败: {e}")
+            logger.info(f"[桌面宠物] 触发说话失败: {e}")
 
     def show(self):
         """显示宠物窗口"""

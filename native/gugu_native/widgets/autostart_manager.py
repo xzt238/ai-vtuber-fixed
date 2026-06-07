@@ -1,5 +1,8 @@
+import logging
 """
 开机自启管理器 — 跨平台（Windows/macOS/Linux）
+
+logger = logging.getLogger(__name__)
 
 功能:
 - 添加/移除开机自启
@@ -68,10 +71,10 @@ class AutoStartManager(QObject):
             ok = set_autostart(True, self.APP_NAME, self._app_path)
             if ok:
                 self.state_changed.emit(True)
-                print(f"[AutoStart] 已启用开机自启 ({sys.platform})")
+                logger.info(f"[AutoStart] 已启用开机自启 ({sys.platform})")
             return ok
         except Exception as e:
-            print(f"[AutoStart] 启用失败: {e}")
+            logger.info(f"[AutoStart] 启用失败: {e}")
             return False
 
     def disable(self) -> bool:
@@ -81,10 +84,10 @@ class AutoStartManager(QObject):
             ok = set_autostart(False, self.APP_NAME, self._app_path)
             if ok:
                 self.state_changed.emit(False)
-                print(f"[AutoStart] 已禁用开机自启 ({sys.platform})")
+                logger.info(f"[AutoStart] 已禁用开机自启 ({sys.platform})")
             return ok
         except Exception as e:
-            print(f"[AutoStart] 禁用失败: {e}")
+            logger.info(f"[AutoStart] 禁用失败: {e}")
             return False
 
     def toggle(self) -> bool:

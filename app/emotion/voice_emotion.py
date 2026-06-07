@@ -1,7 +1,10 @@
+import logging
 """
 情感语音控制模块
 将情感信息转化为语音参数，实现情感化语音合成
 """
+
+logger = logging.getLogger(__name__)
 
 from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass
@@ -178,7 +181,7 @@ class EmotionVoiceMapper:
             "自信": VoiceEmotion.CONFIDENT
         }
         
-        print("[EmotionVoiceMapper] 初始化完成")
+        logger.info("[EmotionVoiceMapper] 初始化完成")
     
     def get_params(self, emotion: VoiceEmotion) -> VoiceEmotionParams:
         """获取情感对应的语音参数"""
@@ -234,7 +237,7 @@ class EmotionVoiceController:
         self.current_emotion: VoiceEmotion = VoiceEmotion.NEUTRAL
         self.emotion_history: list = []
         
-        print("[EmotionVoiceController] 初始化完成")
+        logger.info("[EmotionVoiceController] 初始化完成")
     
     def set_emotion(self, emotion: VoiceEmotion):
         """设置当前情感"""

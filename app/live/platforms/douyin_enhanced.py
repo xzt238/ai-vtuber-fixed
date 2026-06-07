@@ -1,7 +1,10 @@
+import logging
 """
 抖音直播平台增强版
 实现完整的弹幕接收和发送功能
 """
+
+logger = logging.getLogger(__name__)
 
 import asyncio
 import json
@@ -67,7 +70,7 @@ class DouyinPlatformEnhanced(LivePlatform):
             "last_danmaku_time": None
         }
         
-        print("[DouyinEnhanced] 初始化完成")
+        logger.info("[DouyinEnhanced] 初始化完成")
     
     def _get_platform_type(self) -> PlatformType:
         """获取平台类型"""
@@ -79,24 +82,24 @@ class DouyinPlatformEnhanced(LivePlatform):
             self.douyin_config.room_id = room_id
         
         if not self.douyin_config.room_id:
-            print("[DouyinEnhanced] 错误: 未配置直播间ID")
+            logger.info("[DouyinEnhanced] 错误: 未配置直播间ID")
             return False
         
         self.connection_state = DouyinConnectionState.CONNECTING
-        print(f"[DouyinEnhanced] 正在连接直播间: {self.douyin_config.room_id}")
+        logger.info(f"[DouyinEnhanced] 正在连接直播间: {self.douyin_config.room_id}")
         
         try:
             # 获取直播间信息
             room_info = await self._get_room_info()
             if not room_info:
-                print("[DouyinEnhanced] 错误: 无法获取直播间信息")
+                logger.info("[DouyinEnhanced] 错误: 无法获取直播间信息")
                 self.connection_state = DouyinConnectionState.DISCONNECTED
                 return False
             
             # 建立WebSocket连接
             success = await self._connect_websocket()
             if not success:
-                print("[DouyinEnhanced] 错误: WebSocket连接失败")
+                logger.info("[DouyinEnhanced] 错误: WebSocket连接失败")
                 self.connection_state = DouyinConnectionState.DISCONNECTED
                 return False
             
@@ -111,11 +114,11 @@ class DouyinPlatformEnhanced(LivePlatform):
             self.stats["connection_time"] = datetime.now()
             self.reconnect_attempts = 0
             
-            print(f"[DouyinEnhanced] 连接成功: {room_info.get('title', '未知')}")
+            logger.info(f"[DouyinEnhanced] 连接成功: {room_info.get('title', '未知')}")
             return True
             
         except Exception as e:
-            print(f"[DouyinEnhanced] 连接失败: {e}")
+            logger.info(f"[DouyinEnhanced] 连接失败: {e}")
             self.connection_state = DouyinConnectionState.DISCONNECTED
             return False
     
@@ -145,11 +148,11 @@ class DouyinPlatformEnhanced(LivePlatform):
             self.connected = False
             self.connection_state = DouyinConnectionState.DISCONNECTED
             
-            print("[DouyinEnhanced] 已断开连接")
+            logger.info("[DouyinEnhanced] 已断开连接")
             return True
             
         except Exception as e:
-            print(f"[DouyinEnhanced] 断开连接失败: {e}")
+            logger.info(f"[DouyinEnhanced] 断开连接失败: {e}")
             return False
     
     async def _get_room_info(self) -> Optional[Dict[str, Any]]:
@@ -185,7 +188,7 @@ class DouyinPlatformEnhanced(LivePlatform):
             return None
             
         except Exception as e:
-            print(f"[DouyinEnhanced] 获取直播间信息失败: {e}")
+            logger.info(f"[DouyinEnhanced] 获取直播间信息失败: {e}")
             return None
     
     async def _connect_websocket(self) -> bool:
@@ -230,14 +233,14 @@ class DouyinPlatformEnhanced(LivePlatform):
                 }
             )
             
-            print("[DouyinEnhanced] WebSocket连接成功")
+            logger.info("[DouyinEnhanced] WebSocket连接成功")
             return True
             
         except ImportError:
-            print("[DouyinEnhanced] 错误: 未安装websockets库")
+            logger.info("[DouyinEnhanced] 错误: 未安装websockets库")
             return False
         except Exception as e:
-            print(f"[DouyinEnhanced] WebSocket连接失败: {e}")
+            logger.info(f"[DouyinEnhanced] WebSocket连接失败: {e}")
             return False
     
     async def _heartbeat_loop(self):
@@ -258,7 +261,7 @@ class DouyinPlatformEnhanced(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    print(f"[DouyinEnhanced] 心跳发送失败: {e}")
+                    logger.info(f"[DouyinEnhanced] 心跳发送失败: {e}")
                     await asyncio.sleep(1)
                     
         except asyncio.CancelledError:
@@ -279,7 +282,7 @@ class DouyinPlatformEnhanced(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    print(f"[DouyinEnhanced] 消息接收失败: {e}")
+                    logger.info(f"[DouyinEnhanced] 消息接收失败: {e}")
                     # 尝试重连
                     if self.connected:
                         await self._reconnect()
@@ -318,7 +321,7 @@ class DouyinPlatformEnhanced(LivePlatform):
         except json.JSONDecodeError:
             pass
         except Exception as e:
-            print(f"[DouyinEnhanced] 消息处理失败: {e}")
+            logger.info(f"[DouyinEnhanced] 消息处理失败: {e}")
     
     async def _handle_danmaku(self, data: Dict[str, Any]):
         """处理弹幕消息"""
@@ -351,12 +354,12 @@ class DouyinPlatformEnhanced(LivePlatform):
                     else:
                         callback(danmaku)
                 except Exception as e:
-                    print(f"[DouyinEnhanced] 弹幕回调失败: {e}")
+                    logger.info(f"[DouyinEnhanced] 弹幕回调失败: {e}")
             
-            print(f"[DouyinEnhanced] 弹幕: {danmaku.username}: {danmaku.content}")
+            logger.info(f"[DouyinEnhanced] 弹幕: {danmaku.username}: {danmaku.content}")
             
         except Exception as e:
-            print(f"[DouyinEnhanced] 弹幕处理失败: {e}")
+            logger.info(f"[DouyinEnhanced] 弹幕处理失败: {e}")
     
     async def _handle_gift(self, data: Dict[str, Any]):
         """处理礼物消息"""
@@ -390,12 +393,12 @@ class DouyinPlatformEnhanced(LivePlatform):
                     else:
                         callback(gift_msg)
                 except Exception as e:
-                    print(f"[DouyinEnhanced] 礼物回调失败: {e}")
+                    logger.info(f"[DouyinEnhanced] 礼物回调失败: {e}")
             
-            print(f"[DouyinEnhanced] 礼物: {gift_msg.username} 送出了 {gift_msg.gift_name} x{gift_msg.gift_count}")
+            logger.info(f"[DouyinEnhanced] 礼物: {gift_msg.username} 送出了 {gift_msg.gift_name} x{gift_msg.gift_count}")
             
         except Exception as e:
-            print(f"[DouyinEnhanced] 礼物处理失败: {e}")
+            logger.info(f"[DouyinEnhanced] 礼物处理失败: {e}")
     
     async def _handle_like(self, data: Dict[str, Any]):
         """处理点赞消息"""
@@ -412,7 +415,7 @@ class DouyinPlatformEnhanced(LivePlatform):
     async def send_danmaku(self, content: str) -> bool:
         """发送弹幕"""
         if not self.connected or not self.websocket:
-            print("[DouyinEnhanced] 错误: 未连接")
+            logger.info("[DouyinEnhanced] 错误: 未连接")
             return False
         
         try:
@@ -426,11 +429,11 @@ class DouyinPlatformEnhanced(LivePlatform):
             # 发送消息
             await self.websocket.send(json.dumps(message))
             
-            print(f"[DouyinEnhanced] 发送弹幕: {content}")
+            logger.info(f"[DouyinEnhanced] 发送弹幕: {content}")
             return True
             
         except Exception as e:
-            print(f"[DouyinEnhanced] 发送弹幕失败: {e}")
+            logger.info(f"[DouyinEnhanced] 发送弹幕失败: {e}")
             return False
     
     async def _reconnect(self):
@@ -442,21 +445,21 @@ class DouyinPlatformEnhanced(LivePlatform):
         self.reconnect_attempts += 1
         
         if self.reconnect_attempts > self.douyin_config.max_reconnect_attempts:
-            print("[DouyinEnhanced] 重连次数超过限制，停止重连")
+            logger.info("[DouyinEnhanced] 重连次数超过限制，停止重连")
             self.connected = False
             self.connection_state = DouyinConnectionState.DISCONNECTED
             return
         
-        print(f"[DouyinEnhanced] 尝试重连 ({self.reconnect_attempts}/{self.douyin_config.max_reconnect_attempts})")
+        logger.info(f"[DouyinEnhanced] 尝试重连 ({self.reconnect_attempts}/{self.douyin_config.max_reconnect_attempts})")
         
         await asyncio.sleep(self.douyin_config.reconnect_interval)
         
         # 重新连接
         success = await self.connect()
         if success:
-            print("[DouyinEnhanced] 重连成功")
+            logger.info("[DouyinEnhanced] 重连成功")
         else:
-            print("[DouyinEnhanced] 重连失败")
+            logger.info("[DouyinEnhanced] 重连失败")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""

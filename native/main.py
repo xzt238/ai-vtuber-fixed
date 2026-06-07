@@ -469,7 +469,7 @@ class GuguGagaApp(FluentWindow):
 
         # 关闭启动画面（隐藏但不销毁，日志内容保留供后续查看）
         if self._splash:
-            print(f"✓ 后端全部就绪 (耗时 {elapsed:.1f}s)")
+            logger.info(f"✓ 后端全部就绪 (耗时 {elapsed:.1f}s)")
             self._splash.set_progress("启动完成!")
             self._splash.fade_out_and_close()
 

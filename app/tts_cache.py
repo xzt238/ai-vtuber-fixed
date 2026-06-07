@@ -1,8 +1,11 @@
+import logging
 #!/usr/bin/env python3
 """
 =====================================
 TTS 缓存系统 (TTS Cache System)
 =====================================
+
+logger = logging.getLogger(__name__)
 
 功能概述:
 - 缓存已生成的 TTS 语音文件到本地磁盘，避免对相同文本重复调用 TTS 接口合成语音
@@ -177,7 +180,7 @@ class TTSCache:
             # 设计原因：每次写入都可能使缓存超出上限，需及时检查
             self._check_size_limit()
         except Exception as e:
-            print(f"️ 缓存保存失败: {e}")
+            logger.info(f"️ 缓存保存失败: {e}")
 
     def clear(self):
         """
@@ -189,9 +192,9 @@ class TTSCache:
         try:
             shutil.rmtree(self.cache_dir)  # 递归删除整个缓存目录及其内容
             self.cache_dir.mkdir(parents=True, exist_ok=True)  # 重新创建空目录
-            print(" 缓存已清空")
+            logger.info(" 缓存已清空")
         except Exception as e:
-            print(f"️ 清空缓存失败: {e}")
+            logger.info(f"️ 清空缓存失败: {e}")
 
     def _cleanup_expired(self):
         """
@@ -214,11 +217,11 @@ class TTSCache:
                     cache_file.unlink()  # 删除过期文件
                     removed_count += 1
             except Exception as e:
-                print(f"️ 清理缓存失败: {e}")
+                logger.info(f"️ 清理缓存失败: {e}")
 
         # 如果有文件被清理，输出日志
         if removed_count > 0:
-            print(f" [TTSCache] 惰性清理: {removed_count} 个过期缓存")
+            logger.info(f" [TTSCache] 惰性清理: {removed_count} 个过期缓存")
 
     def _check_size_limit(self):
         """
@@ -260,10 +263,10 @@ class TTSCache:
                     if total_size <= self.max_size_bytes * 0.8:
                         break
                 except Exception as e:
-                    print(f"️ 删除缓存失败: {e}")
+                    logger.info(f"️ 删除缓存失败: {e}")
 
             if removed_count > 0:
-                print(f"️ 清理了 {removed_count} 个旧缓存（大小限制）")
+                logger.info(f"️ 清理了 {removed_count} 个旧缓存（大小限制）")
 
     def get_stats(self) -> dict:
         """
@@ -287,16 +290,16 @@ class TTSCache:
 
 if __name__ == "__main__":
     # ===== 模块自测入口 =====
-    print(" 测试 TTS 缓存...")
+    logger.info(" 测试 TTS 缓存...")
 
     cache = TTSCache()
 
     # 测试缓存键生成
     key = cache.get_cache_key("你好", "zh-CN-XiaoxiaoNeural", "edge")
-    print(f" 缓存键: {key}")
+    logger.info(f" 缓存键: {key}")
 
     # 测试统计
     stats = cache.get_stats()
-    print(f" 缓存统计: {stats['count']} 个文件, {stats['size_mb']:.2f} MB")
+    logger.info(f" 缓存统计: {stats['count']} 个文件, {stats['size_mb']:.2f} MB")
 
-    print(" 测试完成")
+    logger.info(" 测试完成")

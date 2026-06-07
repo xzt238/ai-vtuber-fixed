@@ -1,7 +1,10 @@
+import logging
 """
 启动优化模块
 提供懒加载、预加载、启动时间优化等功能
 """
+
+logger = logging.getLogger(__name__)
 
 import asyncio
 import time
@@ -60,7 +63,7 @@ class StartupOptimizer:
         self.on_module_loaded: List[Callable] = []
         self.on_all_loaded: List[Callable] = []
         
-        print("[StartupOptimizer] 初始化完成")
+        logger.info("[StartupOptimizer] 初始化完成")
     
     def register_module(self, name: str, loader: Callable, 
                        priority: LoadPriority = LoadPriority.MEDIUM,
@@ -77,7 +80,7 @@ class StartupOptimizer:
         self.load_queues[priority].append(name)
         self.stats["total_modules"] += 1
         
-        print(f"[StartupOptimizer] 注册模块: {name} (优先级: {priority.name})")
+        logger.info(f"[StartupOptimizer] 注册模块: {name} (优先级: {priority.name})")
     
     async def load_critical_modules(self) -> List[str]:
         """加载关键模块"""
@@ -104,9 +107,9 @@ class StartupOptimizer:
         self.is_loading = True
         self.start_time = time.time()
         
-        print("\n" + "="*50)
-        print("开始加载模块...")
-        print("="*50 + "\n")
+        logger.info("\n" + "="*50)
+        logger.info("开始加载模块...")
+        logger.info("="*50 + "\n")
         
         # 按优先级顺序加载
         for priority in LoadPriority:
@@ -115,7 +118,7 @@ class StartupOptimizer:
             if not queue:
                 continue
             
-            print(f"\n加载 {priority.name} 优先级模块 ({len(queue)} 个)...")
+            logger.info(f"\n加载 {priority.name} 优先级模块 ({len(queue)} 个)...")
             
             # 并行加载同优先级的模块
             tasks = [self._load_module(name) for name in queue]
@@ -135,7 +138,7 @@ class StartupOptimizer:
                 else:
                     callback()
             except Exception as e:
-                print(f"[StartupOptimizer] 完成回调失败: {e}")
+                logger.info(f"[StartupOptimizer] 完成回调失败: {e}")
         
         # 打印统计
         self._print_stats()
@@ -143,7 +146,7 @@ class StartupOptimizer:
     async def _load_module(self, name: str) -> bool:
         """加载单个模块"""
         if name not in self.modules:
-            print(f"[StartupOptimizer] 模块不存在: {name}")
+            logger.info(f"[StartupOptimizer] 模块不存在: {name}")
             return False
         
         module = self.modules[name]
@@ -151,7 +154,7 @@ class StartupOptimizer:
         # 检查依赖
         for dep in module.dependencies:
             if dep in self.modules and not self.modules[dep].loaded:
-                print(f"[StartupOptimizer] 等待依赖: {dep}")
+                logger.info(f"[StartupOptimizer] 等待依赖: {dep}")
                 await self._load_module(dep)
         
         # 加载模块
@@ -174,7 +177,7 @@ class StartupOptimizer:
             self.stats["loaded_modules"] += 1
             self.stats["total_load_time_ms"] += load_time
             
-            print(f"✅ {name} ({load_time:.1f}ms)")
+            logger.info(f"✅ {name} ({load_time:.1f}ms)")
             
             # 触发回调
             for callback in self.on_module_loaded:
@@ -184,26 +187,26 @@ class StartupOptimizer:
                     else:
                         callback(name, module)
                 except Exception as e:
-                    print(f"[StartupOptimizer] 加载回调失败: {e}")
+                    logger.info(f"[StartupOptimizer] 加载回调失败: {e}")
             
             return True
             
         except Exception as e:
             module.error = e
             self.stats["failed_modules"] += 1
-            print(f"❌ {name}: {e}")
+            logger.info(f"❌ {name}: {e}")
             return False
     
     def _print_stats(self):
         """打印统计信息"""
-        print("\n" + "="*50)
-        print("模块加载完成")
-        print("="*50)
-        print(f"总模块数: {self.stats['total_modules']}")
-        print(f"已加载: {self.stats['loaded_modules']}")
-        print(f"失败: {self.stats['failed_modules']}")
-        print(f"总耗时: {self.stats['total_load_time_ms']:.1f}ms")
-        print("="*50 + "\n")
+        logger.info("\n" + "="*50)
+        logger.info("模块加载完成")
+        logger.info("="*50)
+        logger.info(f"总模块数: {self.stats['total_modules']}")
+        logger.info(f"已加载: {self.stats['loaded_modules']}")
+        logger.info(f"失败: {self.stats['failed_modules']}")
+        logger.info(f"总耗时: {self.stats['total_load_time_ms']:.1f}ms")
+        logger.info("="*50 + "\n")
     
     def get_module(self, name: str) -> Optional[ModuleInfo]:
         """获取模块信息"""

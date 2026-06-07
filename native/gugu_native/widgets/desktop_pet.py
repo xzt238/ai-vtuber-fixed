@@ -1,5 +1,8 @@
+import logging
 """
 桌面宠物模式 — 无边框透明窗口 + Live2D
+
+logger = logging.getLogger(__name__)
 
 功能:
 - 无边框透明窗口（FramelessWindowHint + WA_TranslucentBackground）
@@ -124,7 +127,7 @@ class DesktopPetWindow(QWidget):
         if os.path.exists(model_path):
             self._model_loaded = self.live2d_widget.load_model(model_path)
         else:
-            print(f"[DesktopPet] 模型不存在: {model_path}")
+            logger.info(f"[DesktopPet] 模型不存在: {model_path}")
 
     def _on_switch_to_main(self):
         """切回主窗口"""

@@ -1,5 +1,8 @@
+import logging
 """
 文档加载器
+
+logger = logging.getLogger(__name__)
 
 支持多种文档格式的加载和解析。
 """
@@ -27,13 +30,13 @@ class DocumentLoader:
             
             # 检查文件是否存在
             if not file_path.exists():
-                print(f" 文件不存在: {file_path}")
+                logger.info(f" 文件不存在: {file_path}")
                 return None
             
             # 检查文件格式
             file_type = file_path.suffix.lower().lstrip('.')
             if file_type not in self.supported_formats:
-                print(f" 不支持的文件格式: {file_type}")
+                logger.info(f" 不支持的文件格式: {file_type}")
                 return None
             
             # 生成文档ID
@@ -57,13 +60,13 @@ class DocumentLoader:
                 metadata=metadata
             )
             
-            print(f" 文档加载成功: {file_path.name}")
-            print(f" 文件类型: {file_type}, 内容长度: {len(content)} 字符")
+            logger.info(f" 文档加载成功: {file_path.name}")
+            logger.info(f" 文件类型: {file_type}, 内容长度: {len(content)} 字符")
             
             return document
             
         except Exception as e:
-            print(f" 文档加载失败: {e}")
+            logger.info(f" 文档加载失败: {e}")
             return None
     
     def load_batch(self, file_paths: List[str]) -> List[Document]:
@@ -94,10 +97,10 @@ class DocumentLoader:
             elif file_type == "docx":
                 return self._load_docx(file_path)
             else:
-                print(f" 未实现的文件类型: {file_type}")
+                logger.info(f" 未实现的文件类型: {file_type}")
                 return None
         except Exception as e:
-            print(f" 内容加载失败: {e}")
+            logger.info(f" 内容加载失败: {e}")
             return None
     
     def _load_txt(self, file_path: Path) -> Optional[str]:
@@ -124,8 +127,8 @@ class DocumentLoader:
             try:
                 import PyPDF2
             except ImportError:
-                print(" PyPDF2 未安装，无法加载PDF文件")
-                print(" 请运行: pip install PyPDF2")
+                logger.info(" PyPDF2 未安装，无法加载PDF文件")
+                logger.info(" 请运行: pip install PyPDF2")
                 return None
             
             with open(file_path, 'rb') as f:
@@ -140,7 +143,7 @@ class DocumentLoader:
                 return '\n\n'.join(text_parts)
                 
         except Exception as e:
-            print(f" PDF加载失败: {e}")
+            logger.info(f" PDF加载失败: {e}")
             return None
     
     def _load_docx(self, file_path: Path) -> Optional[str]:
@@ -150,8 +153,8 @@ class DocumentLoader:
             try:
                 import docx
             except ImportError:
-                print(" python-docx 未安装，无法加载DOCX文件")
-                print(" 请运行: pip install python-docx")
+                logger.info(" python-docx 未安装，无法加载DOCX文件")
+                logger.info(" 请运行: pip install python-docx")
                 return None
             
             doc = docx.Document(file_path)
@@ -164,7 +167,7 @@ class DocumentLoader:
             return '\n\n'.join(text_parts)
             
         except Exception as e:
-            print(f" DOCX加载失败: {e}")
+            logger.info(f" DOCX加载失败: {e}")
             return None
     
     def _extract_metadata(self, file_path: Path, file_type: str) -> Dict[str, Any]:

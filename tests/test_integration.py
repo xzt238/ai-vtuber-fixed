@@ -1,7 +1,10 @@
+import logging
 """
 集成测试模块
 测试模块之间的协作和数据流
 """
+
+logger = logging.getLogger(__name__)
 
 import asyncio
 import sys
@@ -223,16 +226,16 @@ async def run_all_tests():
     ]
     
     # 运行测试
-    print("\n" + "="*60)
-    print("运行集成测试")
-    print("="*60 + "\n")
+    logger.info("\n" + "="*60)
+    logger.info("运行集成测试")
+    logger.info("="*60 + "\n")
     
     for test_name, test_func in tests:
         await runner.run_test(test_name, test_func, "集成测试")
     
     # 生成报告
     report = runner.generate_report()
-    print("\n" + report)
+    logger.info("\n" + report)
     
     # 保存报告
     runner.save_report("tests/integration_test_report.md")

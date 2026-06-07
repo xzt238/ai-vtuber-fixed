@@ -1,8 +1,11 @@
+import logging
 #!/usr/bin/env python3
 """
 =====================================
 Live2D 虚拟形象模块
 =====================================
+
+logger = logging.getLogger(__name__)
 
 【模块功能概述】
 本模块负责 Live2D 虚拟形象的管理和显示，包括：
@@ -137,19 +140,19 @@ class Live2DModel:
             ]
         
         # 调试信息：打印所有搜索路径及其存在状态
-        print(f"[Live2D] 检查目录:")
+        logger.info(f"[Live2D] 检查目录:")
         for d in possible_paths:
-            print(f"  {d} -> {d.exists()}")
+            logger.info(f"  {d} -> {d.exists()}")
         
         # 遍历路径，找到第一个包含 .json 文件的目录
         for p in possible_paths:
             if p.exists() and p.is_dir():
                 if list(p.glob("*.json")):  # 检查目录下是否有 JSON 文件
                     self.model_path = str(p)
-                    print(f"✅ 找到模型: {p}")
+                    logger.info(f"✅ 找到模型: {p}")
                     return True
         
-        print(f"⚠️ 模型目录不存在")
+        logger.info(f"⚠️ 模型目录不存在")
         return False
     
     def load(self) -> bool:
@@ -165,15 +168,15 @@ class Live2DModel:
             3. 标记 model_loaded = True
         """
         if not self.enabled:
-            print("Live2D 未启用")
+            logger.info("Live2D 未启用")
             return False
         
         if self.is_available():
-            print(f"✅ Live2D模型已就绪: {self.model_path}")
+            logger.info(f"✅ Live2D模型已就绪: {self.model_path}")
             self.model_loaded = True
             return True
         
-        print(f"⚠️ 请放置Live2D模型到: {self.model_path}")
+        logger.info(f"⚠️ 请放置Live2D模型到: {self.model_path}")
         return False
     
     def get_html(self) -> str:
@@ -418,7 +421,7 @@ class Live2DModel:
             在主程序中应在线程中调用。
         """
         if not self.enabled:
-            print("Live2D 未启用")
+            logger.info("Live2D 未启用")
             return
         
         import http.server
@@ -472,8 +475,8 @@ assets/model/
         # 启动 TCP 服务器（allow_reuse_address 避免端口占用重启失败）
         socketserver.TCPServer.allow_reuse_address = True
         with socketserver.TCPServer(("", self.port), Handler) as httpd:
-            print(f"\n🎭 Live2D服务: http://localhost:{self.port}")
-            print(f"📁 模型目录: {assets_dir}")
+            logger.info(f"\n🎭 Live2D服务: http://localhost:{self.port}")
+            logger.info(f"📁 模型目录: {assets_dir}")
             httpd.serve_forever()
 
 

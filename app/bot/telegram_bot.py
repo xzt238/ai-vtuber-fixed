@@ -1,5 +1,8 @@
+import logging
 """
 Telegram Bot实现
+
+logger = logging.getLogger(__name__)
 
 提供Telegram Bot的完整集成，包括：
 - 连接到Telegram
@@ -36,8 +39,8 @@ class TelegramBot(Bot):
         # Telegram客户端
         self._application = None
         
-        print(f" Telegram Bot初始化完成")
-        print(f" 解析模式: {self.parse_mode}")
+        logger.info(f" Telegram Bot初始化完成")
+        logger.info(f" 解析模式: {self.parse_mode}")
     
     async def connect(self) -> bool:
         """连接到Telegram"""
@@ -108,22 +111,22 @@ class TelegramBot(Bot):
             self._application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
             
             # 启动Bot
-            print(f" 正在连接到Telegram...")
+            logger.info(f" 正在连接到Telegram...")
             
             await self._application.initialize()
             await self._application.start()
             await self._application.updater.start_polling()
             
             self.connected = True
-            print(" Telegram Bot连接成功")
+            logger.info(" Telegram Bot连接成功")
             
             return True
             
         except ImportError:
-            print(" 未安装python-telegram-bot库，请执行: pip install python-telegram-bot")
+            logger.info(" 未安装python-telegram-bot库，请执行: pip install python-telegram-bot")
             return False
         except Exception as e:
-            print(f" Telegram Bot连接失败: {e}")
+            logger.info(f" Telegram Bot连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -137,16 +140,16 @@ class TelegramBot(Bot):
                 self._application = None
             
             self.connected = False
-            print(" Telegram Bot已断开")
+            logger.info(" Telegram Bot已断开")
             
         except Exception as e:
-            print(f" Telegram Bot断开失败: {e}")
+            logger.info(f" Telegram Bot断开失败: {e}")
     
     async def send_message(self, chat_id: str, content: str, message_type: str = "text") -> bool:
         """发送Telegram消息"""
         try:
             if not self.connected or not self._application:
-                print(" Telegram Bot未连接")
+                logger.info(" Telegram Bot未连接")
                 return False
             
             # 发送消息
@@ -156,18 +159,18 @@ class TelegramBot(Bot):
                 parse_mode=self.parse_mode
             )
             
-            print(f" Telegram消息发送成功: {content}")
+            logger.info(f" Telegram消息发送成功: {content}")
             return True
             
         except Exception as e:
-            print(f" Telegram消息发送失败: {e}")
+            logger.info(f" Telegram消息发送失败: {e}")
             return False
     
     async def send_file(self, chat_id: str, file_path: str, caption: str = "") -> bool:
         """发送Telegram文件"""
         try:
             if not self.connected or not self._application:
-                print(" Telegram Bot未连接")
+                logger.info(" Telegram Bot未连接")
                 return False
             
             # 发送文件
@@ -178,18 +181,18 @@ class TelegramBot(Bot):
                     caption=caption
                 )
             
-            print(f" Telegram文件发送成功: {file_path}")
+            logger.info(f" Telegram文件发送成功: {file_path}")
             return True
             
         except Exception as e:
-            print(f" Telegram文件发送失败: {e}")
+            logger.info(f" Telegram文件发送失败: {e}")
             return False
     
     async def send_image(self, chat_id: str, image_path: str, caption: str = "") -> bool:
         """发送Telegram图片"""
         try:
             if not self.connected or not self._application:
-                print(" Telegram Bot未连接")
+                logger.info(" Telegram Bot未连接")
                 return False
             
             # 发送图片
@@ -200,18 +203,18 @@ class TelegramBot(Bot):
                     caption=caption
                 )
             
-            print(f" Telegram图片发送成功: {image_path}")
+            logger.info(f" Telegram图片发送成功: {image_path}")
             return True
             
         except Exception as e:
-            print(f" Telegram图片发送失败: {e}")
+            logger.info(f" Telegram图片发送失败: {e}")
             return False
     
     async def send_audio(self, chat_id: str, audio_path: str, caption: str = "") -> bool:
         """发送Telegram音频"""
         try:
             if not self.connected or not self._application:
-                print(" Telegram Bot未连接")
+                logger.info(" Telegram Bot未连接")
                 return False
             
             # 发送音频
@@ -222,11 +225,11 @@ class TelegramBot(Bot):
                     caption=caption
                 )
             
-            print(f" Telegram音频发送成功: {audio_path}")
+            logger.info(f" Telegram音频发送成功: {audio_path}")
             return True
             
         except Exception as e:
-            print(f" Telegram音频发送失败: {e}")
+            logger.info(f" Telegram音频发送失败: {e}")
             return False
     
     def get_chat_info(self, chat_id: str) -> Optional[Dict[str, Any]]:

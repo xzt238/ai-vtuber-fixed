@@ -1,5 +1,8 @@
+import logging
 """
 快手直播平台实现
+
+logger = logging.getLogger(__name__)
 
 提供快手直播弹幕接收、发送等功能。
 
@@ -54,13 +57,13 @@ class KuaishouPlatform(LivePlatform):
             # 获取直播间信息
             room_info = await self._get_room_info(room_id)
             if not room_info:
-                print(f" 获取直播间信息失败: {room_id}")
+                logger.info(f" 获取直播间信息失败: {room_id}")
                 return False
             
             # 获取WebSocket连接信息
             ws_info = await self._get_ws_info(room_id)
             if not ws_info:
-                print(f" 获取WebSocket信息失败: {room_id}")
+                logger.info(f" 获取WebSocket信息失败: {room_id}")
                 return False
             
             # 连接WebSocket
@@ -69,7 +72,7 @@ class KuaishouPlatform(LivePlatform):
             if success:
                 self.connected = True
                 self._stats["connected_at"] = datetime.now()
-                print(f" 快手直播间连接成功: {room_id}")
+                logger.info(f" 快手直播间连接成功: {room_id}")
                 
                 # 启动心跳
                 self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
@@ -77,12 +80,12 @@ class KuaishouPlatform(LivePlatform):
                 # 启动消息接收
                 self._ws_task = asyncio.create_task(self._receive_messages())
             else:
-                print(f" 快手直播间连接失败: {room_id}")
+                logger.info(f" 快手直播间连接失败: {room_id}")
             
             return success
             
         except Exception as e:
-            print(f" 快手连接失败: {e}")
+            logger.info(f" 快手连接失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -114,28 +117,28 @@ class KuaishouPlatform(LivePlatform):
             self.room_id = None
             self._stats["connected_at"] = None
             
-            print(" 快手直播间已断开")
+            logger.info(" 快手直播间已断开")
             
         except Exception as e:
-            print(f" 快手断开连接失败: {e}")
+            logger.info(f" 快手断开连接失败: {e}")
             self._stats["error_count"] += 1
     
     async def send_danmaku(self, content: str) -> bool:
         """发送弹幕"""
         try:
             if not self.connected or not self.room_id:
-                print(" 未连接到直播间")
+                logger.info(" 未连接到直播间")
                 return False
             
             # 快手弹幕发送API
             # 注意：快手的弹幕发送需要特殊的认证和参数
             # 这里提供基本框架，实际实现需要根据快手API调整
             
-            print(f" 快手弹幕发送功能需要进一步实现: {content}")
+            logger.info(f" 快手弹幕发送功能需要进一步实现: {content}")
             return False
             
         except Exception as e:
-            print(f" 弹幕发送失败: {e}")
+            logger.info(f" 弹幕发送失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -162,11 +165,11 @@ class KuaishouPlatform(LivePlatform):
                     if result.get("result") == 1:
                         return result.get("data", {}).get("liveStream")
                     else:
-                        print(f" 获取直播间信息失败: {result}")
+                        logger.info(f" 获取直播间信息失败: {result}")
                         return None
             
         except Exception as e:
-            print(f" 获取直播间信息失败: {e}")
+            logger.info(f" 获取直播间信息失败: {e}")
             return None
     
     async def _get_ws_info(self, room_id: str) -> Optional[Dict[str, Any]]:
@@ -185,7 +188,7 @@ class KuaishouPlatform(LivePlatform):
             }
             
         except Exception as e:
-            print(f" 获取WebSocket信息失败: {e}")
+            logger.info(f" 获取WebSocket信息失败: {e}")
             return None
     
     async def _connect_websocket(self, ws_info: Dict[str, Any]) -> bool:
@@ -203,14 +206,14 @@ class KuaishouPlatform(LivePlatform):
             # 连接WebSocket
             self._ws = await websockets.connect(uri)
             
-            print(f" 快手WebSocket连接成功")
+            logger.info(f" 快手WebSocket连接成功")
             return True
             
         except ImportError:
-            print(" 未安装websockets库，请执行: pip install websockets")
+            logger.info(" 未安装websockets库，请执行: pip install websockets")
             return False
         except Exception as e:
-            print(f" 快手WebSocket连接失败: {e}")
+            logger.info(f" 快手WebSocket连接失败: {e}")
             return False
     
     async def _receive_messages(self):
@@ -231,13 +234,13 @@ class KuaishouPlatform(LivePlatform):
                     await self._process_message(data)
                     
                 except Exception as e:
-                    print(f" 消息解析失败: {e}")
+                    logger.info(f" 消息解析失败: {e}")
                     self._stats["error_count"] += 1
             
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f" 消息接收失败: {e}")
+            logger.info(f" 消息接收失败: {e}")
             self._stats["error_count"] += 1
     
     async def _process_message(self, data: Dict[str, Any]):
@@ -296,7 +299,7 @@ class KuaishouPlatform(LivePlatform):
                 self._notify_system(system_msg)
             
         except Exception as e:
-            print(f" 消息处理失败: {e}")
+            logger.info(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
     
     async def _heartbeat_loop(self):
@@ -314,7 +317,7 @@ class KuaishouPlatform(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    print(f" 心跳发送失败: {e}")
+                    logger.info(f" 心跳发送失败: {e}")
                     self._stats["error_count"] += 1
                     await asyncio.sleep(5)
             

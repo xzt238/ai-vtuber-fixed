@@ -1,5 +1,8 @@
+import logging
 """
 Discord Bot实现
+
+logger = logging.getLogger(__name__)
 
 提供Discord Bot的完整集成，包括：
 - 连接到Discord
@@ -40,8 +43,8 @@ class DiscordBot(Bot):
         # 消息轮询任务
         self._poll_task = None
         
-        print(f" Discord Bot初始化完成")
-        print(f" 命令前缀: {self.command_prefix}")
+        logger.info(f" Discord Bot初始化完成")
+        logger.info(f" 命令前缀: {self.command_prefix}")
     
     async def connect(self) -> bool:
         """连接到Discord"""
@@ -63,7 +66,7 @@ class DiscordBot(Bot):
             # 注册事件
             @self._client.event
             async def on_ready():
-                print(f" Discord Bot已登录: {self._client.user}")
+                logger.info(f" Discord Bot已登录: {self._client.user}")
                 self.connected = True
             
             @self._client.event
@@ -127,7 +130,7 @@ class DiscordBot(Bot):
                 await ctx.send(f"收到消息: {message}")
             
             # 连接到Discord
-            print(f" 正在连接到Discord...")
+            logger.info(f" 正在连接到Discord...")
             
             # 启动Bot
             asyncio.create_task(self._client.start(self.token))
@@ -139,17 +142,17 @@ class DiscordBot(Bot):
                 await asyncio.sleep(1)
             
             if self.connected:
-                print(" Discord Bot连接成功")
+                logger.info(" Discord Bot连接成功")
                 return True
             else:
-                print(" Discord Bot连接超时")
+                logger.info(" Discord Bot连接超时")
                 return False
             
         except ImportError:
-            print(" 未安装discord.py库，请执行: pip install discord.py")
+            logger.info(" 未安装discord.py库，请执行: pip install discord.py")
             return False
         except Exception as e:
-            print(f" Discord Bot连接失败: {e}")
+            logger.info(f" Discord Bot连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -169,45 +172,45 @@ class DiscordBot(Bot):
                 self._client = None
             
             self.connected = False
-            print(" Discord Bot已断开")
+            logger.info(" Discord Bot已断开")
             
         except Exception as e:
-            print(f" Discord Bot断开失败: {e}")
+            logger.info(f" Discord Bot断开失败: {e}")
     
     async def send_message(self, channel_id: str, content: str, message_type: str = "text") -> bool:
         """发送Discord消息"""
         try:
             if not self.connected or not self._client:
-                print(" Discord Bot未连接")
+                logger.info(" Discord Bot未连接")
                 return False
             
             # 获取频道
             channel = self._client.get_channel(int(channel_id))
             if not channel:
-                print(f" 频道不存在: {channel_id}")
+                logger.info(f" 频道不存在: {channel_id}")
                 return False
             
             # 发送消息
             await channel.send(content)
             
-            print(f" Discord消息发送成功: {content}")
+            logger.info(f" Discord消息发送成功: {content}")
             return True
             
         except Exception as e:
-            print(f" Discord消息发送失败: {e}")
+            logger.info(f" Discord消息发送失败: {e}")
             return False
     
     async def send_file(self, channel_id: str, file_path: str, caption: str = "") -> bool:
         """发送Discord文件"""
         try:
             if not self.connected or not self._client:
-                print(" Discord Bot未连接")
+                logger.info(" Discord Bot未连接")
                 return False
             
             # 获取频道
             channel = self._client.get_channel(int(channel_id))
             if not channel:
-                print(f" 频道不存在: {channel_id}")
+                logger.info(f" 频道不存在: {channel_id}")
                 return False
             
             # 发送文件
@@ -215,11 +218,11 @@ class DiscordBot(Bot):
             file = discord.File(file_path)
             await channel.send(content=caption, file=file)
             
-            print(f" Discord文件发送成功: {file_path}")
+            logger.info(f" Discord文件发送成功: {file_path}")
             return True
             
         except Exception as e:
-            print(f" Discord文件发送失败: {e}")
+            logger.info(f" Discord文件发送失败: {e}")
             return False
     
     async def send_image(self, channel_id: str, image_path: str, caption: str = "") -> bool:

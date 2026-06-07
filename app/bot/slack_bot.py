@@ -1,5 +1,8 @@
+import logging
 """
 Slack Bot实现
+
+logger = logging.getLogger(__name__)
 
 提供Slack Bot的完整集成，包括：
 - 连接到Slack
@@ -36,7 +39,7 @@ class SlackBot(Bot):
         self._client = None
         self._socket_mode_client = None
         
-        print(f" Slack Bot初始化完成")
+        logger.info(f" Slack Bot初始化完成")
     
     async def connect(self) -> bool:
         """连接到Slack"""
@@ -88,7 +91,7 @@ class SlackBot(Bot):
             self._socket_mode_client.socket_mode_request_listeners.append(process)
             
             # 连接到Slack
-            print(f" 正在连接到Slack...")
+            logger.info(f" 正在连接到Slack...")
             
             # 启动Socket Mode
             asyncio.create_task(self._socket_mode_client.connect())
@@ -97,15 +100,15 @@ class SlackBot(Bot):
             await asyncio.sleep(2)
             
             self.connected = True
-            print(" Slack Bot连接成功")
+            logger.info(" Slack Bot连接成功")
             
             return True
             
         except ImportError:
-            print(" 未安装slack_sdk库，请执行: pip install slack_sdk")
+            logger.info(" 未安装slack_sdk库，请执行: pip install slack_sdk")
             return False
         except Exception as e:
-            print(f" Slack Bot连接失败: {e}")
+            logger.info(f" Slack Bot连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -119,16 +122,16 @@ class SlackBot(Bot):
             self._client = None
             
             self.connected = False
-            print(" Slack Bot已断开")
+            logger.info(" Slack Bot已断开")
             
         except Exception as e:
-            print(f" Slack Bot断开失败: {e}")
+            logger.info(f" Slack Bot断开失败: {e}")
     
     async def send_message(self, channel: str, content: str, message_type: str = "text") -> bool:
         """发送Slack消息"""
         try:
             if not self.connected or not self._client:
-                print(" Slack Bot未连接")
+                logger.info(" Slack Bot未连接")
                 return False
             
             # 发送消息
@@ -138,21 +141,21 @@ class SlackBot(Bot):
             )
             
             if response["ok"]:
-                print(f" Slack消息发送成功: {content}")
+                logger.info(f" Slack消息发送成功: {content}")
                 return True
             else:
-                print(f" Slack消息发送失败: {response['error']}")
+                logger.info(f" Slack消息发送失败: {response['error']}")
                 return False
             
         except Exception as e:
-            print(f" Slack消息发送失败: {e}")
+            logger.info(f" Slack消息发送失败: {e}")
             return False
     
     async def send_file(self, channel: str, file_path: str, title: str = "") -> bool:
         """发送Slack文件"""
         try:
             if not self.connected or not self._client:
-                print(" Slack Bot未连接")
+                logger.info(" Slack Bot未连接")
                 return False
             
             # 上传文件
@@ -163,21 +166,21 @@ class SlackBot(Bot):
             )
             
             if response["ok"]:
-                print(f" Slack文件发送成功: {file_path}")
+                logger.info(f" Slack文件发送成功: {file_path}")
                 return True
             else:
-                print(f" Slack文件发送失败: {response['error']}")
+                logger.info(f" Slack文件发送失败: {response['error']}")
                 return False
             
         except Exception as e:
-            print(f" Slack文件发送失败: {e}")
+            logger.info(f" Slack文件发送失败: {e}")
             return False
     
     def get_channels(self) -> List[Dict[str, Any]]:
         """获取频道列表"""
         try:
             if not self.connected or not self._client:
-                print(" Slack Bot未连接")
+                logger.info(" Slack Bot未连接")
                 return []
             
             # 获取频道列表
@@ -193,11 +196,11 @@ class SlackBot(Bot):
                     for channel in response["channels"]
                 ]
             else:
-                print(f" 获取频道列表失败: {response['error']}")
+                logger.info(f" 获取频道列表失败: {response['error']}")
                 return []
             
         except Exception as e:
-            print(f" 获取频道列表失败: {e}")
+            logger.info(f" 获取频道列表失败: {e}")
             return []
 
 

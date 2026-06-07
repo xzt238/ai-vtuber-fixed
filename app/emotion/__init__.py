@@ -1,7 +1,10 @@
+import logging
 """
 情感系统模块
 支持情感识别、情感表达、情感记忆
 """
+
+logger = logging.getLogger(__name__)
 
 import json
 import asyncio
@@ -305,9 +308,9 @@ class EmotionMemory:
                     data = json.load(f)
                     for user_id, profile_dict in data.items():
                         self.profiles[user_id] = UserProfile(**profile_dict)
-                print(f"[Emotion] 加载了 {len(self.profiles)} 个用户档案")
+                logger.info(f"[Emotion] 加载了 {len(self.profiles)} 个用户档案")
         except Exception as e:
-            print(f"[Emotion] 加载用户档案失败: {e}")
+            logger.info(f"[Emotion] 加载用户档案失败: {e}")
     
     def _save_profiles(self):
         """保存用户档案"""
@@ -326,7 +329,7 @@ class EmotionMemory:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             
         except Exception as e:
-            print(f"[Emotion] 保存用户档案失败: {e}")
+            logger.info(f"[Emotion] 保存用户档案失败: {e}")
     
     def get_or_create_profile(self, user_id: str) -> UserProfile:
         """获取或创建用户档案"""
@@ -413,7 +416,7 @@ class EmotionManager:
         # 当前情感状态
         self.current_state = EmotionState()
         
-        print(f"[Emotion] 初始化完成")
+        logger.info(f"[Emotion] 初始化完成")
     
     async def analyze_text(self, text: str, user_id: str = None) -> EmotionAnalysis:
         """分析文本情感"""

@@ -1,8 +1,11 @@
+import logging
 #!/usr/bin/env python3
 """
 =====================================
 咕咕嘎嘎 AI-VTuber — 桌面启动器
 =====================================
+
+logger = logging.getLogger(__name__)
 
 功能概述:
     游戏式桌面启动器。双击启动，先展示启动画面，后端自动在后台启动，
@@ -119,8 +122,8 @@ class BackendManager:
     def start(self) -> bool:
         """启动后端子进程（非阻塞）"""
         cmd = self._get_python_cmd()
-        print(f"[启动器] 启动后端: {' '.join(cmd)}")
-        print(f"[启动器] 工作目录: {PROJECT_ROOT}")
+        logger.info(f"[启动器] 启动后端: {' '.join(cmd)}")
+        logger.info(f"[启动器] 工作目录: {PROJECT_ROOT}")
 
         env = os.environ.copy()
         env["HF_HOME"] = str(PROJECT_ROOT / ".cache" / "huggingface")
@@ -194,7 +197,7 @@ class BackendManager:
             )
 
             self._running = True
-            print(f"[启动器] 后端进程 PID: {self.process.pid}")
+            logger.info(f"[启动器] 后端进程 PID: {self.process.pid}")
 
             # 日志转发线程
             self._log_thread = threading.Thread(
@@ -218,7 +221,7 @@ class BackendManager:
 
     def stop(self):
         """优雅停止后端（含进程树清理）"""
-        print("[启动器] 正在停止后端...")
+        logger.info("[启动器] 正在停止后端...")
         self._running = False
 
         if self.process and self.process.poll() is None:
@@ -232,18 +235,18 @@ class BackendManager:
                     creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
                 )
                 self.process.wait(timeout=3)
-                print("[启动器] 后端已终止（taskkill）")
+                logger.info("[启动器] 后端已终止（taskkill）")
             except subprocess.TimeoutExpired:
                 try:
                     self.process.kill()
                     self.process.wait(timeout=3)
-                    print("[启动器] 后端已强制终止（kill）")
+                    logger.info("[启动器] 后端已强制终止（kill）")
                 except Exception:
                     pass
             except ProcessLookupError:
                 pass
             except Exception as e:
-                print(f"[启动器] 停止异常: {e}")
+                logger.info(f"[启动器] 停止异常: {e}")
                 try:
                     self.process.kill()
                 except Exception:
@@ -265,9 +268,9 @@ class BackendManager:
         """转发后端 stdout → 日志文件 + 启动画面状态提取
         
         v1.9.24 修复: 
-        1. 不在循环中调用 print()（PyInstaller 无控制台时可能阻塞）
+        1. 不在循环中调用 logger.info()（PyInstaller 无控制台时可能阻塞）
         2. on_status 回调改为非阻塞（防 evaluate_js 死锁）
-        3. 优先写日志文件（管道满时后端 print() 会阻塞）
+        3. 优先写日志文件（管道满时后端 logger.info() 会阻塞）
         """
         log_file = None
         try:
@@ -298,7 +301,7 @@ class BackendManager:
                 
                 # 控制台输出（PyInstaller 无控制台时可能静默失败，不影响主流程）
                 try:
-                    print(f"[后端] {line}")
+                    logger.info(f"[后端] {line}")
                 except Exception:
                     pass
 
@@ -307,7 +310,7 @@ class BackendManager:
                     self.on_status(status)
         except Exception as e:
             if self._running:
-                print(f"[启动器] 日志转发异常: {e}")
+                logger.info(f"[启动器] 日志转发异常: {e}")
         finally:
             if log_file:
                 try:
@@ -367,7 +370,7 @@ class BackendManager:
                 req = urllib.request.Request(url, method="GET")
                 with urllib.request.urlopen(req, timeout=2) as resp:
                     if resp.status == 200:
-                        print(f"[启动器] 后端就绪！耗时 {elapsed:.1f}秒")
+                        logger.info(f"[启动器] 后端就绪！耗时 {elapsed:.1f}秒")
                         self._emit_status("后端就绪，正在加载主界面...")
                         # v1.9.27: 移除 time.sleep(0.5)，健康检查通过即可跳转
                         if self.on_ready:
@@ -389,7 +392,7 @@ class BackendManager:
 
     def _emit_failed(self, msg: str):
         self._running = False
-        print(f"[启动器] {msg}")
+        logger.info(f"[启动器] {msg}")
         if self.on_failed:
             self.on_failed(msg)
 
@@ -453,7 +456,7 @@ class DesktopApp:
                 'src="../assets/gugugaga_logo.png"',
                 f'src="{logo_data_url}"'
             )
-            print(f"[启动器] Logo 已嵌入 (Base64, {len(logo_base64)} bytes)")
+            logger.info(f"[启动器] Logo 已嵌入 (Base64, {len(logo_base64)} bytes)")
 
         return splash_content
 
@@ -465,12 +468,12 @@ class DesktopApp:
         try:
             import webview
         except ImportError:
-            print("[启动器] pywebview 未安装，尝试安装...")
+            logger.info("[启动器] pywebview 未安装，尝试安装...")
             self._install_pywebview()
             import webview
 
-        print(f"[启动器] pywebview {getattr(webview, '__version__', '?')} 加载成功")
-        print(f"[启动器] frozen={getattr(sys, 'frozen', False)}, PROJECT_ROOT={PROJECT_ROOT}")
+        logger.info(f"[启动器] pywebview {getattr(webview, '__version__', '?')} 加载成功")
+        logger.info(f"[启动器] frozen={getattr(sys, 'frozen', False)}, PROJECT_ROOT={PROJECT_ROOT}")
 
         # 绑定后端回调
         self.backend.on_status = self._on_backend_status
@@ -514,15 +517,15 @@ class DesktopApp:
 
         # 启动 pywebview 事件循环（阻塞，直到窗口关闭）
         debug = "--debug" in sys.argv or os.getenv("GUGUGAGA_DEBUG") == "1"
-        print("[启动器] 进入 pywebview 事件循环...")
+        logger.info("[启动器] 进入 pywebview 事件循环...")
         try:
             webview.start(debug=debug, http_server=False)
-            print("[启动器] pywebview 事件循环正常结束")
+            logger.info("[启动器] pywebview 事件循环正常结束")
         except Exception as e:
             import traceback
             err_detail = traceback.format_exc()
-            print(f"[启动器] pywebview 崩溃: {e}")
-            print(err_detail)
+            logger.info(f"[启动器] pywebview 崩溃: {e}")
+            logger.info(err_detail)
             # 写入日志
             try:
                 log_path = PROJECT_ROOT / "logs" / "launcher.log"
@@ -542,7 +545,7 @@ class DesktopApp:
         
         v1.9.24 修复: splash 关闭后不再调用 evaluate_js
         根因: window.load_url() 导航期间 evaluate_js 会死锁
-        → _forward_logs 线程卡死 → stdout 管道满 → 后端 print() 阻塞 → 服务器冻死
+        → _forward_logs 线程卡死 → stdout 管道满 → 后端 logger.info() 阻塞 → 服务器冻死
         """
         if self._splash_done:
             return
@@ -566,24 +569,24 @@ class DesktopApp:
         """
         self._splash_done = True  # ← 关键: 阻止后续 evaluate_js 调用
         if not self.window:
-            print("[启动器] ⚠️ 窗口对象为空，无法跳转")
+            logger.info("[启动器] ⚠️ 窗口对象为空，无法跳转")
             return
         try:
             # 触发 splash 淡出动画
-            print("[启动器] 触发淡出动画...")
+            logger.info("[启动器] 触发淡出动画...")
             self.window.evaluate_js("onBackendReady()")
             # 等待动画完成（CSS 0.8s 淡出，0.5s 即可——WebView2 导航需一点时间但不需要等完全淡出）
             time.sleep(0.5)
             # 跳转到主界面
-            print(f"[启动器] 正在跳转到 {BACKEND_URL} ...")
+            logger.info(f"[启动器] 正在跳转到 {BACKEND_URL} ...")
             self.window.load_url(BACKEND_URL)
-            print("[启动器] 已跳转到主界面")
+            logger.info("[启动器] 已跳转到主界面")
         except Exception as e:
-            print(f"[启动器] 跳转失败: {e}，尝试直接加载")
+            logger.info(f"[启动器] 跳转失败: {e}，尝试直接加载")
             try:
                 self.window.load_url(BACKEND_URL)
             except Exception as e2:
-                print(f"[启动器] 直接加载也失败: {e2}")
+                logger.info(f"[启动器] 直接加载也失败: {e2}")
 
     def _on_backend_failed(self, msg: str):
         """后端失败 → 启动画面显示错误"""
@@ -611,7 +614,7 @@ class DesktopApp:
             import pystray
             from PIL import Image, ImageDraw
         except ImportError:
-            print("[启动器] pystray/Pillow 未安装，跳过系统托盘")
+            logger.info("[启动器] pystray/Pillow 未安装，跳过系统托盘")
             return
 
         def create_icon():
@@ -645,7 +648,7 @@ class DesktopApp:
     def _install_pywebview(self):
         """安装 pywebview"""
         import subprocess as sp
-        print("[启动器] 安装 pywebview...")
+        logger.info("[启动器] 安装 pywebview...")
         try:
             si = _subprocess_startupinfo()
             sp.check_call(
@@ -653,22 +656,22 @@ class DesktopApp:
                 stdout=sp.DEVNULL, stderr=sp.DEVNULL,
                 startupinfo=si,
             )
-            print("[启动器] pywebview 安装成功")
+            logger.info("[启动器] pywebview 安装成功")
         except sp.CalledProcessError:
-            print("[启动器] pywebview 安装失败，将降级到浏览器模式")
+            logger.info("[启动器] pywebview 安装失败，将降级到浏览器模式")
             self._fallback_to_browser()
 
     def _fallback_to_browser(self):
         """降级到浏览器模式"""
         import webbrowser
-        print("[启动器] 使用浏览器模式")
+        logger.info("[启动器] 使用浏览器模式")
 
         def on_ready():
             webbrowser.open(BACKEND_URL)
-            print("[启动器] 浏览器已打开，此窗口请保持运行")
+            logger.info("[启动器] 浏览器已打开，此窗口请保持运行")
 
         self.backend.on_ready = on_ready
-        self.backend.on_failed = lambda msg: print(f"[启动器] 失败: {msg}")
+        self.backend.on_failed = lambda msg: logger.info(f"[启动器] 失败: {msg}")
 
         if not self.backend.start():
             if getattr(sys, 'frozen', False):
@@ -677,7 +680,7 @@ class DesktopApp:
                 input("按回车退出...")
             sys.exit(1)
 
-        print("[启动器] 按 Ctrl+C 退出")
+        logger.info("[启动器] 按 Ctrl+C 退出")
         try:
             while self.backend.is_running:
                 time.sleep(1)
@@ -685,7 +688,7 @@ class DesktopApp:
             self.backend.stop()
 
     def _show_error_and_exit(self, msg: str):
-        print(f"[启动器] {msg}")
+        logger.info(f"[启动器] {msg}")
         # EXE 模式下用 Windows MessageBox 显示错误（无控制台可 input）
         if getattr(sys, 'frozen', False):
             _show_error_box("咕咕嘎嘎 — 启动失败", msg)
@@ -794,7 +797,7 @@ def _kill_port_occupants():
                 except ValueError:
                     pass
     except Exception as e:
-        print(f"[启动器] 端口扫描失败: {e}")
+        logger.info(f"[启动器] 端口扫描失败: {e}")
 
     for pid in pids_to_kill:
         try:
@@ -804,7 +807,7 @@ def _kill_port_occupants():
                 startupinfo=si,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
             )
-            print(f"[启动器] 清理残留进程 PID={pid}")
+            logger.info(f"[启动器] 清理残留进程 PID={pid}")
         except Exception:
             pass
 
@@ -859,13 +862,13 @@ def _acquire_single_instance_lock():
         
         if not _MUTEX_HANDLE:
             # CreateMutexW 返回 NULL — 严重错误，降级允许启动
-            print(f"[启动器] 互斥体创建失败 (last_error={last_error})，降级允许启动")
+            logger.info(f"[启动器] 互斥体创建失败 (last_error={last_error})，降级允许启动")
             return True
             
         return True
     except Exception as e:
         # 互斥体创建异常（不应该发生），降级为允许启动
-        print(f"[启动器] 互斥体创建异常: {e}")
+        logger.info(f"[启动器] 互斥体创建异常: {e}")
         return True
 
 
@@ -959,7 +962,7 @@ def main():
 
     # v1.9.58: 单实例锁 — 防止双击多次导致多个 launcher 并发
     if not _acquire_single_instance_lock():
-        print("[启动器] 检测到已有实例在运行，退出。")
+        logger.info("[启动器] 检测到已有实例在运行，退出。")
         # v1.9.60: 提示用户已有实例在运行（不再静默退出）
         _show_error_box(
             "咕咕嘎嘎 — 已在运行",
@@ -981,8 +984,8 @@ def main():
     except Exception as e:
         import traceback
         err_msg = traceback.format_exc()
-        print(f"[启动器] 异常退出: {e}")
-        print(err_msg)
+        logger.info(f"[启动器] 异常退出: {e}")
+        logger.info(err_msg)
         # 写入日志
         try:
             log_path = PROJECT_ROOT / "logs" / "launcher.log"
@@ -1009,7 +1012,7 @@ def main():
         except Exception:
             pass
         _release_single_instance_lock()
-        print("[启动器] 再见~")
+        logger.info("[启动器] 再见~")
 
 
 def _unblock_dlls():

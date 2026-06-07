@@ -1,5 +1,8 @@
+import logging
 """
 设置页面 — LLM/TTS/ASR/系统配置
+
+logger = logging.getLogger(__name__)
 
 设计参考: LM Studio / Jan.ai 设置页
 - ScrollArea + HeaderCardWidget 分组卡片布局
@@ -912,7 +915,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             with open(_API_KEYS_FILE, "w", encoding="utf-8") as f:
                 json.dump(keys, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"[SettingsPage] 保存 API Key 失败: {e}")
+            logger.info(f"[SettingsPage] 保存 API Key 失败: {e}")
 
     # ========== 文生图配置逻辑 ==========
 
@@ -1130,7 +1133,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
                 self._llm_rebuild_worker = _LLMRebuildWorker(backend)
                 self._llm_rebuild_worker.error.connect(
-                    lambda e: print(f"[SettingsPage] LLM 引擎重建失败: {e}")
+                    lambda e: logger.info(f"[SettingsPage] LLM 引擎重建失败: {e}")
                 )
                 self._llm_rebuild_worker.start()
 
@@ -1179,7 +1182,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                             self.finished.emit(voices)
                             return
                 except Exception as e:
-                    print(f"[SettingsPage] 获取 GPT-SoVITS 音色失败: {e}")
+                    logger.info(f"[SettingsPage] 获取 GPT-SoVITS 音色失败: {e}")
 
                 # 回退: 尝试从 trainer 获取项目列表
                 try:
@@ -1340,7 +1343,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             with open(_TTS_PREFS_FILE, "w", encoding="utf-8") as f:
                 json.dump(tts_prefs, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"[SettingsPage] 保存 TTS 偏好失败: {e}")
+            logger.info(f"[SettingsPage] 保存 TTS 偏好失败: {e}")
 
         # 2. 更新后端配置并重建 TTS 引擎（后台线程执行）
         backend = self.backend
@@ -1393,7 +1396,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
                 self._tts_rebuild_worker = _TTSRebuildWorker(backend, voice_id, provider)
                 self._tts_rebuild_worker.error.connect(
-                    lambda e: print(f"[SettingsPage] TTS 引擎重建失败: {e}")
+                    lambda e: logger.info(f"[SettingsPage] TTS 引擎重建失败: {e}")
                 )
                 self._tts_rebuild_worker.start()
 
@@ -1462,7 +1465,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 self.mimo_tts_base_url.setText(mimo_cfg["base_url"])
 
         except Exception as e:
-            print(f"[SettingsPage] 加载 TTS 偏好失败: {e}")
+            logger.info(f"[SettingsPage] 加载 TTS 偏好失败: {e}")
 
     # ========== 加载已保存的配置 ==========
 
@@ -1499,7 +1502,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             self._load_api_key_for_provider(saved_provider)
 
         except Exception as e:
-            print(f"[SettingsPage] 加载已保存配置失败: {e}")
+            logger.info(f"[SettingsPage] 加载已保存配置失败: {e}")
 
         # 加载 TTS 偏好
         self._load_tts_prefs()
@@ -1575,12 +1578,12 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     def _on_prefs_load_failed(self, error_msg: str):
         """偏好文件异步加载失败 — 降级到同步读取"""
-        print(f"[SettingsPage] 异步偏好加载失败，降级到同步读取: {error_msg}")
+        logger.info(f"[SettingsPage] 异步偏好加载失败，降级到同步读取: {error_msg}")
         try:
             self._load_saved_config()
             self._apply_backend_config_fallback()
         except Exception as e:
-            print(f"[SettingsPage] 同步降级加载也失败: {e}")
+            logger.info(f"[SettingsPage] 同步降级加载也失败: {e}")
 
     def _apply_llm_prefs(self, prefs: dict, api_keys: dict = None):
         """应用 LLM 偏好（输入是已解析的 dict）"""
@@ -1616,7 +1619,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             else:
                 self._load_api_key_for_provider(saved_provider)
         except Exception as e:
-            print(f"[SettingsPage] 应用 LLM 偏好失败: {e}")
+            logger.info(f"[SettingsPage] 应用 LLM 偏好失败: {e}")
 
     def _apply_tts_prefs(self, prefs: dict):
         """应用 TTS 偏好（输入是已解析的 dict）"""
@@ -1651,7 +1654,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             if mimo_cfg.get("base_url"):
                 self.mimo_tts_base_url.setText(mimo_cfg["base_url"])
         except Exception as e:
-            print(f"[SettingsPage] 应用 TTS 偏好失败: {e}")
+            logger.info(f"[SettingsPage] 应用 TTS 偏好失败: {e}")
 
     def _apply_asr_prefs(self, prefs: dict):
         """应用 ASR 偏好（输入是已解析的 dict）"""
@@ -1668,7 +1671,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             if mimo_cfg.get("base_url"):
                 self.mimo_asr_base_url.setText(mimo_cfg["base_url"])
         except Exception as e:
-            print(f"[SettingsPage] 应用 ASR 偏好失败: {e}")
+            logger.info(f"[SettingsPage] 应用 ASR 偏好失败: {e}")
 
     def _apply_vision_prefs(self, prefs: dict):
         """应用视觉偏好（输入是已解析的 dict）"""
@@ -1682,7 +1685,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             if pcfg.get("base_url"):
                 self.mimo_vision_base_url.setText(pcfg["base_url"])
         except Exception as e:
-            print(f"[SettingsPage] 应用视觉偏好失败: {e}")
+            logger.info(f"[SettingsPage] 应用视觉偏好失败: {e}")
 
     def _apply_proactive_prefs(self, prefs: dict):
         """应用主动说话偏好（输入是已解析的 dict）"""
@@ -1694,7 +1697,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             if prefs.get("enabled", False):
                 self.proactive_switch.setChecked(True)
         except Exception as e:
-            print(f"[SettingsPage] 应用主动说话偏好失败: {e}")
+            logger.info(f"[SettingsPage] 应用主动说话偏好失败: {e}")
 
     def _apply_backend_config_fallback(self):
         """从 backend.config.yaml 补充偏好文件中不存在的配置"""
@@ -1785,7 +1788,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 self._load_proactive_config()
         except Exception as e:
             import traceback
-            print(f"[SettingsPage] _apply_backend_config_fallback 失败: {e}")
+            logger.info(f"[SettingsPage] _apply_backend_config_fallback 失败: {e}")
             traceback.print_exc()
 
     def _on_proactive_toggled(self, checked: bool):
@@ -1800,11 +1803,11 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                     interval = self.proactive_interval.value()
                     backend.proactive.enabled = True
                     backend.proactive.start(interval=interval)
-                    print(f"[SettingsPage] 主动说话已启动，间隔 {interval}s")
+                    logger.info(f"[SettingsPage] 主动说话已启动，间隔 {interval}s")
                 else:
                     backend.proactive.enabled = False
                     backend.proactive.stop()
-                    print("[SettingsPage] 主动说话已停止")
+                    logger.info("[SettingsPage] 主动说话已停止")
             else:
                 if checked:
                     self.proactive_switch.setChecked(False)
@@ -1816,7 +1819,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                         duration=3000,
                     )
         except Exception as e:
-            print(f"[SettingsPage] 切换主动说话失败: {e}")
+            logger.info(f"[SettingsPage] 切换主动说话失败: {e}")
             if checked:
                 self.proactive_switch.setChecked(False)
 
@@ -1850,7 +1853,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             with open(prefs_file, "w", encoding="utf-8") as f:
                 json.dump(prefs, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"[SettingsPage] 保存主动说话配置失败: {e}")
+            logger.info(f"[SettingsPage] 保存主动说话配置失败: {e}")
 
     def _load_proactive_config(self):
         """加载主动说话配置"""
@@ -1900,7 +1903,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             with open(asr_prefs_file, "w", encoding="utf-8") as f:
                 json.dump(asr_prefs, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"[SettingsPage] 保存 ASR 偏好失败: {e}")
+            logger.info(f"[SettingsPage] 保存 ASR 偏好失败: {e}")
             return
 
         # 2. 更新后端配置
@@ -1926,7 +1929,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 try:
                     _ = backend.asr
                 except Exception as e:
-                    print(f"[SettingsPage] ASR 引擎重建失败: {e}")
+                    logger.info(f"[SettingsPage] ASR 引擎重建失败: {e}")
 
         InfoBar.success(
             title="保存成功",
@@ -1958,7 +1961,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 self.mimo_asr_base_url.setText(mimo_cfg["base_url"])
 
         except Exception as e:
-            print(f"[SettingsPage] 加载 ASR 偏好失败: {e}")
+            logger.info(f"[SettingsPage] 加载 ASR 偏好失败: {e}")
 
     # ========== 视觉配置 ==========
 
@@ -2028,7 +2031,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             with open(vision_prefs_file, "w", encoding="utf-8") as f:
                 json.dump(vision_prefs, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"[SettingsPage] 保存视觉偏好失败: {e}")
+            logger.info(f"[SettingsPage] 保存视觉偏好失败: {e}")
 
         # 重建视觉引擎
         if hasattr(backend, '_lazy_modules') and 'vision' in backend._lazy_modules:
@@ -2041,7 +2044,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             try:
                 _ = backend.vision
             except Exception as e:
-                print(f"[SettingsPage] 视觉引擎重建失败: {e}")
+                logger.info(f"[SettingsPage] 视觉引擎重建失败: {e}")
 
         InfoBar.success(
             title="保存成功",

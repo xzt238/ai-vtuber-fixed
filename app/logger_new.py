@@ -250,7 +250,7 @@ def get_logger(name: str) -> logging.Logger:
 # 模块自测入口
 # ============================================================
 if __name__ == "__main__":
-    print("🧪 测试日志系统...")
+    logger.info("🧪 测试日志系统...")
 
     logger = get_logger("test")
 
@@ -265,4 +265,4 @@ if __name__ == "__main__":
     security_logger.warning("检测到可疑操作")
     security_logger.error("安全事件：未授权访问")
 
-    print(f"✅ 日志文件已保存到: {LOG_DIR}")
+    logger.info(f"✅ 日志文件已保存到: {LOG_DIR}")

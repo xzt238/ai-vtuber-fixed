@@ -299,14 +299,14 @@ class VisionProcessor:
         """卸载视觉模型"""
         if model_name in self.models:
             del self.models[model_name]
-            print(f" 视觉模型卸载成功: {model_name}")
+            logger.info(f" 视觉模型卸载成功: {model_name}")
     
     async def process_frame(self, frame: CameraFrame, model_name: str = None) -> Optional[VisionResult]:
         """处理帧"""
         try:
             # 这里应该实现实际的帧处理
             # 由于帧处理需要特定的库，这里只是示例
-            print(f" 处理帧: {frame.id}")
+            logger.info(f" 处理帧: {frame.id}")
             
             # 模拟处理结果
             result = VisionResult(
@@ -318,11 +318,11 @@ class VisionProcessor:
                 timestamp=datetime.now(),
             )
             
-            print(f" 帧处理完成: {frame.id}")
+            logger.info(f" 帧处理完成: {frame.id}")
             return result
             
         except Exception as e:
-            print(f" 帧处理失败: {e}")
+            logger.info(f" 帧处理失败: {e}")
             return None
     
     async def detect_objects(self, frame: CameraFrame) -> List[Dict[str, Any]]:
@@ -330,7 +330,7 @@ class VisionProcessor:
         try:
             # 这里应该实现实际的物体检测
             # 由于物体检测需要特定的库，这里只是示例
-            print(f" 检测物体: {frame.id}")
+            logger.info(f" 检测物体: {frame.id}")
             
             # 模拟检测结果
             objects = [
@@ -338,11 +338,11 @@ class VisionProcessor:
                 {"class": "laptop", "confidence": 0.85, "bbox": [300, 200, 500, 400]},
             ]
             
-            print(f" 物体检测完成: {frame.id}")
+            logger.info(f" 物体检测完成: {frame.id}")
             return objects
             
         except Exception as e:
-            print(f" 物体检测失败: {e}")
+            logger.info(f" 物体检测失败: {e}")
             return []
     
     async def recognize_face(self, frame: CameraFrame) -> List[Dict[str, Any]]:
@@ -350,18 +350,18 @@ class VisionProcessor:
         try:
             # 这里应该实现实际的人脸识别
             # 由于人脸识别需要特定的库，这里只是示例
-            print(f" 识别人脸: {frame.id}")
+            logger.info(f" 识别人脸: {frame.id}")
             
             # 模拟识别结果
             faces = [
                 {"name": "User1", "confidence": 0.90, "bbox": [150, 120, 250, 280]},
             ]
             
-            print(f" 人脸识别完成: {frame.id}")
+            logger.info(f" 人脸识别完成: {frame.id}")
             return faces
             
         except Exception as e:
-            print(f" 人脸识别失败: {e}")
+            logger.info(f" 人脸识别失败: {e}")
             return []
     
     async def describe_scene(self, frame: CameraFrame) -> str:
@@ -369,16 +369,16 @@ class VisionProcessor:
         try:
             # 这里应该实现实际的场景描述
             # 由于场景描述需要特定的库，这里只是示例
-            print(f" 描述场景: {frame.id}")
+            logger.info(f" 描述场景: {frame.id}")
             
             # 模拟描述
             description = "这是一个模拟的场景描述，包含一个人和一台笔记本电脑。"
             
-            print(f" 场景描述完成: {frame.id}")
+            logger.info(f" 场景描述完成: {frame.id}")
             return description
             
         except Exception as e:
-            print(f" 场景描述失败: {e}")
+            logger.info(f" 场景描述失败: {e}")
             return ""
     
     def get_stats(self) -> Dict[str, Any]:

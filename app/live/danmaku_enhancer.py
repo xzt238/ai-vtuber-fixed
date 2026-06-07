@@ -1,7 +1,10 @@
+import logging
 """
 弹幕增强模块
 提供智能弹幕回复、礼物感谢、自动互动等功能
 """
+
+logger = logging.getLogger(__name__)
 
 import asyncio
 from typing import Optional, Dict, Any, List, Callable
@@ -82,7 +85,7 @@ class DanmakuEnhancer:
         self.recent_danmaku: List[Dict[str, Any]] = []
         self.max_recent = 50
         
-        print("[DanmakuEnhancer] 初始化完成")
+        logger.info("[DanmakuEnhancer] 初始化完成")
     
     async def process_danmaku(self, user_id: str, username: str, 
                              content: str, room_id: str) -> Optional[DanmakuReply]:
@@ -265,7 +268,7 @@ class DanmakuEnhancer:
         if "ignored_users" in config:
             self.ignored_users = set(config["ignored_users"])
         
-        print(f"[DanmakuEnhancer] 配置已更新")
+        logger.info(f"[DanmakuEnhancer] 配置已更新")
 
 # 全局实例
 _danmaku_enhancer: Optional[DanmakuEnhancer] = None

@@ -1,6 +1,9 @@
+import logging
 import openpyxl, os
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+
+logger = logging.getLogger(__name__)
 
 wb = openpyxl.Workbook()
 
@@ -150,4 +153,4 @@ for i, (t, d) in enumerate(strengths, 2):
 out = 'C:/Users/x/Desktop/ai-vtuber-fixed/docs/competitive_analysis.xlsx'
 os.makedirs(os.path.dirname(out), exist_ok=True)
 wb.save(out)
-print(f'Saved: {out} ({len(data)} features)')
+logger.info(f'Saved: {out} ({len(data)} features)')

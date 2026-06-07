@@ -1,5 +1,8 @@
+import logging
 """
 Factorio游戏代理实现
+
+logger = logging.getLogger(__name__)
 
 提供Factorio游戏的完整集成，包括：
 - 通过RCON连接到Factorio服务器
@@ -40,8 +43,8 @@ class FactorioAgent(GameAgent):
         # 状态轮询任务
         self._poll_task = None
         
-        print(f" Factorio代理初始化完成")
-        print(f" RCON服务器: {self.host}:{self.port}")
+        logger.info(f" Factorio代理初始化完成")
+        logger.info(f" RCON服务器: {self.host}:{self.port}")
     
     async def connect(self) -> bool:
         """连接到Factorio RCON服务器"""
@@ -53,7 +56,7 @@ class FactorioAgent(GameAgent):
             self._rcon = RCONClient(self.host, self.port)
             
             # 连接到服务器
-            print(f" 正在连接到Factorio RCON服务器: {self.host}:{self.port}")
+            logger.info(f" 正在连接到Factorio RCON服务器: {self.host}:{self.port}")
             
             # 使用asyncio运行同步的连接操作
             await asyncio.get_event_loop().run_in_executor(
@@ -61,7 +64,7 @@ class FactorioAgent(GameAgent):
             )
             
             self.connected = True
-            print(" Factorio RCON连接成功")
+            logger.info(" Factorio RCON连接成功")
             
             # 启动状态轮询
             self._poll_task = asyncio.create_task(self._poll_state())
@@ -69,10 +72,10 @@ class FactorioAgent(GameAgent):
             return True
             
         except ImportError:
-            print(" 未安装rcon库，请执行: pip install rcon")
+            logger.info(" 未安装rcon库，请执行: pip install rcon")
             return False
         except Exception as e:
-            print(f" Factorio RCON连接失败: {e}")
+            logger.info(f" Factorio RCON连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -94,16 +97,16 @@ class FactorioAgent(GameAgent):
                 self._rcon = None
             
             self.connected = False
-            print(" Factorio RCON连接已断开")
+            logger.info(" Factorio RCON连接已断开")
             
         except Exception as e:
-            print(f" Factorio RCON断开连接失败: {e}")
+            logger.info(f" Factorio RCON断开连接失败: {e}")
     
     async def get_state(self) -> Optional[GameState]:
         """获取Factorio游戏状态"""
         try:
             if not self.connected or not self._rcon:
-                print(" 未连接到Factorio")
+                logger.info(" 未连接到Factorio")
                 return None
             
             # 获取游戏状态
@@ -143,7 +146,7 @@ class FactorioAgent(GameAgent):
             return state
             
         except Exception as e:
-            print(f" 获取Factorio状态失败: {e}")
+            logger.info(f" 获取Factorio状态失败: {e}")
             return None
     
     def _parse_players(self, players_info: str) -> List[Dict[str, Any]]:
@@ -165,14 +168,14 @@ class FactorioAgent(GameAgent):
         """执行Factorio动作"""
         try:
             if not self.connected or not self._rcon:
-                print(" 未连接到Factorio")
+                logger.info(" 未连接到Factorio")
                 return False
             
             action_type = action.action_type
             parameters = action.parameters
             
-            print(f" 执行Factorio动作: {action_type}")
-            print(f" 参数: {parameters}")
+            logger.info(f" 执行Factorio动作: {action_type}")
+            logger.info(f" 参数: {parameters}")
             
             # 根据动作类型执行
             if action_type == "chat":
@@ -184,24 +187,24 @@ class FactorioAgent(GameAgent):
             elif action_type == "teleport":
                 await self._teleport(parameters)
             else:
-                print(f" 未知的动作类型: {action_type}")
+                logger.info(f" 未知的动作类型: {action_type}")
                 return False
             
             # 通知动作回调
             self._notify_action(action)
             
-            print(f" Factorio动作执行成功: {action_type}")
+            logger.info(f" Factorio动作执行成功: {action_type}")
             return True
             
         except Exception as e:
-            print(f" Factorio动作执行失败: {e}")
+            logger.info(f" Factorio动作执行失败: {e}")
             return False
     
     async def _chat(self, parameters: Dict[str, Any]):
         """发送聊天消息"""
         message = parameters.get("message", "")
         
-        print(f" 发送聊天: {message}")
+        logger.info(f" 发送聊天: {message}")
         
         # 发送聊天命令
         await self.send_command(f"/say {message}")
@@ -210,7 +213,7 @@ class FactorioAgent(GameAgent):
         """执行命令"""
         command = parameters.get("command", "")
         
-        print(f" 执行命令: {command}")
+        logger.info(f" 执行命令: {command}")
         
         # 发送命令
         await self.send_command(command)
@@ -221,7 +224,7 @@ class FactorioAgent(GameAgent):
         item = parameters.get("item", "")
         count = parameters.get("count", 1)
         
-        print(f" 给予物品: {player} {item} x{count}")
+        logger.info(f" 给予物品: {player} {item} x{count}")
         
         # 发送给予命令
         await self.send_command(f"/give {player} {item} {count}")
@@ -232,7 +235,7 @@ class FactorioAgent(GameAgent):
         x = parameters.get("x", 0)
         y = parameters.get("y", 0)
         
-        print(f" 传送玩家: {player} to ({x}, {y})")
+        logger.info(f" 传送玩家: {player} to ({x}, {y})")
         
         # 发送传送命令
         await self.send_command(f"/teleport {player} {x} {y}")
@@ -241,21 +244,21 @@ class FactorioAgent(GameAgent):
         """发送RCON命令"""
         try:
             if not self.connected or not self._rcon:
-                print(" 未连接到Factorio")
+                logger.info(" 未连接到Factorio")
                 return None
             
-            print(f" 发送命令: {command}")
+            logger.info(f" 发送命令: {command}")
             
             # 发送命令
             response = await asyncio.get_event_loop().run_in_executor(
                 None, self._rcon.command, command
             )
             
-            print(f" 命令响应: {response}")
+            logger.info(f" 命令响应: {response}")
             return response
             
         except Exception as e:
-            print(f" 命令发送失败: {e}")
+            logger.info(f" 命令发送失败: {e}")
             return None
     
     async def chat(self, message: str) -> bool:
@@ -292,7 +295,7 @@ class FactorioAgent(GameAgent):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    print(f" 状态轮询失败: {e}")
+                    logger.info(f" 状态轮询失败: {e}")
                     await asyncio.sleep(10)
             
         except asyncio.CancelledError:

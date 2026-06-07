@@ -1,5 +1,8 @@
+import logging
 """
 GuguGaga AI-VTuber �� Ʒ����Դ������
+
+logger = logging.getLogger(__name__)
 
 ����:
   - app.ico (��ߴ� ICO)
@@ -23,7 +26,7 @@ def create_app_icon_png():
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
-        print("Pillow not installed, generating SVG fallback")
+        logger.info("Pillow not installed, generating SVG fallback")
         return None
 
     size = 256
@@ -171,40 +174,40 @@ def save_ico(img, path):
 
     # ICO ����
     img.save(path, format='ICO', sizes=[(i.width, i.height) for i in ico_images])
-    print(f"  Saved: {path}")
+    logger.info(f"  Saved: {path}")
 
 
 def generate_all():
     """����������Դ"""
-    print("Generating brand resources...")
+    logger.info("Generating brand resources...")
 
     # Ӧ��ͼ��
     app_icon = create_app_icon_png()
     if app_icon:
         save_ico(app_icon, os.path.join(RESOURCES_DIR, 'app.ico'))
         app_icon.save(os.path.join(RESOURCES_DIR, 'app.png'), format='PNG')
-        print(f"  Saved: {os.path.join(RESOURCES_DIR, 'app.png')}")
+        logger.info(f"  Saved: {os.path.join(RESOURCES_DIR, 'app.png')}")
 
     # �������
     splash = create_splash_image()
     if splash:
         splash.save(os.path.join(RESOURCES_DIR, 'splash.png'), format='PNG')
-        print(f"  Saved: {os.path.join(RESOURCES_DIR, 'splash.png')}")
+        logger.info(f"  Saved: {os.path.join(RESOURCES_DIR, 'splash.png')}")
 
     # ����ͼ��
     tray = create_tray_icon()
     if tray:
         tray.save(os.path.join(RESOURCES_DIR, 'tray_icon.png'), format='PNG')
-        print(f"  Saved: {os.path.join(RESOURCES_DIR, 'tray_icon.png')}")
+        logger.info(f"  Saved: {os.path.join(RESOURCES_DIR, 'tray_icon.png')}")
 
     # ��� Pillow �����ã����� SVG ����
     if not app_icon:
         svg_path = os.path.join(RESOURCES_DIR, 'app.svg')
         with open(svg_path, 'w', encoding='utf-8') as f:
             f.write(APP_ICON_SVG)
-        print(f"  Saved (SVG fallback): {svg_path}")
+        logger.info(f"  Saved (SVG fallback): {svg_path}")
 
-    print("Done!")
+    logger.info("Done!")
 
 
 # SVG ���� �� ��� Pillow ������

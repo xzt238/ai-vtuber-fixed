@@ -1,7 +1,10 @@
+import logging
 """
 RAG增量更新模块
 支持文档增量更新、版本管理、变更追踪
 """
+
+logger = logging.getLogger(__name__)
 
 import hashlib
 import json
@@ -56,7 +59,7 @@ class IncrementalUpdater:
         self._load_versions()
         self._load_changelog()
         
-        print("[IncrementalUpdater] 初始化完成")
+        logger.info("[IncrementalUpdater] 初始化完成")
     
     def _load_versions(self):
         """加载版本历史"""
@@ -73,9 +76,9 @@ class IncrementalUpdater:
                             change_type=ChangeType(version_data["change_type"]),
                             metadata=version_data.get("metadata", {})
                         )
-                print(f"[IncrementalUpdater] 加载了 {len(self.versions)} 个文档版本")
+                logger.info(f"[IncrementalUpdater] 加载了 {len(self.versions)} 个文档版本")
         except Exception as e:
-            print(f"[IncrementalUpdater] 加载版本失败: {e}")
+            logger.info(f"[IncrementalUpdater] 加载版本失败: {e}")
     
     def _save_versions(self):
         """保存版本历史"""
@@ -97,7 +100,7 @@ class IncrementalUpdater:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             
         except Exception as e:
-            print(f"[IncrementalUpdater] 保存版本失败: {e}")
+            logger.info(f"[IncrementalUpdater] 保存版本失败: {e}")
     
     def _load_changelog(self):
         """加载变更日志"""
@@ -105,9 +108,9 @@ class IncrementalUpdater:
             if self.changelog_file.exists():
                 with open(self.changelog_file, "r", encoding="utf-8") as f:
                     self.changelog = json.load(f)
-                print(f"[IncrementalUpdater] 加载了 {len(self.changelog)} 条变更日志")
+                logger.info(f"[IncrementalUpdater] 加载了 {len(self.changelog)} 条变更日志")
         except Exception as e:
-            print(f"[IncrementalUpdater] 加载变更日志失败: {e}")
+            logger.info(f"[IncrementalUpdater] 加载变更日志失败: {e}")
     
     def _save_changelog(self):
         """保存变更日志"""
@@ -122,7 +125,7 @@ class IncrementalUpdater:
                 json.dump(self.changelog, f, ensure_ascii=False, indent=2)
             
         except Exception as e:
-            print(f"[IncrementalUpdater] 保存变更日志失败: {e}")
+            logger.info(f"[IncrementalUpdater] 保存变更日志失败: {e}")
     
     def _calculate_hash(self, content: str) -> str:
         """计算内容哈希"""
@@ -227,7 +230,7 @@ class IncrementalUpdater:
         # 计算耗时
         result.duration_ms = (time.time() - start_time) * 1000
         
-        print(f"[IncrementalUpdater] 更新完成: +{result.added} ~{result.modified} -{result.deleted} ={result.unchanged}")
+        logger.info(f"[IncrementalUpdater] 更新完成: +{result.added} ~{result.modified} -{result.deleted} ={result.unchanged}")
         
         return result
     

@@ -1,5 +1,8 @@
+import logging
 """
 YouTube直播平台实现
+
+logger = logging.getLogger(__name__)
 
 提供YouTube直播弹幕接收、发送等功能。
 
@@ -55,14 +58,14 @@ class YouTubePlatform(LivePlatform):
             # 获取直播聊天ID
             live_chat_id = await self._get_live_chat_id(room_id)
             if not live_chat_id:
-                print(f" 获取直播聊天ID失败: {room_id}")
+                logger.info(f" 获取直播聊天ID失败: {room_id}")
                 return False
             
             self._live_chat_id = live_chat_id
             self.connected = True
             self._stats["connected_at"] = datetime.now()
             
-            print(f" YouTube直播间连接成功: {room_id}")
+            logger.info(f" YouTube直播间连接成功: {room_id}")
             
             # 启动消息轮询
             self._poll_task = asyncio.create_task(self._poll_messages())
@@ -70,7 +73,7 @@ class YouTubePlatform(LivePlatform):
             return True
             
         except Exception as e:
-            print(f" YouTube连接失败: {e}")
+            logger.info(f" YouTube连接失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -96,25 +99,25 @@ class YouTubePlatform(LivePlatform):
             self._next_page_token = None
             self._stats["connected_at"] = None
             
-            print(" YouTube直播间已断开")
+            logger.info(" YouTube直播间已断开")
             
         except Exception as e:
-            print(f" YouTube断开连接失败: {e}")
+            logger.info(f" YouTube断开连接失败: {e}")
             self._stats["error_count"] += 1
     
     async def send_danmaku(self, content: str) -> bool:
         """发送弹幕"""
         try:
             if not self.connected or not self._live_chat_id:
-                print(" 未连接到直播间")
+                logger.info(" 未连接到直播间")
                 return False
             
             # YouTube弹幕发送API
-            print(f" YouTube弹幕发送功能需要进一步实现: {content}")
+            logger.info(f" YouTube弹幕发送功能需要进一步实现: {content}")
             return False
             
         except Exception as e:
-            print(f" 弹幕发送失败: {e}")
+            logger.info(f" 弹幕发送失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -141,11 +144,11 @@ class YouTubePlatform(LivePlatform):
                     live_details = result["items"][0].get("liveStreamingDetails", {})
                     return live_details.get("activeLiveChatId")
                 else:
-                    print(f" 获取视频信息失败: {result}")
+                    logger.info(f" 获取视频信息失败: {result}")
                     return None
             
         except Exception as e:
-            print(f" 获取直播聊天ID失败: {e}")
+            logger.info(f" 获取直播聊天ID失败: {e}")
             return None
     
     async def _receive_messages(self):
@@ -172,7 +175,7 @@ class YouTubePlatform(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    print(f" 消息轮询失败: {e}")
+                    logger.info(f" 消息轮询失败: {e}")
                     self._stats["error_count"] += 1
                     await asyncio.sleep(10)
             
@@ -204,11 +207,11 @@ class YouTubePlatform(LivePlatform):
                     self._next_page_token = result.get("nextPageToken")
                     return result["items"]
                 else:
-                    print(f" 获取聊天消息失败: {result}")
+                    logger.info(f" 获取聊天消息失败: {result}")
                     return []
             
         except Exception as e:
-            print(f" 获取聊天消息失败: {e}")
+            logger.info(f" 获取聊天消息失败: {e}")
             return []
     
     async def _process_message(self, message: Dict[str, Any]):
@@ -249,7 +252,7 @@ class YouTubePlatform(LivePlatform):
                 self._notify_gift(gift_msg)
             
         except Exception as e:
-            print(f" 消息处理失败: {e}")
+            logger.info(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
 
 

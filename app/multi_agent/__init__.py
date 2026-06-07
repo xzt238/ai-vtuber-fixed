@@ -1,5 +1,8 @@
+import logging
 """
 多AI群聊模块
+
+logger = logging.getLogger(__name__)
 
 提供多角色对话场景支持。
 
@@ -76,7 +79,7 @@ class Agent:
         self.conversation_history: List[AgentMessage] = []
         self.is_active = True
         
-        print(f" AI代理初始化完成: {personality.name}")
+        logger.info(f" AI代理初始化完成: {personality.name}")
     
     def set_llm_callback(self, callback: Callable):
         """设置LLM回调函数"""
@@ -103,7 +106,7 @@ class Agent:
                 return str(response)
                 
         except Exception as e:
-            print(f" 代理回复生成失败: {e}")
+            logger.info(f" 代理回复生成失败: {e}")
             return self._generate_default_response(context)
     
     def _build_prompt(self, context: str, conversation_history: List[AgentMessage] = None) -> str:
@@ -164,7 +167,7 @@ class AgentManager:
     
     def __init__(self):
         self.agents: Dict[str, Agent] = {}
-        print(" 代理管理器初始化完成")
+        logger.info(" 代理管理器初始化完成")
     
     def create_agent(self, personality: AgentPersonality, llm_callback: Callable = None) -> Agent:
         """创建代理"""
@@ -185,7 +188,7 @@ class AgentManager:
         """移除代理"""
         if agent_id in self.agents:
             del self.agents[agent_id]
-            print(f" 代理移除成功: {agent_id}")
+            logger.info(f" 代理移除成功: {agent_id}")
     
     def get_agent_by_name(self, name: str) -> Optional[Agent]:
         """根据名称获取代理"""
@@ -200,7 +203,7 @@ class ConversationManager:
     
     def __init__(self):
         self.conversations: Dict[str, List[AgentMessage]] = {}
-        print(" 对话管理器初始化完成")
+        logger.info(" 对话管理器初始化完成")
     
     def create_conversation(self, conversation_id: str = None) -> str:
         """创建对话"""
@@ -246,7 +249,7 @@ class MultiAgentChat:
         # 回调函数
         self._message_callbacks: List[Callable] = []
         
-        print(" 多Agent群聊初始化完成")
+        logger.info(" 多Agent群聊初始化完成")
     
     def add_message_callback(self, callback: Callable):
         """添加消息回调"""
@@ -262,12 +265,12 @@ class MultiAgentChat:
             try:
                 callback(message)
             except Exception as e:
-                print(f" 消息回调失败: {e}")
+                logger.info(f" 消息回调失败: {e}")
     
     def create_agent(self, personality: AgentPersonality, llm_callback: Callable = None) -> Agent:
         """创建代理"""
         if len(self.agent_manager.agents) >= self.max_agents:
-            print(f" 已达到最大代理数量: {self.max_agents}")
+            logger.info(f" 已达到最大代理数量: {self.max_agents}")
             return None
         
         return self.agent_manager.create_agent(personality, llm_callback)
@@ -282,7 +285,7 @@ class MultiAgentChat:
             # 获取代理
             agent = self.agent_manager.get_agent(agent_id)
             if agent is None:
-                print(f" 代理不存在: {agent_id}")
+                logger.info(f" 代理不存在: {agent_id}")
                 return False
             
             # 创建消息
@@ -294,11 +297,11 @@ class MultiAgentChat:
             # 通知消息回调
             self._notify_message(message)
             
-            print(f" 消息发送成功: {agent.personality.name}: {content}")
+            logger.info(f" 消息发送成功: {agent.personality.name}: {content}")
             return True
             
         except Exception as e:
-            print(f" 消息发送失败: {e}")
+            logger.info(f" 消息发送失败: {e}")
             return False
     
     async def generate_response(self, conversation_id: str, agent_id: str, context: str = None) -> Optional[str]:
@@ -307,7 +310,7 @@ class MultiAgentChat:
             # 获取代理
             agent = self.agent_manager.get_agent(agent_id)
             if agent is None:
-                print(f" 代理不存在: {agent_id}")
+                logger.info(f" 代理不存在: {agent_id}")
                 return None
             
             # 获取对话历史
@@ -323,7 +326,7 @@ class MultiAgentChat:
             return response
             
         except Exception as e:
-            print(f" 回复生成失败: {e}")
+            logger.info(f" 回复生成失败: {e}")
             return None
     
     async def multi_agent_conversation(self, conversation_id: str, topic: str, rounds: int = 3) -> List[AgentMessage]:
@@ -332,7 +335,7 @@ class MultiAgentChat:
             messages = []
             
             for round_num in range(rounds):
-                print(f" 对话轮次: {round_num + 1}/{rounds}")
+                logger.info(f" 对话轮次: {round_num + 1}/{rounds}")
                 
                 # 每个代理轮流发言
                 for agent_id, agent in self.agent_manager.agents.items():
@@ -354,7 +357,7 @@ class MultiAgentChat:
             return messages
             
         except Exception as e:
-            print(f" 多代理对话失败: {e}")
+            logger.info(f" 多代理对话失败: {e}")
             return []
     
     def get_conversation_history(self, conversation_id: str, limit: int = 20) -> List[AgentMessage]:

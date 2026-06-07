@@ -1,7 +1,10 @@
+import logging
 """
 插件市场模块
 支持插件发布、搜索、评分、下载
 """
+
+logger = logging.getLogger(__name__)
 
 import json
 import hashlib
@@ -72,7 +75,7 @@ class PluginMarketplace:
         # 加载索引
         self._load_index()
         
-        print("[PluginMarketplace] 初始化完成")
+        logger.info("[PluginMarketplace] 初始化完成")
     
     def _load_index(self):
         """加载插件索引"""
@@ -100,9 +103,9 @@ class PluginMarketplace:
                             created_at=datetime.fromisoformat(plugin_data.get("created_at", datetime.now().isoformat())),
                             updated_at=datetime.fromisoformat(plugin_data.get("updated_at", datetime.now().isoformat()))
                         )
-                print(f"[PluginMarketplace] 加载了 {len(self.plugins)} 个插件")
+                logger.info(f"[PluginMarketplace] 加载了 {len(self.plugins)} 个插件")
         except Exception as e:
-            print(f"[PluginMarketplace] 加载索引失败: {e}")
+            logger.info(f"[PluginMarketplace] 加载索引失败: {e}")
     
     def _save_index(self):
         """保存插件索引"""
@@ -135,7 +138,7 @@ class PluginMarketplace:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             
         except Exception as e:
-            print(f"[PluginMarketplace] 保存索引失败: {e}")
+            logger.info(f"[PluginMarketplace] 保存索引失败: {e}")
     
     def publish_plugin(self, plugin: PluginEntry) -> bool:
         """发布插件"""
@@ -155,11 +158,11 @@ class PluginMarketplace:
             self.plugins[plugin.plugin_id] = plugin
             self._save_index()
             
-            print(f"[PluginMarketplace] 插件已发布: {plugin.name} v{plugin.version}")
+            logger.info(f"[PluginMarketplace] 插件已发布: {plugin.name} v{plugin.version}")
             return True
             
         except Exception as e:
-            print(f"[PluginMarketplace] 发布失败: {e}")
+            logger.info(f"[PluginMarketplace] 发布失败: {e}")
             return False
     
     def search_plugins(self, query: str = None, category: PluginCategory = None,
@@ -234,11 +237,11 @@ class PluginMarketplace:
             # 保存
             self._save_index()
             
-            print(f"[PluginMarketplace] 评论已添加: {plugin.name}")
+            logger.info(f"[PluginMarketplace] 评论已添加: {plugin.name}")
             return True
             
         except Exception as e:
-            print(f"[PluginMarketplace] 添加评论失败: {e}")
+            logger.info(f"[PluginMarketplace] 添加评论失败: {e}")
             return False
     
     def record_download(self, plugin_id: str) -> bool:

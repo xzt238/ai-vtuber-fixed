@@ -1,5 +1,8 @@
+import logging
 """
 微信视频号直播平台实现
+
+logger = logging.getLogger(__name__)
 
 提供微信视频号直播弹幕接收、发送等功能。
 
@@ -50,13 +53,13 @@ class WeixinVideoPlatform(LivePlatform):
             # 获取直播间信息
             room_info = await self._get_room_info(room_id)
             if not room_info:
-                print(f" 获取直播间信息失败: {room_id}")
+                logger.info(f" 获取直播间信息失败: {room_id}")
                 return False
             
             self.connected = True
             self._stats["connected_at"] = datetime.now()
             
-            print(f" 微信视频号直播间连接成功: {room_id}")
+            logger.info(f" 微信视频号直播间连接成功: {room_id}")
             
             # 启动消息轮询
             self._poll_task = asyncio.create_task(self._poll_messages())
@@ -64,7 +67,7 @@ class WeixinVideoPlatform(LivePlatform):
             return True
             
         except Exception as e:
-            print(f" 微信视频号连接失败: {e}")
+            logger.info(f" 微信视频号连接失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -88,25 +91,25 @@ class WeixinVideoPlatform(LivePlatform):
             self.room_id = None
             self._stats["connected_at"] = None
             
-            print(" 微信视频号直播间已断开")
+            logger.info(" 微信视频号直播间已断开")
             
         except Exception as e:
-            print(f" 微信视频号断开连接失败: {e}")
+            logger.info(f" 微信视频号断开连接失败: {e}")
             self._stats["error_count"] += 1
     
     async def send_danmaku(self, content: str) -> bool:
         """发送弹幕"""
         try:
             if not self.connected or not self.room_id:
-                print(" 未连接到直播间")
+                logger.info(" 未连接到直播间")
                 return False
             
             # 微信视频号弹幕发送API
-            print(f" 微信视频号弹幕发送功能需要进一步实现: {content}")
+            logger.info(f" 微信视频号弹幕发送功能需要进一步实现: {content}")
             return False
             
         except Exception as e:
-            print(f" 弹幕发送失败: {e}")
+            logger.info(f" 弹幕发送失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -129,11 +132,11 @@ class WeixinVideoPlatform(LivePlatform):
                 
                 # 从HTML中提取直播间信息
                 # 这里需要根据微信视频号的实际页面结构进行解析
-                print(f" 微信视频号直播间信息解析功能需要进一步实现")
+                logger.info(f" 微信视频号直播间信息解析功能需要进一步实现")
                 return {"room_id": room_id}
             
         except Exception as e:
-            print(f" 获取直播间信息失败: {e}")
+            logger.info(f" 获取直播间信息失败: {e}")
             return None
     
     async def _receive_messages(self):
@@ -160,7 +163,7 @@ class WeixinVideoPlatform(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    print(f" 消息轮询失败: {e}")
+                    logger.info(f" 消息轮询失败: {e}")
                     self._stats["error_count"] += 1
                     await asyncio.sleep(10)
             
@@ -187,11 +190,11 @@ class WeixinVideoPlatform(LivePlatform):
                 if "comments" in result:
                     return result["comments"]
                 else:
-                    print(f" 获取聊天消息失败: {result}")
+                    logger.info(f" 获取聊天消息失败: {result}")
                     return []
             
         except Exception as e:
-            print(f" 获取聊天消息失败: {e}")
+            logger.info(f" 获取聊天消息失败: {e}")
             return []
     
     async def _process_message(self, message: Dict[str, Any]):
@@ -199,10 +202,10 @@ class WeixinVideoPlatform(LivePlatform):
         try:
             # 微信视频号消息处理
             # 这里需要根据微信视频号的实际消息格式进行解析
-            print(f" 微信视频号消息处理功能需要进一步实现")
+            logger.info(f" 微信视频号消息处理功能需要进一步实现")
             
         except Exception as e:
-            print(f" 消息处理失败: {e}")
+            logger.info(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
 
 
