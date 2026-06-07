@@ -48,8 +48,12 @@ import subprocess
 import tempfile
 import shutil
 import yaml
+import logging
 from pathlib import Path
 from datetime import datetime
+
+# 日志模块
+logger = logging.getLogger("trainer")
 
 # 路径配置 - KI-005: 从 shared_config 统一引用项目根目录
 from app.shared_config import PROJECT_DIR as _PROJECT_DIR_STR
@@ -323,7 +327,7 @@ class TrainingManager:
         if base_name == ref_audio_base and clean_text:
             config["ref_text"] = clean_text
             self.update_project_config(project_name, "ref_text", clean_text)
-            print(f"[TRAIN] 已更新参考音频文本: {clean_text}")
+            logger.info(f"已更新参考音频文本: {clean_text}")
 
         with open(texts_file, "w", encoding="utf-8") as f:
             json.dump(texts, f, ensure_ascii=False, indent=2)
@@ -353,12 +357,12 @@ class TrainingManager:
                 self._asr_engine = ASRFactory.create(config)
                 
                 if self._asr_engine.is_available():
-                    print("[TRAIN] FunASR 引擎加载成功")
+                    logger.info("FunASR 引擎加载成功")
                 else:
                     raise Exception("FunASR 不可用")
                     
             except Exception as e:
-                print(f"[TRAIN] FunASR 加载失败: {e}，尝试 Faster-Whisper...")
+                logger.warning(f"FunASR 加载失败: {e}，尝试 Faster-Whisper...")
                 try:
                     config = {
                         "provider": "faster_whisper",
@@ -371,9 +375,9 @@ class TrainingManager:
                     }
                     self._asr_engine = ASRFactory.create(config)
                     if self._asr_engine.is_available():
-                        print("[TRAIN] Faster-Whisper 引擎加载成功")
+                        logger.info("Faster-Whisper 引擎加载成功")
                 except Exception as e2:
-                    print(f"[TRAIN] ASR 引擎全部加载失败: {e2}")
+                    logger.error(f"ASR 引擎全部加载失败: {e2}")
                     self._asr_engine = None
         return self._asr_engine
     
@@ -399,7 +403,7 @@ class TrainingManager:
             return {"success": False, "error": "ASR 模型未加载"}
         
         try:
-            print(f"[TRAIN] 正在识别: {audio_filename}")
+            logger.info(f"正在识别: {audio_filename}")
             text = asr.recognize(audio_path)
             
             if text:
@@ -523,10 +527,10 @@ class TrainingManager:
             has_s2_trained = len(s2_files) > 0
 
         # 调试日志
-        print(f"[DEBUG] 项目 {project_name}:")
-        print(f"  - audio_files 数量: {len(audio_files)}")
-        print(f"  - trained_audios: {sorted(trained_audios)}")
-        print(f"  - trained_count: {len(trained_audios)}")
+        logger.debug(f"项目 {project_name}:")
+        logger.debug(f"  - audio_files 数量: {len(audio_files)}")
+        logger.debug(f"  - trained_audios: {sorted(trained_audios)}")
+        logger.debug(f"  - trained_count: {len(trained_audios)}")
         print(f"  - pending_count: {pending_count}")
         for f in audio_files:
             print(f"    {f['filename']}: has_text={f['has_text']}, is_trained={f['is_trained']}")
