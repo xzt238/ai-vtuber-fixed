@@ -25,11 +25,15 @@ import math
 import re
 import hashlib
 import threading
+import logging
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from collections import OrderedDict
 from dataclasses import dataclass, asdict, field
+
+# 日志模块
+logger = logging.getLogger("memory")
 
 # NumPy 可选导入：向量化运算加速，不可用时回退到纯 Python
 try:
@@ -479,7 +483,7 @@ class FactExtractor:
                     ))
             return facts
         except Exception as e:
-            print(f" [记忆] LLM事实提取失败: {e}")
+            logger.error(f"LLM事实提取失败: {e}")
             return []
 
 
@@ -627,7 +631,7 @@ class VectorStore:
         npy_loaded = False
         if _HAS_NUMPY and self._vectors_npy_file.exists() and self._vectors_meta_file.exists():
             try:
-                print(" 加载持久化记忆（NumPy 二进制格式）...")
+                logger.info("加载持久化记忆（NumPy 二进制格式）...")
                 # 加载向量矩阵
                 matrix = np.load(str(self._vectors_npy_file))
                 # 加载元数据
@@ -642,30 +646,30 @@ class VectorStore:
                     if i < len(matrix):
                         self.vectors[doc_id] = matrix[i].tolist()
                 self._norms.clear()
-                print(f" 已加载 {len(self.texts)} 条语义记忆（npy格式）")
+                logger.info(f"已加载 {len(self.texts)} 条语义记忆（npy格式）")
                 npy_loaded = True
             except Exception as e:
-                print(f" 加载 npy 格式失败，回退到 JSON: {e}")
+                logger.warning(f"加载 npy 格式失败，回退到 JSON: {e}")
         
         if not npy_loaded and self._persist_file.exists():
             try:
-                print(" 加载持久化记忆（JSON 格式）...")
+                logger.info("加载持久化记忆（JSON 格式）...")
                 with open(self._persist_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 self.vectors = data.get("vectors", {})
                 self.texts = data.get("texts", {})
                 self.metadatas = data.get("metadatas", {})
                 self._norms.clear()
-                print(f" 已加载 {len(self.texts)} 条语义记忆")
+                logger.info(f"已加载 {len(self.texts)} 条语义记忆")
                 # v1.11.21: 自动迁移旧 JSON 格式到 npy 格式
                 if _HAS_NUMPY and self.vectors:
                     try:
                         self._save_to_disk()
-                        print(f" 已自动迁移记忆数据为 npy 格式")
+                        logger.info(f"已自动迁移记忆数据为 npy 格式")
                     except Exception as e:
-                        print(f" 自动迁移 npy 格式失败（不影响使用）: {e}")
+                        logger.warning(f"自动迁移 npy 格式失败（不影响使用）: {e}")
             except Exception as e:
-                print(f"️ 加载记忆失败: {e}")
+                logger.error(f"加载记忆失败: {e}")
         
         # 标记矩阵为脏，下次 _ensure_matrix() 时重建
         self._matrix_dirty = True
@@ -704,7 +708,7 @@ class VectorStore:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             os.replace(tmp_file, self._persist_file)
         except Exception as e:
-            print(f"️ 保存记忆失败: {e}")
+            logger.error(f"保存记忆失败: {e}")
     
     def _get_local_model_path(self) -> str:
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -761,22 +765,22 @@ class VectorStore:
             model_name = self._embed_model_name
             local_path = self._get_local_model_path()
             if local_path:
-                print(f" [记忆系统] 加载本地嵌入模型: {local_path} | device={device}")
+                logger.info(f"加载本地嵌入模型: {local_path} | device={device}")
                 os.environ['TRANSFORMERS_OFFLINE'] = '1'
                 self.embedding_model = SentenceTransformer(local_path, device=device)
             else:
-                print(f" [记忆系统] 未找到本地缓存,尝试在线加载: {model_name} | device={device}")
+                logger.warning(f"未找到本地缓存,尝试在线加载: {model_name} | device={device}")
                 self.embedding_model = SentenceTransformer(model_name, device=device)
             actual_dim = self.embedding_model.get_sentence_embedding_dimension()
             if actual_dim != self.embedding_dim:
-                print(f" [记忆系统] 维度自动修正: {self.embedding_dim} -> {actual_dim}")
+                logger.info(f"维度自动修正: {self.embedding_dim} -> {actual_dim}")
                 self.embedding_dim = actual_dim
-            print(" [记忆系统] 嵌入模型加载成功!")
+            logger.info("嵌入模型加载成功!")
         except ImportError:
-            print(" [记忆系统] sentence-transformers 未安装,使用简单嵌入")
+            logger.warning("sentence-transformers 未安装,使用简单嵌入")
             self.embedding_model = "simple"
         except Exception as e:
-            print(f" [记忆系统] 嵌入模型加载失败({type(e).__name__}): {e},使用简单嵌入")
+            logger.error(f"嵌入模型加载失败({type(e).__name__}): {e},使用简单嵌入")
             self.embedding_model = "simple"
     
     def get_embedding(self, text: str) -> List[float]:
@@ -1042,7 +1046,7 @@ class VectorStore:
         if self._pending_save and self.texts:
             self._save_to_disk()
             self._pending_save = False
-            print(f"[Memory] 向量存储已 flush ({len(self.texts)} 条)")
+            logger.info(f"向量存储已 flush ({len(self.texts)} 条)")
         elif self.texts:
             # 即使没有 pending 也要确保磁盘最新
             self._save_to_disk()
@@ -1210,7 +1214,7 @@ class SummaryGenerator:
                 if summary:
                     return summary
             except Exception as e:
-                print(f" [记忆] LLM摘要失败,降级到规则摘要: {e}")
+                logger.warning(f"LLM摘要失败,降级到规则摘要: {e}")
         
         # ===== 降级: 规则摘要 =====
         return cls._rule_summarize(batch)
@@ -1336,8 +1340,8 @@ class MemorySystem:
         # ===== 从磁盘恢复 =====
         self._load_memory_state()
         
-        print(f" 记忆系统 v3.0 初始化完成")
-        print(f" 存储目录: {self.storage_dir}")
+        logger.info(f"记忆系统 v3.0 初始化完成")
+        logger.info(f"存储目录: {self.storage_dir}")
         print(f" 工作记忆: {len(self.working_memory)}条, 情景记忆: {len(self.episodic_memory)}条, "
               f"语义记忆: {self.vector_store.get_stats()['total_docs']}条, 事实: {len(self.facts)}条")
         print(f" 工作记忆上限: {self.working_memory_limit}, 摘要阈值: {self.summarize_threshold}, "
