@@ -8,6 +8,9 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MobilePlatform(Enum):
     """移动平台"""
@@ -67,7 +70,7 @@ class MobileAPIServer:
             "total_messages": 0
         }
         
-        print("[MobileAPI] 初始化完成")
+        logger.info("[MobileAPI] 初始化完成")
     
     async def start(self):
         """启动API服务器"""
@@ -86,11 +89,11 @@ class MobileAPIServer:
             site = web.TCPSite(runner, self.host, self.port)
             await site.start()
             
-            print(f"[MobileAPI] 服务器启动: http://{self.host}:{self.port}")
+            logger.info(f"[MobileAPI] 服务器启动: http://{self.host}:{self.port}")
             return True
             
         except Exception as e:
-            print(f"[MobileAPI] 服务器启动失败: {e}")
+            logger.info(f"[MobileAPI] 服务器启动失败: {e}")
             return False
     
     def _register_routes(self, app):

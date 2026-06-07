@@ -52,6 +52,8 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
+
 # 日志模块
 logger = logging.getLogger("trainer")
 
@@ -531,9 +533,9 @@ class TrainingManager:
         logger.debug(f"  - audio_files 数量: {len(audio_files)}")
         logger.debug(f"  - trained_audios: {sorted(trained_audios)}")
         logger.debug(f"  - trained_count: {len(trained_audios)}")
-        print(f"  - pending_count: {pending_count}")
+        logger.info(f"  - pending_count: {pending_count}")
         for f in audio_files:
-            print(f"    {f['filename']}: has_text={f['has_text']}, is_trained={f['is_trained']}")
+            logger.info(f"    {f['filename']}: has_text={f['has_text']}, is_trained={f['is_trained']}")
         
         return {
             "success": True,
@@ -608,7 +610,7 @@ class TrainingManager:
             self.save_project_config(project_name, config)
             deleted_items.append("trained_audios 记录")
         
-        print(f"[DELETE] 已删除 {project_name}/{filename}: {deleted_items}")
+        logger.info(f"[DELETE] 已删除 {project_name}/{filename}: {deleted_items}")
         
         return {
             "success": True,
@@ -675,7 +677,7 @@ class TrainingManager:
             self.save_project_config(project_name, config)
             deleted_items.append("配置: trained_gpt/trained_audios 已重置")
             
-            print(f"[DELETE_S1] {project_name}: 删除了 {len(deleted_items)} 项")
+            logger.info(f"[DELETE_S1] {project_name}: 删除了 {len(deleted_items)} 项")
             return {"success": True, "deleted": deleted_items}
         
         except Exception as e:
@@ -734,7 +736,7 @@ class TrainingManager:
             self.save_project_config(project_name, config)
             deleted_items.append("配置: trained_sovits 已重置")
             
-            print(f"[DELETE_S2] {project_name}: 删除了 {len(deleted_items)} 项")
+            logger.info(f"[DELETE_S2] {project_name}: 删除了 {len(deleted_items)} 项")
             return {"success": True, "deleted": deleted_items}
         
         except Exception as e:
@@ -761,7 +763,7 @@ class TrainingManager:
                 for ckpt_file in ckpt_dir.glob("*.ckpt"):
                     ckpt_file.unlink()
                     deleted_items.append(f"模型: {ckpt_file.name}")
-                print(f"[RESET] 已删除 {ckpt_count} 个训练模型")
+                logger.info(f"[RESET] 已删除 {ckpt_count} 个训练模型")
             
             # 2. 删除训练输出目录（web_{project}/）
             gpt_data_dir = TRAIN_DATA_ROOT / f"web_{project_name}"
@@ -769,7 +771,7 @@ class TrainingManager:
                 import shutil
                 shutil.rmtree(gpt_data_dir)
                 deleted_items.append(f"训练目录: {gpt_data_dir.name}/")
-                print(f"[RESET] 已删除训练目录: {gpt_data_dir}")
+                logger.info(f"[RESET] 已删除训练目录: {gpt_data_dir}")
             
             # 3. 删除 YAML 配置文件
             gpt_root = GPT_SOVITS_ROOT / "GPT_SoVITS"
@@ -777,7 +779,7 @@ class TrainingManager:
             if yaml_file.exists():
                 yaml_file.unlink()
                 deleted_items.append(f"配置: {yaml_file.name}")
-                print(f"[RESET] 已删除 YAML 配置: {yaml_file}")
+                logger.info(f"[RESET] 已删除 YAML 配置: {yaml_file}")
             
             # 3.5 删除 logs 下的训练输出目录（残留数据会导致数据复制被跳过）
             logs_data_dir = GPT_SOVITS_ROOT / "logs" / f"web_{project_name}"
@@ -785,7 +787,7 @@ class TrainingManager:
                 import shutil
                 shutil.rmtree(logs_data_dir)
                 deleted_items.append(f"日志目录: logs/{logs_data_dir.name}/")
-                print(f"[RESET] 已删除日志目录: {logs_data_dir}")
+                logger.info(f"[RESET] 已删除日志目录: {logs_data_dir}")
             
             # 4. 删除训练数据文件
             train_data_files = [
@@ -798,7 +800,7 @@ class TrainingManager:
                 if data_path.exists():
                     data_path.unlink()
                     deleted_items.append(f"训练数据: {data_file}")
-                    print(f"[RESET] 已删除: {data_path}")
+                    logger.info(f"[RESET] 已删除: {data_path}")
             
             # 5. 删除训练生成的特征文件
             for feature_dir in ["3-bert", "4-cnhubert", "5-wav32k"]:
@@ -850,9 +852,9 @@ class TrainingManager:
                 self.save_project_config(project_name, config)
                 deleted_items.append("配置: ref_* 重置")
                 
-                print(f"[RESET] 已删除项目所有数据: {project_name}")
+                logger.info(f"[RESET] 已删除项目所有数据: {project_name}")
             else:
-                print(f"[RESET] 已重置训练数据（保留音频）: {project_name}")
+                logger.info(f"[RESET] 已重置训练数据（保留音频）: {project_name}")
             
             return {
                 "success": True,
@@ -946,7 +948,7 @@ class TrainingManager:
             for audio_file in files_to_process:
                 try:
                     audio, sr = sf.read(audio_file)
-                    print(f"处理 {audio_file.name}: sr={sr}, shape={audio.shape}")
+                    logger.info(f"处理 {audio_file.name}: sr={sr}, shape={audio.shape}")
                     
                     if audio.ndim > 1:
                         audio = audio.mean(axis=1)
@@ -957,9 +959,9 @@ class TrainingManager:
                     
                     dst_path = out_dir / audio_file.name
                     sf.write(dst_path, audio.astype(np.float32), 32000)
-                    print(f"已保存: {dst_path}")
+                    logger.info(f"已保存: {dst_path}")
                 except Exception as e:
-                    print(f"处理失败 {audio_file.name}: {e}")
+                    logger.info(f"处理失败 {audio_file.name}: {e}")
                     return {"success": False, "error": f"处理 {audio_file.name} 失败: {e}"}
             
             config = self.get_project_config(project_name)
@@ -968,7 +970,7 @@ class TrainingManager:
                 new_ref = out_dir / old_ref.name
                 if new_ref.exists():
                     self.update_project_config(project_name, "ref_audio", str(new_ref))
-                    print(f"已更新参考音频路径: {new_ref}")
+                    logger.info(f"已更新参考音频路径: {new_ref}")
             
             return {"success": True, "message": f"预处理完成，共处理 {len(files_to_process)} 个文件"}
         except ImportError as e:
@@ -1026,12 +1028,12 @@ class TrainingManager:
             is_half = torch.cuda.is_available()
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
             
-            print(f"[FEATURE] 开始提取特征，项目: {project_name}")
-            print(f"[FEATURE] 设备: {device}, half: {is_half}")
-            print(f"[FEATURE] 文本数量: {len(texts)}")
+            logger.info(f"[FEATURE] 开始提取特征，项目: {project_name}")
+            logger.info(f"[FEATURE] 设备: {device}, half: {is_half}")
+            logger.info(f"[FEATURE] 文本数量: {len(texts)}")
             
             # === 初始化 BERT 模型（官方 1-get-text.py）===
-            print(f"[FEATURE] 加载 BERT 模型...")
+            logger.info(f"[FEATURE] 加载 BERT 模型...")
             from transformers import AutoModelForMaskedLM, AutoTokenizer
             bert_pretrained_dir = str(GPT_SOVITS_ROOT / "GPT_SoVITS" / "pretrained_models" / "chinese-roberta-wwm-ext-large")
             tokenizer = AutoTokenizer.from_pretrained(bert_pretrained_dir)
@@ -1060,7 +1062,7 @@ class TrainingManager:
                 return phone_level_feature.T  # [1024, num_phones]
             
             # === 初始化 HuBERT 模型（官方 2-get-hubert-wav32k.py）===
-            print(f"[FEATURE] 加载 HuBERT 模型...")
+            logger.info(f"[FEATURE] 加载 HuBERT 模型...")
             from feature_extractor import cnhubert
             cnhubert.cnhubert_base_path = str(GPT_SOVITS_ROOT / "GPT_SoVITS" / "pretrained_models" / "chinese-hubert-base")
             hubert_model = cnhubert.get_model()
@@ -1083,18 +1085,18 @@ class TrainingManager:
             for audio_file in _get_audio_files(wav32k_dir):
                 name = audio_file.stem  # 不含扩展名
                 if name not in texts:
-                    print(f"[FEATURE] 跳过 {name}: 没有对应文本")
+                    logger.info(f"[FEATURE] 跳过 {name}: 没有对应文本")
                     continue
                 
                 raw_text = texts[name].strip()
                 if not raw_text:
-                    print(f"[FEATURE] 跳过 {name}: 文本为空")
+                    logger.info(f"[FEATURE] 跳过 {name}: 文本为空")
                     continue
                 
                 # name 带 .wav 后缀（官方规范）
                 wav_name = name + ".wav"
                 
-                print(f"[FEATURE] 处理: {wav_name}")
+                logger.info(f"[FEATURE] 处理: {wav_name}")
                 
                 # ========== 步骤1: 音素提取 + BERT 特征（官方 1-get-text.py）==========
                 try:
@@ -1106,7 +1108,7 @@ class TrainingManager:
                         "v3"  # 版本（v2/v2Pro/v3 使用相同的音素符号表）
                     )
                 except Exception as e:
-                    print(f"[FEATURE] clean_text 失败 {name}: {e}")
+                    logger.info(f"[FEATURE] clean_text 失败 {name}: {e}")
                     # 回退到 g2p
                     try:
                         from text.chinese import g2p
@@ -1115,7 +1117,7 @@ class TrainingManager:
                         phones = phones_str
                         norm_text = cleaned
                     except Exception as e2:
-                        print(f"[FEATURE] g2p 也失败 {name}: {e2}")
+                        logger.info(f"[FEATURE] g2p 也失败 {name}: {e2}")
                         continue
                 
                 # 保存 BERT 特征到 3-bert/{name}.pt（官方 1-get-text.py 格式）
@@ -1127,9 +1129,9 @@ class TrainingManager:
                             f"BERT特征长度{bert_feature.shape[-1]}!=音素数量{len(phones)}"
                         # 官方使用 my_save 避免中文路径问题，我们直接 torch.save
                         torch.save(bert_feature, str(bert_pt_path))
-                        print(f"[FEATURE]   BERT: {bert_feature.shape}")
+                        logger.info(f"[FEATURE]   BERT: {bert_feature.shape}")
                     except Exception as e:
-                        print(f"[FEATURE]   BERT提取失败: {e}")
+                        logger.info(f"[FEATURE]   BERT提取失败: {e}")
                         skipped_bert += 1
                 
                 # 同时保存音素文本（供 S2 name2text 使用）
@@ -1149,7 +1151,7 @@ class TrainingManager:
                         tmp_max = np.abs(tmp_audio).max()
                         
                         if tmp_max > 2.2:
-                            print(f"[FEATURE]   音频振幅过大 {tmp_max:.2f}，跳过HuBERT")
+                            logger.info(f"[FEATURE]   音频振幅过大 {tmp_max:.2f}，跳过HuBERT")
                             skipped_hubert += 1
                             continue
                         
@@ -1181,13 +1183,13 @@ class TrainingManager:
                         
                         # 检查 NaN
                         if np.isnan(ssl.detach().numpy()).sum() != 0:
-                            print(f"[FEATURE]   HuBERT 输出含 NaN，跳过")
+                            logger.info(f"[FEATURE]   HuBERT 输出含 NaN，跳过")
                             skipped_hubert += 1
                             continue
                         
                         # 保存 HuBERT 特征（官方格式 [1, 768, T]）
                         torch.save(ssl, str(hubert_pt_path))
-                        print(f"[FEATURE]   HuBERT: {ssl.shape} (官方格式 [1,768,T])")
+                        logger.info(f"[FEATURE]   HuBERT: {ssl.shape} (官方格式 [1,768,T])")
                         
                         # 同时保存旧 .npy 格式（兼容旧逻辑回退）
                         npy_path = hubert_dir / f"{name}.npy"
@@ -1195,12 +1197,12 @@ class TrainingManager:
                             np.save(npy_path, ssl.squeeze(0).transpose(0, 1).numpy())  # [T, 768]
                         
                     except Exception as e:
-                        print(f"[FEATURE]   HuBERT提取失败: {e}")
+                        logger.info(f"[FEATURE]   HuBERT提取失败: {e}")
                         import traceback
                         traceback.print_exc()
                         skipped_hubert += 1
                 else:
-                    print(f"[FEATURE]   HuBERT已存在: {hubert_pt_path.name}")
+                    logger.info(f"[FEATURE]   HuBERT已存在: {hubert_pt_path.name}")
                 
                 processed += 1
             
@@ -1215,7 +1217,7 @@ class TrainingManager:
                 msg += f" (BERT跳过: {skipped_bert})"
             if skipped_hubert > 0:
                 msg += f" (HuBERT跳过: {skipped_hubert})"
-            print(f"[FEATURE] {msg}")
+            logger.info(f"[FEATURE] {msg}")
             return {"success": True, "message": msg}
             
         except ImportError as e:
@@ -1323,7 +1325,7 @@ class TrainingManager:
             # retrain 模式：忽略已训练标记，使用全部音频
             is_retrain = train_config.get("retrain", False)
             if is_retrain:
-                print(f"[TRAIN] 重训模式: 忽略已训练标记，使用全部音频")
+                logger.info(f"[TRAIN] 重训模式: 忽略已训练标记，使用全部音频")
             
             # 收集有效音频（排除已训练的，除非 retrain=True）
             valid_audios = []
@@ -1357,7 +1359,7 @@ class TrainingManager:
                     })
             
             if skipped_count > 0:
-                print(f"[TRAIN] 跳过 {skipped_count} 个已训练的音频")
+                logger.info(f"[TRAIN] 跳过 {skipped_count} 个已训练的音频")
             
             if len(valid_audios) < 1:
                 self._report_progress(task_id, "error", "没有新音频需要训练（所有音频已训练过）", 0, 100)
@@ -1380,8 +1382,8 @@ class TrainingManager:
                 with open(config_path, "w", encoding="utf-8") as f:
                     json.dump(project_config, f, indent=2, ensure_ascii=False)
                 
-                print(f"[TRAIN] 自动设置参考音频: {ref_32k_path.name}")
-                print(f"[TRAIN] 参考文本: {ref_text}")
+                logger.info(f"[TRAIN] 自动设置参考音频: {ref_32k_path.name}")
+                logger.info(f"[TRAIN] 参考文本: {ref_text}")
             
             self._report_progress(task_id, "preparing", f"✅ 找到 {len(valid_audios)} 个新音频（跳过 {skipped_count} 个已训练的）", 10, 100)
             
@@ -1426,7 +1428,7 @@ class TrainingManager:
                             # 提取文件名
                             name = line.split("|")[0].replace(".wav", "")
                             existing_names.add(name)
-                print(f"[TRAIN] 保留 {len(existing_entries)} 条已有训练记录（增量训练）")
+                logger.info(f"[TRAIN] 保留 {len(existing_entries)} 条已有训练记录（增量训练）")
             
             # 只追加不重复的新音频
             new_entries = []
@@ -1435,7 +1437,7 @@ class TrainingManager:
                     new_entries.append(f"{audio['name']}.wav|{project_name}|ZH|{audio['text']}")
             
             if new_entries:
-                print(f"[TRAIN] 追加 {len(new_entries)} 个新音频")
+                logger.info(f"[TRAIN] 追加 {len(new_entries)} 个新音频")
             
             # 合并并写入
             all_entries = existing_entries + new_entries
@@ -1470,7 +1472,7 @@ class TrainingManager:
                         parts = line.strip().split("\t")
                         if len(parts) >= 4:
                             existing_texts[parts[0]] = line.strip()
-                print(f"[TRAIN] 保留 {len(existing_texts)} 条已有音素记录")
+                logger.info(f"[TRAIN] 保留 {len(existing_texts)} 条已有音素记录")
             
             # 只处理新的音频
             new_texts = {}
@@ -1485,11 +1487,11 @@ class TrainingManager:
                     phones, word2ph, norm_text = clean_text(cleaned_input, "zh", "v3")
                 except Exception as e:
                     # 回退到 g2p
-                    print(f"[TRAIN] clean_text 失败 {wav_name}: {e}，回退到 g2p")
+                    logger.info(f"[TRAIN] clean_text 失败 {wav_name}: {e}，回退到 g2p")
                     from text.chinese import g2p
                     cleaned_text = _clean_text_for_g2p(audio['text'])
                     if not cleaned_text:
-                        print(f"[TRAIN] 跳过 {wav_name}: 文本无效")
+                        logger.info(f"[TRAIN] 跳过 {wav_name}: 文本无效")
                         continue
                     phones_str, word2ph = g2p(cleaned_text)
                     phones = phones_str
@@ -1507,9 +1509,9 @@ class TrainingManager:
                     f.write(content + "\n")
             
             if new_texts:
-                print(f"[TRAIN] 追加 {len(new_texts)} 条新音素记录")
+                logger.info(f"[TRAIN] 追加 {len(new_texts)} 条新音素记录")
             
-            print(f"[TRAIN] 音素文件已生成: {name2text_path}")
+            logger.info(f"[TRAIN] 音素文件已生成: {name2text_path}")
             self._report_progress(task_id, "preparing", "✅ 音素文件已生成", 30, 100)
             
             # ============ 阶段4: 生成语义特征 ============
@@ -1534,14 +1536,14 @@ class TrainingManager:
                             existing_semantics[parts[0]] = line.strip()
                 
                 if has_fake_tokens:
-                    print(f"[TRAIN] 检测到假语义 token（全512），强制重新提取真实语义特征")
+                    logger.info(f"[TRAIN] 检测到假语义 token（全512），强制重新提取真实语义特征")
                     existing_semantics = {}
                     name2semantic_path.unlink(missing_ok=True)
                     # 同时删除验证集文件
                     dev_semantic = gpt_data_dir / "6-name2semantic-dev-0.tsv"
                     dev_semantic.unlink(missing_ok=True)
                 else:
-                    print(f"[TRAIN] 保留 {len(existing_semantics)} 条已有真实语义记录")
+                    logger.info(f"[TRAIN] 保留 {len(existing_semantics)} 条已有真实语义记录")
             
             # 只处理新的音频
             new_semantics = {}
@@ -1557,7 +1559,7 @@ class TrainingManager:
                 
                 vq_device = "cuda" if torch.cuda.is_available() else "cpu"
                 pretrained_s2G = str(GPT_SOVITS_ROOT / "GPT_SoVITS/pretrained_models/s2Gv3.pth")
-                print(f"[TRAIN] 加载预训练 SoVITS VQ encoder: {pretrained_s2G}")
+                logger.info(f"[TRAIN] 加载预训练 SoVITS VQ encoder: {pretrained_s2G}")
                 
                 # 使用官方 s2.json 配置构建模型（而非手动构造 Hps）
                 s2_config_path = GPT_SOVITS_ROOT / "GPT_SoVITS" / "configs" / "s2.json"
@@ -1604,9 +1606,9 @@ class TrainingManager:
                 vq_model = vq_model.eval().to(vq_device)
                 if is_half_flag:
                     vq_model = vq_model.half()
-                print(f"[TRAIN] SoVITS VQ encoder 加载成功")
+                logger.info(f"[TRAIN] SoVITS VQ encoder 加载成功")
             except Exception as e:
-                print(f"[TRAIN] 加载 SoVITS VQ encoder 失败: {e}，使用备用方法")
+                logger.info(f"[TRAIN] 加载 SoVITS VQ encoder 失败: {e}，使用备用方法")
                 vq_model = None
             
             for audio in valid_audios:
@@ -1657,13 +1659,13 @@ class TrainingManager:
                         # codes: (1, 1, T) → 取 [0,0,:] 转为 list
                         semantic_ids_list = codes[0, 0, :].tolist()
                         semantic_ids = " ".join(str(int(i)) for i in semantic_ids_list)
-                        print(f"[TRAIN] 提取语义 token: {wav_name} ({len(semantic_ids_list)} tokens)")
+                        logger.info(f"[TRAIN] 提取语义 token: {wav_name} ({len(semantic_ids_list)} tokens)")
                     except Exception as e:
-                        print(f"[TRAIN] 提取语义失败 {wav_name}: {e}")
+                        logger.info(f"[TRAIN] 提取语义失败 {wav_name}: {e}")
                 
                 # 备用：如果 VQ encoder 失败，报错而非使用假 token
                 if semantic_ids is None:
-                    print(f"[TRAIN] ⚠️ 无法提取真实语义 token: {wav_name}，跳过此音频")
+                    logger.info(f"[TRAIN] ⚠️ 无法提取真实语义 token: {wav_name}，跳过此音频")
                     continue
                 
                 # name 带 .wav 后缀（官方规范）
@@ -1676,9 +1678,9 @@ class TrainingManager:
                     f.write(content + "\n")
             
             if new_semantics:
-                print(f"[TRAIN] 追加 {len(new_semantics)} 条新语义记录")
+                logger.info(f"[TRAIN] 追加 {len(new_semantics)} 条新语义记录")
             
-            print(f"[TRAIN] 语义特征文件已生成: {name2semantic_path}")
+            logger.info(f"[TRAIN] 语义特征文件已生成: {name2semantic_path}")
             self._report_progress(task_id, "preparing", "✅ 语义特征已生成", 40, 100)
             
             # ============ 阶段4.5: 验证集处理 ============
@@ -1687,7 +1689,7 @@ class TrainingManager:
             # 我们遵循官方做法：不生成独立的验证集文件
             dev_semantic_path = None
             dev_phoneme_path = None
-            print(f"[TRAIN] 遵循官方规范：S1 训练不使用独立验证集（复用训练集）")
+            logger.info(f"[TRAIN] 遵循官方规范：S1 训练不使用独立验证集（复用训练集）")
             
             self._report_progress(task_id, "preparing", "✅ 训练数据准备完成", 44, 100)
             
@@ -1707,7 +1709,7 @@ class TrainingManager:
                         max_prev_epoch = max(max_prev_epoch, epoch_num)
             
             if max_prev_epoch > 0:
-                print(f"[TRAIN] 检测到已有训练记录 (epoch={max_prev_epoch})，将进行增量训练")
+                logger.info(f"[TRAIN] 检测到已有训练记录 (epoch={max_prev_epoch})，将进行增量训练")
                 total_epochs = train_config["epochs"] + max_prev_epoch
             else:
                 total_epochs = train_config["epochs"]
@@ -1743,7 +1745,7 @@ class TrainingManager:
                     _phoneme_vocab_size = len(_symbols2)
                 except Exception:
                     _phoneme_vocab_size = 512
-                print(f"[TRAIN] S1 phoneme_vocab_size = {_phoneme_vocab_size}")
+                logger.info(f"[TRAIN] S1 phoneme_vocab_size = {_phoneme_vocab_size}")
                 yaml_config = {
                     "optimizer": {
                         "name": "AdamW",
@@ -1805,7 +1807,7 @@ class TrainingManager:
             if "model" not in yaml_config:
                 yaml_config["model"] = {}
             yaml_config["model"]["phoneme_vocab_size"] = _phoneme_vocab_size
-            print(f"[TRAIN] S1 phoneme_vocab_size 强制设置为: {_phoneme_vocab_size}")
+            logger.info(f"[TRAIN] S1 phoneme_vocab_size 强制设置为: {_phoneme_vocab_size}")
             
             # 写入 tmp_s1.yaml（与官方 tmp_config_path 一致）
             tmp_dir = GPT_SOVITS_ROOT / "TEMP"
@@ -1851,9 +1853,9 @@ class TrainingManager:
                     if semantic_content:
                         f.write(semantic_content + "\n")
             
-            print(f"[TRAIN] S1 数据目录: {s1_data_dir}")
-            print(f"[TRAIN] train_semantic_path: {yaml_config['train_semantic_path']}")
-            print(f"[TRAIN] train_phoneme_path: {yaml_config['train_phoneme_path']}")
+            logger.info(f"[TRAIN] S1 数据目录: {s1_data_dir}")
+            logger.info(f"[TRAIN] train_semantic_path: {yaml_config['train_semantic_path']}")
+            logger.info(f"[TRAIN] train_phoneme_path: {yaml_config['train_phoneme_path']}")
             
             # ============ 阶段7: 运行 S1 训练（官方 subprocess 方式）============
             self._report_progress(task_id, "training", "🚀 开始训练 S1 模型...", 50, 100)
@@ -1871,9 +1873,9 @@ class TrainingManager:
             env["version"] = train_version  # v3（而非 v2Pro）
             env["PYTHONPATH"] = str(GPT_SOVITS_ROOT) + os.pathsep + str(GPT_SOVITS_ROOT / "GPT_SoVITS")
 
-            print(f"[TRAIN] 工作目录: {GPT_SOVITS_ROOT}")
-            print(f"[TRAIN] 命令: {cmd}")
-            print(f"[TRAIN] version={train_version}")
+            logger.info(f"[TRAIN] 工作目录: {GPT_SOVITS_ROOT}")
+            logger.info(f"[TRAIN] 命令: {cmd}")
+            logger.info(f"[TRAIN] version={train_version}")
             
             try:
                 proc = subprocess.Popen(
@@ -1888,19 +1890,19 @@ class TrainingManager:
                 )
                 self._active_processes.append(proc)  # C3修复: 跟踪子进程
                 for line in proc.stdout:
-                    print(line, end="")
+                    logger.info(line, end="")
                 proc.wait()
                 return_code = proc.returncode
-                print(f"[TRAIN] S1 训练进程退出，返回码: {return_code}")
+                logger.info(f"[TRAIN] S1 训练进程退出，返回码: {return_code}")
                 
                 if return_code != 0:
                     self._report_progress(task_id, "error", f"❌ S1 训练失败，返回码: {return_code}", 0, 100, action="start_training")
                     return
                 
-                print("[TRAIN] S1 训练完成!")
+                logger.info("[TRAIN] S1 训练完成!")
                 self._report_progress(task_id, "complete", "✅ S1 训练完成!", 100, 100, action="start_training")
             except Exception as train_err:
-                print(f"[TRAIN] 训练过程出错: {train_err}")
+                logger.info(f"[TRAIN] 训练过程出错: {train_err}")
                 import traceback
                 traceback.print_exc()
                 self._report_progress(task_id, "error", f"训练错误: {train_err}", 0, 100, action="start_training")
@@ -1930,7 +1932,7 @@ class TrainingManager:
                 project_ckpt_dir.mkdir(parents=True, exist_ok=True)
                 project_ckpt_path = project_ckpt_dir / latest_ckpt.name
                 shutil.copy2(latest_ckpt, project_ckpt_path)
-                print(f"✅ 模型已复制到: {project_ckpt_path}")
+                logger.info(f"✅ 模型已复制到: {project_ckpt_path}")
                 
                 # 更新项目配置（指向项目文件夹内的模型）
                 with open(config_path, "r", encoding="utf-8") as f:
@@ -1948,7 +1950,7 @@ class TrainingManager:
                             ref_text = texts.get(ref_audio_base, "")
                             if ref_text:
                                 project_config["ref_text"] = ref_text
-                                print(f"[TRAIN] 已设置参考音频文本: {ref_text}")
+                                logger.info(f"[TRAIN] 已设置参考音频文本: {ref_text}")
 
                 # 【关键】S1 只更新 trained_gpt，不覆盖 trained_sovits！
                 # 之前 bug：trained_sovits 也被写成了 S1 的 .ckpt 文件，
@@ -1966,16 +1968,16 @@ class TrainingManager:
                 new_trained = set(trained_names)
                 project_config["trained_audios"] = sorted(old_trained | new_trained)
 
-                print(f"[DEBUG] 训练完成，更新 trained_audios:")
-                print(f"  - 旧列表 ({len(old_trained)}): {sorted(old_trained)}")
-                print(f"  - 新增 ({len(new_trained)}): {sorted(new_trained)}")
-                print(f"  - 合并后 ({len(project_config['trained_audios'])}): {project_config['trained_audios']}")
+                logger.info(f"[DEBUG] 训练完成，更新 trained_audios:")
+                logger.info(f"  - 旧列表 ({len(old_trained)}): {sorted(old_trained)}")
+                logger.info(f"  - 新增 ({len(new_trained)}): {sorted(new_trained)}")
+                logger.info(f"  - 合并后 ({len(project_config['trained_audios'])}): {project_config['trained_audios']}")
                 
                 with open(config_path, "w", encoding="utf-8") as f:
                     json.dump(project_config, f, indent=2, ensure_ascii=False)
                 
-                print(f"✅ 模型已保存: {project_ckpt_path}")
-                print(f"✅ 已标记 {len(trained_names)} 个音频为已训练")
+                logger.info(f"✅ 模型已保存: {project_ckpt_path}")
+                logger.info(f"✅ 已标记 {len(trained_names)} 个音频为已训练")
                 
                 # ============ 阶段8: 清理原始音频 ============
                 self._report_progress(task_id, "cleaning", "🗑️ 清理原始音频...", 98, 100)
@@ -1987,10 +1989,10 @@ class TrainingManager:
                         raw_audio.unlink()
                         cleaned_count += 1
                 
-                print(f"✅ 已清理 {cleaned_count} 个原始音频文件")
+                logger.info(f"✅ 已清理 {cleaned_count} 个原始音频文件")
                 self._report_progress(task_id, "complete", f"✅ 训练完成! 模型: {project_ckpt_path.name}，已清理 {cleaned_count} 个原始音频", 100, 100, action="start_training")
             else:
-                print("⚠️ 未找到 checkpoint 文件")
+                logger.info("⚠️ 未找到 checkpoint 文件")
                 self._report_progress(task_id, "complete", "⚠️ 训练完成，但未找到 checkpoint", 100, 100, action="start_training")
         
         except Exception as e:
@@ -2039,9 +2041,9 @@ class TrainingManager:
                         proc.wait(timeout=5)
                     except subprocess.TimeoutExpired:
                         proc.kill()
-                    print(f"[TRAIN] 已终止训练子进程 PID={proc.pid}")
+                    logger.info(f"[TRAIN] 已终止训练子进程 PID={proc.pid}")
             except Exception as e:
-                print(f"[TRAIN] 清理子进程失败: {e}")
+                logger.info(f"[TRAIN] 清理子进程失败: {e}")
         self._active_processes.clear()
 
     def prepare_s2_data(self, project_name: str) -> dict:
@@ -2113,7 +2115,7 @@ class TrainingManager:
                 audio_count += 1
                 audio_stems.append(stem)
             
-            print(f"[S2 PREP] 5-wav32k: {audio_count} 个文件, key 格式: {audio_stems[0]}.wav")
+            logger.info(f"[S2 PREP] 5-wav32k: {audio_count} 个文件, key 格式: {audio_stems[0]}.wav")
             
             # === 2. 4-cnhubert：文件名 = "录音 (2).wav.pt"（key 去.pt = "录音 (2).wav"）===
             pt_count = 0
@@ -2149,7 +2151,7 @@ class TrainingManager:
                         # 如果已经是 [1, 768, T] 则不变
                         torch.save(tensor, dst)
                         pt_count += 1
-                        print(f"[S2 PREP] npy→pt: {src_file.name} -> {dst_name}, shape={tensor.shape}")
+                        logger.info(f"[S2 PREP] npy→pt: {src_file.name} -> {dst_name}, shape={tensor.shape}")
                     else:
                         # .pt 文件：检查格式并确保是 [1, 768, T]
                         loaded = torch.load(src_file, map_location="cpu", weights_only=False)
@@ -2159,16 +2161,16 @@ class TrainingManager:
                             loaded = loaded.unsqueeze(0)  # [768, T] -> [1, 768, T]
                         torch.save(loaded, dst)
                         pt_count += 1
-                        print(f"[S2 PREP] pt复制: {src_file.name} -> {dst_name}, shape={loaded.shape}")
+                        logger.info(f"[S2 PREP] pt复制: {src_file.name} -> {dst_name}, shape={loaded.shape}")
             
-            print(f"[S2 PREP] 4-cnhubert: {pt_count} 个特征文件, key 格式: {audio_stems[0]}.wav.pt")
+            logger.info(f"[S2 PREP] 4-cnhubert: {pt_count} 个特征文件, key 格式: {audio_stems[0]}.wav.pt")
             
             # 同时清理旧的（无 .wav 的）特征文件，避免混淆
             for old_pt in s2_hubert_dir.glob("*.pt"):
                 # 如果文件名形如 "录音 (2).pt"（stem 不含 .wav），删掉
                 if not old_pt.stem.endswith(".wav"):
                     old_pt.unlink()
-                    print(f"[S2 PREP] 删除旧格式特征: {old_pt.name}")
+                    logger.info(f"[S2 PREP] 删除旧格式特征: {old_pt.name}")
             
             # === 4. 3-bert：复制 BERT .pt 特征文件（S2 训练 TextAudioSpeakerLoaderV3 必需）===
             s2_bert_dir = s2_data_dir / "3-bert"
@@ -2179,7 +2181,7 @@ class TrainingManager:
                 if not dst.exists():
                     shutil.copy2(src_file, dst)
                     bert_pt_count += 1
-            print(f"[S2 PREP] 3-bert: 复制 {bert_pt_count} 个 .pt 特征文件")
+            logger.info(f"[S2 PREP] 3-bert: 复制 {bert_pt_count} 个 .pt 特征文件")
             
             # === 5. 2-name2text.txt：第一列 = "录音 (2).wav"（带 .wav 后缀）===
             # 【关键】word2ph 必须从 clean_text() 获取，不能硬编码
@@ -2216,14 +2218,14 @@ class TrainingManager:
                             phones_str = " ".join(phones)
                             word2ph = " ".join(map(str, word2ph_list))
                         except Exception as e:
-                            print(f"[S2 PREP] clean_text 失败 {wav_key}: {e}，跳过")
+                            logger.info(f"[S2 PREP] clean_text 失败 {wav_key}: {e}，跳过")
                             continue
                         out.write(f"{wav_key}\t{phones_str}\t{word2ph}\t{text}\n")
                         name2text_written += 1
             else:
                 return {"success": False, "error": "找不到 texts.json，无法生成 name2text"}
             
-            print(f"[S2 PREP] 2-name2text.txt: {name2text_written} 条, key 格式: {audio_stems[0]}.wav")
+            logger.info(f"[S2 PREP] 2-name2text.txt: {name2text_written} 条, key 格式: {audio_stems[0]}.wav")
             
             # === 最终验证：三方交集是否不为空 ===
             names4 = set([f.stem for f in s2_hubert_dir.glob("*.pt")])  # 去 .pt -> "录音 (2).wav"
@@ -2236,14 +2238,14 @@ class TrainingManager:
                         phoneme_keys.add(tmp[0])
             
             intersection = phoneme_keys & names4 & names5
-            print(f"[S2 PREP] 验证交集: phoneme={len(phoneme_keys)}, hubert={len(names4)}, wav={len(names5)}, 交集={len(intersection)}")
+            logger.info(f"[S2 PREP] 验证交集: phoneme={len(phoneme_keys)}, hubert={len(names4)}, wav={len(names5)}, 交集={len(intersection)}")
             
             if len(intersection) == 0:
                 return {"success": False, "error": f"三方交集为空！phoneme={len(phoneme_keys)}, hubert={len(names4)}, wav={len(names5)}"}
             
             actual_wav_count = len(list(s2_wav_dir.glob("*.wav")))
             actual_pt_count = len(list(s2_hubert_dir.glob("*.pt")))
-            print(f"[S2] 数据准备完成: {actual_wav_count} 音频, {actual_pt_count} HuBERT特征, {len(intersection)} 有效样本")
+            logger.info(f"[S2] 数据准备完成: {actual_wav_count} 音频, {actual_pt_count} HuBERT特征, {len(intersection)} 有效样本")
             return {
                 "success": True,
                 "message": f"S2 数据准备完成: {actual_wav_count} 音频, {actual_pt_count} HuBERT特征, {len(intersection)} 有效样本",
@@ -2338,11 +2340,11 @@ class TrainingManager:
             s2_hubert_dir = s2_data_dir / "4-cnhubert"
             s2_wav_dir = s2_data_dir / "5-wav32k"
             
-            print(f"[S2] s2_data_dir: {s2_data_dir}")
-            print(f"[S2] s2_wav_dir: {s2_wav_dir}")
-            print(f"[S2] s2_wav_dir exists: {s2_wav_dir.exists()}")
+            logger.info(f"[S2] s2_data_dir: {s2_data_dir}")
+            logger.info(f"[S2] s2_wav_dir: {s2_wav_dir}")
+            logger.info(f"[S2] s2_wav_dir exists: {s2_wav_dir.exists()}")
             if s2_wav_dir.exists():
-                print(f"[S2] wav files: {list(s2_wav_dir.glob('*.wav'))}")
+                logger.info(f"[S2] wav files: {list(s2_wav_dir.glob('*.wav'))}")
             
             if not s2_name2text.exists():
                 self._report_progress(task_id, "error", "缺少 2-name2text.txt 文件", 0, 100, action="prepare_s2_data")
@@ -2413,10 +2415,10 @@ class TrainingManager:
             with open(tmp_config_path, "w", encoding="utf-8") as f:
                 json.dump(s2_config, f, ensure_ascii=False, indent=2)
             
-            print(f"[S2] Config 已写入: {tmp_config_path}")
-            print(f"[S2] data.exp_dir={s2_config['data']['exp_dir']}")
-            print(f"[S2] save_weight_dir={s2_config['save_weight_dir']}")
-            print(f"[S2] lora_rank={s2_config['train']['lora_rank']}")
+            logger.info(f"[S2] Config 已写入: {tmp_config_path}")
+            logger.info(f"[S2] data.exp_dir={s2_config['data']['exp_dir']}")
+            logger.info(f"[S2] save_weight_dir={s2_config['save_weight_dir']}")
+            logger.info(f"[S2] lora_rank={s2_config['train']['lora_rank']}")
             self._report_progress(task_id, "preparing", "✅ S2 配置已生成", 20, 100)
             
             # ============ 阶段3: 启动官方 s2_train_v3_lora.py subprocess ============
@@ -2429,8 +2431,8 @@ class TrainingManager:
             # v1.12.0 AUDIT-2: 使用列表形式避免 shell=True 命令注入风险
             cmd = [python_exe, "-s", "GPT_SoVITS/s2_train_v3_lora.py", "--config", str(tmp_config_path)]
             
-            print(f"[S2] 工作目录: {GPT_SOVITS_ROOT}")
-            print(f"[S2] 命令: {cmd}")
+            logger.info(f"[S2] 工作目录: {GPT_SOVITS_ROOT}")
+            logger.info(f"[S2] 命令: {cmd}")
             
             # 设置环境变量
             env = os.environ.copy()
@@ -2462,11 +2464,11 @@ class TrainingManager:
             
             # 实时打印训练输出
             for line in proc.stdout:
-                print(line, end="")
+                logger.info(line, end="")
             
             proc.wait()
             return_code = proc.returncode
-            print(f"[S2] 训练进程退出，返回码: {return_code}")
+            logger.info(f"[S2] 训练进程退出，返回码: {return_code}")
             
             if return_code != 0:
                 self._report_progress(task_id, "error", f"❌ S2 训练失败，返回码: {return_code}", 0, 100, action="start_s2_training")
@@ -2482,13 +2484,13 @@ class TrainingManager:
             
             # 查找所有导出的 LoRA 权重
             exported_weights = list(sovits_weights_dir.glob(f"{s2_exp_name}*.pth"))
-            print(f"[S2] 导出目录: {sovits_weights_dir}")
-            print(f"[S2] 找到 {len(exported_weights)} 个导出权重: {[w.name for w in exported_weights]}")
+            logger.info(f"[S2] 导出目录: {sovits_weights_dir}")
+            logger.info(f"[S2] 找到 {len(exported_weights)} 个导出权重: {[w.name for w in exported_weights]}")
             
             if exported_weights:
                 # 取最新（按修改时间）
                 latest = max(exported_weights, key=lambda p: p.stat().st_mtime)
-                print(f"[S2] 最新权重: {latest.name}")
+                logger.info(f"[S2] 最新权重: {latest.name}")
                 
                 # 复制到项目 s2_ckpt 目录
                 project_s2_ckpt_dir = project_dir / "s2_ckpt"
@@ -2505,14 +2507,14 @@ class TrainingManager:
                 with open(config_path, "w", encoding="utf-8") as f:
                     json.dump(project_config, f, indent=2, ensure_ascii=False)
                 
-                print(f"✅ S2 模型已保存: {project_sovits_path}")
+                logger.info(f"✅ S2 模型已保存: {project_sovits_path}")
                 self._report_progress(task_id, "complete",
                     f"✅ S2 训练完成! 模型: {latest.name}", 100, 100, action="start_s2_training")
                 return
             else:
                 # 如果没有找到导出权重，检查 logs/ 子目录（中间 checkpoint）
                 s2_logs_dir = s2_data_dir / f"logs_s2_{train_version}_lora_{train_config.get('lora_rank', 8)}"
-                print(f"[S2] 未找到导出权重，检查中间目录: {s2_logs_dir}")
+                logger.info(f"[S2] 未找到导出权重，检查中间目录: {s2_logs_dir}")
                 if s2_logs_dir.exists():
                     g_ckpts = list(s2_logs_dir.glob("G_*.pth"))
                     if g_ckpts:
@@ -2530,7 +2532,7 @@ class TrainingManager:
                         with open(config_path, "w", encoding="utf-8") as f:
                             json.dump(project_config, f, indent=2, ensure_ascii=False)
                         
-                        print(f"✅ S2 模型(中间)已保存: {project_sovits_path}")
+                        logger.info(f"✅ S2 模型(中间)已保存: {project_sovits_path}")
                         self._report_progress(task_id, "complete",
                             f"✅ S2 训练完成 (中间 checkpoint): {latest_ckpt.name}", 100, 100, action="start_s2_training")
                         return

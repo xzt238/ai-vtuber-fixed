@@ -11,6 +11,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PluginCategory(Enum):
     """插件类别"""
@@ -101,7 +104,7 @@ class EnhancedPluginMarketplace:
         # 加载索引
         self._load_index()
         
-        print(f"[EnhancedMarketplace] 初始化完成，插件数量: {len(self.plugins)}")
+        logger.info(f"[EnhancedMarketplace] 初始化完成，插件数量: {len(self.plugins)}")
     
     def _load_index(self):
         """加载插件索引"""
@@ -124,10 +127,10 @@ class EnhancedPluginMarketplace:
                             rating=plugin_data.get("rating", 0.0)
                         )
                 
-                print(f"[EnhancedMarketplace] 加载了 {len(self.plugins)} 个插件")
+                logger.info(f"[EnhancedMarketplace] 加载了 {len(self.plugins)} 个插件")
                 
         except Exception as e:
-            print(f"[EnhancedMarketplace] 加载索引失败: {e}")
+            logger.info(f"[EnhancedMarketplace] 加载索引失败: {e}")
     
     def _save_index(self):
         """保存插件索引"""
@@ -148,10 +151,10 @@ class EnhancedPluginMarketplace:
             with open(self.index_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             
-            print("[EnhancedMarketplace] 索引已保存")
+            logger.info("[EnhancedMarketplace] 索引已保存")
             
         except Exception as e:
-            print(f"[EnhancedMarketplace] 保存索引失败: {e}")
+            logger.info(f"[EnhancedMarketplace] 保存索引失败: {e}")
     
     def publish_plugin(self, plugin: PluginEntry) -> bool:
         """发布插件"""
@@ -172,11 +175,11 @@ class EnhancedPluginMarketplace:
             self.plugins[plugin.plugin_id] = plugin
             self._save_index()
             
-            print(f"[EnhancedMarketplace] 插件已发布: {plugin.name} v{plugin.current_version}")
+            logger.info(f"[EnhancedMarketplace] 插件已发布: {plugin.name} v{plugin.current_version}")
             return True
             
         except Exception as e:
-            print(f"[EnhancedMarketplace] 发布失败: {e}")
+            logger.info(f"[EnhancedMarketplace] 发布失败: {e}")
             return False
     
     def search_plugins(self, query: str = None, category: PluginCategory = None,
@@ -255,11 +258,11 @@ class EnhancedPluginMarketplace:
             # 保存
             self._save_index()
             
-            print(f"[EnhancedMarketplace] 评论已添加: {plugin.name}")
+            logger.info(f"[EnhancedMarketplace] 评论已添加: {plugin.name}")
             return True
             
         except Exception as e:
-            print(f"[EnhancedMarketplace] 添加评论失败: {e}")
+            logger.info(f"[EnhancedMarketplace] 添加评论失败: {e}")
             return False
     
     def record_download(self, plugin_id: str) -> bool:

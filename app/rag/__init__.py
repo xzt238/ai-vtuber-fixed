@@ -12,6 +12,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DocumentType(Enum):
     """文档类型"""
@@ -301,9 +304,9 @@ class VectorStore:
                     for chunk_id, chunk_dict in chunks_data.items():
                         self.chunks[chunk_id] = Chunk(**chunk_dict)
             
-            print(f"[RAG] 加载了 {len(self.chunks)} 个文档块")
+            logger.info(f"[RAG] 加载了 {len(self.chunks)} 个文档块")
         except Exception as e:
-            print(f"[RAG] 加载失败: {e}")
+            logger.info(f"[RAG] 加载失败: {e}")
     
     def _save_to_disk(self):
         """保存到磁盘"""
@@ -328,7 +331,7 @@ class VectorStore:
                 json.dump(chunks_data, f, ensure_ascii=False, indent=2)
             
         except Exception as e:
-            print(f"[RAG] 保存失败: {e}")
+            logger.info(f"[RAG] 保存失败: {e}")
     
     async def add_chunk(self, chunk: Chunk, embedding: List[float] = None):
         """添加块"""
@@ -424,14 +427,14 @@ class RAGSystem:
         # 嵌入模型（延迟加载）
         self.embedding_model = None
         
-        print(f"[RAG] 初始化完成: storage={self.config.storage_dir}")
+        logger.info(f"[RAG] 初始化完成: storage={self.config.storage_dir}")
     
     async def load_embedding_model(self, model_path: str = None):
         """加载嵌入模型"""
         try:
             # 这里应该加载真实的嵌入模型
             # 例如：sentence-transformers, BGE, etc.
-            print(f"[RAG] 加载嵌入模型: {model_path or 'default'}")
+            logger.info(f"[RAG] 加载嵌入模型: {model_path or 'default'}")
             
             # 模拟模型加载
             self.embedding_model = {
@@ -439,11 +442,11 @@ class RAGSystem:
                 "model": model_path or "bge-base-zh-v1.5"
             }
             
-            print("[RAG] 嵌入模型加载成功")
+            logger.info("[RAG] 嵌入模型加载成功")
             return True
             
         except Exception as e:
-            print(f"[RAG] 嵌入模型加载失败: {e}")
+            logger.info(f"[RAG] 嵌入模型加载失败: {e}")
             return False
     
     async def add_document(self, content: str, doc_type: DocumentType = DocumentType.TEXT,
@@ -461,11 +464,11 @@ class RAGSystem:
                 embedding = await self._generate_embedding(chunk.content)
                 await self.vector_store.add_chunk(chunk, embedding)
             
-            print(f"[RAG] 文档添加成功: {document.id}, {len(chunks)} 个块")
+            logger.info(f"[RAG] 文档添加成功: {document.id}, {len(chunks)} 个块")
             return True
             
         except Exception as e:
-            print(f"[RAG] 文档添加失败: {e}")
+            logger.info(f"[RAG] 文档添加失败: {e}")
             return False
     
     async def add_document_from_file(self, file_path: str, 
@@ -494,7 +497,7 @@ class RAGSystem:
             return await self.add_document(content, doc_type, metadata)
             
         except Exception as e:
-            print(f"[RAG] 文件添加失败: {e}")
+            logger.info(f"[RAG] 文件添加失败: {e}")
             return False
     
     async def search(self, query: str, top_k: int = None) -> List[SearchResult]:
@@ -506,11 +509,11 @@ class RAGSystem:
             # 搜索相似块
             results = await self.vector_store.search(query_embedding, top_k)
             
-            print(f"[RAG] 搜索完成: query='{query}', results={len(results)}")
+            logger.info(f"[RAG] 搜索完成: query='{query}', results={len(results)}")
             return results
             
         except Exception as e:
-            print(f"[RAG] 搜索失败: {e}")
+            logger.info(f"[RAG] 搜索失败: {e}")
             return []
     
     async def _generate_embedding(self, text: str) -> List[float]:
@@ -552,13 +555,13 @@ class RAGSystem:
             return response
             
         except Exception as e:
-            print(f"[RAG] 生成失败: {e}")
+            logger.info(f"[RAG] 生成失败: {e}")
             return f"生成失败: {e}"
     
     async def delete_document(self, document_id: str):
         """删除文档"""
         await self.vector_store.delete_document(document_id)
-        print(f"[RAG] 文档已删除: {document_id}")
+        logger.info(f"[RAG] 文档已删除: {document_id}")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""

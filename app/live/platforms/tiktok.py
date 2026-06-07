@@ -18,6 +18,9 @@ from . import (
     PlatformType, LivePlatform, LivePlatformFactory,
     DanmakuMessage, GiftMessage, SystemMessage
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @LivePlatformFactory.register(PlatformType.TIKTOK)
@@ -51,13 +54,13 @@ class TikTokPlatform(LivePlatform):
             # 获取直播间信息
             room_info = await self._get_room_info(room_id)
             if not room_info:
-                print(f" 获取直播间信息失败: {room_id}")
+                logger.info(f" 获取直播间信息失败: {room_id}")
                 return False
             
             # 获取WebSocket连接信息
             ws_info = await self._get_ws_info(room_id)
             if not ws_info:
-                print(f" 获取WebSocket信息失败: {room_id}")
+                logger.info(f" 获取WebSocket信息失败: {room_id}")
                 return False
             
             # 连接WebSocket
@@ -66,7 +69,7 @@ class TikTokPlatform(LivePlatform):
             if success:
                 self.connected = True
                 self._stats["connected_at"] = datetime.now()
-                print(f" TikTok直播间连接成功: {room_id}")
+                logger.info(f" TikTok直播间连接成功: {room_id}")
                 
                 # 启动心跳
                 self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
@@ -74,12 +77,12 @@ class TikTokPlatform(LivePlatform):
                 # 启动消息接收
                 self._ws_task = asyncio.create_task(self._receive_messages())
             else:
-                print(f" TikTok直播间连接失败: {room_id}")
+                logger.info(f" TikTok直播间连接失败: {room_id}")
             
             return success
             
         except Exception as e:
-            print(f" TikTok连接失败: {e}")
+            logger.info(f" TikTok连接失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -111,25 +114,25 @@ class TikTokPlatform(LivePlatform):
             self.room_id = None
             self._stats["connected_at"] = None
             
-            print(" TikTok直播间已断开")
+            logger.info(" TikTok直播间已断开")
             
         except Exception as e:
-            print(f" TikTok断开连接失败: {e}")
+            logger.info(f" TikTok断开连接失败: {e}")
             self._stats["error_count"] += 1
     
     async def send_danmaku(self, content: str) -> bool:
         """发送弹幕"""
         try:
             if not self.connected or not self.room_id:
-                print(" 未连接到直播间")
+                logger.info(" 未连接到直播间")
                 return False
             
             # TikTok弹幕发送API
-            print(f" TikTok弹幕发送功能需要进一步实现: {content}")
+            logger.info(f" TikTok弹幕发送功能需要进一步实现: {content}")
             return False
             
         except Exception as e:
-            print(f" 弹幕发送失败: {e}")
+            logger.info(f" 弹幕发送失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -150,11 +153,11 @@ class TikTokPlatform(LivePlatform):
                     
                     # 从HTML中提取直播间信息
                     # 这里需要根据TikTok的实际页面结构进行解析
-                    print(f" TikTok直播间信息解析功能需要进一步实现")
+                    logger.info(f" TikTok直播间信息解析功能需要进一步实现")
                     return {"room_id": room_id}
             
         except Exception as e:
-            print(f" 获取直播间信息失败: {e}")
+            logger.info(f" 获取直播间信息失败: {e}")
             return None
     
     async def _get_ws_info(self, room_id: str) -> Optional[Dict[str, Any]]:
@@ -168,7 +171,7 @@ class TikTokPlatform(LivePlatform):
             }
             
         except Exception as e:
-            print(f" 获取WebSocket信息失败: {e}")
+            logger.info(f" 获取WebSocket信息失败: {e}")
             return None
     
     async def _connect_websocket(self, ws_info: Dict[str, Any]) -> bool:
@@ -186,14 +189,14 @@ class TikTokPlatform(LivePlatform):
             # 连接WebSocket
             self._ws = await websockets.connect(uri)
             
-            print(f" TikTok WebSocket连接成功")
+            logger.info(f" TikTok WebSocket连接成功")
             return True
             
         except ImportError:
-            print(" 未安装websockets库，请执行: pip install websockets")
+            logger.info(" 未安装websockets库，请执行: pip install websockets")
             return False
         except Exception as e:
-            print(f" TikTok WebSocket连接失败: {e}")
+            logger.info(f" TikTok WebSocket连接失败: {e}")
             return False
     
     async def _receive_messages(self):
@@ -212,13 +215,13 @@ class TikTokPlatform(LivePlatform):
                     await self._process_message(data)
                     
                 except Exception as e:
-                    print(f" 消息解析失败: {e}")
+                    logger.info(f" 消息解析失败: {e}")
                     self._stats["error_count"] += 1
             
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f" 消息接收失败: {e}")
+            logger.info(f" 消息接收失败: {e}")
             self._stats["error_count"] += 1
     
     async def _process_message(self, data: Dict[str, Any]):
@@ -226,10 +229,10 @@ class TikTokPlatform(LivePlatform):
         try:
             # TikTok消息处理
             # 这里需要根据TikTok的实际消息格式进行解析
-            print(f" TikTok消息处理功能需要进一步实现")
+            logger.info(f" TikTok消息处理功能需要进一步实现")
             
         except Exception as e:
-            print(f" 消息处理失败: {e}")
+            logger.info(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
     
     async def _heartbeat_loop(self):
@@ -247,7 +250,7 @@ class TikTokPlatform(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    print(f" 心跳发送失败: {e}")
+                    logger.info(f" 心跳发送失败: {e}")
                     self._stats["error_count"] += 1
                     await asyncio.sleep(5)
             

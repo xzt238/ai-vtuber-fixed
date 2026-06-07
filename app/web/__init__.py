@@ -99,6 +99,8 @@ import copy
 import logging
 from queue import Queue
 
+logger = logging.getLogger(__name__)
+
 # 日志模块
 logger = logging.getLogger("web")
 
@@ -462,7 +464,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
                 }
                 with open(config_file, 'w', encoding='utf-8') as f:
                     json_module.dump(default_config, f, ensure_ascii=False, indent=2)
-                print(f"[TRAIN] 创建项目配置: {project_name}/config.json")
+                logger.info(f"[TRAIN] 创建项目配置: {project_name}/config.json")
             
             logger.info(f"上传成功: {project_name}/{filename} ({len(audio_data)} bytes)")
             self.send_json({
@@ -1012,9 +1014,9 @@ class WebSocketServer:
                         pass
 
             if count > 0:
-                print(f"[AUDIO] Cleaned up {count} audio files (time+quota)")
+                logger.info(f"[AUDIO] Cleaned up {count} audio files (time+quota)")
         except Exception as e:
-            print(f"️ 清理音频失败: {e}")
+            logger.info(f"️ 清理音频失败: {e}")
 
     def start(self):
         """
@@ -1031,7 +1033,7 @@ class WebSocketServer:
         导致大消息被截断.Patch 后累积所有分帧,在 FIN=1 时组装完整消息并处理.
         """
         if not WEBSOCKET_AVAILABLE:
-            print(f"️ WebSocket库不可用,跳过 ws://localhost:{self.port}")
+            logger.info(f"️ WebSocket库不可用,跳过 ws://localhost:{self.port}")
             return
 
         try:
@@ -1147,7 +1149,7 @@ class WebSocketServer:
                         return
 
             _ws_handler.read_next_message = patched_read_next_message
-            print("[WS] Continuation Frame 支持已启用(支持大消息分帧)")
+            logger.info("[WS] Continuation Frame 支持已启用(支持大消息分帧)")
 
             self.server = wslib.WebsocketServer("localhost", self.port)
 
@@ -1161,7 +1163,7 @@ class WebSocketServer:
 
                 【返回值】无返回值
                 """
-                print(f" 新客户端: {client['id']}")
+                logger.info(f" 新客户端: {client['id']}")
 
             def on_message(client, server, msg):
                 """
@@ -1316,21 +1318,21 @@ class WebSocketServer:
                     voice = data.get("voice", "default")
                     self._client_tts_engine[client['id']] = engine
                     self._client_tts_voice[client['id']] = voice
-                    print(f"[WS] TTS 配置更新: {engine}/{voice} (client {client['id']})")
+                    logger.info(f"[WS] TTS 配置更新: {engine}/{voice} (client {client['id']})")
                     return
 
                 # ---------- TTS 模式切换（流式/整段） ----------
                 elif msg_type == "update_tts_mode":
                     no_split = data.get("no_split", False)
                     self._client_tts_no_split[client['id']] = no_split
-                    print(f"[WS] TTS 模式更新: {'整段' if no_split else '流式分句'} (client {client['id']})")
+                    logger.info(f"[WS] TTS 模式更新: {'整段' if no_split else '流式分句'} (client {client['id']})")
                     return
                 
                 # ---------- ASR Provider 配置实时更新 ----------
                 elif msg_type == "update_asr_config":
                     provider = data.get("provider", "funasr")
                     self._client_asr_provider[client['id']] = provider
-                    print(f"[WS] ASR Provider 更新: {provider} (client {client['id']})")
+                    logger.info(f"[WS] ASR Provider 更新: {provider} (client {client['id']})")
                     return
                 
                 # ---------- 诊断端点（v1.9.22）----------
@@ -1359,7 +1361,7 @@ class WebSocketServer:
                 【返回值】无返回值
                 """
                 client_id = client['id'] if client else 'unknown'
-                print(f"[WS] Client disconnected: {client_id}")
+                logger.info(f"[WS] Client disconnected: {client_id}")
                 # H2修复: 清理该客户端的后端状态dict，防止长期运行内存膨胀
                 self._client_tts_engine.pop(client_id, None)
                 self._client_tts_voice.pop(client_id, None)
@@ -1401,9 +1403,9 @@ class WebSocketServer:
 
             self.thread = threading.Thread(target=self.server.run_forever, daemon=True)
             self.thread.start()
-            print(f"[WS] WebSocket server started: ws://localhost:{self.port}")
+            logger.info(f"[WS] WebSocket server started: ws://localhost:{self.port}")
         except Exception as e:
-            print(f"️ WebSocket启动失败: {e}")
+            logger.info(f"️ WebSocket启动失败: {e}")
 
     def _handle_stt(self, client, data):
         """
@@ -1463,7 +1465,7 @@ class WebSocketServer:
                         if hasattr(self.app.asr, 'recognize'):
                             text = self.app.asr.recognize(tmp_path) or ""
                     except Exception as e:
-                        print(f"[STT] 识别错误: {e}")
+                        logger.info(f"[STT] 识别错误: {e}")
                 
                 # 如果没有识别出文本,尝试 fallback
                 if not text:
@@ -1471,12 +1473,12 @@ class WebSocketServer:
                         from faster_whisper import WhisperModel
                         if not hasattr(self, '_fallback_whisper'):
                             self._fallback_whisper = WhisperModel("base", device="cpu")
-                            print("[STT] 已切换到 faster-whisper fallback")
+                            logger.info("[STT] 已切换到 faster-whisper fallback")
                         segments, _ = self._fallback_whisper.transcribe(tmp_path, language="zh")
                         texts = [s.text for s in segments]
                         text = "".join(texts).replace(" ", "")
                     except Exception as e2:
-                        print(f"[STT] Fallback whisper 也失败: {e2}")
+                        logger.info(f"[STT] Fallback whisper 也失败: {e2}")
             finally:
                 if tmp_path and os.path.exists(tmp_path):
                     try:
@@ -1509,7 +1511,7 @@ class WebSocketServer:
             is_common_noise = text in noise_words
 
             if is_repetitive_noise or is_short_noise or is_common_noise:
-                print(f"[STT] 过滤噪音: {repr(text)} (valid={valid_chars}, repetitive={is_repetitive_noise})")
+                logger.info(f"[STT] 过滤噪音: {repr(text)} (valid={valid_chars}, repetitive={is_repetitive_noise})")
                 text = ""
             # ===== 噪音过滤结束 =====
 
@@ -1560,7 +1562,7 @@ class WebSocketServer:
                 "projects": voices or [{"value": "default", "label": "默认音色"}]
             }))
         except Exception as e:
-            print(f"[PROJECTS] 获取失败: {e}")
+            logger.info(f"[PROJECTS] 获取失败: {e}")
             import traceback
             traceback.print_exc()
             self.server.send_message(client, json.dumps({
@@ -1607,7 +1609,7 @@ class WebSocketServer:
                 "providers": providers
             }))
         except Exception as e:
-            print(f"[PROVIDERS] 获取失败: {e}")
+            logger.info(f"[PROVIDERS] 获取失败: {e}")
             self.server.send_message(client, json.dumps({
                 "type": "providers_list",
                 "providers": {
@@ -1660,7 +1662,7 @@ class WebSocketServer:
             }
             self.server.send_message(client, json.dumps(response))
         except Exception as e:
-            print(f"[CONFIG] 获取当前配置失败: {e}")
+            logger.info(f"[CONFIG] 获取当前配置失败: {e}")
             self.server.send_message(client, json.dumps({
                 "type": "current_config",
                 "error": str(e)
@@ -1693,7 +1695,7 @@ class WebSocketServer:
         self._client_tts_voice[client['id']] = voice
         self._client_tts_no_split[client['id']] = no_split
         
-        print(f"[TTS] 请求: {text[:40]} | 引擎: {engine} | 声音: {voice} | 模式: {'整段' if no_split else '流式分句'}")
+        logger.info(f"[TTS] 请求: {text[:40]} | 引擎: {engine} | 声音: {voice} | 模式: {'整段' if no_split else '流式分句'}")
         
         # 异步处理 TTS
         def tts_worker():
@@ -1710,11 +1712,11 @@ class WebSocketServer:
             try:
                 tts = self._get_tts_for_client(engine, voice)
                 if not tts:
-                    print(f"[TTS] ❌ 引擎为空,provider={engine}")
+                    logger.info(f"[TTS] ❌ 引擎为空,provider={engine}")
                     # v1.9.28: 通知前端 TTS 错误
                     self._safe_send(client, {"type": "tts_error", "error": f"TTS引擎不可用: {engine}"})
                     return
-                print(f"[TTS] 使用引擎: {type(tts).__name__}")
+                logger.info(f"[TTS] 使用引擎: {type(tts).__name__}")
 
                 if engine == "gptsovits" and hasattr(tts, 'set_project'):
                     tts.set_project(voice)
@@ -1732,7 +1734,7 @@ class WebSocketServer:
                         # 没有句号结尾的文本,整段作为一句
                         sentences = [text.strip()]
                     
-                    print(f"[TTS] 流式分句: 共 {len(sentences)} 句")
+                    logger.info(f"[TTS] 流式分句: 共 {len(sentences)} 句")
 
                     # v1.8.4: 使用 speak_streaming 逐句流式合成
                     # 改进前: tts.speak(sentence) 同步阻塞，每句 1-3 秒
@@ -1743,7 +1745,7 @@ class WebSocketServer:
                     for idx, sentence in enumerate(sentences):
                         if not sentence:
                             continue
-                        print(f"[TTS] 合成第 {idx+1}/{len(sentences)} 句: {sentence[:30]}...")
+                        logger.info(f"[TTS] 合成第 {idx+1}/{len(sentences)} 句: {sentence[:30]}...")
                         # v1.9.28: 发送每句的合成进度
                         self._safe_send(client, {
                             "type": "tts_progress",
@@ -1775,7 +1777,7 @@ class WebSocketServer:
                                         }))
                                         chunk_count[0] += 1
                                     except Exception as e:
-                                        print(f"[TTS] chunk 发送失败: {e}")
+                                        logger.info(f"[TTS] chunk 发送失败: {e}")
 
                                 if engine == "gptsovits" and hasattr(tts, 'set_project'):
                                     tts.set_project(voice)
@@ -1789,9 +1791,9 @@ class WebSocketServer:
                                     "total_sentences": len(sentences),
                                     "is_panel": True,
                                 }))
-                                print(f"[TTS] 第 {idx+1} 句流式发送完成 ({chunk_count[0]} chunks)")
+                                logger.info(f"[TTS] 第 {idx+1} 句流式发送完成 ({chunk_count[0]} chunks)")
                             except Exception as e:
-                                print(f"[TTS] 流式合成失败，回退到同步: {e}")
+                                logger.info(f"[TTS] 流式合成失败，回退到同步: {e}")
                                 # 回退到同步模式
                                 audio_path = tts.speak(sentence)
                                 if audio_path and os.path.exists(audio_path):
@@ -1821,7 +1823,7 @@ class WebSocketServer:
                                     }))
                                 except Exception:
                                     pass
-                                print(f"[TTS] 第 {idx+1} 句发送: {audio_url}")
+                                logger.info(f"[TTS] 第 {idx+1} 句发送: {audio_url}")
                     
                     # 所有句子合成完毕,发送完成标记
                     try:
@@ -1843,7 +1845,7 @@ class WebSocketServer:
                         "text_preview": text[:30],
                     })
                     audio_path = tts.speak(text)
-                    print(f"[TTS] 整段生成: {audio_path}")
+                    logger.info(f"[TTS] 整段生成: {audio_path}")
                     if audio_path and os.path.exists(audio_path):
                         audio_url = "/audio/" + os.path.basename(audio_path)
                         try:
@@ -1853,7 +1855,7 @@ class WebSocketServer:
                         except Exception:
                             pass
             except Exception as e:
-                print(f"[TTS] 错误: {e}")
+                logger.info(f"[TTS] 错误: {e}")
                 import traceback
                 traceback.print_exc()
                 # v1.9.28: 通知前端 TTS 异常
@@ -1909,13 +1911,13 @@ class WebSocketServer:
         llm_model = getattr(llm, 'model', '?')
         is_ollama = getattr(llm, '_is_ollama', False)
         llm_tag = f"Ollama/{llm_model}" if is_ollama else f"{llm_name}/{llm_model}"
-        print(f"[WS] 处理: {text[:30]} [LLM: {llm_tag}]")
+        logger.info(f"[WS] 处理: {text[:30]} [LLM: {llm_tag}]")
 
         # v1.9.46: LLM 不可用时立即返回明确错误（避免静默失败）
         llm_available = llm.is_available() if hasattr(llm, 'is_available') else True
         if not llm_available:
             err_msg = f"LLM {llm_name} 不可用 — 请配置 API Key"
-            print(f"[WS] {err_msg}")
+            logger.info(f"[WS] {err_msg}")
             try:
                 self.server.send_message(client, json.dumps({
                     "type": "text_done", "text": f"⚠️ {err_msg}"
@@ -2015,7 +2017,7 @@ class WebSocketServer:
                     result = llm.stream_chat(text, history=history, callback=on_chunk, chunk_size=5, memory_system=memory)
                 except StopIteration:
                     # 用户打断了生成
-                    print(f"[TEXT] client {client_id}: 生成被用户中断")
+                    logger.info(f"[TEXT] client {client_id}: 生成被用户中断")
                     self._safe_send(client, {
                         "type": "text_interrupted",
                         "text": full_text or "（已中断）"
@@ -2070,14 +2072,14 @@ class WebSocketServer:
                 try:
                     self.app.record_interaction(text, reply)
                 except Exception as mem_err:
-                    print(f"[WS] 记忆/历史写入错误: {mem_err}")
+                    logger.info(f"[WS] 记忆/历史写入错误: {mem_err}")
 
             # ========== TTS 合成（独立 try，失败不影响记忆） ==========
             try:
                 if reply:
                     tts_engine = self._get_tts_for_client(client_engine, client_voice)
                     if not tts_engine:
-                        print(f"[TTS] 引擎创建失败,使用默认引擎")
+                        logger.info(f"[TTS] 引擎创建失败,使用默认引擎")
                         tts_engine = self.app.tts
 
                     # GPT-SoVITS 确保切换到正确的项目
@@ -2096,7 +2098,7 @@ class WebSocketServer:
                         # ========== 整段合成模式 ==========
                         # 把完整回复一次性合成为一段音频，不切分
                         reply_clean = reply.replace('\n', ' ').replace('\r', '').strip()
-                        print(f"[TTS text] 整段合成模式: {len(reply_clean)} 字符")
+                        logger.info(f"[TTS text] 整段合成模式: {len(reply_clean)} 字符")
                         # v1.9.28: 发送进度（整段合成只有1句）
                         self._safe_send(client, {
                             "type": "tts_progress",
@@ -2107,15 +2109,15 @@ class WebSocketServer:
                         tts_path = tts_engine.speak(reply_clean)
                         if tts_path and os.path.exists(tts_path):
                             url = "/audio/" + os.path.basename(tts_path)
-                            print(f"[TTS text] 整段合成完成: {url}")
+                            logger.info(f"[TTS text] 整段合成完成: {url}")
                             try:
                                 self.server.send_message(client, json.dumps({
                                     "type": "tts_done", "audio": url
                                 }))
                             except (BrokenPipeError, ConnectionResetError, OSError) as send_err:
-                                print(f"[WS] 客户端已断开,忽略发送: {send_err}")
+                                logger.info(f"[WS] 客户端已断开,忽略发送: {send_err}")
                         else:
-                            print(f"[TTS text] 整段合成失败: 无路径返回")
+                            logger.info(f"[TTS text] 整段合成失败: 无路径返回")
                             # v1.9.28: 通知前端合成失败
                             self._safe_send(client, {
                                 "type": "tts_error",
@@ -2143,7 +2145,7 @@ class WebSocketServer:
                             for s_idx, sentence in enumerate(text_sentences):
                                 # v1.9.51: 检查是否已被用户中断
                                 if cancel_event.is_set() or not is_current_gen():
-                                    print(f"[TTS text] client {client_id}: TTS 被用户中断 (句子 {s_idx+1}/{total_sents})")
+                                    logger.info(f"[TTS text] client {client_id}: TTS 被用户中断 (句子 {s_idx+1}/{total_sents})")
                                     break
                                 try:
                                     # v1.9.28: 发送每句的合成进度
@@ -2157,7 +2159,7 @@ class WebSocketServer:
                                     tts_path = tts_engine.speak_streaming(sentence, project=client_voice)
                                     if tts_path and os.path.exists(tts_path):
                                         url = "/audio/" + os.path.basename(tts_path)
-                                        print(f"[TTS text] 句子 {s_idx+1}/{total_sents} 就绪: {url}")
+                                        logger.info(f"[TTS text] 句子 {s_idx+1}/{total_sents} 就绪: {url}")
                                         try:
                                             self.server.send_message(client, json.dumps({
                                                 "type": "tts_chunk",
@@ -2166,11 +2168,11 @@ class WebSocketServer:
                                                 "total_sentences": total_sents,
                                             }))
                                         except Exception as send_err:
-                                            print(f"[TTS text] 发送 chunk 失败: {send_err}")
+                                            logger.info(f"[TTS text] 发送 chunk 失败: {send_err}")
                                     else:
-                                        print(f"[TTS text] 句子 {s_idx+1} 合成失败: 无路径返回")
+                                        logger.info(f"[TTS text] 句子 {s_idx+1} 合成失败: 无路径返回")
                                 except Exception as e:
-                                    print(f"[TTS text] 句子 {s_idx+1} 合成异常: {e}")
+                                    logger.info(f"[TTS text] 句子 {s_idx+1} 合成异常: {e}")
                             # 全部完成发 tts_done（audio=None 表示不触发整段播放）
                             try:
                                 self.server.send_message(client, json.dumps({
@@ -2195,7 +2197,7 @@ class WebSocketServer:
                                         "type": "tts_done", "audio": url
                                     }))
                                 except (BrokenPipeError, ConnectionResetError, OSError) as send_err:
-                                    print(f"[WS] 客户端已断开,忽略发送: {send_err}")
+                                    logger.info(f"[WS] 客户端已断开,忽略发送: {send_err}")
                             else:
                                 # v1.9.28: 通知前端合成失败
                                 self._safe_send(client, {
@@ -2203,7 +2205,7 @@ class WebSocketServer:
                                     "error": "语音合成失败",
                                 })
             except Exception as e:
-                print(f"[WS] TTS 错误: {e}")
+                logger.info(f"[WS] TTS 错误: {e}")
                 import traceback
                 traceback.print_exc()
                 # v1.9.28: 通知前端 TTS 异常
@@ -2257,7 +2259,7 @@ class WebSocketServer:
         # 不能创建新实例,否则 current_project='default' 找不到参考音频 → Invalid voice 'default'
         if not voice or voice == 'default':
             if self.app and self.app.tts:
-                print(f"[TTS] voice='default',使用全局 app.tts 引擎 (project={getattr(self.app.tts, 'current_project', '?')})")
+                logger.info(f"[TTS] voice='default',使用全局 app.tts 引擎 (project={getattr(self.app.tts, 'current_project', '?')})")
                 return self.app.tts
             return None
 
@@ -2288,13 +2290,13 @@ class WebSocketServer:
                     'project': voice,
                 }
 
-                print(f"[TTS] 创建引擎: provider=gptsovits, voice={voice}")
+                logger.info(f"[TTS] 创建引擎: provider=gptsovits, voice={voice}")
                 tts_instance = TTSFactory.create(tts_config)
                 self._tts_engine_cache[cache_key] = tts_instance
-                print(f"[TTS] 引擎创建成功: {type(tts_instance).__name__}")
+                logger.info(f"[TTS] 引擎创建成功: {type(tts_instance).__name__}")
                 return tts_instance
             except Exception as e:
-                print(f"[TTS] 创建引擎失败: {e}")
+                logger.info(f"[TTS] 创建引擎失败: {e}")
                 import traceback
                 traceback.print_exc()
                 return None
@@ -2733,7 +2735,7 @@ class WebSocketServer:
         text = data.get("text", "")
         image_b64 = data.get("image")
 
-        print(f"[MULTIMODAL] 文本: {text[:30] if text else '(无)'} | 图片: {'有' if image_b64 else '无'}")
+        logger.info(f"[MULTIMODAL] 文本: {text[:30] if text else '(无)'} | 图片: {'有' if image_b64 else '无'}")
 
         # TODO: 调用支持多模态的 LLM
         # 目前暂时回复提示
@@ -2769,7 +2771,7 @@ class WebSocketServer:
                             "type": "tts_done", "audio": url
                         }))
             except Exception as e:
-                print(f"[MULTIMODAL] TTS错误: {e}")
+                logger.info(f"[MULTIMODAL] TTS错误: {e}")
 
 
     def _handle_vision(self, client, data):
@@ -2788,7 +2790,7 @@ class WebSocketServer:
         image_b64 = data.get("image")
         provider = data.get("provider")  # 可选:指定 provider
 
-        print(f"[VISION] 动作: {action}")
+        logger.info(f"[VISION] 动作: {action}")
 
         # 获取 VisionManager
         vision = getattr(self.app, 'vision', None)
@@ -2802,7 +2804,7 @@ class WebSocketServer:
         # 切换 Provider
         if provider and provider != vision.current_provider_name:
             vision.set_provider(provider)
-            print(f"[VISION] 切换到: {vision.current_provider_description}")
+            logger.info(f"[VISION] 切换到: {vision.current_provider_description}")
 
         try:
             if action == "ocr":
@@ -2945,7 +2947,7 @@ class WebSocketServer:
                             **result_data
                         }))
                     except Exception as e:
-                        print(f"[VISION_MONITOR] 推送失败: {e}")
+                        logger.info(f"[VISION_MONITOR] 推送失败: {e}")
                 
                 # 启动监控线程
                 self._vision_monitors[client_id] = {
@@ -2997,7 +2999,7 @@ class WebSocketServer:
                 }))
 
         except Exception as e:
-            print(f"[VISION] 错误: {e}")
+            logger.info(f"[VISION] 错误: {e}")
             self.server.send_message(client, json.dumps({
                 "type": "vision_result",
                 "error": str(e)
@@ -3035,12 +3037,12 @@ class WebSocketServer:
                 tts_engine = getattr(self.app, 'tts', None)
 
             if not tts_engine:
-                print("[Vision TTS] TTS 不可用,跳过语音播报")
+                logger.info("[Vision TTS] TTS 不可用,跳过语音播报")
                 return
 
             speak_text = text
             mode_str = '整段' if no_split else '流式分句'
-            print(f"[Vision TTS] 播报({len(speak_text)}字, {mode_str}): {speak_text[:80]}...")
+            logger.info(f"[Vision TTS] 播报({len(speak_text)}字, {mode_str}): {speak_text[:80]}...")
 
             if not no_split:
                 # ========== 流式分句模式(与 _handle_tts 相同逻辑) ==========
@@ -3076,7 +3078,7 @@ class WebSocketServer:
                                     }))
                                     _count[0] += 1
                                 except Exception as e:
-                                    print(f"[Vision TTS] chunk 发送失败: {e}")
+                                    logger.info(f"[Vision TTS] chunk 发送失败: {e}")
 
                             if hasattr(tts_engine, 'set_project'):
                                 tts_engine.set_project(client_voice)
@@ -3090,7 +3092,7 @@ class WebSocketServer:
                                 "is_panel": True,
                             }))
                         except Exception as e:
-                            print(f"[Vision TTS] 流式失败,回退同步: {e}")
+                            logger.info(f"[Vision TTS] 流式失败,回退同步: {e}")
                             audio_path = tts_engine.speak(sentence)
                             if audio_path and os.path.exists(audio_path):
                                 audio_url = "/audio/" + os.path.basename(audio_path)
@@ -3121,7 +3123,7 @@ class WebSocketServer:
                     "streaming": True,
                     "total_sentences": len(sentences),
                 }))
-                print(f"[Vision TTS] 流式播报完成: {len(sentences)} 句")
+                logger.info(f"[Vision TTS] 流式播报完成: {len(sentences)} 句")
             else:
                 # ========== 整段合成模式 ==========
                 audio_path = tts_engine.speak(speak_text)
@@ -3131,11 +3133,11 @@ class WebSocketServer:
                         "type": "tts_done",
                         "audio": url
                     }))
-                    print(f"[Vision TTS] 整段播报完成: {audio_path}")
+                    logger.info(f"[Vision TTS] 整段播报完成: {audio_path}")
                 else:
-                    print(f"[Vision TTS] speak() 返回无效路径: {audio_path}")
+                    logger.info(f"[Vision TTS] speak() 返回无效路径: {audio_path}")
         except Exception as e:
-            print(f"[Vision TTS] 播报失败: {e}")
+            logger.info(f"[Vision TTS] 播报失败: {e}")
             import traceback
             traceback.print_exc()
 
@@ -3152,7 +3154,7 @@ class WebSocketServer:
         
         vision = getattr(self.app, 'vision', None)
         if not vision:
-            print(f"[VISION_MONITOR] Vision系统未初始化")
+            logger.info(f"[VISION_MONITOR] Vision系统未初始化")
             return
         
         ocr_system = self._get_ocr_system()
@@ -3161,7 +3163,7 @@ class WebSocketServer:
             try:
                 # 检查是否停止
                 if not self._vision_monitors.get(client_id, {}).get('running', False):
-                    print(f"[VISION_MONITOR] client {client_id} 监控已停止")
+                    logger.info(f"[VISION_MONITOR] client {client_id} 监控已停止")
                     break
                 
                 # 截取屏幕
@@ -3208,7 +3210,7 @@ class WebSocketServer:
                 time.sleep(interval)
                 
             except Exception as e:
-                print(f"[VISION_MONITOR] 错误: {e}")
+                logger.info(f"[VISION_MONITOR] 错误: {e}")
                 callback = self._vision_monitors.get(client_id, {}).get('callback')
                 if callback:
                     callback({
@@ -3242,7 +3244,7 @@ class WebSocketServer:
         action = data.get("action", "")
         client_id = client['id']
 
-        print(f"[OCR] 动作: {action}, client: {client_id}")
+        logger.info(f"[OCR] 动作: {action}, client: {client_id}")
 
         try:
             # 获取或初始化 OCR 系统
@@ -3271,7 +3273,7 @@ class WebSocketServer:
                             "data": event_data
                         }))
                     except Exception as e:
-                        print(f"[OCR] 事件推送失败: {e}")
+                        logger.info(f"[OCR] 事件推送失败: {e}")
 
                 ocr_system.set_event_callback(ocr_event_callback)
 
@@ -3388,7 +3390,7 @@ class WebSocketServer:
                     }))
 
                 except Exception as e:
-                    print(f"[OCR] LLM分析失败: {e}")
+                    logger.info(f"[OCR] LLM分析失败: {e}")
                     self.server.send_message(client, json.dumps({
                         "type": "ocr_analysis",
                         "error": str(e),
@@ -3443,7 +3445,7 @@ class WebSocketServer:
                 }))
 
         except Exception as e:
-            print(f"[OCR] 错误: {e}")
+            logger.info(f"[OCR] 错误: {e}")
             import traceback
             traceback.print_exc()
             self.server.send_message(client, json.dumps({
@@ -3462,7 +3464,7 @@ class WebSocketServer:
                 self._event_callback = callback
             def start_monitor(self, interval=1.0):
                 """启动监控(空实现)"""
-                print(f"[OCR Dummy] OCR 不可用,无法启动监控: {error_msg}")
+                logger.info(f"[OCR Dummy] OCR 不可用,无法启动监控: {error_msg}")
             def stop_monitor(self):
                 """停止监控(空实现)"""
                 pass
@@ -3509,13 +3511,13 @@ class WebSocketServer:
                 ocr_config['analyzer'] = {'llm_config': llm_config}
 
                 self.app._ocr_system = get_ocr_system(ocr_config)
-                print("[OCR] OCR 系统初始化完成")
+                logger.info("[OCR] OCR 系统初始化完成")
             except ImportError as e:
-                print(f"[OCR] OCR 模块导入失败: {e}")
+                logger.info(f"[OCR] OCR 模块导入失败: {e}")
                 # 返回一个空壳(实现 OCRSystem 的完整接口)
                 self.app._ocr_system = self._create_dummy_ocr("OCR 模块未安装")
             except Exception as e:
-                print(f"[OCR] OCR 系统初始化失败: {e}")
+                logger.info(f"[OCR] OCR 系统初始化失败: {e}")
                 self.app._ocr_system = self._create_dummy_ocr(str(e))
 
         return self.app._ocr_system
@@ -3559,7 +3561,7 @@ class WebSocketServer:
                         stats['gpu_temp'] = int(parts[2].strip())
                         stats['gpu_memory'] = round(stats['vram_used'] / stats['vram_total'] * 100, 1)
             except Exception as e:
-                print(f"[STATS] GPU获取失败: {e}")
+                logger.info(f"[STATS] GPU获取失败: {e}")
 
             # 系统内存
             try:
@@ -3577,7 +3579,7 @@ class WebSocketServer:
                 **stats
             }))
         except Exception as e:
-            print(f"[STATS] 错误: {e}")
+            logger.info(f"[STATS] 错误: {e}")
             # v1.9.22: 即使出错也返回空数据（避免前端一直等不到响应）
             try:
                 self.server.send_message(client, json.dumps({
@@ -3631,7 +3633,7 @@ class WebSocketServer:
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     json.dump(prefs, f, ensure_ascii=False, indent=2)
                 os.replace(tmp_path, prefs_file)
-                print(f"[CONFIG] LLM 偏好已保存: provider={prefs['provider']}, model={prefs['model']}")
+                logger.info(f"[CONFIG] LLM 偏好已保存: provider={prefs['provider']}, model={prefs['model']}")
                 return True
             except Exception:
                 try:
@@ -3640,7 +3642,7 @@ class WebSocketServer:
                     pass
                 raise
         except Exception as e:
-            print(f"[CONFIG] 保存 LLM 偏好失败: {e}")
+            logger.info(f"[CONFIG] 保存 LLM 偏好失败: {e}")
             return False
 
     def _handle_config(self, client, data):
@@ -3658,7 +3660,7 @@ class WebSocketServer:
         action = data.get("action", "")
         config = data.get("config", {})
 
-        print(f"[CONFIG] 动作: {action}")
+        logger.info(f"[CONFIG] 动作: {action}")
 
         if action == "update":
             # 保存配置到文件或内存
@@ -3689,7 +3691,7 @@ class WebSocketServer:
                         new_llm_provider = config['llm'].get('provider')
                         if old_llm_provider and new_llm_provider and old_llm_provider != new_llm_provider:
                             llm_provider_changed = True
-                            print(f"[CONFIG] LLM provider 变更: {old_llm_provider} → {new_llm_provider}")
+                            logger.info(f"[CONFIG] LLM provider 变更: {old_llm_provider} → {new_llm_provider}")
                         # v1.9.41: 将顶层 model 同步到子配置，确保 LLMFactory 传给引擎时能读到
                         llm_cfg = self.app.config.config.get('llm', {})
                         top_model = llm_cfg.get('model')
@@ -3698,7 +3700,7 @@ class WebSocketServer:
                             sub_cfg = llm_cfg.setdefault(active_provider, {})
                             if sub_cfg.get('model') != top_model:
                                 sub_cfg['model'] = top_model
-                                print(f"[CONFIG] model 同步到 {active_provider}.model: {top_model}")
+                                logger.info(f"[CONFIG] model 同步到 {active_provider}.model: {top_model}")
                         # v1.9.41: 同步 max_tokens 到子配置
                         top_max_tokens = llm_cfg.get('max_tokens')
                         if top_max_tokens and active_provider:
@@ -3766,7 +3768,7 @@ class WebSocketServer:
                                         try: os.unlink(tmp_path)
                                         except OSError: pass
                                 except Exception as e:
-                                    print(f"[CONFIG] Vision API Key 保存失败: {e}")
+                                    logger.info(f"[CONFIG] Vision API Key 保存失败: {e}")
                         # 动态更新 Vision 模块
                         if self.app and hasattr(self.app, '_lazy_modules'):
                             vision = self.app._lazy_modules.get('vision')
@@ -3780,9 +3782,9 @@ class WebSocketServer:
                                 if new_default and hasattr(vision, 'set_provider'):
                                     try:
                                         vision.set_provider(new_default)
-                                        print(f"[CONFIG] Vision provider 切换到: {new_default}")
+                                        logger.info(f"[CONFIG] Vision provider 切换到: {new_default}")
                                     except Exception as e:
-                                        print(f"[CONFIG] Vision provider 切换失败: {e}")
+                                        logger.info(f"[CONFIG] Vision provider 切换失败: {e}")
 
 
                     # v1.9.39: LLM provider 变更时重建引擎
@@ -3803,7 +3805,7 @@ class WebSocketServer:
                             expected_name = expected_names.get(active_provider, '')
                             if expected_name and llm_name != expected_name:
                                 need_engine_rebuild = True
-                                print(f"[CONFIG] LLM 引擎类型不匹配: 期望={expected_name}, 实际={llm_name}，将重建引擎")
+                                logger.info(f"[CONFIG] LLM 引擎类型不匹配: 期望={expected_name}, 实际={llm_name}，将重建引擎")
 
                     if need_engine_rebuild and self.app:
                         module_removed = False
@@ -3816,13 +3818,13 @@ class WebSocketServer:
                                 except Exception:
                                     pass
                             module_removed = True
-                            print(f"[CONFIG] LLM 引擎已重建（旧引擎已清理）")
+                            logger.info(f"[CONFIG] LLM 引擎已重建（旧引擎已清理）")
                         # v1.9.48: 不再自动清空对话历史（provider 切换后旧上下文仍有价值）
                         # 只有用户主动点击"清空历史"才会清空
                         if hasattr(self.app, 'session'):
                             try:
                                 self.app.session.reset_history()
-                                print(f"[CONFIG] 会话历史已重置")
+                                logger.info(f"[CONFIG] 会话历史已重置")
                             except Exception:
                                 pass
                         # 强制刷新 API Key 状态（provider 变了 key 也变了）
@@ -3833,7 +3835,7 @@ class WebSocketServer:
                                 llm = getattr(self.app, 'llm', None)
                                 if llm and hasattr(llm, 'api_key'):
                                     llm.api_key = api_key
-                                    print(f"[CONFIG] API Key 已同步到新 LLM 引擎")
+                                    logger.info(f"[CONFIG] API Key 已同步到新 LLM 引擎")
 
                 self.server.send_message(client, json.dumps({
                     "type": "config_result",
@@ -3929,9 +3931,9 @@ class WebSocketServer:
                         vision_section = self.app.config.config.setdefault('vision', {})
                         minimax_vl = vision_section.setdefault('minimax_vl', {})
                         minimax_vl['api_key'] = api_key
-                        print(f"[API Key] 内存配置已更新 (provider={provider})")
+                        logger.info(f"[API Key] 内存配置已更新 (provider={provider})")
                 except Exception as e:
-                    print(f"[API Key] 更新内存配置失败: {e}")
+                    logger.info(f"[API Key] 更新内存配置失败: {e}")
 
             # 3. v1.9.48: 检查是否需要重建 LLM 引擎
             # 关键修复：用 old_provider_in_config（更新前记录的旧值）判断，而非更新后的值
@@ -3941,7 +3943,7 @@ class WebSocketServer:
                 # 用更新前记录的旧 provider 判断是否需要重建
                 if old_provider_in_config and old_provider_in_config != provider:
                     need_rebuild = True
-                    print(f"[API Key] LLM provider 变更: {old_provider_in_config} → {provider}，将重建引擎")
+                    logger.info(f"[API Key] LLM provider 变更: {old_provider_in_config} → {provider}，将重建引擎")
                 elif llm is not None:
                     # provider 没变但引擎类型可能不匹配（防御性检查）
                     llm_name = getattr(llm, 'name', '').lower()
@@ -3955,7 +3957,7 @@ class WebSocketServer:
                     expected_name = expected_names.get(provider, '')
                     if expected_name and llm_name != expected_name:
                         need_rebuild = True
-                        print(f"[API Key] LLM 引擎类型不匹配: 期望={expected_name}, 实际={llm_name}，将重建引擎")
+                        logger.info(f"[API Key] LLM 引擎类型不匹配: 期望={expected_name}, 实际={llm_name}，将重建引擎")
 
                 if need_rebuild:
                     # 重建引擎：pop 旧的，触发懒加载重建
@@ -3971,9 +3973,9 @@ class WebSocketServer:
                     try:
                         llm = self.app.llm
                         llm_updated = True
-                        print(f"[API Key] LLM 引擎已重建: {getattr(llm, 'name', '?')}")
+                        logger.info(f"[API Key] LLM 引擎已重建: {getattr(llm, 'name', '?')}")
                     except Exception as e:
-                        print(f"[API Key] LLM 重建失败: {e}")
+                        logger.info(f"[API Key] LLM 重建失败: {e}")
                         llm = None
                 else:
                     # 不需要重建，直接更新 API Key
@@ -3982,7 +3984,7 @@ class WebSocketServer:
                         try:
                             llm = self.app.llm
                         except Exception as e:
-                            print(f"[API Key] 加载 LLM 失败: {e}")
+                            logger.info(f"[API Key] 加载 LLM 失败: {e}")
                             llm = None
                     if llm is not None and hasattr(llm, 'api_key'):
                         llm.api_key = api_key
@@ -3997,7 +3999,7 @@ class WebSocketServer:
                         if hasattr(llm, '_cache'):
                             with llm._cache_lock:
                                 llm._cache.clear()
-                        print(f"[API Key] LLM [{llm.name}] API Key 已更新")
+                        logger.info(f"[API Key] LLM [{llm.name}] API Key 已更新")
 
             # 4. 动态更新Vision模块的API Key
             vision_updated = False
@@ -4008,17 +4010,17 @@ class WebSocketServer:
                     try:
                         vision = self.app.vision
                     except Exception as e:
-                        print(f"[API Key] 加载 Vision 失败: {e}")
+                        logger.info(f"[API Key] 加载 Vision 失败: {e}")
                         vision = None
                 if vision is not None and hasattr(vision, '_providers'):
                     for provider_type, vp in vision._providers.items():
                         if hasattr(vp, 'api_key') and 'minimax' in str(provider_type).lower():
                             vp.api_key = api_key
                             vision_updated = True
-                            print(f"[API Key] Vision provider {provider_type} 已更新")
+                            logger.info(f"[API Key] Vision provider {provider_type} 已更新")
 
             key_preview = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "***"
-            print(f"[API Key] {provider} 已更新: {key_preview} (LLM={llm_updated}, Vision={vision_updated})")
+            logger.info(f"[API Key] {provider} 已更新: {key_preview} (LLM={llm_updated}, Vision={vision_updated})")
 
             self.server.send_message(client, json.dumps({
                 "type": "api_key_result",
@@ -4030,7 +4032,7 @@ class WebSocketServer:
             }))
 
         except Exception as e:
-            print(f"[API Key] 设置失败: {e}")
+            logger.info(f"[API Key] 设置失败: {e}")
             self.server.send_message(client, json.dumps({
                 "type": "api_key_result",
                 "success": False,
@@ -4132,16 +4134,16 @@ class WebSocketServer:
                     "parameter_size": m.get("details", {}).get("parameter_size", ""),
                     "quantization": m.get("details", {}).get("quantization_level", ""),
                 })
-            print(f"[Ollama] 已安装模型: {[m['name'] for m in models]}")
+            logger.info(f"[Ollama] 已安装模型: {[m['name'] for m in models]}")
         except req.ConnectionError:
             error = "Ollama 服务未运行，请先启动 Ollama"
-            print(f"[Ollama] 连接失败: {tags_url}")
+            logger.info(f"[Ollama] 连接失败: {tags_url}")
         except req.Timeout:
             error = "Ollama 连接超时"
-            print(f"[Ollama] 连接超时: {tags_url}")
+            logger.info(f"[Ollama] 连接超时: {tags_url}")
         except Exception as e:
             error = f"查询失败: {str(e)}"
-            print(f"[Ollama] 查询失败: {e}")
+            logger.info(f"[Ollama] 查询失败: {e}")
 
         self.server.send_message(client, json.dumps({
             "type": "ollama_models",
@@ -4168,7 +4170,7 @@ class WebSocketServer:
         tool_id = data.get("id", "")
         call_id = data.get("call_id", str(uuid.uuid4())[:8])  # 可视化用调用ID
 
-        print(f"[TOOL] 执行: {tool} | 参数: {args}")
+        logger.info(f"[TOOL] 执行: {tool} | 参数: {args}")
 
         # v1.9.52: 发送工具调用开始事件（可视化）
         self._safe_send(client, {
@@ -4227,10 +4229,10 @@ class WebSocketServer:
             if len(self._tool_call_history) > 100:
                 self._tool_call_history = self._tool_call_history[-50:]
 
-            print(f"[TOOL] {tool} 执行完成: {result.get('success', False)}")
+            logger.info(f"[TOOL] {tool} 执行完成: {result.get('success', False)}")
 
         except Exception as e:
-            print(f"[TOOL] 错误: {e}")
+            logger.info(f"[TOOL] 错误: {e}")
             self.server.send_message(client, json.dumps({
                 "type": "tool_result",
                 "tool_id": tool_id,
@@ -4457,7 +4459,7 @@ class WebSocketServer:
         """处理训练相关请求"""
         action = data.get("action", "")
 
-        print(f"[TRAIN] 动作: {action}")
+        logger.info(f"[TRAIN] 动作: {action}")
 
         try:
             # 直接导入 trainer.manager(app/ 在 sys.path 中)
@@ -4729,7 +4731,7 @@ class WebSocketServer:
                 }))
 
         except Exception as e:
-            print(f"[TRAIN] 错误: {e}")
+            logger.info(f"[TRAIN] 错误: {e}")
             import traceback
             traceback.print_exc()
             self.server.send_message(client, json.dumps({
@@ -4821,7 +4823,7 @@ class WebSocketServer:
             has_more_after = last_end < len(buffer.strip())
             if is_short_exclamatory and has_more_after:
                 # 合并到下一句:跳过这个句子,等下一个完整句子
-                print(f"[REALTIME] 分句优化: 合并感叹句 '{sent}' 到下一句")
+                logger.info(f"[REALTIME] 分句优化: 合并感叹句 '{sent}' 到下一句")
                 continue
             # === v1.5.3 感叹合并结束 ===
 
@@ -4883,7 +4885,7 @@ class WebSocketServer:
             self.server.send_message(client, json.dumps(message_dict))
             return True
         except Exception as e:
-            print(f"[WS] 发送失败: {e}")
+            logger.info(f"[WS] 发送失败: {e}")
             return False
 
     def _handle_realtime_mode(self, client, data):
@@ -4906,7 +4908,7 @@ class WebSocketServer:
             state["active"] = True
             state["cancel"].clear()
             state["current_gen"] = None
-            print(f"[REALTIME] Client {client_id} 开启实时模式")
+            logger.info(f"[REALTIME] Client {client_id} 开启实时模式")
             self._safe_send(client, {
                 "type": "realtime_mode",
                 "status": "active"
@@ -4917,7 +4919,7 @@ class WebSocketServer:
             state["active"] = False
             state["cancel"].set()  # 通知停止
             state["current_gen"] = None  # v1.8: 使所有旧 pipeline 失效
-            print(f"[REALTIME] Client {client_id} 关闭实时模式")
+            logger.info(f"[REALTIME] Client {client_id} 关闭实时模式")
             self._safe_send(client, {
                 "type": "realtime_mode",
                 "status": "inactive"
@@ -4973,7 +4975,7 @@ class WebSocketServer:
         with tts_queue.mutex:
             tts_queue.queue.clear()
 
-        print(f"[REALTIME] 新 pipeline gen={gen_id}")
+        logger.info(f"[REALTIME] 新 pipeline gen={gen_id}")
 
         # ASR 开始识别时立即通知前端
         self._safe_send(client, {"type": "realtime_stt_start"})
@@ -5001,11 +5003,11 @@ class WebSocketServer:
                     trained = [p['name'] for p in projects if p.get('has_trained')]
                     if trained:
                         effective_voice = trained[0]
-                        print(f"[REALTIME] voice='default' 回退到 '{effective_voice}'")
+                        logger.info(f"[REALTIME] voice='default' 回退到 '{effective_voice}'")
                 except Exception:
                     pass
             if effective_voice == 'default':
-                print("[REALTIME] 警告: gptsovits 无有效音色,使用默认")
+                logger.info("[REALTIME] 警告: gptsovits 无有效音色,使用默认")
 
         # 在后台线程中处理完整链路
         def realtime_pipeline():
@@ -5032,16 +5034,16 @@ class WebSocketServer:
 
                     text = ""
                     if not self.app:
-                        print("[REALTIME] 错误: self.app 为 None")
+                        logger.info("[REALTIME] 错误: self.app 为 None")
                         return
                     if not hasattr(self.app, 'asr'):
-                        print("[REALTIME] 错误: self.app 没有 asr 属性")
+                        logger.info("[REALTIME] 错误: self.app 没有 asr 属性")
                         return
                     
                     if self.app.asr.is_available():
                         text = self.app.asr.recognize(tmp_path) or ""
                     else:
-                        print("[REALTIME] 警告: ASR 不可用,跳过识别")
+                        logger.info("[REALTIME] 警告: ASR 不可用,跳过识别")
 
                     # Bug B 修复:FunASR CNHuBERT 维度错误时 recognize 返回 None/空,
                     # 此时 fallback 到 faster-whisper(如果有)
@@ -5052,12 +5054,12 @@ class WebSocketServer:
                                 if not hasattr(self, '_fallback_whisper'):
                                     from faster_whisper import WhisperModel
                                     self._fallback_whisper = WhisperModel("base", device="cpu")
-                                    print("[ASR] 已切换到 faster-whisper fallback")
+                                    logger.info("[ASR] 已切换到 faster-whisper fallback")
                             segments, _ = self._fallback_whisper.transcribe(tmp_path, language="zh")
                             texts = [s.text for s in segments]
                             text = "".join(texts).replace(" ", "")
                         except Exception as e:
-                            print(f"[ASR] Fallback whisper 也失败: {e}")
+                            logger.info(f"[ASR] Fallback whisper 也失败: {e}")
 
                 finally:
                     if tmp_path and os.path.exists(tmp_path):
@@ -5078,7 +5080,7 @@ class WebSocketServer:
                     if half >= 2 and len(text) >= 4 and text == text[:half] * 2:
                         # 去掉重复的后半部分
                         text = text[:half]
-                        print(f"[STT] 去重: hellohello→{text}")
+                        logger.info(f"[STT] 去重: hellohello→{text}")
                     # 单字重复过滤:没有没有没有
                     if re.fullmatch(r'([\u4e00-\u9fff])\1+', text):
                         text = ""
@@ -5106,18 +5108,18 @@ class WebSocketServer:
                         if not re.search(r'[\u4e00-\u9fff]{4,}', text.replace('哈', '').replace('呵', '').replace('嘿', '').replace('嘻', '')):
                             text = ""
                     if text == "":
-                        print(f"[REALTIME] 噪音过滤: 文本被过滤为空")
+                        logger.info(f"[REALTIME] 噪音过滤: 文本被过滤为空")
                     else:
-                        print(f"[REALTIME] 噪音过滤通过: '{text[:30]}'")
+                        logger.info(f"[REALTIME] 噪音过滤通过: '{text[:30]}'")
 
                 # v1.8: ASR 后检查 generation
                 if not is_current():
-                    print("[REALTIME] 在 ASR 后被新请求取代")
+                    logger.info("[REALTIME] 在 ASR 后被新请求取代")
                     return
 
                 # [语义判停增强]检测句子是否完整
                 if self._is_incomplete_utterance(text):
-                    print(f"[REALTIME] 语义判停:句子不完整 '{text[:30]}...',继续等待")
+                    logger.info(f"[REALTIME] 语义判停:句子不完整 '{text[:30]}...',继续等待")
                     self._safe_send(client, {
                         "type": "realtime_stt",
                         "text": text,
@@ -5131,26 +5133,26 @@ class WebSocketServer:
                     self._safe_send(client, {"type": "realtime_stt", "text": ""})
                     return
 
-                print(f"[REALTIME] 识别: {text[:50]}")
+                logger.info(f"[REALTIME] 识别: {text[:50]}")
                 self._safe_send(client, {"type": "realtime_stt", "text": text})
 
                 # v1.8: LLM 前检查 generation
                 if not is_current():
-                    print("[REALTIME] 在 LLM 前被新请求取代")
+                    logger.info("[REALTIME] 在 LLM 前被新请求取代")
                     return
 
                 # 2. LLM 流式推理 + 逐句 TTS
                 state["speaking"] = True  # 标记 AI 正在回复
                 
                 if not self.app:
-                    print("[REALTIME] 错误: self.app 为 None,无法获取 LLM")
+                    logger.info("[REALTIME] 错误: self.app 为 None,无法获取 LLM")
                     state["speaking"] = False
                     state["running"] = False
                     return
                 
                 llm = self.app.llm
                 if not llm:
-                    print("[REALTIME] 错误: LLM 为 None")
+                    logger.info("[REALTIME] 错误: LLM 为 None")
                     state["speaking"] = False
                     state["running"] = False
                     return
@@ -5158,12 +5160,12 @@ class WebSocketServer:
                 has_stream = hasattr(llm, 'stream_chat')
                 llm_available = llm.is_available() if hasattr(llm, 'is_available') else True
                 
-                print(f"[REALTIME] LLM 检查: has_stream={has_stream}, llm.available={llm_available}")
+                logger.info(f"[REALTIME] LLM 检查: has_stream={has_stream}, llm.available={llm_available}")
 
                 # v1.9.46: LLM 不可用时通知前端，避免静默失败
                 if not llm_available:
                     llm_name = getattr(llm, 'name', type(llm).__name__)
-                    print(f"[REALTIME] LLM 不可用: {llm_name}（API Key 未配置）")
+                    logger.info(f"[REALTIME] LLM 不可用: {llm_name}（API Key 未配置）")
                     self._safe_send(client, {"type": "realtime_stt", "text": ""})
                     self._safe_send(client, {"type": "realtime_audio_done", "error": f"LLM {llm_name} 不可用，请配置 API Key"})
                     state["speaking"] = False
@@ -5172,14 +5174,14 @@ class WebSocketServer:
 
                 # no_split: 从客户端保存的偏好读取（随前端 toggleTtsStreaming 实时同步）
                 no_split = self._client_tts_no_split.get(client_id, False)
-                print(f"[REALTIME] no_split={no_split}")
+                logger.info(f"[REALTIME] no_split={no_split}")
 
                 if has_stream:
                     try:
                         # v1.5.1 修复: 使用 effective_voice(处理了无效音色回退)
                         realtime_reply = self._realtime_stream_pipeline(client, state, text, llm, client_engine, effective_voice, no_split=no_split, gen_id=gen_id)
                     except Exception as e:
-                        print(f"[REALTIME] 流式 Pipeline 错误: {e}")
+                        logger.info(f"[REALTIME] 流式 Pipeline 错误: {e}")
                         import traceback
                         traceback.print_exc()
                         realtime_reply = None
@@ -5189,7 +5191,7 @@ class WebSocketServer:
                     reply = result.get("text", "")
                     reply = self._realtime_filter(reply)
 
-                    print(f"[REALTIME] 非流式回复: {reply[:50] if reply else '(空)'}")
+                    logger.info(f"[REALTIME] 非流式回复: {reply[:50] if reply else '(空)'}")
 
                     # v1.5.7 增强: 非流式也要乱码验证
                     if reply and self._is_valid_sentence(reply) and is_current():
@@ -5201,10 +5203,10 @@ class WebSocketServer:
                     try:
                         self.app.record_interaction(text, realtime_reply)
                     except Exception as mem_err:
-                        print(f"[REALTIME] 记忆/历史写入错误: {mem_err}")
+                        logger.info(f"[REALTIME] 记忆/历史写入错误: {mem_err}")
 
             except Exception as e:
-                print(f"[REALTIME] Pipeline 错误: {e}")
+                logger.info(f"[REALTIME] Pipeline 错误: {e}")
                 import traceback
                 traceback.print_exc()
             finally:
@@ -5230,7 +5232,7 @@ class WebSocketServer:
             gen_id: 当前 pipeline 的 Generation ID
         """
         # v1.5.3 调试日志
-        print(f"[REALTIME Pipeline] 开始: text='{text[:50]}...' no_split={no_split} gen={gen_id}")
+        logger.info(f"[REALTIME Pipeline] 开始: text='{text[:50]}...' no_split={no_split} gen={gen_id}")
         
         # v2.0: 获取记忆系统用于 RAG 注入
         memory = getattr(self.app, 'memory', None)
@@ -5246,13 +5248,13 @@ class WebSocketServer:
         # v1.5.9 修复: engine 是字符串(如 "gptsovits"),需要转为真正的 TTS 对象
         tts_engine_obj = self._get_tts_for_client(engine, voice)
         if not tts_engine_obj:
-            print(f"[REALTIME] TTS 引擎创建失败 engine={engine} voice={voice}")
+            logger.info(f"[REALTIME] TTS 引擎创建失败 engine={engine} voice={voice}")
             tts_engine_obj = self.app.tts if self.app else None
         else:
             if engine == 'gptsovits' and voice and voice != 'default':
                 if hasattr(tts_engine_obj, 'set_project'):
                     tts_engine_obj.set_project(voice)
-            print(f"[REALTIME] TTS 引擎就绪: {type(tts_engine_obj).__name__}")
+            logger.info(f"[REALTIME] TTS 引擎就绪: {type(tts_engine_obj).__name__}")
 
         # ===== v1.8: TTS 异步化 -- 独立 worker 线程 + 句子队列 =====
         from queue import Queue as TTSQueue
@@ -5279,7 +5281,7 @@ class WebSocketServer:
                 
                 # 检查 generation -- 旧 pipeline 的句子被丢弃
                 if state.get("current_gen") != item_gen:
-                    print(f"[TTS Worker] 丢弃过期句子 (gen {item_gen} != {state.get('current_gen')})")
+                    logger.info(f"[TTS Worker] 丢弃过期句子 (gen {item_gen} != {state.get('current_gen')})")
                     tts_sentence_queue.task_done()
                     continue
                 
@@ -5288,11 +5290,11 @@ class WebSocketServer:
                     if not sentence:
                         tts_sentence_queue.task_done()
                         continue
-                    print(f"[TTS Worker] 开始合成: {repr(sentence[:30])}")
+                    logger.info(f"[TTS Worker] 开始合成: {repr(sentence[:30])}")
                     self._tts_do_and_send(client, state, sentence, voice, tts_engine_obj)
-                    print(f"[TTS Worker] 完成: {repr(sentence[:30])}")
+                    logger.info(f"[TTS Worker] 完成: {repr(sentence[:30])}")
                 except Exception as e:
-                    print(f"[TTS Worker] 错误: {e}")
+                    logger.info(f"[TTS Worker] 错误: {e}")
                     tts_worker_error[0] = e
                 finally:
                     tts_sentence_queue.task_done()
@@ -5345,13 +5347,13 @@ class WebSocketServer:
                 try:
                     self._realtime_tts_single(client, state, final_text, voice, tts_engine_obj, gen_id=gen_id)
                 except Exception as e:
-                    print(f"[REALTIME] No-split TTS 错误: {e}")
+                    logger.info(f"[REALTIME] No-split TTS 错误: {e}")
 
             # v1.5.1 修复: no_split 模式也要重置状态
             state["speaking"] = False
             state["running"] = False
             state["cancel"].clear()
-            print(f"[REALTIME] Pipeline 完成 (no_split, client {client_id})")
+            logger.info(f"[REALTIME] Pipeline 完成 (no_split, client {client_id})")
             return state["sentence_buffer"]  # 返回完整回复供记忆写入使用
 
         # ===== 以下是分句模式(TTS 异步化)=====
@@ -5424,7 +5426,7 @@ class WebSocketServer:
                     if valid:
                         first_sentence_sent = True
                         first_sentence_time = current_time
-                        print(f"[REALTIME] 首句立即发送: {repr(first_sentence[:40])}")
+                        logger.info(f"[REALTIME] 首句立即发送: {repr(first_sentence[:40])}")
                         # v1.8: 放入 TTS 队列(不阻塞 LLM 流)
                         tts_sentence_queue.put((gen_id, first_sentence))
 
@@ -5440,20 +5442,20 @@ class WebSocketServer:
 
                         if first_sentence_time:
                             ttft = (current_time - first_sentence_time) * 1000
-                            print(f"[REALTIME] 首句延迟统计: TTFT={ttft:.0f}ms (LLM输出时间)")
+                            logger.info(f"[REALTIME] 首句延迟统计: TTFT={ttft:.0f}ms (LLM输出时间)")
                     return  # 首句已发送,等待后续 chunk
                 # ===== v1.5 首句策略结束 =====
 
-                print(f"[REALTIME] chunk={repr(chunk_text[:40])} sentences={len(sentences)} buffer_len={len(sentence_buffer)} (新句子) emotion={emotion}")
+                logger.info(f"[REALTIME] chunk={repr(chunk_text[:40])} sentences={len(sentences)} buffer_len={len(sentence_buffer)} (新句子) emotion={emotion}")
             else:
-                print(f"[REALTIME] chunk={repr(chunk_text[:40])} sentences=0 buffer_len={len(sentence_buffer)}")
+                logger.info(f"[REALTIME] chunk={repr(chunk_text[:40])} sentences=0 buffer_len={len(sentence_buffer)}")
 
             # v1.8: 每积累到一个完整句子就放入 TTS 队列(异步,不阻塞)
             for sent in sentences:
                 if not is_current():
                     return
                 valid = self._is_valid_sentence(sent)
-                print(f"[REALTIME] 句子: {repr(sent[:40])} valid={valid}")
+                logger.info(f"[REALTIME] 句子: {repr(sent[:40])} valid={valid}")
                 if not valid:
                     continue
                 tts_sentence_queue.put((gen_id, sent))
@@ -5472,12 +5474,12 @@ class WebSocketServer:
 
             # 条件2: LLM 思考超过 2.5 秒(放宽,减少误触发)
             if time_since_last_sentence > 2.5 and buffer_len >= 25:
-                print(f"[REALTIME] P1-3 预判停: 思考 {time_since_last_sentence:.1f}s, buffer={buffer_len}")
+                logger.info(f"[REALTIME] P1-3 预判停: 思考 {time_since_last_sentence:.1f}s, buffer={buffer_len}")
                 force_send = True
 
             # 条件3: 输出变慢(连续 3 个 chunk buffer 没增长)
             if chunk_count_since_last_sentence >= 3 and buffer_len == last_buffer_len and buffer_len >= 30 and not buffer_has_end_punct:
-                print(f"[REALTIME] P1-3 预判停: 输出变慢 {chunk_count_since_last_sentence} chunks, buffer={buffer_len}")
+                logger.info(f"[REALTIME] P1-3 预判停: 输出变慢 {chunk_count_since_last_sentence} chunks, buffer={buffer_len}")
                 force_send = True
             last_buffer_len = buffer_len
 
@@ -5487,7 +5489,7 @@ class WebSocketServer:
                 part_to_send = sentence_buffer[:split_pos]
                 sentence_buffer = sentence_buffer[split_pos:]  # 剩余留到下一轮
 
-                print(f"[REALTIME] Fallback词边界切分: split={split_pos} '{repr(part_to_send[:40])}' remain={len(sentence_buffer)}")
+                logger.info(f"[REALTIME] Fallback词边界切分: split={split_pos} '{repr(part_to_send[:40])}' remain={len(sentence_buffer)}")
 
                 # v1.5.7 增强: fallback 强制发送前再做一次清理和验证
                 cleaned = self._realtime_filter(part_to_send).strip()
@@ -5505,7 +5507,7 @@ class WebSocketServer:
         
         # v1.9.99: 检查 LLM 流式错误（_stream_error 标记）
         if result.get("_stream_error"):
-            print(f"[REALTIME] LLM 流式错误: {result['_stream_error']}")
+            logger.info(f"[REALTIME] LLM 流式错误: {result['_stream_error']}")
             # 通知前端
             self._safe_send(client, {
                 "type": "realtime_audio_done",
@@ -5518,7 +5520,7 @@ class WebSocketServer:
 
         # v1.8: LLM 完成后检查 generation
         if not is_current():
-            print(f"[REALTIME] LLM 完成但 pipeline 已过期 gen={gen_id}")
+            logger.info(f"[REALTIME] LLM 完成但 pipeline 已过期 gen={gen_id}")
             tts_worker_active[0] = False
             return
 
@@ -5544,14 +5546,14 @@ class WebSocketServer:
                 part = raw[:split_pos]
                 rest = raw[split_pos:]
                 if self._is_valid_sentence(part) and is_current():
-                    print(f"[REALTIME] 尾buffer词边界切分: split={split_pos} '{repr(part[:40])}'")
+                    logger.info(f"[REALTIME] 尾buffer词边界切分: split={split_pos} '{repr(part[:40])}'")
                     tts_sentence_queue.put((gen_id, part))
                 # 剩余部分(如果还有且够长)也发
                 if rest and self._is_valid_sentence(rest) and is_current():
                     tts_sentence_queue.put((gen_id, rest))
             else:
                 # < 15 字且无标点 → 可能是半句话,跳过避免音色割裂
-                print(f"[REALTIME] 尾buffer过短/不完整,跳过: '{repr(raw[:30])}'")
+                logger.info(f"[REALTIME] 尾buffer过短/不完整,跳过: '{repr(raw[:30])}'")
 
         # 保存完整回复用于记忆（作为返回值传给调用方）
         filtered_reply = self._realtime_filter(full_text)
@@ -5565,18 +5567,18 @@ class WebSocketServer:
         })
 
         # v1.8: 等待 TTS 队列中所有句子合成完毕
-        print(f"[REALTIME] 等待 TTS 队列清空... (gen={gen_id})")
+        logger.info(f"[REALTIME] 等待 TTS 队列清空... (gen={gen_id})")
         tts_sentence_queue.join()
         tts_worker_active[0] = False
         state["tts_worker_active"] = False
 
         if tts_worker_error[0]:
-            print(f"[REALTIME] TTS worker 有错误: {tts_worker_error[0]}")
+            logger.info(f"[REALTIME] TTS worker 有错误: {tts_worker_error[0]}")
 
         # v1.5.1 修复: pipeline 完成后重置状态,允许下次请求
         state["speaking"] = False
         state["running"] = False
-        print(f"[REALTIME] Pipeline 完成 (client {client_id}, gen={gen_id})")
+        logger.info(f"[REALTIME] Pipeline 完成 (client {client_id}, gen={gen_id})")
         return filtered_reply  # 返回完整回复文本供记忆写入使用
 
     def _realtime_tts_single(self, client, state, sentence, voice, engine, gen_id=None):
@@ -5593,17 +5595,17 @@ class WebSocketServer:
 
         # v1.8: Generation ID 检查
         if gen_id and state.get("current_gen") != gen_id:
-            print(f"[REALTIME TTS] 跳过(已过期 gen={gen_id}): {repr(sentence[:30])}")
+            logger.info(f"[REALTIME TTS] 跳过(已过期 gen={gen_id}): {repr(sentence[:30])}")
             return
 
         cancel = state["cancel"]
         if cancel.is_set():
-            print(f"[REALTIME TTS] 跳过(已取消): {repr(sentence[:30])}")
+            logger.info(f"[REALTIME TTS] 跳过(已取消): {repr(sentence[:30])}")
             return
 
-        print(f"[REALTIME TTS] 开始合成: {repr(sentence[:30])}")
+        logger.info(f"[REALTIME TTS] 开始合成: {repr(sentence[:30])}")
         self._tts_do_and_send(client, state, sentence, voice, engine)
-        print(f"[REALTIME TTS] 完成: {repr(sentence[:30])}")
+        logger.info(f"[REALTIME TTS] 完成: {repr(sentence[:30])}")
 
     def _tts_do_and_send(self, client, state, sentence, voice, engine):
         """
@@ -5690,9 +5692,9 @@ class WebSocketServer:
                             "chunk_count": chunk_idx + 1,
                         }))
                         chunk_count[0] = chunk_idx + 1
-                        print(f"[REALTIME STREAM] chunk {chunk_idx}: {len(wav_bytes)} bytes")
+                        logger.info(f"[REALTIME STREAM] chunk {chunk_idx}: {len(wav_bytes)} bytes")
                     except Exception as e:
-                        print(f"[REALTIME STREAM] chunk {chunk_idx} error: {e}")
+                        logger.info(f"[REALTIME STREAM] chunk {chunk_idx} error: {e}")
 
                 try:
                     final_path = tts_engine.speak_streaming(
@@ -5708,11 +5710,11 @@ class WebSocketServer:
                             "chunk_total": chunk_count[0],
                         }))
 
-                    print(f"[REALTIME] TTS 流式完成: {sentence[:30]}... ({chunk_count[0]} chunks)")
+                    logger.info(f"[REALTIME] TTS 流式完成: {sentence[:30]}... ({chunk_count[0]} chunks)")
                     return
 
                 except Exception as stream_err:
-                    print(f"[REALTIME] speak_streaming 失败,回退: {stream_err}")
+                    logger.info(f"[REALTIME] speak_streaming 失败,回退: {stream_err}")
 
             # ===== 回退:整句合成(原有逻辑)=====
             audio_path = tts_engine.speak(sentence, project=voice)
@@ -5721,14 +5723,14 @@ class WebSocketServer:
                 return
 
             if not audio_path:
-                print(f"[REALTIME] TTS 返回空路径 (sentence={repr(sentence[:20])})")
+                logger.info(f"[REALTIME] TTS 返回空路径 (sentence={repr(sentence[:20])})")
                 audio_path = None
             elif not os.path.exists(audio_path):
-                print(f"[REALTIME] TTS 文件不存在: {audio_path}")
+                logger.info(f"[REALTIME] TTS 文件不存在: {audio_path}")
                 audio_path = None
 
             if audio_path is None:
-                print(f"[REALTIME] TTS pipeline 可能损坏,尝试重建...")
+                logger.info(f"[REALTIME] TTS pipeline 可能损坏,尝试重建...")
                 try:
                     # v1.5.4 修复: 直接用 engine 对象重建,不再调用 _get_tts_for_client
                     # voice 是字符串,engine 是 TTS 对象
@@ -5737,7 +5739,7 @@ class WebSocketServer:
                         tts_engine.set_project(voice)
                     audio_path = tts_engine.speak(sentence, project=voice)
                 except Exception as rebuild_err:
-                    print(f"[REALTIME] TTS pipeline 重建失败: {rebuild_err}")
+                    logger.info(f"[REALTIME] TTS pipeline 重建失败: {rebuild_err}")
                     audio_path = None
 
             if audio_path and os.path.exists(audio_path):
@@ -5751,10 +5753,10 @@ class WebSocketServer:
                     "audio": audio_b64,
                     "text": sentence
                 }))
-                print(f"[REALTIME] TTS 发送: {sentence[:30]}... ({len(audio_data)} bytes)")
+                logger.info(f"[REALTIME] TTS 发送: {sentence[:30]}... ({len(audio_data)} bytes)")
 
         except Exception as e:
-            print(f"[REALTIME] TTS 错误: {e}")
+            logger.info(f"[REALTIME] TTS 错误: {e}")
 
     def _realtime_streaming_tts(self, client, state, sentence, engine, voice):
         """
@@ -5836,7 +5838,7 @@ class WebSocketServer:
                     "is_pcm_only": True,  # 告诉前端这是纯 PCM 数据
                     "sample_rate": chunk_sr
                 }))
-                print(f"[REALTIME STREAM] chunk {chunk_idx}: PCM {len(audio_b64)} chars")
+                logger.info(f"[REALTIME STREAM] chunk {chunk_idx}: PCM {len(audio_b64)} chars")
                 return
 
             # 发送第一个 chunk(带 WAV header)
@@ -5851,7 +5853,7 @@ class WebSocketServer:
                 "is_pcm_only": False,
                 "sample_rate": chunk_sr
             }))
-            print(f"[REALTIME STREAM] chunk {chunk_idx}: WAV {len(wav_bytes)} bytes")
+            logger.info(f"[REALTIME STREAM] chunk {chunk_idx}: WAV {len(wav_bytes)} bytes")
 
         try:
             tts_engine = self._get_tts_for_client(engine, voice)
@@ -5882,13 +5884,13 @@ class WebSocketServer:
                     "is_pcm_only": True,
                     "sample_rate": 32000
                 }))
-            print(f"[REALTIME STREAM] 完成: {audio_path}")
+            logger.info(f"[REALTIME STREAM] 完成: {audio_path}")
 
         except Exception as e:
             if "canceled" in str(e):
-                print(f"[REALTIME STREAM] 取消: {sentence[:30]}...")
+                logger.info(f"[REALTIME STREAM] 取消: {sentence[:30]}...")
             else:
-                print(f"[REALTIME STREAM] 错误: {e}")
+                logger.info(f"[REALTIME STREAM] 错误: {e}")
 
 
         """过滤内部提示词泄露 + 乱码句子过滤(实时版本)"""
@@ -5923,7 +5925,7 @@ class WebSocketServer:
             total = len(line)
             if valid < total * 0.3 or valid == 0:
                 # 整句都是乱码,跳过
-                print(f"[REALTIME] 过滤乱码: {repr(line[:30])}")
+                logger.info(f"[REALTIME] 过滤乱码: {repr(line[:30])}")
                 continue
             lines2.append(line)
         return '\n'.join(lines2)
@@ -5982,7 +5984,7 @@ class WebSocketServer:
         # v1.5.3 新增: 超短句过滤(< 4个中文字符)
         # 防止 "看法"、"啦,"、"," 等片段产生音色不稳定
         if chinese_chars < 4 and alpha_chars < 8:
-            print(f"[REALTIME] 过滤超短句: '{text}' (中文={chinese_chars}字)")
+            logger.info(f"[REALTIME] 过滤超短句: '{text}' (中文={chinese_chars}字)")
             return False
         # 有效字符比例 < 30% → 乱码
         # v1.5.3 修复: 把 emoji 排除在外,不计入总长度比例
@@ -6216,9 +6218,9 @@ class WebSocketServer:
         if state.get("speaking"):
             state["cancel"].set()
             state["speaking"] = False
-            print(f"[REALTIME] 用户打断 AI 说话 (client {client_id})")
+            logger.info(f"[REALTIME] 用户打断 AI 说话 (client {client_id})")
         else:
-            print(f"[REALTIME] 收到打断信号,但 AI 未在说话 (client {client_id})")
+            logger.info(f"[REALTIME] 收到打断信号,但 AI 未在说话 (client {client_id})")
         self._safe_send(client, {
             "type": "realtime_interrupt",
             "status": "ok"
@@ -6244,7 +6246,7 @@ class WebSocketServer:
         pipeline_start = state.get("pipeline_start_time", 0)
         PROTECTION_WINDOW = 2.0  # 秒
         if pipeline_start and (time.time() - pipeline_start) < PROTECTION_WINDOW:
-            print(f"[REALTIME-FAST] 保护窗口内 ({time.time() - pipeline_start:.1f}s < {PROTECTION_WINDOW}s)，忽略打断")
+            logger.info(f"[REALTIME-FAST] 保护窗口内 ({time.time() - pipeline_start:.1f}s < {PROTECTION_WINDOW}s)，忽略打断")
             return
         
         # 立即取消当前 pipeline
@@ -6262,7 +6264,7 @@ class WebSocketServer:
             with sq.mutex:
                 sq.queue.clear()
         
-        print(f"[REALTIME-FAST] 快速打断 (client {client_id})")
+        logger.info(f"[REALTIME-FAST] 快速打断 (client {client_id})")
         
         # 立即响应前端,让前端知道打断已被处理
         self._safe_send(client, {
@@ -6287,7 +6289,7 @@ class WebSocketServer:
 
         # 检查是否有文本生成正在运行
         if not self._text_gen_running.get(client_id, False):
-            print(f"[TEXT-INTERRUPT] client {client_id}: 无正在进行的文本生成")
+            logger.info(f"[TEXT-INTERRUPT] client {client_id}: 无正在进行的文本生成")
             self._safe_send(client, {
                 "type": "text_interrupt_ack",
                 "status": "no_active_gen"
@@ -6310,7 +6312,7 @@ class WebSocketServer:
             except Exception:
                 pass
 
-        print(f"[TEXT-INTERRUPT] client {client_id}: 文本生成已取消")
+        logger.info(f"[TEXT-INTERRUPT] client {client_id}: 文本生成已取消")
 
         self._safe_send(client, {
             "type": "text_interrupt_ack",

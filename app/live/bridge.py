@@ -24,6 +24,9 @@ from .platforms import (
     PlatformType, DanmakuMessage, GiftMessage, SystemMessage,
     LivePlatform, LivePlatformFactory
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -73,22 +76,22 @@ class LiveBridge:
             "errors": 0,
         }
         
-        print(" 直播通信桥梁初始化完成")
+        logger.info(" 直播通信桥梁初始化完成")
     
     def set_llm(self, llm):
         """设置LLM引用"""
         self._llm = llm
-        print(" LLM已连接到直播桥梁")
+        logger.info(" LLM已连接到直播桥梁")
     
     def set_tts(self, tts):
         """设置TTS引用"""
         self._tts = tts
-        print(" TTS已连接到直播桥梁")
+        logger.info(" TTS已连接到直播桥梁")
     
     def set_memory(self, memory):
         """设置记忆系统引用"""
         self._memory = memory
-        print(" 记忆系统已连接到直播桥梁")
+        logger.info(" 记忆系统已连接到直播桥梁")
     
     def add_response_callback(self, callback: Callable):
         """添加回复回调"""
@@ -118,14 +121,14 @@ class LiveBridge:
             
             if success:
                 self._platforms[platform_type] = platform
-                print(f" {platform_type.value}直播间连接成功: {room_id}")
+                logger.info(f" {platform_type.value}直播间连接成功: {room_id}")
             else:
-                print(f" {platform_type.value}直播间连接失败: {room_id}")
+                logger.info(f" {platform_type.value}直播间连接失败: {room_id}")
             
             return success
             
         except Exception as e:
-            print(f" 连接直播平台失败: {e}")
+            logger.info(f" 连接直播平台失败: {e}")
             self._stats["errors"] += 1
             return False
     
@@ -136,10 +139,10 @@ class LiveBridge:
                 platform = self._platforms[platform_type]
                 await platform.disconnect()
                 del self._platforms[platform_type]
-                print(f" {platform_type.value}已断开连接")
+                logger.info(f" {platform_type.value}已断开连接")
             
         except Exception as e:
-            print(f" 断开直播平台失败: {e}")
+            logger.info(f" 断开直播平台失败: {e}")
             self._stats["errors"] += 1
     
     async def disconnect_all(self):
@@ -148,10 +151,10 @@ class LiveBridge:
             for platform_type in list(self._platforms.keys()):
                 await self.disconnect_platform(platform_type)
             
-            print(" 所有直播平台已断开连接")
+            logger.info(" 所有直播平台已断开连接")
             
         except Exception as e:
-            print(f" 断开所有直播平台失败: {e}")
+            logger.info(f" 断开所有直播平台失败: {e}")
             self._stats["errors"] += 1
     
     def _handle_danmaku(self, message: DanmakuMessage):
@@ -159,14 +162,14 @@ class LiveBridge:
         try:
             self._stats["total_danmaku"] += 1
             
-            print(f" 收到弹幕 [{message.platform.value}] {message.username}: {message.content}")
+            logger.info(f" 收到弹幕 [{message.platform.value}] {message.username}: {message.content}")
             
             # 如果启用了自动回复，生成AI回复
             if self._auto_reply:
                 asyncio.create_task(self._generate_and_send_reply(message))
             
         except Exception as e:
-            print(f" 处理弹幕失败: {e}")
+            logger.info(f" 处理弹幕失败: {e}")
             self._stats["errors"] += 1
     
     def _handle_gift(self, message: GiftMessage):
@@ -174,22 +177,22 @@ class LiveBridge:
         try:
             self._stats["total_gifts"] += 1
             
-            print(f" 收到礼物 [{message.platform.value}] {message.username}: {message.gift_name} x{message.gift_count}")
+            logger.info(f" 收到礼物 [{message.platform.value}] {message.username}: {message.gift_name} x{message.gift_count}")
             
             # 生成感谢回复
             asyncio.create_task(self._send_gift_thanks(message))
             
         except Exception as e:
-            print(f" 处理礼物失败: {e}")
+            logger.info(f" 处理礼物失败: {e}")
             self._stats["errors"] += 1
     
     def _handle_system(self, message: SystemMessage):
         """处理系统消息"""
         try:
-            print(f" 系统消息 [{message.platform.value}] {message.message_type}: {message.content}")
+            logger.info(f" 系统消息 [{message.platform.value}] {message.message_type}: {message.content}")
             
         except Exception as e:
-            print(f" 处理系统消息失败: {e}")
+            logger.info(f" 处理系统消息失败: {e}")
             self._stats["errors"] += 1
     
     async def _generate_and_send_reply(self, message: DanmakuMessage):
@@ -230,17 +233,17 @@ class LiveBridge:
                 
                 self._stats["total_replies"] += 1
                 
-                print(f" AI回复 [{message.platform.value}] {message.username}: {ai_response}")
+                logger.info(f" AI回复 [{message.platform.value}] {message.username}: {ai_response}")
             
         except Exception as e:
-            print(f" 生成并发送回复失败: {e}")
+            logger.info(f" 生成并发送回复失败: {e}")
             self._stats["errors"] += 1
     
     async def _generate_ai_response(self, message: DanmakuMessage) -> Optional[str]:
         """生成AI回复"""
         try:
             if not self._llm:
-                print(" LLM未设置，无法生成回复")
+                logger.info(" LLM未设置，无法生成回复")
                 return None
             
             # 构建提示词
@@ -252,7 +255,7 @@ class LiveBridge:
             return response
             
         except Exception as e:
-            print(f" 生成AI回复失败: {e}")
+            logger.info(f" 生成AI回复失败: {e}")
             self._stats["errors"] += 1
             return None
     
@@ -284,12 +287,12 @@ class LiveBridge:
                 success = await platform.send_danmaku(content)
                 
                 if success:
-                    print(f" 弹幕回复发送成功: {content}")
+                    logger.info(f" 弹幕回复发送成功: {content}")
                 else:
-                    print(f" 弹幕回复发送失败: {content}")
+                    logger.info(f" 弹幕回复发送失败: {content}")
             
         except Exception as e:
-            print(f" 发送弹幕回复失败: {e}")
+            logger.info(f" 发送弹幕回复失败: {e}")
             self._stats["errors"] += 1
     
     async def _send_gift_thanks(self, message: GiftMessage):
@@ -302,7 +305,7 @@ class LiveBridge:
             await self._send_danmaku_reply(message.platform, message.room_id, thanks_message)
             
         except Exception as e:
-            print(f" 发送礼物感谢失败: {e}")
+            logger.info(f" 发送礼物感谢失败: {e}")
             self._stats["errors"] += 1
     
     async def _generate_tts(self, text: str) -> Optional[str]:
@@ -317,7 +320,7 @@ class LiveBridge:
             return audio_path
             
         except Exception as e:
-            print(f" 生成TTS音频失败: {e}")
+            logger.info(f" 生成TTS音频失败: {e}")
             self._stats["errors"] += 1
             return None
     
@@ -327,7 +330,7 @@ class LiveBridge:
             try:
                 callback(response)
             except Exception as e:
-                print(f" 回调执行失败: {e}")
+                logger.info(f" 回调执行失败: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""

@@ -10,6 +10,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Language(Enum):
     """支持的语言"""
@@ -53,7 +56,7 @@ class I18nManager:
         # 加载所有语言包
         self._load_language_packages()
         
-        print(f"[I18n] 初始化完成，当前语言: {self.current_language.value}")
+        logger.info(f"[I18n] 初始化完成，当前语言: {self.current_language.value}")
     
     def _load_language_packages(self):
         """加载语言包"""
@@ -68,15 +71,15 @@ class I18nManager:
                     translations = json.load(f)
                     self.translations[lang_code] = translations
             
-            print(f"[I18n] 加载了 {len(self.language_files)} 个语言包")
+            logger.info(f"[I18n] 加载了 {len(self.language_files)} 个语言包")
             
         except Exception as e:
-            print(f"[I18n] 加载语言包失败: {e}")
+            logger.info(f"[I18n] 加载语言包失败: {e}")
     
     def set_language(self, language: Language):
         """设置当前语言"""
         self.current_language = language
-        print(f"[I18n] 切换语言: {language.value}")
+        logger.info(f"[I18n] 切换语言: {language.value}")
     
     def get_text(self, key: str, **kwargs) -> str:
         """获取翻译文本"""
@@ -120,10 +123,10 @@ class I18nManager:
                 with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(translations, f, ensure_ascii=False, indent=2)
             
-            print("[I18n] 翻译已保存")
+            logger.info("[I18n] 翻译已保存")
             
         except Exception as e:
-            print(f"[I18n] 保存翻译失败: {e}")
+            logger.info(f"[I18n] 保存翻译失败: {e}")
     
     def get_supported_languages(self) -> List[Dict[str, str]]:
         """获取支持的语言列表"""

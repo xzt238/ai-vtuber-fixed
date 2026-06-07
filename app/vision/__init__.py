@@ -30,6 +30,8 @@ from typing import Optional, Dict, Any, List, Union, Iterator
 from enum import Enum
 from threading import Thread
 
+logger = logging.getLogger(__name__)
+
 # 日志模块
 logger = logging.getLogger("vision")
 from copy import deepcopy
@@ -411,14 +413,14 @@ class MiniMaxVLProvider(VisionProvider):
 
                 content = result.get("content", "")
                 if content:
-                    print(f"[Vision] MiniMax VL 结果: {content[:80]}...")
+                    logger.info(f"[Vision] MiniMax VL 结果: {content[:80]}...")
                 return content if content else None
             else:
-                print(f"[Vision] MiniMax VL HTTP 错误: {response.status_code} - {response.text[:200]}")
+                logger.info(f"[Vision] MiniMax VL HTTP 错误: {response.status_code} - {response.text[:200]}")
                 return None
 
         except Exception as e:
-            print(f"[Vision] MiniMax VL 理解失败: {e}")
+            logger.info(f"[Vision] MiniMax VL 理解失败: {e}")
             return None
 
 
@@ -526,8 +528,8 @@ class MiniCPMProvider(VisionProvider):
             import transformers
             return True
         except ImportError as e:
-            print(f"[Vision] MiniCPM 依赖缺失: {e}")
-            print("[Vision] 请运行: pip install torch transformers")
+            logger.info(f"[Vision] MiniCPM 依赖缺失: {e}")
+            logger.info("[Vision] 请运行: pip install torch transformers")
             return False
 
 
@@ -552,13 +554,13 @@ class MiniCPMProvider(VisionProvider):
         try:
             import torch
 
-            print(f"[Vision] 加载 MiniCPM-V 2...")
-            print(f"[Vision] 模型: {self.model_id}")
+            logger.info(f"[Vision] 加载 MiniCPM-V 2...")
+            logger.info(f"[Vision] 模型: {self.model_id}")
 
             # 获取本地模型路径
             model_local_path = self._get_model_path()
             if not model_local_path:
-                print("[Vision] 模型未找到")
+                logger.info("[Vision] 模型未找到")
                 return False
 
             # 检查可用显存（不是总显存，而是实际剩余的）
@@ -569,10 +571,10 @@ class MiniCPMProvider(VisionProvider):
                 reserved_gb = torch.cuda.memory_reserved(0) / 1024**3
                 # 使用 reserved 作为已占用显存（更保守准确）
                 free_mem_gb = (total_gb - reserved_gb) if reserved_gb > allocated_gb else (total_gb - allocated_gb)
-                print(f"[Vision] GPU 总显存: {total_gb:.1f} GB, 已占用: ~{max(allocated_gb, reserved_gb):.1f} GB, 可用: ~{free_mem_gb:.1f} GB")
+                logger.info(f"[Vision] GPU 总显存: {total_gb:.1f} GB, 已占用: ~{max(allocated_gb, reserved_gb):.1f} GB, 可用: ~{free_mem_gb:.1f} GB")
 
             # 加载模型 - 对齐官方V2实现
-            print("[Vision] 加载 MiniCPM-V2...")
+            logger.info("[Vision] 加载 MiniCPM-V2...")
             from transformers import AutoModel, AutoTokenizer, BitsAndBytesConfig
 
             # V2不使用AutoProcessor
@@ -580,10 +582,10 @@ class MiniCPMProvider(VisionProvider):
             # 选择dtype - 与官方一致
             if torch.cuda.is_bf16_supported():
                 torch_dtype = torch.bfloat16
-                print("[Vision] 使用 BF16")
+                logger.info("[Vision] 使用 BF16")
             else:
                 torch_dtype = torch.float16
-                print("[Vision] 使用 FP16")
+                logger.info("[Vision] 使用 FP16")
 
             # 量化配置 - 对齐官方
             # 显存需求估算：BF16 ~2.8GB, INT4 ~3.5GB, INT8 ~5GB
@@ -595,7 +597,7 @@ class MiniCPMProvider(VisionProvider):
 
             if self.use_int4:
                 if free_mem_gb >= MIN_MEM_INT4:
-                    print("[Vision] 使用 INT4 量化")
+                    logger.info("[Vision] 使用 INT4 量化")
                     quantization_config = BitsAndBytesConfig(
                         load_in_4bit=True,
                         bnb_4bit_compute_dtype=torch_dtype,
@@ -603,16 +605,16 @@ class MiniCPMProvider(VisionProvider):
                         bnb_4bit_quant_type="nf4"
                     )
                 else:
-                    print(f"[Vision] ⚠️ 可用显存 {free_mem_gb:.1f}GB < INT4 最低 {MIN_MEM_INT4}GB，降级为 BF16 非量化")
+                    logger.info(f"[Vision] ⚠️ 可用显存 {free_mem_gb:.1f}GB < INT4 最低 {MIN_MEM_INT4}GB，降级为 BF16 非量化")
             elif self.use_int8:
                 if free_mem_gb >= MIN_MEM_INT8:
-                    print("[Vision] 使用 INT8 量化")
+                    logger.info("[Vision] 使用 INT8 量化")
                     quantization_config = BitsAndBytesConfig(
                         load_in_8bit=True,
                         bnb_8bit_compute_dtype=torch_dtype
                     )
                 elif free_mem_gb >= MIN_MEM_INT4:
-                    print(f"[Vision] ⚠️ 可用显存 {free_mem_gb:.1f}GB < INT8 最低 {MIN_MEM_INT8}GB，降级为 INT4 量化")
+                    logger.info(f"[Vision] ⚠️ 可用显存 {free_mem_gb:.1f}GB < INT8 最低 {MIN_MEM_INT8}GB，降级为 INT4 量化")
                     quantization_config = BitsAndBytesConfig(
                         load_in_4bit=True,
                         bnb_4bit_compute_dtype=torch_dtype,
@@ -620,9 +622,9 @@ class MiniCPMProvider(VisionProvider):
                         bnb_4bit_quant_type="nf4"
                     )
                 else:
-                    print(f"[Vision] ⚠️ 可用显存 {free_mem_gb:.1f}GB < INT4 最低 {MIN_MEM_INT4}GB，降级为 BF16 非量化")
+                    logger.info(f"[Vision] ⚠️ 可用显存 {free_mem_gb:.1f}GB < INT4 最低 {MIN_MEM_INT4}GB，降级为 BF16 非量化")
             elif free_mem_gb < MIN_MEM_BF16:
-                print(f"[Vision] ⚠️ 可用显存仅 {free_mem_gb:.1f}GB，可能不足以加载模型")
+                logger.info(f"[Vision] ⚠️ 可用显存仅 {free_mem_gb:.1f}GB，可能不足以加载模型")
 
             # 加载模型
             load_kwargs = {
@@ -711,17 +713,17 @@ class MiniCPMProvider(VisionProvider):
                             _dequantize_module(child)
                 
                 # 恢复 VPM（Vision Transformer）
-                print("[Vision] 正在反量化 VPM...")
+                logger.info("[Vision] 正在反量化 VPM...")
                 _dequantize_module(self._model.vpm)
                 self._model.vpm = self._model.vpm.to(target_dtype).to(self._model.device)
                 # ... (repeats for resampler) ...
                 
                 # 恢复 Resampler
-                print("[Vision] 正在反量化 Resampler...")
+                logger.info("[Vision] 正在反量化 Resampler...")
                 _dequantize_module(self._model.resampler)
                 self._model.resampler = self._model.resampler.to(target_dtype).to(self._model.device)
                 
-                print(f"[Vision] VPM + Resampler 已恢复为 {target_dtype}（去除量化）")
+                logger.info(f"[Vision] VPM + Resampler 已恢复为 {target_dtype}（去除量化）")
 
             # 加载 tokenizer
             self._tokenizer = AutoTokenizer.from_pretrained(
@@ -729,11 +731,11 @@ class MiniCPMProvider(VisionProvider):
                 trust_remote_code=True
             )
 
-            print("[Vision] MiniCPM-V2 加载完成")
+            logger.info("[Vision] MiniCPM-V2 加载完成")
             return True
 
         except Exception as e:
-            print(f"[Vision] MiniCPM 加载失败: {e}")
+            logger.info(f"[Vision] MiniCPM 加载失败: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -756,7 +758,7 @@ class MiniCPMProvider(VisionProvider):
         )
 
         if os.path.exists(local_path):
-            print(f"[Vision] 使用本地模型: {local_path}")
+            logger.info(f"[Vision] 使用本地模型: {local_path}")
             return local_path
 
         # 尝试从 ModelScope 下载
@@ -766,10 +768,10 @@ class MiniCPMProvider(VisionProvider):
                 self.model_id,
                 cache_dir=self.model_path or None
             )
-            print(f"[Vision] ModelScope 模型路径: {model_path}")
+            logger.info(f"[Vision] ModelScope 模型路径: {model_path}")
             return model_path
         except Exception as e:
-            print(f"[Vision] ModelScope 下载失败: {e}")
+            logger.info(f"[Vision] ModelScope 下载失败: {e}")
 
         return None
 
@@ -793,7 +795,7 @@ class MiniCPMProvider(VisionProvider):
             return None
 
         if not os.path.exists(image_path):
-            print(f"[Vision] 图片不存在: {image_path}")
+            logger.info(f"[Vision] 图片不存在: {image_path}")
             return None
 
         try:
@@ -806,7 +808,7 @@ class MiniCPMProvider(VisionProvider):
                 prompt = "请描述这张图片的内容，包括所有可见的物体、场景、文字等。"
 
             # 加载图片
-            print(f"[Vision] MiniCPM-V2 推理开始: {os.path.basename(image_path)}")
+            logger.info(f"[Vision] MiniCPM-V2 推理开始: {os.path.basename(image_path)}")
             image = Image.open(image_path).convert("RGB")
 
             # 官方V2格式: content 是纯字符串，图片通过 image 参数传入
@@ -826,7 +828,7 @@ class MiniCPMProvider(VisionProvider):
                     temperature=self.temperature,
                 )
             infer_elapsed = _time.time() - infer_start
-            print(f"[Vision] MiniCPM-V2 推理完成: {infer_elapsed:.1f}s, 结果({len(res)}字): {res[:80]}...")
+            logger.info(f"[Vision] MiniCPM-V2 推理完成: {infer_elapsed:.1f}s, 结果({len(res)}字): {res[:80]}...")
 
             return res
 
@@ -835,14 +837,14 @@ class MiniCPMProvider(VisionProvider):
             import torch as _torch
             err_str = str(e)
             if "out of memory" in err_str.lower() or "CUDA" in err_str:
-                print(f"[Vision] MiniCPM-V2 CUDA 错误: {e}")
-                print(f"[Vision] 尝试释放显存...")
+                logger.info(f"[Vision] MiniCPM-V2 CUDA 错误: {e}")
+                logger.info(f"[Vision] 尝试释放显存...")
                 _torch.cuda.empty_cache()
                 allocated = _torch.cuda.memory_allocated(0) / 1024**3
                 reserved = _torch.cuda.memory_reserved(0) / 1024**3
-                print(f"[Vision] GPU 显存: allocated={allocated:.2f}GB, reserved={reserved:.2f}GB")
+                logger.info(f"[Vision] GPU 显存: allocated={allocated:.2f}GB, reserved={reserved:.2f}GB")
             else:
-                print(f"[Vision] MiniCPM-V2 理解失败: {e}")
+                logger.info(f"[Vision] MiniCPM-V2 理解失败: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -873,7 +875,7 @@ class MiniCPMProvider(VisionProvider):
             torch.cuda.empty_cache()
         except Exception:
             pass
-        print("[Vision] MiniCPM 资源已释放")
+        logger.info("[Vision] MiniCPM 资源已释放")
 
 
 # ==================== MiMo Vision Provider ====================
@@ -954,11 +956,11 @@ class MimoVisionProvider(VisionProvider):
         通过 /v1/chat/completions + image_url 调用 MiMo 视觉理解能力。
         """
         if not self.api_key:
-            print("[Vision] 请配置 MiMo API Key")
+            logger.info("[Vision] 请配置 MiMo API Key")
             return None
 
         if not os.path.exists(image_path):
-            print(f"[Vision] 图片不存在: {image_path}")
+            logger.info(f"[Vision] 图片不存在: {image_path}")
             return None
 
         # 编码图片为 data URI
@@ -1001,7 +1003,7 @@ class MimoVisionProvider(VisionProvider):
             }
 
             url = f"{self.base_url}/chat/completions"
-            print(f"[Vision] MiMo Vision 调用: {url} (prompt: {full_prompt[:30]}...)")
+            logger.info(f"[Vision] MiMo Vision 调用: {url} (prompt: {full_prompt[:30]}...)")
 
             response = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
 
@@ -1011,20 +1013,20 @@ class MimoVisionProvider(VisionProvider):
                 if choices:
                     content = choices[0].get("message", {}).get("content", "")
                     if content:
-                        print(f"[Vision] MiMo Vision 结果: {content[:80]}...")
+                        logger.info(f"[Vision] MiMo Vision 结果: {content[:80]}...")
                         return content
                     else:
-                        print("[Vision] MiMo Vision API 返回成功但无内容")
+                        logger.info("[Vision] MiMo Vision API 返回成功但无内容")
                         return None
                 else:
-                    print(f"[Vision] MiMo Vision API 响应无 choices: {result}")
+                    logger.info(f"[Vision] MiMo Vision API 响应无 choices: {result}")
                     return None
             else:
-                print(f"[Vision] MiMo Vision HTTP 错误: {response.status_code} - {response.text[:200]}")
+                logger.info(f"[Vision] MiMo Vision HTTP 错误: {response.status_code} - {response.text[:200]}")
                 return None
 
         except Exception as e:
-            print(f"[Vision] MiMo Vision 理解失败: {e}")
+            logger.info(f"[Vision] MiMo Vision 理解失败: {e}")
             return None
 
     def _encode_image_data_uri(self, image_path: str) -> Optional[str]:
@@ -1043,7 +1045,7 @@ class MimoVisionProvider(VisionProvider):
             b64 = base64.b64encode(img_bytes).decode("utf-8")
 
             data_uri = f"data:image/jpeg;base64,{b64}"
-            print(f"[Vision] MiMo 图片编码: {os.path.getsize(image_path)} -> {len(img_bytes)} bytes (JPEG q={self.jpeg_quality})")
+            logger.info(f"[Vision] MiMo 图片编码: {os.path.getsize(image_path)} -> {len(img_bytes)} bytes (JPEG q={self.jpeg_quality})")
             return data_uri
         except ImportError:
             # 没有 Pillow，回退到原始 base64
@@ -1059,7 +1061,7 @@ class MimoVisionProvider(VisionProvider):
                 return f"data:{media_type};base64,{b64}"
             return None
         except Exception as e:
-            print(f"[Vision] MiMo 图片编码失败: {e}")
+            logger.info(f"[Vision] MiMo 图片编码失败: {e}")
             return None
 
 
@@ -1143,10 +1145,10 @@ class VisionManager:
             if hasattr(self, '_mimo_vision_provider') and self._mimo_vision_provider.is_available():
                 self._current_provider_type = VisionProviderType.MINIMAX_VL
                 self._current_provider = self._mimo_vision_provider
-                print(f"[Vision] Provider 切换: {self._current_provider.description}")
+                logger.info(f"[Vision] Provider 切换: {self._current_provider.description}")
                 return
             else:
-                print("[Vision] ⚠️ MiMo Vision 不可用（未配置 API Key），自动降级")
+                logger.info("[Vision] ⚠️ MiMo Vision 不可用（未配置 API Key），自动降级")
                 # 降级到下一个可用 Provider
                 provider = "auto"
                 return self.set_provider(provider)
@@ -1161,9 +1163,9 @@ class VisionManager:
         if pt and pt in self._providers:
             self._current_provider_type = pt
             self._current_provider = self._providers[pt]
-            print(f"[Vision] Provider 切换: {self._current_provider.description}")
+            logger.info(f"[Vision] Provider 切换: {self._current_provider.description}")
         else:
-            print(f"[Vision] ⚠️ 未知 Provider: {provider}")
+            logger.info(f"[Vision] ⚠️ 未知 Provider: {provider}")
 
     @property
     def current_provider(self):
@@ -1288,7 +1290,7 @@ class VisionSystem(VisionManager):
                 sct.shot(output=save_path)
             return save_path
         except Exception as e:
-            print(f"[Vision] 截图失败: {e}")
+            logger.info(f"[Vision] 截图失败: {e}")
             return None
 
     def screenshot_and_read(self) -> Optional[str]:
@@ -1309,17 +1311,17 @@ class VisionSystem(VisionManager):
 # ========== 测试 ==========
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("Vision Module v2.1 - 多 Provider 架构")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("Vision Module v2.1 - 多 Provider 架构")
+    logger.info("=" * 50)
 
     # 列出可用 Provider
     vm = VisionManager()
-    print("\n可用 Provider:")
+    logger.info("\n可用 Provider:")
     for p in vm.get_available_providers():
-        print(f"  [{p['type']}] {p['name']} (支持理解: {p['supports_understanding']})")
+        logger.info(f"  [{p['type']}] {p['name']} (支持理解: {p['supports_understanding']})")
 
     # 测试 RapidOCR
-    print(f"\n当前 Provider: {vm.current_provider_name}")
+    logger.info(f"\n当前 Provider: {vm.current_provider_name}")
     vm.set_provider("rapidocr")
-    print(f"切换到: {vm.current_provider_name} - {vm.current_provider_description}")
+    logger.info(f"切换到: {vm.current_provider_name} - {vm.current_provider_description}")

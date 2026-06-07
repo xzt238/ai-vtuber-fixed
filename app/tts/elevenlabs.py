@@ -12,6 +12,9 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 from . import TTSEngine
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ElevenLabsTTS(TTSEngine):
@@ -53,9 +56,9 @@ class ElevenLabsTTS(TTSEngine):
         # 会话
         self.session = None
         
-        print(f" ElevenLabs TTS引擎初始化完成")
-        print(f" 语音ID: {self.voice_id}")
-        print(f" 模型ID: {self.model_id}")
+        logger.info(f" ElevenLabs TTS引擎初始化完成")
+        logger.info(f" 语音ID: {self.voice_id}")
+        logger.info(f" 模型ID: {self.model_id}")
     
     def is_available(self) -> bool:
         """检查引擎是否可用"""
@@ -77,7 +80,7 @@ class ElevenLabsTTS(TTSEngine):
         """异步语音合成"""
         try:
             if not self.is_available():
-                print(" ElevenLabs API密钥未配置")
+                logger.info(" ElevenLabs API密钥未配置")
                 return None
             
             # 确保会话存在
@@ -120,15 +123,15 @@ class ElevenLabsTTS(TTSEngine):
                     with open(output_path, 'wb') as f:
                         f.write(audio_data)
                     
-                    print(f" ElevenLabs语音合成成功: {output_path}")
+                    logger.info(f" ElevenLabs语音合成成功: {output_path}")
                     return output_path
                 else:
                     error_text = await response.text()
-                    print(f" ElevenLabs语音合成失败: {response.status} - {error_text}")
+                    logger.info(f" ElevenLabs语音合成失败: {response.status} - {error_text}")
                     return None
                     
         except Exception as e:
-            print(f" ElevenLabs语音合成失败: {e}")
+            logger.info(f" ElevenLabs语音合成失败: {e}")
             return None
     
     def speak(self, text: str, output_path: str = None) -> Optional[str]:
@@ -146,7 +149,7 @@ class ElevenLabsTTS(TTSEngine):
                 loop.close()
                 
         except Exception as e:
-            print(f" ElevenLabs语音合成失败: {e}")
+            logger.info(f" ElevenLabs语音合成失败: {e}")
             return None
     
     async def get_voices(self) -> list:
@@ -168,22 +171,22 @@ class ElevenLabsTTS(TTSEngine):
                     data = await response.json()
                     return data.get("voices", [])
                 else:
-                    print(f" 获取语音列表失败: {response.status}")
+                    logger.info(f" 获取语音列表失败: {response.status}")
                     return []
                     
         except Exception as e:
-            print(f" 获取语音列表失败: {e}")
+            logger.info(f" 获取语音列表失败: {e}")
             return []
     
     def set_voice(self, voice_id: str):
         """设置语音ID"""
         self.voice_id = voice_id
-        print(f" 语音ID已更新: {voice_id}")
+        logger.info(f" 语音ID已更新: {voice_id}")
     
     def set_model(self, model_id: str):
         """设置模型ID"""
         self.model_id = model_id
-        print(f" 模型ID已更新: {model_id}")
+        logger.info(f" 模型ID已更新: {model_id}")
     
     def set_voice_settings(self, stability: float = None, similarity_boost: float = None, 
                           style: float = None, use_speaker_boost: bool = None):
@@ -197,7 +200,7 @@ class ElevenLabsTTS(TTSEngine):
         if use_speaker_boost is not None:
             self.use_speaker_boost = use_speaker_boost
         
-        print(f" 语音参数已更新: stability={self.stability}, similarity_boost={self.similarity_boost}")
+        logger.info(f" 语音参数已更新: stability={self.stability}, similarity_boost={self.similarity_boost}")
     
     def get_config(self) -> Dict[str, Any]:
         """获取配置"""

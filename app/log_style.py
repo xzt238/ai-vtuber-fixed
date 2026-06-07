@@ -19,6 +19,9 @@ import sys
 import os
 import time
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # ANSI 颜色码（Windows 10+ 支持）
@@ -57,61 +60,61 @@ def _timestamp():
 
 def game_header(title=""):
     """游戏风格标题"""
-    print()
-    print(_color("╔" + "═" * 58 + "╗", LogStyle.CYAN))
+    logger.info()
+    logger.info(_color("╔" + "═" * 58 + "╗", LogStyle.CYAN))
     if title:
-        print(_color(f"║  {title.center(54)}  ║", LogStyle.CYAN))
-    print(_color("╚" + "═" * 58 + "╝", LogStyle.CYAN))
+        logger.info(_color(f"║  {title.center(54)}  ║", LogStyle.CYAN))
+    logger.info(_color("╚" + "═" * 58 + "╝", LogStyle.CYAN))
 
 
 def game_box(lines):
     """游戏风格信息框"""
-    print(_color("┌" + "─" * 58 + "┐", LogStyle.BLUE))
+    logger.info(_color("┌" + "─" * 58 + "┐", LogStyle.BLUE))
     for line in lines:
-        print(_color(f"│  {line:<54}  │", LogStyle.BLUE))
-    print(_color("└" + "─" * 58 + "┘", LogStyle.BLUE))
+        logger.info(_color(f"│  {line:<54}  │", LogStyle.BLUE))
+    logger.info(_color("└" + "─" * 58 + "┘", LogStyle.BLUE))
 
 
 def game_loading(module, status="Loading", color=LogStyle.YELLOW):
     """游戏风格加载提示"""
     dots = "." * ((int(time.time() * 2) % 3) + 1)
-    print(f"\r  [{_color('LOAD', LogStyle.DIM)}] {_color(f'{module} {status}{dots}', color)}", end="", flush=True)
+    logger.info(f"\r  [{_color('LOAD', LogStyle.DIM)}] {_color(f'{module} {status}{dots}', color)}", end="", flush=True)
 
 
 def game_ok(module, msg=""):
     """游戏风格成功"""
     msg_part = f" {_color(msg, LogStyle.DIM)}" if msg else ""
-    print(f"\r  [{_color('  OK  ', LogStyle.GREEN)}] {_color(module, LogStyle.WHITE)}{msg_part}")
+    logger.info(f"\r  [{_color('  OK  ', LogStyle.GREEN)}] {_color(module, LogStyle.WHITE)}{msg_part}")
 
 
 def game_skip(module, msg=""):
     """游戏风格跳过"""
     msg_part = f" {_color(msg, LogStyle.DIM)}" if msg else ""
-    print(f"\r  [{_color(' SKIP ', LogStyle.YELLOW)}] {_color(module, LogStyle.DIM)}{msg_part}")
+    logger.info(f"\r  [{_color(' SKIP ', LogStyle.YELLOW)}] {_color(module, LogStyle.DIM)}{msg_part}")
 
 
 def game_fail(module, msg=""):
     """游戏风格失败"""
     msg_part = f" {_color(msg, LogStyle.RED)}" if msg else ""
-    print(f"\r  [{_color(' FAIL ', LogStyle.RED)}] {_color(module, LogStyle.WHITE)}{msg_part}")
+    logger.info(f"\r  [{_color(' FAIL ', LogStyle.RED)}] {_color(module, LogStyle.WHITE)}{msg_part}")
 
 
 def game_info(module, msg=""):
     """游戏风格信息"""
     msg_part = f" {_color(msg, LogStyle.CYAN)}" if msg else ""
-    print(f"  [{_color('INFO', LogStyle.CYAN)}] {_color(module, LogStyle.WHITE)}{msg_part}")
+    logger.info(f"  [{_color('INFO', LogStyle.CYAN)}] {_color(module, LogStyle.WHITE)}{msg_part}")
 
 
 def game_warn(module, msg=""):
     """游戏风格警告"""
     msg_part = f" {_color(msg, LogStyle.YELLOW)}" if msg else ""
-    print(f"  [{_color('WARN', LogStyle.YELLOW)}] {_color(module, LogStyle.WHITE)}{msg_part}")
+    logger.info(f"  [{_color('WARN', LogStyle.YELLOW)}] {_color(module, LogStyle.WHITE)}{msg_part}")
 
 
 def game_debug(module, msg=""):
     """游戏风格调试"""
     msg_part = f" {_color(msg, LogStyle.DIM)}" if msg else ""
-    print(f"  [{_color('DEBUG', LogStyle.DIM)}] {_color(module, LogStyle.DIM)}{msg_part}")
+    logger.info(f"  [{_color('DEBUG', LogStyle.DIM)}] {_color(module, LogStyle.DIM)}{msg_part}")
 
 
 def game_progress(current, total, module=""):
@@ -121,17 +124,17 @@ def game_progress(current, total, module=""):
     bar = "█" * filled + "░" * (bar_len - filled)
     percent = int(100 * current / total) if total > 0 else 0
     module_part = f" {_color(module, LogStyle.CYAN)}" if module else ""
-    print(f"\r  [{bar}] {percent:3d}%{module_part}", end="", flush=True)
+    logger.info(f"\r  [{bar}] {percent:3d}%{module_part}", end="", flush=True)
     if current >= total:
-        print()
+        logger.info()
 
 
 def game_section(title):
     """游戏风格分节标题"""
-    print()
-    print(_color(f"  ▸ {title}", LogStyle.MAGENTA))
+    logger.info()
+    logger.info(_color(f"  ▸ {title}", LogStyle.MAGENTA))
 
 
 def game_separator():
     """游戏风格分隔线"""
-    print(_color("  " + "─" * 56, LogStyle.DIM))
+    logger.info(_color("  " + "─" * 56, LogStyle.DIM))

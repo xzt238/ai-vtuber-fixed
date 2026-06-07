@@ -32,6 +32,8 @@ from datetime import datetime, timedelta
 from collections import OrderedDict
 from dataclasses import dataclass, asdict, field
 
+logger = logging.getLogger(__name__)
+
 # 日志模块
 logger = logging.getLogger("memory")
 
@@ -1342,9 +1344,9 @@ class MemorySystem:
         
         logger.info(f"记忆系统 v3.0 初始化完成")
         logger.info(f"存储目录: {self.storage_dir}")
-        print(f" 工作记忆: {len(self.working_memory)}条, 情景记忆: {len(self.episodic_memory)}条, "
+        logger.info(f" 工作记忆: {len(self.working_memory)}条, 情景记忆: {len(self.episodic_memory)}条, "
               f"语义记忆: {self.vector_store.get_stats()['total_docs']}条, 事实: {len(self.facts)}条")
-        print(f" 工作记忆上限: {self.working_memory_limit}, 摘要阈值: {self.summarize_threshold}, "
+        logger.info(f" 工作记忆上限: {self.working_memory_limit}, 摘要阈值: {self.summarize_threshold}, "
               f"遗忘阈值: {RetentionScorer.RETENTION_THRESHOLD}")
         
         # 定时flush
@@ -1365,7 +1367,7 @@ class MemorySystem:
         chat_func: callable(message: str) -> {"text": str, "action": ...}
         """
         self._llm_chat_func = chat_func
-        print(f" [记忆系统] LLM 回调已设置")
+        logger.info(f" [记忆系统] LLM 回调已设置")
     
     # ==================== v1.11.21: Embedding 预热 ====================
     
@@ -1384,9 +1386,9 @@ class MemorySystem:
                 # 触发一次 embedding 计算，加载模型到内存
                 _ = self.vector_store.get_embedding("warmup")
                 self._embedding_warmed = True
-                print(f" [记忆系统] Embedding 模型预热完成")
+                logger.info(f" [记忆系统] Embedding 模型预热完成")
             except Exception as e:
-                print(f" [记忆系统] Embedding 模型预热失败(不影响使用): {e}")
+                logger.info(f" [记忆系统] Embedding 模型预热失败(不影响使用): {e}")
         
         warmup_thread = threading.Thread(target=_warmup_worker, daemon=True)
         warmup_thread.start()
@@ -1420,9 +1422,9 @@ class MemorySystem:
                 with open(self._working_memory_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 self.working_memory = [self._dict_to_memory_item(item) for item in data]
-                print(f" [记忆] 恢复工作记忆: {len(self.working_memory)}条")
+                logger.info(f" [记忆] 恢复工作记忆: {len(self.working_memory)}条")
             except Exception as e:
-                print(f" [记忆] 恢复工作记忆失败: {e}")
+                logger.info(f" [记忆] 恢复工作记忆失败: {e}")
         
         # 恢复情景记忆
         if self._episodic_memory_file.exists():
@@ -1430,9 +1432,9 @@ class MemorySystem:
                 with open(self._episodic_memory_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 self.episodic_memory = [self._dict_to_memory_item(item) for item in data]
-                print(f" [记忆] 恢复情景记忆: {len(self.episodic_memory)}条")
+                logger.info(f" [记忆] 恢复情景记忆: {len(self.episodic_memory)}条")
             except Exception as e:
-                print(f" [记忆] 恢复情景记忆失败: {e}")
+                logger.info(f" [记忆] 恢复情景记忆失败: {e}")
         
         # 恢复遗忘计数
         if self._forgotten_count_file.exists():
@@ -1449,9 +1451,9 @@ class MemorySystem:
                 with open(self._facts_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 self.facts = [self._dict_to_fact_item(item) for item in data]
-                print(f" [记忆] 恢复事实库: {len(self.facts)}条")
+                logger.info(f" [记忆] 恢复事实库: {len(self.facts)}条")
             except Exception as e:
-                print(f" [记忆] 恢复事实库失败: {e}")
+                logger.info(f" [记忆] 恢复事实库失败: {e}")
     
     @staticmethod
     def _dict_to_memory_item(d: Dict[str, Any]) -> MemoryItem:
@@ -1506,7 +1508,7 @@ class MemorySystem:
                 [asdict(item) for item in self.facts]
             )
         except Exception as e:
-            print(f" [记忆] 保存状态失败: {e}")
+            logger.info(f" [记忆] 保存状态失败: {e}")
     
     def _atomic_write_json(self, target_path: Path, data: Any):
         tmp_path = target_path.with_suffix('.tmp')
@@ -1521,7 +1523,7 @@ class MemorySystem:
             self._flush_timer = None
         self._save_memory_state()
         self.vector_store.flush()
-        print(f"[Memory] 全部记忆已 flush (工作:{len(self.working_memory)} 情景:{len(self.episodic_memory)} "
+        logger.info(f"[Memory] 全部记忆已 flush (工作:{len(self.working_memory)} 情景:{len(self.episodic_memory)} "
               f"语义:{self.vector_store.get_stats()['total_docs']} 事实:{len(self.facts)})")
     
     # ==================== 核心方法 ====================
@@ -1651,7 +1653,7 @@ class MemorySystem:
             excess = len(self.episodic_memory) - self.episodic_memory_limit
             self.episodic_memory = self.episodic_memory[excess:]  # 丢弃最旧的
             self.forgotten_count += excess
-            print(f" 情景记忆裁剪: 淘汰 {excess} 条最旧记忆 (上限: {self.episodic_memory_limit})")
+            logger.info(f" 情景记忆裁剪: 淘汰 {excess} 条最旧记忆 (上限: {self.episodic_memory_limit})")
 
         # 重要摘要存入向量库
         if summary_item.importance >= 3:
@@ -1666,7 +1668,7 @@ class MemorySystem:
                 }
             )
         
-        print(f" 记忆压缩: {len(batch)}条 → 1条摘要 (剩余工作记忆: {len(self.working_memory)})")
+        logger.info(f" 记忆压缩: {len(batch)}条 → 1条摘要 (剩余工作记忆: {len(self.working_memory)})")
         
         # 压缩后立即持久化
         self._save_memory_state()
@@ -1704,7 +1706,7 @@ class MemorySystem:
 
         if forgotten > 0:
             self.forgotten_count += forgotten
-            print(f" 遗忘扫描: 清理了 {forgotten} 条过期情景记忆 (累计: {self.forgotten_count})")
+            logger.info(f" 遗忘扫描: 清理了 {forgotten} 条过期情景记忆 (累计: {self.forgotten_count})")
         return forgotten
     
     def _merge_fact(self, new_fact: FactItem):
@@ -1836,7 +1838,7 @@ class MemorySystem:
                 self._save_memory_state()
                 return True
         except Exception as e:
-            print(f" [记忆] 删除失败: {e}")
+            logger.info(f" [记忆] 删除失败: {e}")
         return False
     
     def edit_memory(self, index: int, content: str, layer: str = "working") -> bool:
@@ -1853,7 +1855,7 @@ class MemorySystem:
                 self._save_memory_state()
                 return True
         except Exception as e:
-            print(f" [记忆] 编辑失败: {e}")
+            logger.info(f" [记忆] 编辑失败: {e}")
         return False
     
     def set_importance(self, index: int, importance: int, layer: str = "working") -> bool:
@@ -1874,7 +1876,7 @@ class MemorySystem:
                 self._save_memory_state()
                 return True
         except Exception as e:
-            print(f" [记忆] 设置重要性失败: {e}")
+            logger.info(f" [记忆] 设置重要性失败: {e}")
         return False
     
     def delete_fact(self, index: int) -> bool:
@@ -1953,7 +1955,7 @@ class MemorySystem:
             "semantic": self.vector_store.get_stats()["total_docs"],
             "facts": len(self.facts),
         }
-        print(f" [记忆重整] 合并:{merged_count} 提升:{promoted_count} 清理:{cleaned}")
+        logger.info(f" [记忆重整] 合并:{merged_count} 提升:{promoted_count} 清理:{cleaned}")
         return result
     
     # ==================== 预加载 ====================
@@ -2058,7 +2060,7 @@ class MemorySystem:
                   self._forgotten_count_file, self._facts_file]:
             if f.exists():
                 f.unlink()
-        print(" 所有记忆已清空")
+        logger.info(" 所有记忆已清空")
     
     def get_decay_preview(self) -> Dict[str, Any]:
         return {
@@ -2075,7 +2077,7 @@ if __name__ == "__main__":
     config = {"storage_dir": "./memory/test"}
     memory = MemorySystem(config)
     
-    print("=== 记忆系统 v3.0 测试 ===\n")
+    logger.info("=== 记忆系统 v3.0 测试 ===\n")
     
     # 测试多维梯度评分
     test_cases = [
@@ -2091,13 +2093,13 @@ if __name__ == "__main__":
     for role, content in test_cases:
         score = ImportanceScorer.score(role, content)
         tags = AutoTagger.tag(content)
-        print(f"  [{role}] \"{content}\" → 评分:{score} 标签:{tags}")
+        logger.info(f"  [{role}] \"{content}\" → 评分:{score} 标签:{tags}")
     
     # 测试事实提取
-    print("\n事实提取测试:")
+    logger.info("\n事实提取测试:")
     for role, content in test_cases:
         facts = FactExtractor.extract_facts(role, content, ImportanceScorer.score(role, content))
         for fact in facts:
-            print(f"  [{fact.source}] {fact.content} (置信度:{fact.confidence})")
+            logger.info(f"  [{fact.source}] {fact.content} (置信度:{fact.confidence})")
     
-    print(f"\n统计: {memory.get_stats()}")
+    logger.info(f"\n统计: {memory.get_stats()}")

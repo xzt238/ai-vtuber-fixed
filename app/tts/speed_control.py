@@ -7,6 +7,9 @@ import re
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SpeedMode(Enum):
     """语速模式"""
@@ -56,7 +59,7 @@ class SpeedController:
             SpeedMode.VERY_FAST: 1.6
         }
         
-        print("[SpeedController] 初始化完成")
+        logger.info("[SpeedController] 初始化完成")
     
     def get_speed_factor(self, emotion: str = None) -> float:
         """获取语速因子"""
@@ -186,7 +189,7 @@ class SpeedController:
         if "pause_after_question" in config:
             self.config.pause_after_question = config["pause_after_question"]
         
-        print(f"[SpeedController] 配置已更新: {config}")
+        logger.info(f"[SpeedController] 配置已更新: {config}")
 
 # 全局实例
 _speed_controller: Optional[SpeedController] = None

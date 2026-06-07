@@ -18,6 +18,9 @@ from typing import Optional, Dict, Any, List, Callable
 from datetime import datetime
 
 from . import Bot, BotMessage
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class QQBot(Bot):
@@ -36,8 +39,8 @@ class QQBot(Bot):
         # QQ客户端
         self._client = None
         
-        print(f" QQ Bot初始化完成")
-        print(f" App ID: {self.app_id}")
+        logger.info(f" QQ Bot初始化完成")
+        logger.info(f" App ID: {self.app_id}")
     
     async def connect(self) -> bool:
         """连接到QQ"""
@@ -50,7 +53,7 @@ class QQBot(Bot):
             # 创建Bot客户端
             class MyClient(botpy.Client):
                 async def on_ready(self):
-                    print(f" QQ Bot已登录: {self.robot.name}")
+                    logger.info(f" QQ Bot已登录: {self.robot.name}")
                     self.parent.connected = True
                 
                 async def on_at_message_create(self, message: Message):
@@ -78,7 +81,7 @@ class QQBot(Bot):
             self._client.parent = self
             
             # 连接到QQ
-            print(f" 正在连接到QQ...")
+            logger.info(f" 正在连接到QQ...")
             
             # 启动Bot
             asyncio.create_task(self._client.start(appid=self.app_id, token=self.token, secret=self.secret))
@@ -90,17 +93,17 @@ class QQBot(Bot):
                 await asyncio.sleep(1)
             
             if self.connected:
-                print(" QQ Bot连接成功")
+                logger.info(" QQ Bot连接成功")
                 return True
             else:
-                print(" QQ Bot连接超时")
+                logger.info(" QQ Bot连接超时")
                 return False
             
         except ImportError:
-            print(" 未安装qq-bot.py库，请执行: pip install qq-bot.py")
+            logger.info(" 未安装qq-bot.py库，请执行: pip install qq-bot.py")
             return False
         except Exception as e:
-            print(f" QQ Bot连接失败: {e}")
+            logger.info(f" QQ Bot连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -112,16 +115,16 @@ class QQBot(Bot):
                 self._client = None
             
             self.connected = False
-            print(" QQ Bot已断开")
+            logger.info(" QQ Bot已断开")
             
         except Exception as e:
-            print(f" QQ Bot断开失败: {e}")
+            logger.info(f" QQ Bot断开失败: {e}")
     
     async def send_message(self, channel_id: str, content: str, message_type: str = "text") -> bool:
         """发送QQ消息"""
         try:
             if not self.connected or not self._client:
-                print(" QQ Bot未连接")
+                logger.info(" QQ Bot未连接")
                 return False
             
             # 发送消息
@@ -130,18 +133,18 @@ class QQBot(Bot):
                 content=content
             )
             
-            print(f" QQ消息发送成功: {content}")
+            logger.info(f" QQ消息发送成功: {content}")
             return True
             
         except Exception as e:
-            print(f" QQ消息发送失败: {e}")
+            logger.info(f" QQ消息发送失败: {e}")
             return False
     
     async def send_file(self, channel_id: str, file_path: str, caption: str = "") -> bool:
         """发送QQ文件"""
         try:
             if not self.connected or not self._client:
-                print(" QQ Bot未连接")
+                logger.info(" QQ Bot未连接")
                 return False
             
             # 上传文件
@@ -158,18 +161,18 @@ class QQBot(Bot):
                 msg_id=file_info.get("id", "")
             )
             
-            print(f" QQ文件发送成功: {file_path}")
+            logger.info(f" QQ文件发送成功: {file_path}")
             return True
             
         except Exception as e:
-            print(f" QQ文件发送失败: {e}")
+            logger.info(f" QQ文件发送失败: {e}")
             return False
     
     async def send_image(self, channel_id: str, image_path: str, caption: str = "") -> bool:
         """发送QQ图片"""
         try:
             if not self.connected or not self._client:
-                print(" QQ Bot未连接")
+                logger.info(" QQ Bot未连接")
                 return False
             
             # 上传图片
@@ -186,11 +189,11 @@ class QQBot(Bot):
                 msg_id=file_info.get("id", "")
             )
             
-            print(f" QQ图片发送成功: {image_path}")
+            logger.info(f" QQ图片发送成功: {image_path}")
             return True
             
         except Exception as e:
-            print(f" QQ图片发送失败: {e}")
+            logger.info(f" QQ图片发送失败: {e}")
             return False
 
 

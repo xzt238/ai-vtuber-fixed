@@ -24,6 +24,9 @@ UI 交互:
 
 import json
 from typing import Dict, Any, List, Optional, Callable
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # 工具名称 → 友好显示名 + 图标（用于聊天界面提示）
@@ -49,7 +52,7 @@ def get_tool_schemas() -> List[Dict[str, Any]]:
         from app.tools.companion import get_companion_tool_schemas
         return get_companion_tool_schemas()
     except Exception as e:
-        print(f"[FC] 获取工具 schema 失败: {e}")
+        logger.info(f"[FC] 获取工具 schema 失败: {e}")
         return []
 
 
@@ -158,7 +161,7 @@ def handle_tool_calls_stream(
             "content": result_content
         })
 
-        print(f"[FC] 工具执行: {tool_name}({arguments}) → {result_content[:100]}")
+        logger.info(f"[FC] 工具执行: {tool_name}({arguments}) → {result_content[:100]}")
 
     # 3. 将工具结果反馈给 LLM，获取最终自然语言回复
     data = {
@@ -223,7 +226,7 @@ def handle_tool_calls_stream(
 
     except Exception as e:
         full_text = f"工具结果处理失败: {str(e)}"
-        print(f"[FC] 二次请求失败: {e}")
+        logger.info(f"[FC] 二次请求失败: {e}")
 
     return {
         "text": full_text,

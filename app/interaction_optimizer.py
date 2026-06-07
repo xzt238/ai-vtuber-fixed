@@ -10,6 +10,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from collections import deque
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class FeedbackType(Enum):
     """反馈类型"""
@@ -138,7 +141,7 @@ class ActionQueue:
                 except asyncio.TimeoutError:
                     continue
                 except Exception as e:
-                    print(f"[ActionQueue] 处理失败: {e}")
+                    logger.info(f"[ActionQueue] 处理失败: {e}")
         
         self.process_task = asyncio.create_task(process_loop())
     
@@ -188,7 +191,7 @@ class FeedbackManager:
                 else:
                     handler(feedback)
             except Exception as e:
-                print(f"[FeedbackManager] 反馈处理失败: {e}")
+                logger.info(f"[FeedbackManager] 反馈处理失败: {e}")
     
     async def show_success(self, action_id: str, message: str):
         """显示成功反馈"""
@@ -241,7 +244,7 @@ class InteractionOptimizer:
             "queued_actions": 0
         }
         
-        print("[InteractionOptimizer] 初始化完成")
+        logger.info("[InteractionOptimizer] 初始化完成")
     
     async def process_action(self, action: UserAction, 
                            handler: Callable[[UserAction], Awaitable]) -> Any:

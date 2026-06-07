@@ -9,6 +9,9 @@ import json
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigValidationError(Exception):
@@ -400,7 +403,7 @@ def generate_validation_report() -> str:
 
 if __name__ == "__main__":
     # 测试配置验证
-    print("开始配置验证...")
+    logger.info("开始配置验证...")
     report = generate_validation_report()
-    print(report)
-    print("配置验证完成")
+    logger.info(report)
+    logger.info("配置验证完成")

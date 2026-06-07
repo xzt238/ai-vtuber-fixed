@@ -21,6 +21,9 @@ from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 # 版本信息
 __version__ = "1.0.0"
@@ -59,7 +62,7 @@ class Bot:
         self._message_callbacks: List[Callable] = []
         self._command_callbacks: Dict[str, Callable] = {}
         
-        print(f" Bot初始化完成: {platform}")
+        logger.info(f" Bot初始化完成: {platform}")
     
     def add_message_callback(self, callback: Callable):
         """添加消息回调"""
@@ -84,7 +87,7 @@ class Bot:
             try:
                 callback(message)
             except Exception as e:
-                print(f" 消息回调失败: {e}")
+                logger.info(f" 消息回调失败: {e}")
     
     async def connect(self) -> bool:
         """连接到平台"""
@@ -121,49 +124,49 @@ class DiscordBot(Bot):
         self.command_prefix = self.config.get("command_prefix", "!")
         self.intents = self.config.get("intents", [])
         
-        print(f" Discord Bot初始化完成")
-        print(f" 命令前缀: {self.command_prefix}")
+        logger.info(f" Discord Bot初始化完成")
+        logger.info(f" 命令前缀: {self.command_prefix}")
     
     async def connect(self) -> bool:
         """连接到Discord"""
         try:
             if not self.token:
-                print(" Discord Bot Token未配置")
+                logger.info(" Discord Bot Token未配置")
                 return False
             
             # 这里应该实现实际的Discord连接
             # 由于Discord连接需要特定的库，这里只是示例
-            print(" 连接到Discord...")
+            logger.info(" 连接到Discord...")
             
             # 模拟连接
             await asyncio.sleep(1)
             
             self.connected = True
-            print(" Discord Bot连接成功")
+            logger.info(" Discord Bot连接成功")
             
             return True
             
         except Exception as e:
-            print(f" Discord Bot连接失败: {e}")
+            logger.info(f" Discord Bot连接失败: {e}")
             return False
     
     async def disconnect(self):
         """断开Discord连接"""
         try:
             if self.connected:
-                print(" 断开Discord Bot连接")
+                logger.info(" 断开Discord Bot连接")
                 self.connected = False
         except Exception as e:
-            print(f" 断开Discord Bot连接失败: {e}")
+            logger.info(f" 断开Discord Bot连接失败: {e}")
     
     async def send_message(self, channel_id: str, content: str, message_type: str = "text") -> bool:
         """发送Discord消息"""
         try:
             if not self.connected:
-                print(" Discord Bot未连接")
+                logger.info(" Discord Bot未连接")
                 return False
             
-            print(f" 发送Discord消息: {content}")
+            logger.info(f" 发送Discord消息: {content}")
             
             # 这里应该实现实际的消息发送
             # 由于Discord消息发送需要特定的库，这里只是示例
@@ -171,21 +174,21 @@ class DiscordBot(Bot):
             # 模拟消息发送
             await asyncio.sleep(0.1)
             
-            print(f" Discord消息发送成功")
+            logger.info(f" Discord消息发送成功")
             return True
             
         except Exception as e:
-            print(f" Discord消息发送失败: {e}")
+            logger.info(f" Discord消息发送失败: {e}")
             return False
     
     async def send_file(self, channel_id: str, file_path: str, caption: str = "") -> bool:
         """发送Discord文件"""
         try:
             if not self.connected:
-                print(" Discord Bot未连接")
+                logger.info(" Discord Bot未连接")
                 return False
             
-            print(f" 发送Discord文件: {file_path}")
+            logger.info(f" 发送Discord文件: {file_path}")
             
             # 这里应该实现实际的文件发送
             # 由于Discord文件发送需要特定的库，这里只是示例
@@ -193,11 +196,11 @@ class DiscordBot(Bot):
             # 模拟文件发送
             await asyncio.sleep(0.1)
             
-            print(f" Discord文件发送成功")
+            logger.info(f" Discord文件发送成功")
             return True
             
         except Exception as e:
-            print(f" Discord文件发送失败: {e}")
+            logger.info(f" Discord文件发送失败: {e}")
             return False
     
     async def handle_command(self, message: BotMessage):
@@ -217,7 +220,7 @@ class DiscordBot(Bot):
                     await self.send_message(message.channel_id, f"未知命令: {command}")
             
         except Exception as e:
-            print(f" Discord命令处理失败: {e}")
+            logger.info(f" Discord命令处理失败: {e}")
 
 
 class TelegramBot(Bot):
@@ -232,49 +235,49 @@ class TelegramBot(Bot):
         # Telegram特定配置
         self.parse_mode = self.config.get("parse_mode", "HTML")
         
-        print(f" Telegram Bot初始化完成")
-        print(f" 解析模式: {self.parse_mode}")
+        logger.info(f" Telegram Bot初始化完成")
+        logger.info(f" 解析模式: {self.parse_mode}")
     
     async def connect(self) -> bool:
         """连接到Telegram"""
         try:
             if not self.token:
-                print(" Telegram Bot Token未配置")
+                logger.info(" Telegram Bot Token未配置")
                 return False
             
             # 这里应该实现实际的Telegram连接
             # 由于Telegram连接需要特定的库，这里只是示例
-            print(" 连接到Telegram...")
+            logger.info(" 连接到Telegram...")
             
             # 模拟连接
             await asyncio.sleep(1)
             
             self.connected = True
-            print(" Telegram Bot连接成功")
+            logger.info(" Telegram Bot连接成功")
             
             return True
             
         except Exception as e:
-            print(f" Telegram Bot连接失败: {e}")
+            logger.info(f" Telegram Bot连接失败: {e}")
             return False
     
     async def disconnect(self):
         """断开Telegram连接"""
         try:
             if self.connected:
-                print(" 断开Telegram Bot连接")
+                logger.info(" 断开Telegram Bot连接")
                 self.connected = False
         except Exception as e:
-            print(f" 断开Telegram Bot连接失败: {e}")
+            logger.info(f" 断开Telegram Bot连接失败: {e}")
     
     async def send_message(self, chat_id: str, content: str, message_type: str = "text") -> bool:
         """发送Telegram消息"""
         try:
             if not self.connected:
-                print(" Telegram Bot未连接")
+                logger.info(" Telegram Bot未连接")
                 return False
             
-            print(f" 发送Telegram消息: {content}")
+            logger.info(f" 发送Telegram消息: {content}")
             
             # 这里应该实现实际的消息发送
             # 由于Telegram消息发送需要特定的库，这里只是示例
@@ -282,21 +285,21 @@ class TelegramBot(Bot):
             # 模拟消息发送
             await asyncio.sleep(0.1)
             
-            print(f" Telegram消息发送成功")
+            logger.info(f" Telegram消息发送成功")
             return True
             
         except Exception as e:
-            print(f" Telegram消息发送失败: {e}")
+            logger.info(f" Telegram消息发送失败: {e}")
             return False
     
     async def send_file(self, chat_id: str, file_path: str, caption: str = "") -> bool:
         """发送Telegram文件"""
         try:
             if not self.connected:
-                print(" Telegram Bot未连接")
+                logger.info(" Telegram Bot未连接")
                 return False
             
-            print(f" 发送Telegram文件: {file_path}")
+            logger.info(f" 发送Telegram文件: {file_path}")
             
             # 这里应该实现实际的文件发送
             # 由于Telegram文件发送需要特定的库，这里只是示例
@@ -304,11 +307,11 @@ class TelegramBot(Bot):
             # 模拟文件发送
             await asyncio.sleep(0.1)
             
-            print(f" Telegram文件发送成功")
+            logger.info(f" Telegram文件发送成功")
             return True
             
         except Exception as e:
-            print(f" Telegram文件发送失败: {e}")
+            logger.info(f" Telegram文件发送失败: {e}")
             return False
 
 
@@ -330,8 +333,8 @@ class BotManager:
         # Bot缓存
         self.bots: Dict[str, Bot] = {}
         
-        print(f" Bot管理器初始化完成")
-        print(f" 存储目录: {self.storage_dir}")
+        logger.info(f" Bot管理器初始化完成")
+        logger.info(f" 存储目录: {self.storage_dir}")
     
     def create_discord_bot(self, config: Dict[str, Any] = None) -> DiscordBot:
         """创建Discord Bot"""
@@ -359,7 +362,7 @@ class BotManager:
             bot = self.bots[bot_id]
             asyncio.create_task(bot.disconnect())
             del self.bots[bot_id]
-            print(f" Bot移除成功: {bot_id}")
+            logger.info(f" Bot移除成功: {bot_id}")
     
     async def connect_all(self):
         """连接所有Bot"""
@@ -367,7 +370,7 @@ class BotManager:
             try:
                 await bot.connect()
             except Exception as e:
-                print(f" Bot连接失败 {bot_id}: {e}")
+                logger.info(f" Bot连接失败 {bot_id}: {e}")
     
     async def disconnect_all(self):
         """断开所有Bot"""
@@ -375,7 +378,7 @@ class BotManager:
             try:
                 await bot.disconnect()
             except Exception as e:
-                print(f" Bot断开失败 {bot_id}: {e}")
+                logger.info(f" Bot断开失败 {bot_id}: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""

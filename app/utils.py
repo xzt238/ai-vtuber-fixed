@@ -31,6 +31,9 @@ import shutil                       # 高级文件操作：递归删除目录等
 from pathlib import Path            # 面向对象的路径处理，跨平台兼容（Windows/Linux/macOS）
 from typing import Optional, Union  # 类型注解：Optional 表示可选，Union 表示多类型
 from contextlib import contextmanager  # 装饰器：将普通函数变为上下文管理器（支持 with 语法）
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================
@@ -179,7 +182,7 @@ def temp_file(suffix: str = "", prefix: str = "tmp", dir: Optional[str] = None, 
                 os.unlink(temp_path)  # 删除临时文件
             except OSError as e:
                 # 删除失败不应影响主流程（如文件被其他进程占用）
-                print(f"️ 清理临时文件失败: {e}")
+                logger.info(f"️ 清理临时文件失败: {e}")
 
 
 @contextmanager
@@ -219,7 +222,7 @@ def temp_dir(suffix: str = "", prefix: str = "tmp", dir: Optional[str] = None, d
             try:
                 shutil.rmtree(temp_path)  # 递归删除整个目录及其内容
             except OSError as e:
-                print(f"️ 清理临时目录失败: {e}")
+                logger.info(f"️ 清理临时目录失败: {e}")
 
 
 # ============================================
@@ -429,18 +432,18 @@ def load_env_or_config(key: str, config: dict, default=None):
 if __name__ == "__main__":
     # ===== 模块自测入口 =====
     # 直接运行此脚本时，执行基本的功能测试
-    print(" 测试工具函数...")
+    logger.info(" 测试工具函数...")
 
     # 测试路径验证
     try:
         path = validate_path("test.txt")
-        print(f" 路径验证: {path}")
+        logger.info(f" 路径验证: {path}")
     except ValueError as e:
-        print(f" 路径验证: {e}")
+        logger.info(f" 路径验证: {e}")
 
     # 测试临时文件
     with temp_file(suffix=".txt") as tmp:
-        print(f" 临时文件: {tmp}")
+        logger.info(f" 临时文件: {tmp}")
         with open(tmp, 'w') as f:
             f.write("test")
 
@@ -448,6 +451,6 @@ if __name__ == "__main__":
     try:
         raise FileNotFoundError("test.txt")
     except Exception as e:
-        print(f" 友好错误: {friendly_error(e)}")
+        logger.info(f" 友好错误: {friendly_error(e)}")
 
-    print(" 测试完成")
+    logger.info(" 测试完成")

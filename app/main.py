@@ -39,9 +39,12 @@ import os
 import sys
 import subprocess as _subprocess
 import threading  # KI-013: 用于 _lazy_modules_lock
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Windows GBK 编码安全网：强制 stdout/stderr 使用 UTF-8
-# 避免 print() 含 emoji/特殊字符时 UnicodeEncodeError 崩溃
+# 避免 logger.info() 含 emoji/特殊字符时 UnicodeEncodeError 崩溃
 # 必须在所有其他 import 之前执行，因为其他模块的顶层 print 可能触发此问题
 if sys.platform == "win32":
     try:
@@ -742,18 +745,18 @@ class AIVTuber:
         try:
             self.config = Config(config_path)
         except FileNotFoundError:
-            print("\n" + "="*50)
-            print("  错误: 配置文件不存在!")
-            print(f"  路径: {config_path or 'app/config.yaml'}")
-            print("  请确认配置文件存在，或使用 --config 指定路径")
-            print("="*50)
+            logger.info("\n" + "="*50)
+            logger.info("  错误: 配置文件不存在!")
+            logger.info(f"  路径: {config_path or 'app/config.yaml'}")
+            logger.info("  请确认配置文件存在，或使用 --config 指定路径")
+            logger.info("="*50)
             sys.exit(1)
         except Exception as e:
-            print("\n" + "="*50)
-            print("  错误: 配置文件加载失败!")
-            print(f"  原因: {e}")
-            print("  请检查 config.yaml 格式是否正确")
-            print("="*50)
+            logger.info("\n" + "="*50)
+            logger.info("  错误: 配置文件加载失败!")
+            logger.info(f"  原因: {e}")
+            logger.info("  请检查 config.yaml 格式是否正确")
+            logger.info("="*50)
             sys.exit(1)
 
         # 初始化日志
@@ -801,11 +804,11 @@ class AIVTuber:
         # RebuildWorker 从后台线程访问 _lazy_modules，必须加锁防止竞态
         self._lazy_modules_lock = threading.Lock()
 
-        print("\n" + "="*50)
+        logger.info("\n" + "="*50)
         game_separator()
         game_info("系统初始化完成", "模块将在首次使用时懒加载")
         game_header("就绪")
-        print("="*50)
+        logger.info("="*50)
         
         # 注册 atexit 回调：确保异常退出时也能 flush 记忆系统
         atexit.register(self._atexit_flush)
@@ -1174,7 +1177,7 @@ class AIVTuber:
                 self._memory_initialized = True  # 标记为已初始化（避免反复重试导致性能问题）
                 game_fail("记忆系统", f"初始化失败: {e}")
                 self.logger.error(f"记忆系统初始化失败: {e}", exc_info=True)
-                print(f"[CRITICAL] 记忆系统初始化失败: {type(e).__name__}: {e}")
+                logger.info(f"[CRITICAL] 记忆系统初始化失败: {type(e).__name__}: {e}")
                 # 打印完整堆栈帮助调试
                 import traceback
                 traceback.print_exc()
@@ -2041,9 +2044,9 @@ class AIVTuber:
             - 语音模式: select 检测 stdin 输入停止 → 录音3秒 → process_audio → 播放
             - 文字模式: input() 读取 → process_message → speak() → 播放
         """
-        print("\n 咕咕嘎嘎 - 交互模式")
-        print("输入文字对话，按 Ctrl+C 退出")
-        print("输入 'voice' 开启语音输入模式\n")
+        logger.info("\n 咕咕嘎嘎 - 交互模式")
+        logger.info("输入文字对话，按 Ctrl+C 退出")
+        logger.info("输入 'voice' 开启语音输入模式\n")
 
         voice_mode = False
         _voice = None  # 延迟获取 voice 模块（避免启动时就加载 sounddevice）
@@ -2051,13 +2054,13 @@ class AIVTuber:
         try:
             while True:
                 if voice_mode:
-                    print("\n 语音输入模式已开启，按任意键停止...")
+                    logger.info("\n 语音输入模式已开启，按任意键停止...")
                     import select
                     # 非阻塞检测 stdin 是否有输入（超时 0 秒立即返回）
                     if select.select([sys.stdin], [], [], 0)[0]:
                         input()  # 消耗掉按键输入
                         voice_mode = False
-                        print(" 语音输入模式已关闭")
+                        logger.info(" 语音输入模式已关闭")
                         continue
 
                     # 懒加载 voice 模块（仅在首次进入语音模式时加载）
@@ -2071,9 +2074,9 @@ class AIVTuber:
                         audio_file = _voice.stop()
 
                         if audio_file:
-                            print(f" 录音文件: {audio_file}")
+                            logger.info(f" 录音文件: {audio_file}")
                             result = self.process_audio(audio_file)
-                            print(f" 咕咕嘎嘎: {result['text']}")
+                            logger.info(f" 咕咕嘎嘎: {result['text']}")
 
                             # 播放 TTS 生成的回复音频
                             if result.get("audio"):
@@ -2091,15 +2094,15 @@ class AIVTuber:
                             _voice = self.voice
                         if _voice.is_available():
                             voice_mode = True
-                            print(" 进入语音输入模式...")
+                            logger.info(" 进入语音输入模式...")
                         else:
-                            print("️ 语音输入不可用，请安装sounddevice")
+                            logger.info("️ 语音输入不可用，请安装sounddevice")
                         continue
 
                     # 普通文字对话
-                    print(" 思考中...")
+                    logger.info(" 思考中...")
                     result = self.process_message(user_input)
-                    print(f" 咕咕嘎嘎: {result['text']}\n")
+                    logger.info(f" 咕咕嘎嘎: {result['text']}\n")
 
                     # TTS 合成并播放回复
                     audio_path = self.speak(result["text"])
@@ -2107,7 +2110,7 @@ class AIVTuber:
                         self._play_audio(audio_path)
 
         except KeyboardInterrupt:
-            print("\n 再见喵~")
+            logger.info("\n 再见喵~")
 
     def run_web(self, desktop_mode: bool = False):
         """
@@ -2249,7 +2252,7 @@ class AIVTuber:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
-            print("\n 服务已停止")
+            logger.info("\n 服务已停止")
             self.stop()
 
     def _load_history(self):
@@ -2266,10 +2269,10 @@ class AIVTuber:
                     # v1.11.30 OPT-3: 仅加载最近的条目到内存，不保存完整历史引用
                     # 完整历史仍在磁盘，需要时可重新读取
                     self.history = data[-(self.MAX_HISTORY * 2):]
-                    print(f"  [历史] 恢复对话历史: {len(self.history)}条 (磁盘共 {len(data)} 条)")
+                    logger.info(f"  [历史] 恢复对话历史: {len(self.history)}条 (磁盘共 {len(data)} 条)")
                     return
         except Exception as e:
-            print(f"  [历史] 恢复对话历史失败: {e}")
+            logger.info(f"  [历史] 恢复对话历史失败: {e}")
 
         # 持久化文件不存在或为空，尝试从记忆系统的工作记忆恢复
         try:
@@ -2286,12 +2289,12 @@ class AIVTuber:
                     content = getattr(item, 'content', None)
                     if role and content:
                         self.history.append({"role": role, "content": content, "time": datetime.now().isoformat()})
-                print(f"  [历史] 从工作记忆恢复对话历史: {len(self.history)}条")
+                logger.info(f"  [历史] 从工作记忆恢复对话历史: {len(self.history)}条")
                 # 首次恢复后保存到磁盘
                 self._save_history()
                 return
         except Exception as e:
-            print(f"  [历史] 从工作记忆恢复失败: {e}")
+            logger.info(f"  [历史] 从工作记忆恢复失败: {e}")
         self.history = []
 
     def _save_history(self):
@@ -2320,11 +2323,11 @@ class AIVTuber:
                         json.dump(data, f, ensure_ascii=False, indent=2)
                     os.replace(tmp_file, history_file)
                 except Exception as e:
-                    print(f"  [历史] 异步保存对话历史失败: {e}")
+                    logger.info(f"  [历史] 异步保存对话历史失败: {e}")
 
             self._save_executor.submit(_async_write)
         except Exception as e:
-            print(f"  [历史] 保存对话历史失败: {e}")
+            logger.info(f"  [历史] 保存对话历史失败: {e}")
 
     def record_interaction(self, user_text: str, assistant_text: str):
         """
@@ -2436,7 +2439,7 @@ class AIVTuber:
     def _signal_handler(self, signum, frame):
         """M1修复: SIGTERM/SIGINT 信号处理，确保优雅关停"""
         sig_name = {2: "SIGINT", 15: "SIGTERM"}.get(signum, f"Signal {signum}")
-        print(f"\n[Signal] 收到 {sig_name}，正在优雅关停...")
+        logger.info(f"\n[Signal] 收到 {sig_name}，正在优雅关停...")
         self.stop()
         sys.exit(0)
 
@@ -2597,7 +2600,7 @@ class AIVTuber:
                     subprocess.Popen(["play", audio_path],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
-            print(f"️ 播放失败: {e}")
+            logger.info(f"️ 播放失败: {e}")
 
     # ============ 线程安全的模块重建方法 ============
     # KI-013 FIX: 提供线程安全的 rebuild 方法，供 settings_page.py 的 RebuildWorker 调用
@@ -2755,12 +2758,12 @@ def main():
             # 根据参数选择运行模式
             if len(sys.argv) == 1:
                 # 无参数 → 默认启动 Web 模式
-                print("\n 启动Web模式...")
+                logger.info("\n 启动Web模式...")
                 vtuber.run_web(desktop_mode=desktop_mode)
 
             elif args.live2d:
                 # --live2d → 仅启动 Live2D 独立服务
-                print("\n 启动Live2D...")
+                logger.info("\n 启动Live2D...")
                 vtuber.live2d.start_server()
 
             elif args.web:
@@ -2769,30 +2772,30 @@ def main():
 
             elif args.desktop:
                 # --desktop → 桌面模式（由 launcher.py 调用）
-                print("\n 启动桌面模式...")
+                logger.info("\n 启动桌面模式...")
                 vtuber.run_web(desktop_mode=True)
 
             elif args.test_llm:
                 # --test-llm → 测试 LLM 连接
-                print(" 测试LLM...")
+                logger.info(" 测试LLM...")
                 result = vtuber.llm.chat("你好")
-                print(f" 回复: {result.get('text')}")
+                logger.info(f" 回复: {result.get('text')}")
 
             elif args.test_tts:
                 # --test-tts TEXT → 测试 TTS 合成
-                print(f" 测试TTS: {args.test_tts}")
+                logger.info(f" 测试TTS: {args.test_tts}")
                 audio = vtuber.tts.speak(args.test_tts)
-                print(f" 文件: {audio}")
+                logger.info(f" 文件: {audio}")
 
             else:
                 # --interactive 或其他 → 交互模式
                 vtuber.run_interactive()
 
     except KeyboardInterrupt:
-        print("\n[EXIT] User interrupted")
+        logger.info("\n[EXIT] User interrupted")
     except Exception as e:
         # 未捕获的全局异常: 打印堆栈并暂停，便于调试
-        print(f"\n[FATAL] Error: {e}")
+        logger.info(f"\n[FATAL] Error: {e}")
         import traceback
         traceback.print_exc()
         # v1.9.60: 桌面模式下跳过 input()（无控制台，input() 会挂起进程）

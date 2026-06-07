@@ -10,6 +10,9 @@ from typing import Optional, Dict, Any, Callable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SVCModelType(Enum):
     """SVC模型类型"""
@@ -95,7 +98,7 @@ class SVCManager:
         self.is_processing = False
         self.processing_task = None
         
-        print(f"[SVC] 初始化完成: model_type={self.model_type.value}, device={self.device}")
+        logger.info(f"[SVC] 初始化完成: model_type={self.model_type.value}, device={self.device}")
     
     async def load_model(self) -> bool:
         """加载模型"""
@@ -105,10 +108,10 @@ class SVCManager:
             elif self.model_type == SVCModelType.RVC:
                 return await self._load_rvc()
             else:
-                print(f"[SVC] 不支持的模型类型: {self.model_type}")
+                logger.info(f"[SVC] 不支持的模型类型: {self.model_type}")
                 return False
         except Exception as e:
-            print(f"[SVC] 模型加载失败: {e}")
+            logger.info(f"[SVC] 模型加载失败: {e}")
             return False
     
     async def _load_so_vits_svc(self) -> bool:
@@ -116,12 +119,12 @@ class SVCManager:
         try:
             # 检查模型文件是否存在
             if not os.path.exists(self.model_path):
-                print(f"[SVC] 模型文件不存在: {self.model_path}")
+                logger.info(f"[SVC] 模型文件不存在: {self.model_path}")
                 return False
             
             # 这里应该加载真实的So-VITS-SVC模型
             # 示例代码，实际实现需要根据So-VITS-SVC的API
-            print(f"[SVC] 加载So-VITS-SVC模型: {self.model_path}")
+            logger.info(f"[SVC] 加载So-VITS-SVC模型: {self.model_path}")
             
             # 模拟模型加载
             self.model = {
@@ -132,11 +135,11 @@ class SVCManager:
             }
             
             self.model_loaded = True
-            print("[SVC] So-VITS-SVC模型加载成功")
+            logger.info("[SVC] So-VITS-SVC模型加载成功")
             return True
             
         except Exception as e:
-            print(f"[SVC] So-VITS-SVC模型加载失败: {e}")
+            logger.info(f"[SVC] So-VITS-SVC模型加载失败: {e}")
             return False
     
     async def _load_rvc(self) -> bool:
@@ -144,11 +147,11 @@ class SVCManager:
         try:
             # 检查模型文件是否存在
             if not os.path.exists(self.model_path):
-                print(f"[SVC] 模型文件不存在: {self.model_path}")
+                logger.info(f"[SVC] 模型文件不存在: {self.model_path}")
                 return False
             
             # 这里应该加载真实的RVC模型
-            print(f"[SVC] 加载RVC模型: {self.model_path}")
+            logger.info(f"[SVC] 加载RVC模型: {self.model_path}")
             
             # 模拟模型加载
             self.model = {
@@ -158,17 +161,17 @@ class SVCManager:
             }
             
             self.model_loaded = True
-            print("[SVC] RVC模型加载成功")
+            logger.info("[SVC] RVC模型加载成功")
             return True
             
         except Exception as e:
-            print(f"[SVC] RVC模型加载失败: {e}")
+            logger.info(f"[SVC] RVC模型加载失败: {e}")
             return False
     
     async def convert_audio(self, audio_data: np.ndarray, sample_rate: int = None) -> Optional[np.ndarray]:
         """转换音频"""
         if not self.model_loaded:
-            print("[SVC] 模型未加载")
+            logger.info("[SVC] 模型未加载")
             return None
         
         try:
@@ -204,7 +207,7 @@ class SVCManager:
             return result
             
         except Exception as e:
-            print(f"[SVC] 音频转换失败: {e}")
+            logger.info(f"[SVC] 音频转换失败: {e}")
             return None
     
     async def _convert_so_vits_svc(self, audio_data: np.ndarray, sample_rate: int = None) -> Optional[np.ndarray]:
@@ -213,7 +216,7 @@ class SVCManager:
         # 示例代码，实际实现需要根据So-VITS-SVC的API
         
         # 模拟转换（实际应该调用模型推理）
-        print("[SVC] 执行So-VITS-SVC转换...")
+        logger.info("[SVC] 执行So-VITS-SVC转换...")
         
         # 返回转换后的音频（这里返回原始音频作为示例）
         return audio_data
@@ -221,7 +224,7 @@ class SVCManager:
     async def _convert_rvc(self, audio_data: np.ndarray, sample_rate: int = None) -> Optional[np.ndarray]:
         """RVC转换"""
         # 这里应该调用真实的RVC转换
-        print("[SVC] 执行RVC转换...")
+        logger.info("[SVC] 执行RVC转换...")
         
         # 返回转换后的音频（这里返回原始音频作为示例）
         return audio_data
@@ -233,7 +236,7 @@ class SVCManager:
         
         self.is_processing = True
         self.processing_task = asyncio.create_task(self._processing_loop())
-        print("[SVC] 开始音频处理")
+        logger.info("[SVC] 开始音频处理")
     
     async def stop_processing(self):
         """停止处理音频流"""
@@ -244,7 +247,7 @@ class SVCManager:
                 await self.processing_task
             except asyncio.CancelledError:
                 pass
-        print("[SVC] 停止音频处理")
+        logger.info("[SVC] 停止音频处理")
     
     async def _processing_loop(self):
         """处理循环"""
@@ -261,7 +264,7 @@ class SVCManager:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f"[SVC] 处理循环错误: {e}")
+            logger.info(f"[SVC] 处理循环错误: {e}")
     
     def get_status(self) -> Dict[str, Any]:
         """获取状态"""
@@ -282,7 +285,7 @@ class SVCManager:
         self.model_loaded = False
         await self.input_buffer.clear()
         await self.output_buffer.clear()
-        print("[SVC] 模型已卸载")
+        logger.info("[SVC] 模型已卸载")
 
 # 全局SVC管理器实例
 _svc_manager: Optional[SVCManager] = None

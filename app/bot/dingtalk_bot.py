@@ -18,6 +18,9 @@ from typing import Optional, Dict, Any, List, Callable
 from datetime import datetime
 
 from . import Bot, BotMessage
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DingTalkBot(Bot):
@@ -35,8 +38,8 @@ class DingTalkBot(Bot):
         # 钉钉客户端
         self._client = None
         
-        print(f" 钉钉 Bot初始化完成")
-        print(f" App Key: {self.app_key}")
+        logger.info(f" 钉钉 Bot初始化完成")
+        logger.info(f" App Key: {self.app_key}")
     
     async def connect(self) -> bool:
         """连接到钉钉"""
@@ -51,24 +54,24 @@ class DingTalkBot(Bot):
             )
             
             # 测试连接
-            print(f" 正在连接到钉钉...")
+            logger.info(f" 正在连接到钉钉...")
             
             # 获取access_token
             access_token = self._client.access_token
             
             if access_token:
                 self.connected = True
-                print(" 钉钉 Bot连接成功")
+                logger.info(" 钉钉 Bot连接成功")
                 return True
             else:
-                print(" 钉钉 Bot连接失败")
+                logger.info(" 钉钉 Bot连接失败")
                 return False
             
         except ImportError:
-            print(" 未安装dingtalk-sdk库，请执行: pip install dingtalk-sdk")
+            logger.info(" 未安装dingtalk-sdk库，请执行: pip install dingtalk-sdk")
             return False
         except Exception as e:
-            print(f" 钉钉 Bot连接失败: {e}")
+            logger.info(f" 钉钉 Bot连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -78,16 +81,16 @@ class DingTalkBot(Bot):
             self._client = None
             
             self.connected = False
-            print(" 钉钉 Bot已断开")
+            logger.info(" 钉钉 Bot已断开")
             
         except Exception as e:
-            print(f" 钉钉 Bot断开失败: {e}")
+            logger.info(f" 钉钉 Bot断开失败: {e}")
     
     async def send_message(self, chat_id: str, content: str, message_type: str = "text") -> bool:
         """发送钉钉消息"""
         try:
             if not self.connected or not self._client:
-                print(" 钉钉 Bot未连接")
+                logger.info(" 钉钉 Bot未连接")
                 return False
             
             # 构建消息内容
@@ -104,18 +107,18 @@ class DingTalkBot(Bot):
                 msg=msg
             )
             
-            print(f" 钉钉消息发送成功: {content}")
+            logger.info(f" 钉钉消息发送成功: {content}")
             return True
             
         except Exception as e:
-            print(f" 钉钉消息发送失败: {e}")
+            logger.info(f" 钉钉消息发送失败: {e}")
             return False
     
     async def send_markdown(self, chat_id: str, title: str, content: str) -> bool:
         """发送钉钉Markdown消息"""
         try:
             if not self.connected or not self._client:
-                print(" 钉钉 Bot未连接")
+                logger.info(" 钉钉 Bot未连接")
                 return False
             
             # 构建消息内容
@@ -133,18 +136,18 @@ class DingTalkBot(Bot):
                 msg=msg
             )
             
-            print(f" 钉钉Markdown消息发送成功: {title}")
+            logger.info(f" 钉钉Markdown消息发送成功: {title}")
             return True
             
         except Exception as e:
-            print(f" 钉钉Markdown消息发送失败: {e}")
+            logger.info(f" 钉钉Markdown消息发送失败: {e}")
             return False
     
     async def send_action_card(self, chat_id: str, title: str, content: str, action_url: str) -> bool:
         """发送钉钉ActionCard消息"""
         try:
             if not self.connected or not self._client:
-                print(" 钉钉 Bot未连接")
+                logger.info(" 钉钉 Bot未连接")
                 return False
             
             # 构建消息内容
@@ -164,18 +167,18 @@ class DingTalkBot(Bot):
                 msg=msg
             )
             
-            print(f" 钉钉ActionCard消息发送成功: {title}")
+            logger.info(f" 钉钉ActionCard消息发送成功: {title}")
             return True
             
         except Exception as e:
-            print(f" 钉钉ActionCard消息发送失败: {e}")
+            logger.info(f" 钉钉ActionCard消息发送失败: {e}")
             return False
     
     def get_chat_list(self) -> List[Dict[str, Any]]:
         """获取聊天列表"""
         try:
             if not self.connected or not self._client:
-                print(" 钉钉 Bot未连接")
+                logger.info(" 钉钉 Bot未连接")
                 return []
             
             # 获取聊天列表
@@ -191,7 +194,7 @@ class DingTalkBot(Bot):
             ]
             
         except Exception as e:
-            print(f" 获取聊天列表失败: {e}")
+            logger.info(f" 获取聊天列表失败: {e}")
             return []
 
 

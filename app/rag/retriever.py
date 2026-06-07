@@ -9,6 +9,9 @@ from typing import List, Dict, Any, Tuple
 from collections import Counter
 
 from . import TextChunk, RetrievalResult
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Retriever:
@@ -77,7 +80,7 @@ class Retriever:
             return retrieval_results
             
         except Exception as e:
-            print(f" 向量检索失败: {e}")
+            logger.info(f" 向量检索失败: {e}")
             return []
     
     def _retrieve_from_chunks(self, query: str, chunks: List[TextChunk], top_k: int) -> List[RetrievalResult]:
@@ -128,7 +131,7 @@ class Retriever:
             return intersection / union
             
         except Exception as e:
-            print(f" 向量相似度计算失败: {e}")
+            logger.info(f" 向量相似度计算失败: {e}")
             return 0.0
     
     def _calculate_keyword_similarity(self, query: str, text: str) -> float:
@@ -157,7 +160,7 @@ class Retriever:
             return (2.0 * intersection) / total
             
         except Exception as e:
-            print(f" 关键词相似度计算失败: {e}")
+            logger.info(f" 关键词相似度计算失败: {e}")
             return 0.0
     
     def _extract_keywords(self, text: str) -> List[str]:

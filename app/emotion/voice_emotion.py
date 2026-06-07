@@ -6,6 +6,9 @@
 from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class VoiceEmotion(Enum):
     """语音情感类型"""
@@ -178,7 +181,7 @@ class EmotionVoiceMapper:
             "自信": VoiceEmotion.CONFIDENT
         }
         
-        print("[EmotionVoiceMapper] 初始化完成")
+        logger.info("[EmotionVoiceMapper] 初始化完成")
     
     def get_params(self, emotion: VoiceEmotion) -> VoiceEmotionParams:
         """获取情感对应的语音参数"""
@@ -234,7 +237,7 @@ class EmotionVoiceController:
         self.current_emotion: VoiceEmotion = VoiceEmotion.NEUTRAL
         self.emotion_history: list = []
         
-        print("[EmotionVoiceController] 初始化完成")
+        logger.info("[EmotionVoiceController] 初始化完成")
     
     def set_emotion(self, emotion: VoiceEmotion):
         """设置当前情感"""

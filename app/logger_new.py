@@ -25,6 +25,8 @@ from pathlib import Path  # 面向对象的路径处理
 from logging.handlers import RotatingFileHandler  # 日志文件自动轮转处理器
 from typing import Optional  # 类型注解：表示可选值
 
+logger = logging.getLogger(__name__)
+
 
 # ============================================================
 # 日志目录配置
@@ -250,7 +252,7 @@ def get_logger(name: str) -> logging.Logger:
 # 模块自测入口
 # ============================================================
 if __name__ == "__main__":
-    print("🧪 测试日志系统...")
+    logger.info("🧪 测试日志系统...")
 
     logger = get_logger("test")
 
@@ -265,4 +267,4 @@ if __name__ == "__main__":
     security_logger.warning("检测到可疑操作")
     security_logger.error("安全事件：未授权访问")
 
-    print(f"✅ 日志文件已保存到: {LOG_DIR}")
+    logger.info(f"✅ 日志文件已保存到: {LOG_DIR}")

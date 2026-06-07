@@ -8,6 +8,9 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 from . import Danmaku, Gift, LiveMessage
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DanmakuParser:
@@ -41,7 +44,7 @@ class DanmakuParser:
                 return self._parse_other(message)
                 
         except Exception as e:
-            print(f" 消息解析失败: {e}")
+            logger.info(f" 消息解析失败: {e}")
             return None
     
     def _parse_danmaku(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -87,7 +90,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            print(f" 弹幕解析失败: {e}")
+            logger.info(f" 弹幕解析失败: {e}")
             return None
     
     def _parse_gift(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -127,7 +130,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            print(f" 礼物解析失败: {e}")
+            logger.info(f" 礼物解析失败: {e}")
             return None
     
     def _parse_system_message(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -146,7 +149,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            print(f" 系统消息解析失败: {e}")
+            logger.info(f" 系统消息解析失败: {e}")
             return None
     
     def _parse_welcome(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -165,7 +168,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            print(f" 欢迎消息解析失败: {e}")
+            logger.info(f" 欢迎消息解析失败: {e}")
             return None
     
     def _parse_interact(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -196,7 +199,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            print(f" 互动消息解析失败: {e}")
+            logger.info(f" 互动消息解析失败: {e}")
             return None
     
     def _parse_other(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -214,5 +217,5 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            print(f" 其他消息解析失败: {e}")
+            logger.info(f" 其他消息解析失败: {e}")
             return None

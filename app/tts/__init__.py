@@ -55,6 +55,9 @@ import hashlib
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # =====================================================================
@@ -736,7 +739,7 @@ class MimoTTS(TTSEngine):
                 }
             }
 
-            print(f"[MiMo TTS] 调用: model={self.model}, voice={voice}, text={text[:30]}...")
+            logger.info(f"[MiMo TTS] 调用: model={self.model}, voice={voice}, text={text[:30]}...")
 
             response = requests.post(
                 f"{self.base_url}/chat/completions",
@@ -760,20 +763,20 @@ class MimoTTS(TTSEngine):
                         audio_bytes = base64.b64decode(audio_data)
                         with open(output_path, "wb") as f:
                             f.write(audio_bytes)
-                        print(f"[MiMo TTS] 合成成功: {output_path} ({len(audio_bytes)} bytes)")
+                        logger.info(f"[MiMo TTS] 合成成功: {output_path} ({len(audio_bytes)} bytes)")
                         return output_path
                     else:
-                        print("[MiMo TTS] API 返回成功但无音频数据")
+                        logger.info("[MiMo TTS] API 返回成功但无音频数据")
                         return None
                 else:
-                    print(f"[MiMo TTS] API 响应无 choices: {result}")
+                    logger.info(f"[MiMo TTS] API 响应无 choices: {result}")
                     return None
             else:
-                print(f"[MiMo TTS] API 错误: {response.status_code} - {response.text[:200]}")
+                logger.info(f"[MiMo TTS] API 错误: {response.status_code} - {response.text[:200]}")
                 return None
 
         except Exception as e:
-            print(f"[MiMo TTS] 合成失败: {e}")
+            logger.info(f"[MiMo TTS] 合成失败: {e}")
             return f"合成错误: {str(e)}"
 
     def is_available(self) -> bool:
@@ -829,17 +832,17 @@ class TTSFactory:
             if tts and tts.is_available():
                 return tts
         except Exception as e:
-            print(f"[TTS] 主引擎 {provider} 加载失败: {e}")
+            logger.info(f"[TTS] 主引擎 {provider} 加载失败: {e}")
 
         # 2. 主引擎失败，依次尝试备用引擎
         for fb_provider in fallback_providers:
             try:
                 tts = TTSFactory._create_engine(fb_provider, config.get(fb_provider, {}), config)
                 if tts and tts.is_available():
-                    print(f"[TTS] 切换到备用引擎: {fb_provider}")
+                    logger.info(f"[TTS] 切换到备用引擎: {fb_provider}")
                     return tts
             except Exception as e:
-                print(f"[TTS] 备用引擎 {fb_provider} 加载失败: {e}")
+                logger.info(f"[TTS] 备用引擎 {fb_provider} 加载失败: {e}")
 
         # 3. 所有引擎都失败，强制使用 EdgeTTS 作为最后保底
         return TTSFactory._create_engine("edge", config.get("edge", {}), config)

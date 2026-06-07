@@ -22,6 +22,8 @@ import io as _io
 import torch
 import numpy as np
 
+logger = logging.getLogger(__name__)
+
 # 日志模块
 logger = logging.getLogger("tts.gptsovits")
 
@@ -546,7 +548,7 @@ class GPTSoVITSEngine:
         # 2. 单例 __init__ 中 project 参数被设为 hongkong 但 pipeline 还没加载
         # 必须确保 pipeline 已用当前项目的模型初始化过
         if self.current_project == project_name and self.tts_pipeline is not None and self._pipeline_project == project_name:
-            print(f"[GPT-SoVITS] 项目 {project_name} 已加载，跳过切换")
+            logger.info(f"[GPT-SoVITS] 项目 {project_name} 已加载，跳过切换")
             return
 
         self.current_project = project_name
@@ -556,7 +558,7 @@ class GPTSoVITSEngine:
         config_version = self._project_config.get("version")
         if config_version in ("v1", "v2", "v3", "v4"):
             self.version = config_version
-            print(f"[GPT-SoVITS] 项目模型版本: {config_version}")
+            logger.info(f"[GPT-SoVITS] 项目模型版本: {config_version}")
 
         # 更新模型路径为训练好的模型
         trained_gpt = self._project_config.get("trained_gpt")
@@ -565,16 +567,16 @@ class GPTSoVITSEngine:
         # SoVITS 模型：优先使用训练的模型，否则使用预训练模型
         if trained_sovits:
             self.sovits_path = trained_sovits
-            print(f"[GPT-SoVITS] 使用训练的 SoVITS 模型: {os.path.basename(trained_sovits)}")
+            logger.info(f"[GPT-SoVITS] 使用训练的 SoVITS 模型: {os.path.basename(trained_sovits)}")
         else:
             pretrained_sovits = str(GPT_SOVITS_DIR / "GPT_SoVITS" / "pretrained_models" / "s2Gv3.pth")
             self.sovits_path = pretrained_sovits
-            print(f"[GPT-SoVITS] 使用预训练 SoVITS 模型: {os.path.basename(pretrained_sovits)}")
+            logger.info(f"[GPT-SoVITS] 使用预训练 SoVITS 模型: {os.path.basename(pretrained_sovits)}")
         
         # GPT 模型：优先使用训练的模型，否则使用预训练模型
         if trained_gpt:
             self.gpt_path = trained_gpt
-            print(f"[GPT-SoVITS] 使用训练的 GPT 模型: {os.path.basename(trained_gpt)}")
+            logger.info(f"[GPT-SoVITS] 使用训练的 GPT 模型: {os.path.basename(trained_gpt)}")
         else:
             # 根据版本选择正确的预训练 GPT 模型（s1bert.pth 不存在，v3 用 s1v3.ckpt）
             version_pretrained_gpt = {
@@ -586,7 +588,7 @@ class GPTSoVITSEngine:
             gpt_filename = version_pretrained_gpt.get(self.version, "s1v3.ckpt")
             pretrained_gpt = str(GPT_SOVITS_DIR / "GPT_SoVITS" / "pretrained_models" / gpt_filename)
             self.gpt_path = pretrained_gpt
-            print(f"[GPT-SoVITS] 使用预训练 GPT 模型 ({self.version}): {os.path.basename(pretrained_gpt)}")
+            logger.info(f"[GPT-SoVITS] 使用预训练 GPT 模型 ({self.version}): {os.path.basename(pretrained_gpt)}")
 
         # 如果 ref_text 为空，尝试识别
         if not self._project_config.get("ref_text", "").strip():
@@ -596,21 +598,21 @@ class GPTSoVITSEngine:
                 if ref_text:
                     self._project_config["ref_text"] = ref_text
                     self._save_project_config(project_name, self._project_config)
-                    print(f"[GPT-SoVITS] 已识别参考音频文本: {ref_text[:30]}...")
+                    logger.info(f"[GPT-SoVITS] 已识别参考音频文本: {ref_text[:30]}...")
                 else:
                     self._project_config["ref_text"] = "你好欢迎使用"
-                    print(f"[GPT-SoVITS] 参考音频文本识别失败，使用默认文本")
+                    logger.info(f"[GPT-SoVITS] 参考音频文本识别失败，使用默认文本")
 
-        print(f"[GPT-SoVITS] 已切换到项目: {project_name}")
-        print(f"[GPT-SoVITS] 参考音频: {self._project_config.get('ref_audio', '无')}")
-        print(f"[GPT-SoVITS] 参考文本: {self._project_config.get('ref_text', '无')[:50]}...")
+        logger.info(f"[GPT-SoVITS] 已切换到项目: {project_name}")
+        logger.info(f"[GPT-SoVITS] 参考音频: {self._project_config.get('ref_audio', '无')}")
+        logger.info(f"[GPT-SoVITS] 参考文本: {self._project_config.get('ref_text', '无')[:50]}...")
 
         # 持久化"上次使用的音色"，供启动预热使用
         self._save_last_project(project_name)
 
         # 重置 pipeline 以应用新模型（如果已初始化）
         if self.tts_pipeline is not None:
-            print(f"[GPT-SoVITS] 重置 pipeline 以加载新模型")
+            logger.info(f"[GPT-SoVITS] 重置 pipeline 以加载新模型")
             # C1修复: 释放旧模型占用的GPU显存
             try:
                 del self.tts_pipeline
@@ -620,7 +622,7 @@ class GPTSoVITSEngine:
             self._pipeline_project = None  # v1.9.62: 清除 pipeline 项目标记
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-                print("[GPT-SoVITS] 已释放GPU缓存")
+                logger.info("[GPT-SoVITS] 已释放GPU缓存")
 
     def _enhance_text(self, text: str) -> str:
         """
@@ -646,7 +648,7 @@ class GPTSoVITSEngine:
         """C2修复: 关停时释放GPU资源，防止显存泄漏"""
         try:
             if self.tts_pipeline is not None:
-                print("[GPT-SoVITS] 正在释放GPU资源...")
+                logger.info("[GPT-SoVITS] 正在释放GPU资源...")
                 try:
                     del self.tts_pipeline
                 except Exception:
@@ -663,9 +665,9 @@ class GPTSoVITSEngine:
                     setattr(self, attr_name, None)
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-                print("[GPT-SoVITS] GPU缓存已清理")
+                logger.info("[GPT-SoVITS] GPU缓存已清理")
         except Exception as e:
-            print(f"[GPT-SoVITS] 清理GPU资源时出错: {e}")
+            logger.info(f"[GPT-SoVITS] 清理GPU资源时出错: {e}")
 
     def stop(self):
         """停止当前音频播放/生成
@@ -760,7 +762,7 @@ class GPTSoVITSEngine:
             if self.tts_pipeline is not None:
                 return
 
-            print("[GPT-SoVITS] Loading models...")
+            logger.info("[GPT-SoVITS] Loading models...")
 
             # v1.11.21 (P2-9): 使用 save/restore 模式切换工作目录
             # GPT-SoVITS 内部代码使用相对路径（now_dir + "GPT_SoVITS/..."），
@@ -778,7 +780,7 @@ class GPTSoVITSEngine:
                 if gptsovits_subdir not in sys.path:
                     sys.path.insert(0, gptsovits_subdir)
 
-                print(f"[GPT-SoVITS] Working directory: {os.getcwd()}")
+                logger.info(f"[GPT-SoVITS] Working directory: {os.getcwd()}")
 
                 from TTS_infer_pack.TTS import TTS, TTS_Config
 
@@ -811,30 +813,30 @@ class GPTSoVITSEngine:
                             filename_lower = os.path.basename(self.sovits_path).lower()
                             if "_l16" in filename_lower:
                                 sovits_version = "v4"
-                                print(f"[GPT-SoVITS] ZIP LoRA 检测 → v4 (l16)")
+                                logger.info(f"[GPT-SoVITS] ZIP LoRA 检测 → v4 (l16)")
                             else:
                                 sovits_version = "v3"
-                                print(f"[GPT-SoVITS] ZIP LoRA 检测 → v3 (PK header, filename: {os.path.basename(self.sovits_path)})")
+                                logger.info(f"[GPT-SoVITS] ZIP LoRA 检测 → v3 (PK header, filename: {os.path.basename(self.sovits_path)})")
                         else:
                             # 非 ZIP 格式，使用官方检测函数
                             from process_ckpt import get_sovits_version_from_path_fast
                             ver_info = get_sovits_version_from_path_fast(self.sovits_path)
                             sovits_version, _, _ = ver_info
-                            print(f"[GPT-SoVITS] 检测 SoVITS 版本(标准): {sovits_version}")
+                            logger.info(f"[GPT-SoVITS] 检测 SoVITS 版本(标准): {sovits_version}")
                     except Exception as e:
-                        print(f"[GPT-SoVITS] 版本检测异常: {e}")
+                        logger.info(f"[GPT-SoVITS] 版本检测异常: {e}")
                         # 降级：使用项目配置中的版本
                         sovits_version = self.version
 
                 # 确保版本有效
                 if sovits_version not in ("v1", "v2", "v3", "v4"):
                     sovits_version = self.version
-                    print(f"[GPT-SoVITS] 版本检测未确定，使用项目配置: {sovits_version}")
+                    logger.info(f"[GPT-SoVITS] 版本检测未确定，使用项目配置: {sovits_version}")
 
                 # v1 SoVITS 必须搭配 v1 预训练 GPT（仅限真正的 v1 标准格式模型）
                 # 注意：v1 预训练底模已移除，不再支持 v1 回退
                 if sovits_version == "v1" and not is_zip_lora:
-                    print(f"[GPT-SoVITS] ⚠️ v1 预训练底模已移除，强制升级到 v3")
+                    logger.info(f"[GPT-SoVITS] ⚠️ v1 预训练底模已移除，强制升级到 v3")
                     sovits_version = "v3"
 
                 tts_config = TTS_Config(str(GPT_SOVITS_DIR / "GPT_SoVITS/configs/tts_infer.yaml"))
@@ -847,47 +849,47 @@ class GPTSoVITSEngine:
                 tts_config.cnhuhbert_base_path = self.cnhubert_path
                 tts_config.bert_base_path = self.bert_path
 
-                print(f"[GPT-SoVITS] Device: {self.device}, Half: {self.is_half}")
-                print(f"[GPT-SoVITS] GPT: {os.path.basename(self.gpt_path)}")
-                print(f"[GPT-SoVITS] SoVITS: {os.path.basename(self.sovits_path)}")
+                logger.info(f"[GPT-SoVITS] Device: {self.device}, Half: {self.is_half}")
+                logger.info(f"[GPT-SoVITS] GPT: {os.path.basename(self.gpt_path)}")
+                logger.info(f"[GPT-SoVITS] SoVITS: {os.path.basename(self.sovits_path)}")
 
                 # 验证 SoVITS 文件可读（兼容 LoRA 和标准格式）
                 if not self._check_sovits_config(self.sovits_path):
-                    print(f"[GPT-SoVITS] ⚠️ SoVITS 文件无效，回退到预训练底模 s2Gv3.pth")
+                    logger.info(f"[GPT-SoVITS] ⚠️ SoVITS 文件无效，回退到预训练底模 s2Gv3.pth")
                     self.sovits_path = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s2Gv3.pth")
                     tts_config.vits_weights_path = self.sovits_path
 
                 try:
-                    print(f"[GPT-SoVITS] 正在加载 TTS 模型（输出已静默）...")
+                    logger.info(f"[GPT-SoVITS] 正在加载 TTS 模型（输出已静默）...")
                     with _SuppressVerboseOutput():
                         self.tts_pipeline = TTS(tts_config)
-                    print("[GPT-SoVITS] ✓ TTS 模型加载完成!")
+                    logger.info("[GPT-SoVITS] ✓ TTS 模型加载完成!")
                 except TypeError as e:
                     # v1/v3 版本不匹配导致加载失败
                     # 只有真正是 v1 标准格式（非 ZIP LoRA）才回退到 v1 底模
                     if "list indices" in str(e) and not is_zip_lora:
-                        print(f"[GPT-SoVITS] ⚠️ v1/v3 版本不匹配: {e}")
-                        print(f"[GPT-SoVITS] 强制使用 v3 预训练底模（v1 底模已移除）...")
+                        logger.info(f"[GPT-SoVITS] ⚠️ v1/v3 版本不匹配: {e}")
+                        logger.info(f"[GPT-SoVITS] 强制使用 v3 预训练底模（v1 底模已移除）...")
                         fallback_gpt = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s1v3.ckpt")
                         fallback_vits = str(GPT_SOVITS_DIR / "GPT_SoVITS/pretrained_models/s2Gv3.pth")
                         tts_config.t2s_weights_path = fallback_gpt
                         tts_config.vits_weights_path = fallback_vits
                         tts_config.update_version("v3")
-                        print(f"[GPT-SoVITS] 正在加载 v3 回退底模（输出已静默）...")
+                        logger.info(f"[GPT-SoVITS] 正在加载 v3 回退底模（输出已静默）...")
                         with _SuppressVerboseOutput():
                             self.tts_pipeline = TTS(tts_config)
-                        print(f"[GPT-SoVITS] ✓ v1 回退底模加载成功!")
+                        logger.info(f"[GPT-SoVITS] ✓ v1 回退底模加载成功!")
                     else:
                         # ZIP LoRA 加载失败 → 不回退到 v1 底模（会丢失音色），直接报错
                         if is_zip_lora:
-                            print(f"[GPT-SoVITS] ⚠️ v3 LoRA 模型加载失败: {e}")
-                            print(f"[GPT-SoVITS] LoRA 模型不应回退到 v1 底模（会丢失训练音色），请检查底模是否存在")
+                            logger.info(f"[GPT-SoVITS] ⚠️ v3 LoRA 模型加载失败: {e}")
+                            logger.info(f"[GPT-SoVITS] LoRA 模型不应回退到 v1 底模（会丢失训练音色），请检查底模是否存在")
                         raise
 
                 # 记录显存占用
                 if torch.cuda.is_available():
                     mem_gb = torch.cuda.memory_allocated() / 1024**3
-                    print(f"[GPT-SoVITS] GPU Memory: {mem_gb:.2f} GB")
+                    logger.info(f"[GPT-SoVITS] GPU Memory: {mem_gb:.2f} GB")
 
                 # v1.9.62: 标记 pipeline 已加载的项目
                 self._pipeline_project = self.current_project
@@ -932,7 +934,7 @@ class GPTSoVITSEngine:
 
         # ===== v1.8.5: 空文本守卫 =====
         if not text or not text.strip():
-            print(f"[GPT-SoVITS] speak: 收到空文本，跳过")
+            logger.info(f"[GPT-SoVITS] speak: 收到空文本，跳过")
             return ""
         # ===== 守卫结束 =====
 
@@ -1025,7 +1027,7 @@ class GPTSoVITSEngine:
                 continue
             import re as _re2
             if _re2.fullmatch(r'[，,、；：。！？.!?！？\s]+', sent_stripped):
-                print(f"  [TTS] 跳过纯标点句: {sent_stripped[:20]}")
+                logger.info(f"  [TTS] 跳过纯标点句: {sent_stripped[:20]}")
                 continue
             if len(sent_stripped) <= MAX_CHARS:
                 final_sentences.append(sent_stripped)
@@ -1040,19 +1042,19 @@ class GPTSoVITSEngine:
                 if remaining.strip():
                     final_sentences.append(remaining.strip())
 
-        print(f"[GPT-SoVITS] Split into {len(final_sentences)} sentences")
+        logger.info(f"[GPT-SoVITS] Split into {len(final_sentences)} sentences")
         for i, s in enumerate(final_sentences):
-            print(f"  [{i}] ({len(s)}字) {s[:40]}")
+            logger.info(f"  [{i}] ({len(s)}字) {s[:40]}")
 
         # v1.6.7: 如果所有句子都被过滤（纯标点/空句），返回静音
         if not final_sentences:
-            print("[GPT-SoVITS] 所有句子被过滤（空/纯标点），生成静音")
+            logger.info("[GPT-SoVITS] 所有句子被过滤（空/纯标点），生成静音")
             silence = np.zeros(24000).astype(np.float32)
             import soundfile as sf
             sf.write(output_path, silence, 24000)
             return output_path
 
-        print(f"[GPT-SoVITS] Synthesizing: {text[:50]}...")
+        logger.info(f"[GPT-SoVITS] Synthesizing: {text[:50]}...")
 
         # 逐句推理，避免长文本 EOS 过早触发
         audio_chunks = []
@@ -1083,7 +1085,7 @@ class GPTSoVITSEngine:
             }
 
             try:
-                print(f"[GPT-SoVITS] Calling TTS.run() with text: {sent[:50]}")
+                logger.info(f"[GPT-SoVITS] Calling TTS.run() with text: {sent[:50]}")
                 for result in self.tts_pipeline.run(inputs):
                     if result is None:
                         continue
@@ -1111,9 +1113,9 @@ class GPTSoVITSEngine:
                     # 跳过过短片段
                     if len(audio_float) > sr * 0.05:
                         audio_chunks.append(audio_float)
-                        print(f"  [{idx}] {len(audio_float)/sr:.2f}s, max={np.abs(audio_float).max():.4f}")
+                        logger.info(f"  [{idx}] {len(audio_float)/sr:.2f}s, max={np.abs(audio_float).max():.4f}")
             except Exception as e:
-                print(f"  [{idx}] Error: {e}")
+                logger.info(f"  [{idx}] Error: {e}")
                 continue
 
         if audio_chunks:
@@ -1124,16 +1126,16 @@ class GPTSoVITSEngine:
             max_amp = np.abs(audio_float).max()
             if max_amp < 0.01 and max_amp > 0:
                 audio_float = audio_float / max_amp * 0.9
-                print(f"[GPT-SoVITS] 振幅归一化: {max_amp:.6f} -> 0.9")
+                logger.info(f"[GPT-SoVITS] 振幅归一化: {max_amp:.6f} -> 0.9")
 
             # 保存为 WAV
             import soundfile as sf
             sf.write(output_path, audio_float, sr)
             duration = len(audio_float) / sr
-            print(f"[GPT-SoVITS] Saved: {output_path} ({duration:.2f}s, {len(audio_chunks)} chunks)")
+            logger.info(f"[GPT-SoVITS] Saved: {output_path} ({duration:.2f}s, {len(audio_chunks)} chunks)")
             return output_path
         else:
-            print("[GPT-SoVITS] No audio generated, creating silence")
+            logger.info("[GPT-SoVITS] No audio generated, creating silence")
             silence = np.zeros(24000).astype(np.float32)
             import soundfile as sf
             sf.write(output_path, silence, 24000)
@@ -1171,7 +1173,7 @@ class GPTSoVITSEngine:
 
         # ===== v1.8.5: 空文本守卫 —— 清理前先判空，防止推理卡死 =====
         if not sentence or not sentence.strip():
-            print(f"[GPT-SoVITS] speak_streaming: 收到空文本，跳过")
+            logger.info(f"[GPT-SoVITS] speak_streaming: 收到空文本，跳过")
             return ""
         # ===== 守卫结束 =====
 
@@ -1208,7 +1210,7 @@ class GPTSoVITSEngine:
 
         # ===== v1.8.5: 清理后再次判空 =====
         if not sentence or not sentence.strip():
-            print(f"[GPT-SoVITS] speak_streaming: 清理后文本为空，跳过")
+            logger.info(f"[GPT-SoVITS] speak_streaming: 清理后文本为空，跳过")
             return ""
         # ===== 再次判空结束 =====
 
@@ -1298,7 +1300,7 @@ class GPTSoVITSEngine:
 
             return tmp_path
         except Exception as e:
-            print(f"[GPT-SoVITS] speak_streaming error: {e}")
+            logger.info(f"[GPT-SoVITS] speak_streaming error: {e}")
             import soundfile as sf
             silence = np.zeros(24000, dtype=np.float32)
             sf.write(tmp_path, silence, 24000)
@@ -1326,7 +1328,7 @@ class GPTSoVITSEngine:
         """
         output_path = str(Path(__file__).parent.parent / "cache" / f"gptsovits_zero_{int(time.time() * 1000)}.wav")
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        print("[GPT-SoVITS] Zero-shot requires fine-tuned model")
+        logger.info("[GPT-SoVITS] Zero-shot requires fine-tuned model")
         return output_path
 
     def is_available(self) -> bool:
@@ -1349,20 +1351,20 @@ class GPTSoVITSEngine:
         try:
             # 检查模型文件是否存在
             if not os.path.exists(self.gpt_path):
-                print(f"[GPT-SoVITS] GPT模型不存在: {self.gpt_path}")
+                logger.info(f"[GPT-SoVITS] GPT模型不存在: {self.gpt_path}")
                 return False
             if not os.path.exists(self.sovits_path):
-                print(f"[GPT-SoVITS] SoVITS模型不存在: {self.sovits_path}")
+                logger.info(f"[GPT-SoVITS] SoVITS模型不存在: {self.sovits_path}")
                 return False
             if not os.path.exists(self.cnhubert_path):
-                print(f"[GPT-SoVITS] CNHuBERT模型不存在: {self.cnhubert_path}")
+                logger.info(f"[GPT-SoVITS] CNHuBERT模型不存在: {self.cnhubert_path}")
                 return False
             if not os.path.exists(self.bert_path):
-                print(f"[GPT-SoVITS] BERT模型不存在: {self.bert_path}")
+                logger.info(f"[GPT-SoVITS] BERT模型不存在: {self.bert_path}")
                 return False
             return True
         except Exception as e:
-            print(f"[GPT-SoVITS] 可用性检查失败: {e}")
+            logger.info(f"[GPT-SoVITS] 可用性检查失败: {e}")
             return False
 
     def get_voices(self) -> list:

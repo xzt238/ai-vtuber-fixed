@@ -11,6 +11,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TestStatus(Enum):
     """测试状态"""
@@ -65,7 +68,7 @@ class TestRunner:
         self.setup_hooks: List[Callable] = []
         self.teardown_hooks: List[Callable] = []
         
-        print("[TestRunner] 初始化完成")
+        logger.info("[TestRunner] 初始化完成")
     
     def create_suite(self, name: str) -> TestSuite:
         """创建测试套件"""
@@ -98,7 +101,7 @@ class TestRunner:
                 else:
                     hook()
             except Exception as e:
-                print(f"[TestRunner] Setup失败: {e}")
+                logger.info(f"[TestRunner] Setup失败: {e}")
         
         # 运行测试
         start_time = time.time()
@@ -144,24 +147,24 @@ class TestRunner:
                 else:
                     hook()
             except Exception as e:
-                print(f"[TestRunner] Teardown失败: {e}")
+                logger.info(f"[TestRunner] Teardown失败: {e}")
         
         # 打印结果
         status_icon = "✅" if status == TestStatus.PASSED else "❌"
-        print(f"{status_icon} {test_name} ({duration_ms:.1f}ms) - {message}")
+        logger.info(f"{status_icon} {test_name} ({duration_ms:.1f}ms) - {message}")
         
         return result
     
     async def run_suite(self, suite_name: str) -> TestSuite:
         """运行整个测试套件"""
         if suite_name not in self.suites:
-            print(f"[TestRunner] 测试套件不存在: {suite_name}")
+            logger.info(f"[TestRunner] 测试套件不存在: {suite_name}")
             return None
         
         suite = self.suites[suite_name]
-        print(f"\n{'='*50}")
-        print(f"运行测试套件: {suite_name}")
-        print(f"{'='*50}")
+        logger.info(f"\n{'='*50}")
+        logger.info(f"运行测试套件: {suite_name}")
+        logger.info(f"{'='*50}")
         
         return suite
     
@@ -230,7 +233,7 @@ class TestRunner:
         with open(path, "w", encoding="utf-8") as f:
             f.write(report)
         
-        print(f"[TestRunner] 测试报告已保存: {filepath}")
+        logger.info(f"[TestRunner] 测试报告已保存: {filepath}")
 
 # 全局实例
 _test_runner: Optional[TestRunner] = None

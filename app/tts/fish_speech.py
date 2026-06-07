@@ -12,6 +12,9 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 from . import TTSEngine
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FishSpeechTTS(TTSEngine):
@@ -52,9 +55,9 @@ class FishSpeechTTS(TTSEngine):
         # 会话
         self.session = None
         
-        print(f" Fish-Speech TTS引擎初始化完成")
-        print(f" 语音ID: {self.voice_id}")
-        print(f" 模型ID: {self.model_id}")
+        logger.info(f" Fish-Speech TTS引擎初始化完成")
+        logger.info(f" 语音ID: {self.voice_id}")
+        logger.info(f" 模型ID: {self.model_id}")
     
     def is_available(self) -> bool:
         """检查引擎是否可用"""
@@ -76,7 +79,7 @@ class FishSpeechTTS(TTSEngine):
         """异步语音合成"""
         try:
             if not self.is_available():
-                print(" Fish-Speech API密钥未配置")
+                logger.info(" Fish-Speech API密钥未配置")
                 return None
             
             # 确保会话存在
@@ -117,15 +120,15 @@ class FishSpeechTTS(TTSEngine):
                     with open(output_path, 'wb') as f:
                         f.write(audio_data)
                     
-                    print(f" Fish-Speech语音合成成功: {output_path}")
+                    logger.info(f" Fish-Speech语音合成成功: {output_path}")
                     return output_path
                 else:
                     error_text = await response.text()
-                    print(f" Fish-Speech语音合成失败: {response.status} - {error_text}")
+                    logger.info(f" Fish-Speech语音合成失败: {response.status} - {error_text}")
                     return None
                     
         except Exception as e:
-            print(f" Fish-Speech语音合成失败: {e}")
+            logger.info(f" Fish-Speech语音合成失败: {e}")
             return None
     
     def speak(self, text: str, output_path: str = None) -> Optional[str]:
@@ -143,7 +146,7 @@ class FishSpeechTTS(TTSEngine):
                 loop.close()
                 
         except Exception as e:
-            print(f" Fish-Speech语音合成失败: {e}")
+            logger.info(f" Fish-Speech语音合成失败: {e}")
             return None
     
     async def get_voices(self) -> list:
@@ -165,32 +168,32 @@ class FishSpeechTTS(TTSEngine):
                     data = await response.json()
                     return data.get("voices", [])
                 else:
-                    print(f" 获取语音列表失败: {response.status}")
+                    logger.info(f" 获取语音列表失败: {response.status}")
                     return []
                     
         except Exception as e:
-            print(f" 获取语音列表失败: {e}")
+            logger.info(f" 获取语音列表失败: {e}")
             return []
     
     def set_voice(self, voice_id: str):
         """设置语音ID"""
         self.voice_id = voice_id
-        print(f" 语音ID已更新: {voice_id}")
+        logger.info(f" 语音ID已更新: {voice_id}")
     
     def set_model(self, model_id: str):
         """设置模型ID"""
         self.model_id = model_id
-        print(f" 模型ID已更新: {model_id}")
+        logger.info(f" 模型ID已更新: {model_id}")
     
     def set_speed(self, speed: float):
         """设置语速"""
         self.speed = speed
-        print(f" 语速已更新: {speed}")
+        logger.info(f" 语速已更新: {speed}")
     
     def set_pitch(self, pitch: float):
         """设置音调"""
         self.pitch = pitch
-        print(f" 音调已更新: {pitch}")
+        logger.info(f" 音调已更新: {pitch}")
     
     def get_config(self) -> Dict[str, Any]:
         """获取配置"""

@@ -26,6 +26,9 @@ import base64
 import threading
 from typing import Optional, Dict, Any, Callable
 from dataclasses import dataclass
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -85,9 +88,9 @@ class OCRSystem:
             try:
                 from vision import RapidOCRProvider
                 self._ocr_engine = RapidOCRProvider()
-                print("[OCR] RapidOCR 引擎已加载")
+                logger.info("[OCR] RapidOCR 引擎已加载")
             except ImportError:
-                print("[OCR] ⚠️ vision 模块不可用，OCR 功能受限")
+                logger.info("[OCR] ⚠️ vision 模块不可用，OCR 功能受限")
                 self._ocr_engine = None
         return self._ocr_engine
 
@@ -104,10 +107,10 @@ class OCRSystem:
                 sct.shot(output=save_path)
             return save_path
         except ImportError:
-            print("[OCR] ⚠️ mss 未安装，无法截图: pip install mss")
+            logger.info("[OCR] ⚠️ mss 未安装，无法截图: pip install mss")
             return None
         except Exception as e:
-            print(f"[OCR] 截图失败: {e}")
+            logger.info(f"[OCR] 截图失败: {e}")
             return None
 
     def _recognize(self, image_path: str) -> Optional[str]:
@@ -118,7 +121,7 @@ class OCRSystem:
         try:
             return engine.recognize_text(image_path)
         except Exception as e:
-            print(f"[OCR] 识别失败: {e}")
+            logger.info(f"[OCR] 识别失败: {e}")
             return None
 
     def set_event_callback(self, callback: Callable):
@@ -133,7 +136,7 @@ class OCRSystem:
             interval: 监控间隔（秒）
         """
         if self._running:
-            print("[OCR] 监控已在运行")
+            logger.info("[OCR] 监控已在运行")
             return
         
         self.interval = max(0.5, interval)
@@ -145,7 +148,7 @@ class OCRSystem:
             name="ocr-monitor"
         )
         self._monitor_thread.start()
-        print(f"[OCR] 监控已启动，间隔: {self.interval}s")
+        logger.info(f"[OCR] 监控已启动，间隔: {self.interval}s")
 
     def stop_monitor(self):
         """停止监控"""
@@ -153,7 +156,7 @@ class OCRSystem:
         if self._monitor_thread and self._monitor_thread.is_alive():
             self._monitor_thread.join(timeout=3)
         self._monitor_thread = None
-        print("[OCR] 监控已停止")
+        logger.info("[OCR] 监控已停止")
 
     def _monitor_loop(self):
         """监控循环（后台线程）"""
@@ -166,7 +169,7 @@ class OCRSystem:
                         "timestamp": result.timestamp
                     })
             except Exception as e:
-                print(f"[OCR] 监控循环错误: {e}")
+                logger.info(f"[OCR] 监控循环错误: {e}")
             
             # 分段 sleep，方便及时响应 stop
             end_time = time.time() + self.interval
@@ -218,7 +221,7 @@ class OCRSystem:
                 self._last_screenshot_b64 = base64.b64encode(f.read()).decode("utf-8")
             return self._last_screenshot_b64
         except Exception as e:
-            print(f"[OCR] 截图 base64 编码失败: {e}")
+            logger.info(f"[OCR] 截图 base64 编码失败: {e}")
             return self._last_screenshot_b64
         finally:
             try:
@@ -253,7 +256,7 @@ class OCRSystem:
                     response = llm.chat(full_prompt, [])
                     return response.get("text", "")
             except Exception as e:
-                print(f"[OCR] LLM 分析失败: {e}")
+                logger.info(f"[OCR] LLM 分析失败: {e}")
         
         # fallback: 直接返回 OCR 文字
         return result.text[:500]

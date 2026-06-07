@@ -9,6 +9,9 @@ from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SingingMode(Enum):
     """唱歌模式"""
@@ -73,7 +76,7 @@ class EnhancedSingingManager:
             "average_quality": 0
         }
         
-        print("[EnhancedSinging] 初始化完成")
+        logger.info("[EnhancedSinging] 初始化完成")
     
     async def load_model(self) -> bool:
         """加载模型"""
@@ -86,16 +89,16 @@ class EnhancedSingingManager:
             elif self.engine == "so_vits_svc":
                 return await self._load_so_vits_svc()
             else:
-                print(f"[EnhancedSinging] 不支持的引擎: {self.engine}")
+                logger.info(f"[EnhancedSinging] 不支持的引擎: {self.engine}")
                 return False
         except Exception as e:
-            print(f"[EnhancedSinging] 模型加载失败: {e}")
+            logger.info(f"[EnhancedSinging] 模型加载失败: {e}")
             return False
     
     async def _load_gpt_sovits(self) -> bool:
         """加载GPT-SoVITS模型"""
         try:
-            print(f"[EnhancedSinging] 加载GPT-SoVITS模型: {self.model_path}")
+            logger.info(f"[EnhancedSinging] 加载GPT-SoVITS模型: {self.model_path}")
             
             # 模拟模型加载
             self.model = {
@@ -105,17 +108,17 @@ class EnhancedSingingManager:
             }
             
             self.model_loaded = True
-            print("[EnhancedSinging] GPT-SoVITS模型加载成功")
+            logger.info("[EnhancedSinging] GPT-SoVITS模型加载成功")
             return True
             
         except Exception as e:
-            print(f"[EnhancedSinging] GPT-SoVITS模型加载失败: {e}")
+            logger.info(f"[EnhancedSinging] GPT-SoVITS模型加载失败: {e}")
             return False
     
     async def _load_rvc(self) -> bool:
         """加载RVC模型"""
         try:
-            print(f"[EnhancedSinging] 加载RVC模型: {self.model_path}")
+            logger.info(f"[EnhancedSinging] 加载RVC模型: {self.model_path}")
             
             self.model = {
                 "type": "rvc",
@@ -124,17 +127,17 @@ class EnhancedSingingManager:
             }
             
             self.model_loaded = True
-            print("[EnhancedSinging] RVC模型加载成功")
+            logger.info("[EnhancedSinging] RVC模型加载成功")
             return True
             
         except Exception as e:
-            print(f"[EnhancedSinging] RVC模型加载失败: {e}")
+            logger.info(f"[EnhancedSinging] RVC模型加载失败: {e}")
             return False
     
     async def _load_so_vits_svc(self) -> bool:
         """加载So-VITS-SVC模型"""
         try:
-            print(f"[EnhancedSinging] 加载So-VITS-SVC模型: {self.model_path}")
+            logger.info(f"[EnhancedSinging] 加载So-VITS-SVC模型: {self.model_path}")
             
             self.model = {
                 "type": "so_vits_svc",
@@ -143,23 +146,23 @@ class EnhancedSingingManager:
             }
             
             self.model_loaded = True
-            print("[EnhancedSinging] So-VITS-SVC模型加载成功")
+            logger.info("[EnhancedSinging] So-VITS-SVC模型加载成功")
             return True
             
         except Exception as e:
-            print(f"[EnhancedSinging] So-VITS-SVC模型加载失败: {e}")
+            logger.info(f"[EnhancedSinging] So-VITS-SVC模型加载失败: {e}")
             return False
     
     async def sing_lyrics(self, lyrics: str, config: SongConfig = None) -> Optional[np.ndarray]:
         """唱歌词"""
         if not self.model_loaded:
-            print("[EnhancedSinging] 模型未加载")
+            logger.info("[EnhancedSinging] 模型未加载")
             return None
         
         config = config or SongConfig()
         
         try:
-            print(f"[EnhancedSinging] 开始唱歌: {lyrics}")
+            logger.info(f"[EnhancedSinging] 开始唱歌: {lyrics}")
             
             # 分割歌词
             segments = self._split_lyrics(lyrics)
@@ -191,13 +194,13 @@ class EnhancedSingingManager:
                 self.stats["total_songs"] += 1
                 self.stats["total_duration"] += len(combined) / 44100
                 
-                print(f"[EnhancedSinging] 唱歌完成，时长: {len(combined)/44100:.1f}秒")
+                logger.info(f"[EnhancedSinging] 唱歌完成，时长: {len(combined)/44100:.1f}秒")
                 return combined
             
             return None
             
         except Exception as e:
-            print(f"[EnhancedSinging] 唱歌失败: {e}")
+            logger.info(f"[EnhancedSinging] 唱歌失败: {e}")
             return None
     
     def _split_lyrics(self, lyrics: str) -> List[str]:
@@ -250,7 +253,7 @@ class EnhancedSingingManager:
             else:
                 return None
         except Exception as e:
-            print(f"[EnhancedSinging] 片段合成失败: {e}")
+            logger.info(f"[EnhancedSinging] 片段合成失败: {e}")
             return None
     
     async def _synthesize_gpt_sovits(self, text: str, note: MelodyNote = None,
@@ -321,7 +324,7 @@ class EnhancedSingingManager:
     async def separate_vocals(self, audio_path: str) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         """分离人声和伴奏"""
         try:
-            print(f"[EnhancedSinging] 分离人声: {audio_path}")
+            logger.info(f"[EnhancedSinging] 分离人声: {audio_path}")
             
             # 这里应该调用真实的人声分离模型
             # 例如：Demucs、Spleeter等
@@ -333,11 +336,11 @@ class EnhancedSingingManager:
             vocals = np.random.randn(samples).astype(np.float32) * 0.1
             accompaniment = np.random.randn(samples).astype(np.float32) * 0.05
             
-            print("[EnhancedSinging] 人声分离完成")
+            logger.info("[EnhancedSinging] 人声分离完成")
             return vocals, accompaniment
             
         except Exception as e:
-            print(f"[EnhancedSinging] 人声分离失败: {e}")
+            logger.info(f"[EnhancedSinging] 人声分离失败: {e}")
             return None, None
     
     def get_stats(self) -> Dict[str, Any]:
