@@ -96,7 +96,11 @@ import tempfile
 import uuid
 import mimetypes
 import copy
+import logging
 from queue import Queue
+
+# 日志模块
+logger = logging.getLogger("web")
 
 # 注册 .mjs / .wasm MIME 类型（Python 3.11 默认不识别 .mjs）
 # onnxruntime-web 1.22+ 用 ES Module 动态 import .mjs 文件
@@ -374,7 +378,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json({"success": False, "error": "未知API"})
                 
         except Exception as e:
-            print(f"[SANDBOX] API错误: {e}")
+            logger.error(f"API错误: {e}")
             import traceback
             traceback.print_exc()
             self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
@@ -460,7 +464,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
                     json_module.dump(default_config, f, ensure_ascii=False, indent=2)
                 print(f"[TRAIN] 创建项目配置: {project_name}/config.json")
             
-            print(f"[TRAIN] 上传成功: {project_name}/{filename} ({len(audio_data)} bytes)")
+            logger.info(f"上传成功: {project_name}/{filename} ({len(audio_data)} bytes)")
             self.send_json({
                 "success": True,
                 "filename": filename,
@@ -469,7 +473,7 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
             })
             
         except Exception as e:
-            print(f"[TRAIN] 上传失败: {e}")
+            logger.error(f"上传失败: {e}")
             import traceback
             traceback.print_exc()
             self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
@@ -564,12 +568,12 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
                         pass
                     raise
 
-                print(f"[Layout] 已保存布局到 {layout_file}")
+                logger.info(f"已保存布局到 {layout_file}")
                 self.send_json({"success": True})
             except json.JSONDecodeError as e:
                 self.send_json({"success": False, "error": "JSON 解析失败"})
             except Exception as e:
-                print(f"[Layout] 保存失败: {e}")
+                logger.error(f"保存布局失败: {e}")
                 self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
             return
 
@@ -604,7 +608,7 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
             })
             
         except Exception as e:
-            print(f"[SANDBOX] 状态错误: {e}")
+            logger.error(f"状态错误: {e}")
             self.send_json({"success": False, "error": "操作失败，请查看服务端日志"})
     
     def send_json(self, data):
@@ -703,7 +707,7 @@ class WebServer:
         cache_dir = os.path.normpath(os.path.join(app_dir, "..", "cache"))
         _StaticFileHandler._cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
-        print(f"[WebServer] Audio cache dir: {cache_dir}")
+        logger.info(f"Audio cache dir: {cache_dir}")
 
         def handler_factory(*args, **kwargs):
             """
@@ -724,7 +728,7 @@ class WebServer:
         self.server = socketserver.TCPServer(("", self.port), handler_factory)
 
 
-        print(f"[WEB] HTTP server started: http://localhost:{self.port}")
+        logger.info(f"HTTP server started: http://localhost:{self.port}")
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
 
@@ -752,7 +756,7 @@ class WebServer:
                 if hasattr(tts, '_project_config'):
                     ref_audio = tts._project_config.get('ref_audio', '')
                     if not ref_audio:
-                        print(f"[TTS Prewarm] {voice_name} 无参考音频,跳过预热")
+                        logger.debug(f"{voice_name} 无参考音频,跳过预热")
                         return
                 warm_text = "你好."
                 path = tts.speak(warm_text)
@@ -761,11 +765,11 @@ class WebServer:
                         os.unlink(path)
                     except OSError:
                         pass
-                    print(f"[TTS Prewarm] 预热完成: {voice_name}")
+                    logger.info(f"预热完成: {voice_name}")
                 else:
-                    print(f"[TTS Prewarm] {voice_name} 预热返回空(不影响使用)")
+                    logger.warning(f"{voice_name} 预热返回空(不影响使用)")
             except Exception as e:
-                print(f"[TTS Prewarm] {voice_name} 预热失败: {e}")
+                logger.error(f"{voice_name} 预热失败: {e}")
 
         def do_prewarm():
             """后台预热主逻辑（串行，避免并发推理冲突）"""
@@ -775,7 +779,7 @@ class WebServer:
                 tts = self._app.tts
 
                 # 1. 先预热默认音色
-                print("[TTS Prewarm] 预热默认音色...")
+                logger.info("预热默认音色...")
                 prewarm_single_voice("default", tts)
 
                 # 2. 只预热上次使用的音色（而非全部已训练音色）
@@ -786,7 +790,7 @@ class WebServer:
                     last_project = tts._load_last_project()
 
                 if last_project and hasattr(tts, 'set_project'):
-                    print(f"[TTS Prewarm] 预热上次使用的音色: {last_project}")
+                    logger.info(f"预热上次使用的音色: {last_project}")
                     tts.set_project(last_project)
                     prewarm_single_voice(last_project, tts)
                 elif hasattr(tts, 'get_available_projects'):
@@ -796,14 +800,14 @@ class WebServer:
                         trained = [p['name'] for p in projects if p.get('has_trained')]
                         if trained:
                             first = trained[0]
-                            print(f"[TTS Prewarm] 无上次记录，预热首个已训练音色: {first}")
+                            logger.info(f"无上次记录，预热首个已训练音色: {first}")
                             tts.set_project(first)
                             prewarm_single_voice(first, tts)
                     except Exception as proj_err:
-                        print(f"[TTS Prewarm] 获取音色列表失败: {proj_err}")
+                        logger.error(f"获取音色列表失败: {proj_err}")
 
             except Exception as e:
-                print(f"[TTS Prewarm] 预热失败(不影响使用): {e}")
+                logger.warning(f"预热失败(不影响使用): {e}")
 
         threading.Thread(target=do_prewarm, daemon=True).start()
 
@@ -932,7 +936,7 @@ class WebSocketServer:
 
                     gc.collect()
                 except Exception as e:
-                    print(f"[WS] 孤立状态清理异常: {e}")
+                    logger.error(f"孤立状态清理异常: {e}")
 
         threading.Thread(target=stale_cleanup_worker, daemon=True).start()
 
@@ -954,7 +958,7 @@ class WebSocketServer:
                     time.sleep(300)  # 每5分钟清理一次
                     self._cleanup_old_audio()
                 except Exception as e:
-                    print(f"️ 音频清理错误: {e}")
+                    logger.error(f"音频清理错误: {e}")
 
         self._audio_cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
         self._audio_cleanup_thread.start()
