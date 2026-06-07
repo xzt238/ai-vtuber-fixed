@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class PerformanceManager(QObject):
+    __slots__ = ("_cleanup_targets", "_pending_inits", "_monitor_timer", "_gc_disabled", "_gc_gen0_timer", "_gc_gen1_timer", "_gc_gen2_timer", "_backend_initialized", "_backend_init_started", "_init_worker", "_init_thread", "_callback")
     """性能与资源管理器"""
 
     # 内存警告信号（MB）

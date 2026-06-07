@@ -36,6 +36,7 @@ from app.shared_config import PROJECT_DIR
 
 
 class ChatSession:
+    __slots__ = ("id", "name", "created_at", "messages", "metadata")
     """单个聊天会话数据"""
 
     def __init__(self, session_id: str = "", title: str = "新对话",
@@ -79,6 +80,7 @@ class ChatSession:
 
 
 class SessionManager(QWidget):
+    __slots__ = ("_sessions", "_current_id", "_file_path", "_lock")
     """会话管理器 — 侧边栏
 
     信号:

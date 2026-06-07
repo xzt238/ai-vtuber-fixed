@@ -16,6 +16,7 @@ from PySide6.QtCore import QObject, Signal
 
 
 class TrayManager(QObject):
+    __slots__ = ("_main_window", "_tray_icon", "_menu")
     """系统托盘管理器"""
 
     # 信号：用户请求退出

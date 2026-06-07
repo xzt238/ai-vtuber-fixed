@@ -117,6 +117,7 @@ class _ASRWorker(QThread):
 
 
 class RealtimeVoiceManager(QObject):
+    __slots__ = ("_backend", "_is_listening", "_audio_queue", "_recognition_thread", "_speech_signal")
     """
     实时语音管理器
 
