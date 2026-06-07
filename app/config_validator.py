@@ -1,8 +1,5 @@
-import logging
 """
 配置验证模块
-
-logger = logging.getLogger(__name__)
 
 提供配置验证、错误检查和配置优化功能。
 """
@@ -403,7 +400,7 @@ def generate_validation_report() -> str:
 
 if __name__ == "__main__":
     # 测试配置验证
-    logger.info("开始配置验证...")
+    print("开始配置验证...")
     report = generate_validation_report()
-    logger.info(report)
-    logger.info("配置验证完成")
+    print(report)
+    print("配置验证完成")

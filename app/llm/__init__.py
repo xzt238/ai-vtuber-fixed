@@ -1,11 +1,8 @@
-import logging
 #!/usr/bin/env python3
 """
 =====================================
 大语言模型模块 (LLM) - 重构版 v2.0
 =====================================
-
-logger = logging.getLogger(__name__)
 
 【模块功能概述】
 本模块是 AI VTuber 系统的"大脑核心"，负责与各种大语言模型 API 进行通信。
@@ -209,7 +206,7 @@ class PromptInjector:
                     injections.append(inj)
             except Exception as e:
                 # 单个模块失败不中断整体构建
-                logger.info(f"[PromptInjector] 模块执行失败: {e}")
+                print(f"[PromptInjector] 模块执行失败: {e}")
         
         # 按优先级升序排序（priority=0 最前，priority=100 最后）
         injections.sort()
@@ -318,7 +315,7 @@ class MemoryRAGInjector:
             
         except Exception as e:
             # 记忆获取失败时静默降级，不中断对话流程
-            logger.info(f"[MemoryRAGInjector] 错误: {e}")
+            print(f"[MemoryRAGInjector] 错误: {e}")
             return PromptInjection("")
 
 
@@ -846,7 +843,7 @@ class StreamAccumulator:
         # 检查是否有 tool_calls 需要执行
         if self.tool_calls_accum and self.finish_reason == "tool_calls":
             tool_calls_list = [self.tool_calls_accum[i] for i in sorted(self.tool_calls_accum.keys())]
-            logger.info(f"[LLM] FC 检测到 {len(tool_calls_list)} 个工具调用")
+            print(f"[LLM] FC 检测到 {len(tool_calls_list)} 个工具调用")
             try:
                 from app.tools.fc_executor import handle_tool_calls_stream
                 fc_result = handle_tool_calls_stream(
@@ -870,7 +867,7 @@ class StreamAccumulator:
                     tool_summary_parts.append(tr.get("result", {}).get("content", ""))
                 return {"text": "\n".join(tool_summary_parts) or "工具已执行", "action": None, "_ui_actions": _ui_actions}
             except Exception as e:
-                logger.info(f"[LLM] FC 执行失败: {e}")
+                print(f"[LLM] FC 执行失败: {e}")
                 if self.full_text:
                     return {"text": self.full_text, "action": None}
                 # v1.9.99: FC 失败且无文本时，返回错误信息而非空字符串
@@ -1084,7 +1081,7 @@ class MiniMaxLLM(LLMEngine):
             base_delay=config.get("retry_delay", 1.0),
         )
         
-        logger.info(f"  MiniMax LLM v2.0 初始化: max_tokens={self.max_tokens}")
+        print(f"  MiniMax LLM v2.0 初始化: max_tokens={self.max_tokens}")
 
     def _build_anthropic_messages(self, message: str, history: List[Dict] = None,
                                   memory_system = None):
@@ -1198,7 +1195,7 @@ class MiniMaxLLM(LLMEngine):
                     break
                 # 计算指数退避等待时间
                 delay = self._retry.get_delay(attempt)
-                logger.info(f" LLM 请求失败，{delay:.1f}s 后重试 ({attempt + 1}/{self._retry.max_retries})...")
+                print(f" LLM 请求失败，{delay:.1f}s 后重试 ({attempt + 1}/{self._retry.max_retries})...")
                 time.sleep(delay)
         
         return {"text": f"对话错误: {str(last_error)}", "action": None}
@@ -1365,12 +1362,12 @@ class MiniMaxLLM(LLMEngine):
                 if is_server_error and attempt < max_retries:
                     import time
                     wait = 2 ** attempt  # 指数退避: 1s, 2s
-                    logger.info(f"[LLM] 流式请求 {attempt+1}/{max_retries+1} 失败({error_str})，{wait}s后重试...")
+                    print(f"[LLM] 流式请求 {attempt+1}/{max_retries+1} 失败({error_str})，{wait}s后重试...")
                     time.sleep(wait)
                     continue
                 break
 
-        logger.info(f"[LLM] 流式错误: {last_error}")
+        print(f"[LLM] 流式错误: {last_error}")
         # v1.9.99: 流式错误时返回错误信息而非空字符串，让调用方能感知到失败
         return {"text": f"对话错误: {str(last_error)}", "action": None, "_stream_error": str(last_error)}
 
@@ -1411,7 +1408,7 @@ class MiniMaxLLM(LLMEngine):
                 data["tools"] = tool_schemas
                 data["tool_choice"] = "auto"
         except Exception as e:
-            logger.info(f"[LLM] FC 工具 schema 加载失败(不影响对话): {e}")
+            print(f"[LLM] FC 工具 schema 加载失败(不影响对话): {e}")
 
         # base_url 已含 /v1，直接拼接 /chat/completions
         url = f"{self.base_url}/chat/completions"
@@ -1603,7 +1600,7 @@ class OpenAILLM(LLMEngine):
         else:
             self._session.headers["Authorization"] = f"Bearer {self.api_key}"
         
-        logger.info(f"  OpenAI LLM v2.0 初始化: base_url={self.base_url}, max_tokens={self.max_tokens}, ollama={self._is_ollama}")
+        print(f"  OpenAI LLM v2.0 初始化: base_url={self.base_url}, max_tokens={self.max_tokens}, ollama={self._is_ollama}")
 
     def chat(self, message: str, history: List[Dict] = None,
              memory_system = None) -> Dict[str, Any]:
@@ -1696,7 +1693,7 @@ class OpenAILLM(LLMEngine):
             
             return ret
         except Exception as e:
-            logger.info(f"[LLM] 对话异常: {type(e).__name__}: {e}")
+            print(f"[LLM] 对话异常: {type(e).__name__}: {e}")
             return {"text": "对话出错了，请稍后重试", "action": None}
 
     def _ollama_chat(self, message: str, history: List[Dict] = None,
@@ -1757,7 +1754,7 @@ class OpenAILLM(LLMEngine):
                 self._cache[cache_key] = (ret, time.time())
             return ret
         except Exception as e:
-            logger.info(f"[LLM] 对话异常: {type(e).__name__}: {e}")
+            print(f"[LLM] 对话异常: {type(e).__name__}: {e}")
             return {"text": "对话出错了，请稍后重试", "action": None}
 
     def _ollama_stream_chat(self, message: str, history: List[Dict] = None, callback=None,
@@ -1821,7 +1818,7 @@ class OpenAILLM(LLMEngine):
             action = json.loads(action_str) if action_str else None
             return {"text": full_text, "action": action}
         except Exception as e:
-            logger.info(f"[LLM] Ollama 流式错误: {e}")
+            print(f"[LLM] Ollama 流式错误: {e}")
             return {"text": "对话出错了，请稍后重试", "action": None}
 
     def stream_chat(self, message: str, history: List[Dict] = None, callback=None,
@@ -1873,7 +1870,7 @@ class OpenAILLM(LLMEngine):
                     data["tools"] = tool_schemas
                     data["tool_choice"] = "auto"
             except Exception as e:
-                logger.info(f"[LLM] FC 工具 schema 加载失败(不影响对话): {e}")
+                print(f"[LLM] FC 工具 schema 加载失败(不影响对话): {e}")
 
             response = self._session.post(
                 f"{self.base_url}/chat/completions",
@@ -1923,7 +1920,7 @@ class OpenAILLM(LLMEngine):
                 on_chunk=callback,
             )
         except Exception as e:
-            logger.info(f"[LLM] OpenAI 流式错误: {e}")
+            print(f"[LLM] OpenAI 流式错误: {e}")
             return {"text": "对话出错了，请稍后重试", "action": None}
         # 注意：此 return 语句不可达（异常路径已在上面 except 中返回）
         # return result  # 原代码遗留的不可达语句，可忽略
@@ -1991,7 +1988,7 @@ class AnthropicLLM(LLMEngine):
         self._session.headers["x-api-key"] = self.api_key
         self._session.headers["anthropic-version"] = "2023-06-01"  # Anthropic API 版本（必填）
         
-        logger.info(f"  Anthropic LLM v2.0 初始化: max_tokens={self.max_tokens}")
+        print(f"  Anthropic LLM v2.0 初始化: max_tokens={self.max_tokens}")
 
     def chat(self, message: str, history: List[Dict] = None,
              memory_system = None) -> Dict[str, Any]:
@@ -2073,7 +2070,7 @@ class AnthropicLLM(LLMEngine):
 
             return ret
         except Exception as e:
-            logger.info(f"[LLM] 对话异常: {type(e).__name__}: {e}")
+            print(f"[LLM] 对话异常: {type(e).__name__}: {e}")
             return {"text": "对话出错了，请稍后重试", "action": None}
 
     def stream_chat(self, message: str, history: List[Dict] = None, callback=None,
@@ -2168,7 +2165,7 @@ class AnthropicLLM(LLMEngine):
             
             return acc.finish(response, use_clean_response=False)
         except Exception as e:
-            logger.info(f"[LLM] Anthropic 流式错误: {e}")
+            print(f"[LLM] Anthropic 流式错误: {e}")
             return {"text": "对话出错了，请稍后重试", "action": None}
 
     def is_available(self) -> bool:
@@ -2257,6 +2254,6 @@ class LLMFactory:
             # 未知 provider 也尝试走 OpenAI 格式（兼容第三方代理）
             sub_cfg = config.get(provider, {})
             if sub_cfg.get("base_url"):
-                logger.info(f"[LLM] 未知 provider '{provider}'，尝试 OpenAI 兼容格式")
+                print(f"[LLM] 未知 provider '{provider}'，尝试 OpenAI 兼容格式")
                 return OpenAILLM(sub_cfg)
             raise ValueError(f"未知 LLM 提供商: {provider}")

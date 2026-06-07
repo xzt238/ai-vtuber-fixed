@@ -1,8 +1,5 @@
-import logging
 """
 Twitch直播平台实现
-
-logger = logging.getLogger(__name__)
 
 提供Twitch直播弹幕接收、发送等功能。
 
@@ -60,17 +57,17 @@ class TwitchPlatform(LivePlatform):
             if success:
                 self.connected = True
                 self._stats["connected_at"] = datetime.now()
-                logger.info(f" Twitch直播间连接成功: {room_id}")
+                print(f" Twitch直播间连接成功: {room_id}")
                 
                 # 启动消息接收
                 self._ws_task = asyncio.create_task(self._receive_messages())
             else:
-                logger.info(f" Twitch直播间连接失败: {room_id}")
+                print(f" Twitch直播间连接失败: {room_id}")
             
             return success
             
         except Exception as e:
-            logger.info(f" Twitch连接失败: {e}")
+            print(f" Twitch连接失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -94,28 +91,28 @@ class TwitchPlatform(LivePlatform):
             self.room_id = None
             self._stats["connected_at"] = None
             
-            logger.info(" Twitch直播间已断开")
+            print(" Twitch直播间已断开")
             
         except Exception as e:
-            logger.info(f" Twitch断开连接失败: {e}")
+            print(f" Twitch断开连接失败: {e}")
             self._stats["error_count"] += 1
     
     async def send_danmaku(self, content: str) -> bool:
         """发送弹幕"""
         try:
             if not self.connected or not self._ws:
-                logger.info(" 未连接到直播间")
+                print(" 未连接到直播间")
                 return False
             
             # 发送IRC消息
             message = f"PRIVMSG #{self.channel} :{content}\r\n"
             self._ws.send(message)
             
-            logger.info(f" 弹幕发送成功: {content}")
+            print(f" 弹幕发送成功: {content}")
             return True
             
         except Exception as e:
-            logger.info(f" 弹幕发送失败: {e}")
+            print(f" 弹幕发送失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -133,11 +130,11 @@ class TwitchPlatform(LivePlatform):
             self._ws.send(f"NICK {self.channel}\r\n".encode())
             self._ws.send(f"JOIN #{self.channel}\r\n".encode())
             
-            logger.info(f" Twitch IRC连接成功")
+            print(f" Twitch IRC连接成功")
             return True
             
         except Exception as e:
-            logger.info(f" Twitch IRC连接失败: {e}")
+            print(f" Twitch IRC连接失败: {e}")
             return False
     
     async def _receive_messages(self):
@@ -163,7 +160,7 @@ class TwitchPlatform(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.info(f" 消息接收失败: {e}")
+                    print(f" 消息接收失败: {e}")
                     self._stats["error_count"] += 1
                     await asyncio.sleep(1)
             
@@ -197,7 +194,7 @@ class TwitchPlatform(LivePlatform):
                         self._notify_danmaku(danmaku)
             
         except Exception as e:
-            logger.info(f" 消息处理失败: {e}")
+            print(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
 
 

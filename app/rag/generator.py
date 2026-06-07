@@ -1,8 +1,5 @@
-import logging
 """
 生成器
-
-logger = logging.getLogger(__name__)
 
 提供检索增强生成功能。
 """
@@ -53,7 +50,7 @@ class Generator:
                 return str(response)
                 
         except Exception as e:
-            logger.info(f" 生成失败: {e}")
+            print(f" 生成失败: {e}")
             return f"生成回答时出错: {e}"
     
     def _prepare_context(self, context: List[str] = None) -> str:
@@ -105,7 +102,7 @@ class Generator:
                 return self._generate_without_llm(query, context)
                 
         except Exception as e:
-            logger.info(f" 模板生成失败: {e}")
+            print(f" 模板生成失败: {e}")
             return f"生成回答时出错: {e}"
     
     def summarize(self, text: str, max_length: int = 200) -> str:
@@ -139,7 +136,7 @@ class Generator:
                 return summary
                 
         except Exception as e:
-            logger.info(f" 摘要生成失败: {e}")
+            print(f" 摘要生成失败: {e}")
             return text[:max_length] + "..." if len(text) > max_length else text
     
     def extract_keywords(self, text: str, top_k: int = 5) -> List[str]:
@@ -175,5 +172,5 @@ class Generator:
                 return keywords[:top_k]
                 
         except Exception as e:
-            logger.info(f" 关键词提取失败: {e}")
+            print(f" 关键词提取失败: {e}")
             return []

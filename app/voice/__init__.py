@@ -1,11 +1,8 @@
-import logging
 #!/usr/bin/env python3
 """
 =====================================
 语音输入模块 (Voice Input)
 =====================================
-
-logger = logging.getLogger(__name__)
 
 【模块功能概述】
 本模块负责 AI VTuber 系统的语音输入功能——从麦克风采集用户的语音数据，
@@ -134,13 +131,13 @@ class VoiceInput:
             default_input = sd.query_devices(kind='input')
             return default_input is not None and default_input.get('max_input_channels', 0) > 0
         except ImportError:
-            logger.info("️ sounddevice未安装: pip install sounddevice")
+            print("️ sounddevice未安装: pip install sounddevice")
             return False
         except OSError as e:
-            logger.info(f"️ 无法访问麦克风: {e}")
+            print(f"️ 无法访问麦克风: {e}")
             return False
         except Exception as e:
-            logger.info(f"️ 麦克风错误: {e}")
+            print(f"️ 麦克风错误: {e}")
             return False
     
     def set_callback(self, callback: Callable):
@@ -181,7 +178,7 @@ class VoiceInput:
             return False
         
         if not self.is_available():
-            logger.info("️ 语音输入不可用")
+            print("️ 语音输入不可用")
             return False
         
         try:
@@ -206,7 +203,7 @@ class VoiceInput:
                     无（直接写入缓冲区）
                 """
                 if status:
-                    logger.info(f"录音状态: {status}")
+                    print(f"录音状态: {status}")
                 
                 # 计算当前帧的音量（RMS，均方根）
                 # np.linalg.norm 计算向量的 L2 范数，除以 frames 归一化
@@ -231,11 +228,11 @@ class VoiceInput:
             )
             self.recorder.start()
             
-            logger.info(" 开始录音...")
+            print(" 开始录音...")
             return True
             
         except Exception as e:
-            logger.info(f"️ 开始录音失败: {e}")
+            print(f"️ 开始录音失败: {e}")
             self.is_recording = False
             return False
     
@@ -291,7 +288,7 @@ class VoiceInput:
                 audio_int = (audio * 32767).astype('int16')
                 f.writeframes(audio_int.tobytes())
             
-            logger.info(f" 录音完成: {temp_file.name}")
+            print(f" 录音完成: {temp_file.name}")
             
             # 触发回调函数，通知调用者录音完成
             if self.callback:
@@ -300,7 +297,7 @@ class VoiceInput:
             return temp_file.name
             
         except Exception as e:
-            logger.info(f"️ 停止录音失败: {e}")
+            print(f"️ 停止录音失败: {e}")
             return None
     
     def cancel(self):
@@ -318,7 +315,7 @@ class VoiceInput:
                 pass  # 忽略关闭时的异常
             self.is_recording = False
             self.audio_data = []  # 清空缓冲区，丢弃所有数据
-            logger.info(" 录音已取消")
+            print(" 录音已取消")
 
 
 # =====================================================================
@@ -614,4 +611,4 @@ if __name__ == "__main__":
     
     # 通过工厂创建语音输入实例
     voice = VoiceInputFactory.create(config)
-    logger.info(f"语音输入可用: {voice.is_available()}")
+    print(f"语音输入可用: {voice.is_available()}")

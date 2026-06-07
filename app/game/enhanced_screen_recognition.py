@@ -1,10 +1,7 @@
-import logging
 """
 增强版屏幕识别模块
 支持多游戏识别、实时状态推断、智能决策
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 import numpy as np
@@ -82,7 +79,7 @@ class EnhancedScreenRecognition:
             "average_time_ms": 0
         }
         
-        logger.info("[EnhancedScreenRecognition] 初始化完成")
+        print("[EnhancedScreenRecognition] 初始化完成")
     
     async def initialize(self) -> bool:
         """初始化OCR引擎"""
@@ -94,10 +91,10 @@ class EnhancedScreenRecognition:
             elif self.ocr_engine == "easyocr":
                 return await self._init_easyocr()
             else:
-                logger.info(f"[EnhancedScreenRecognition] 不支持的OCR引擎: {self.ocr_engine}")
+                print(f"[EnhancedScreenRecognition] 不支持的OCR引擎: {self.ocr_engine}")
                 return False
         except Exception as e:
-            logger.info(f"[EnhancedScreenRecognition] 初始化失败: {e}")
+            print(f"[EnhancedScreenRecognition] 初始化失败: {e}")
             return False
     
     async def _init_rapidocr(self) -> bool:
@@ -105,10 +102,10 @@ class EnhancedScreenRecognition:
         try:
             from rapidocr_onnxruntime import RapidOCR
             self.ocr_instance = RapidOCR()
-            logger.info("[EnhancedScreenRecognition] RapidOCR初始化成功")
+            print("[EnhancedScreenRecognition] RapidOCR初始化成功")
             return True
         except ImportError:
-            logger.info("[EnhancedScreenRecognition] RapidOCR未安装")
+            print("[EnhancedScreenRecognition] RapidOCR未安装")
             return False
     
     async def _init_paddleocr(self) -> bool:
@@ -116,10 +113,10 @@ class EnhancedScreenRecognition:
         try:
             from paddleocr import PaddleOCR
             self.ocr_instance = PaddleOCR(use_angle_cls=True, lang="ch")
-            logger.info("[EnhancedScreenRecognition] PaddleOCR初始化成功")
+            print("[EnhancedScreenRecognition] PaddleOCR初始化成功")
             return True
         except ImportError:
-            logger.info("[EnhancedScreenRecognition] PaddleOCR未安装")
+            print("[EnhancedScreenRecognition] PaddleOCR未安装")
             return False
     
     async def _init_easyocr(self) -> bool:
@@ -127,16 +124,16 @@ class EnhancedScreenRecognition:
         try:
             import easyocr
             self.ocr_instance = easyocr.Reader(['ch_sim', 'en'])
-            logger.info("[EnhancedScreenRecognition] EasyOCR初始化成功")
+            print("[EnhancedScreenRecognition] EasyOCR初始化成功")
             return True
         except ImportError:
-            logger.info("[EnhancedScreenRecognition] EasyOCR未安装")
+            print("[EnhancedScreenRecognition] EasyOCR未安装")
             return False
     
     def register_game_template(self, game_name: str, template: Dict[str, Any]):
         """注册游戏模板"""
         self.game_templates[game_name] = template
-        logger.info(f"[EnhancedScreenRecognition] 注册游戏模板: {game_name}")
+        print(f"[EnhancedScreenRecognition] 注册游戏模板: {game_name}")
     
     async def recognize(self, screenshot: np.ndarray = None, 
                        game_name: str = None) -> Optional[ScreenState]:
@@ -200,12 +197,12 @@ class EnhancedScreenRecognition:
                 / self.stats["successful_recognitions"]
             )
             
-            logger.info(f"[EnhancedScreenRecognition] 识别完成: {game_state.value} ({confidence:.1%})")
+            print(f"[EnhancedScreenRecognition] 识别完成: {game_state.value} ({confidence:.1%})")
             
             return state
             
         except Exception as e:
-            logger.info(f"[EnhancedScreenRecognition] 识别失败: {e}")
+            print(f"[EnhancedScreenRecognition] 识别失败: {e}")
             return None
     
     async def _capture_screen(self) -> Optional[np.ndarray]:
@@ -224,10 +221,10 @@ class EnhancedScreenRecognition:
                 return img
                 
         except ImportError:
-            logger.info("[EnhancedScreenRecognition] mss未安装")
+            print("[EnhancedScreenRecognition] mss未安装")
             return None
         except Exception as e:
-            logger.info(f"[EnhancedScreenRecognition] 截图失败: {e}")
+            print(f"[EnhancedScreenRecognition] 截图失败: {e}")
             return None
     
     async def _ocr_recognize(self, image: np.ndarray) -> List[Dict[str, Any]]:
@@ -242,7 +239,7 @@ class EnhancedScreenRecognition:
             else:
                 return []
         except Exception as e:
-            logger.info(f"[EnhancedScreenRecognition] OCR识别失败: {e}")
+            print(f"[EnhancedScreenRecognition] OCR识别失败: {e}")
             return []
     
     async def _ocr_rapidocr(self, image: np.ndarray) -> List[Dict[str, Any]]:
@@ -275,7 +272,7 @@ class EnhancedScreenRecognition:
             return results
             
         except Exception as e:
-            logger.info(f"[EnhancedScreenRecognition] RapidOCR识别失败: {e}")
+            print(f"[EnhancedScreenRecognition] RapidOCR识别失败: {e}")
             return []
     
     async def _ocr_paddleocr(self, image: np.ndarray) -> List[Dict[str, Any]]:
@@ -307,7 +304,7 @@ class EnhancedScreenRecognition:
             return results
             
         except Exception as e:
-            logger.info(f"[EnhancedScreenRecognition] PaddleOCR识别失败: {e}")
+            print(f"[EnhancedScreenRecognition] PaddleOCR识别失败: {e}")
             return []
     
     async def _ocr_easyocr(self, image: np.ndarray) -> List[Dict[str, Any]]:
@@ -336,7 +333,7 @@ class EnhancedScreenRecognition:
             return results
             
         except Exception as e:
-            logger.info(f"[EnhancedScreenRecognition] EasyOCR识别失败: {e}")
+            print(f"[EnhancedScreenRecognition] EasyOCR识别失败: {e}")
             return []
     
     def _extract_ui_elements(self, ocr_results: List[Dict[str, Any]]) -> List[UIElement]:

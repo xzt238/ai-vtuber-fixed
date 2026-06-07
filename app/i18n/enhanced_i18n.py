@@ -1,10 +1,7 @@
-import logging
 """
 增强版国际化模块
 支持多语言、动态翻译、语言包管理
 """
-
-logger = logging.getLogger(__name__)
 
 import os
 import json
@@ -56,7 +53,7 @@ class I18nManager:
         # 加载所有语言包
         self._load_language_packages()
         
-        logger.info(f"[I18n] 初始化完成，当前语言: {self.current_language.value}")
+        print(f"[I18n] 初始化完成，当前语言: {self.current_language.value}")
     
     def _load_language_packages(self):
         """加载语言包"""
@@ -71,15 +68,15 @@ class I18nManager:
                     translations = json.load(f)
                     self.translations[lang_code] = translations
             
-            logger.info(f"[I18n] 加载了 {len(self.language_files)} 个语言包")
+            print(f"[I18n] 加载了 {len(self.language_files)} 个语言包")
             
         except Exception as e:
-            logger.info(f"[I18n] 加载语言包失败: {e}")
+            print(f"[I18n] 加载语言包失败: {e}")
     
     def set_language(self, language: Language):
         """设置当前语言"""
         self.current_language = language
-        logger.info(f"[I18n] 切换语言: {language.value}")
+        print(f"[I18n] 切换语言: {language.value}")
     
     def get_text(self, key: str, **kwargs) -> str:
         """获取翻译文本"""
@@ -123,10 +120,10 @@ class I18nManager:
                 with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(translations, f, ensure_ascii=False, indent=2)
             
-            logger.info("[I18n] 翻译已保存")
+            print("[I18n] 翻译已保存")
             
         except Exception as e:
-            logger.info(f"[I18n] 保存翻译失败: {e}")
+            print(f"[I18n] 保存翻译失败: {e}")
     
     def get_supported_languages(self) -> List[Dict[str, str]]:
         """获取支持的语言列表"""

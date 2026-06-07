@@ -751,7 +751,7 @@ class ChatPage(QWidget):
                 QTimer.singleShot(0, self._force_live2d_repaint)
                 QTimer.singleShot(500, self._force_live2d_repaint)
                 QTimer.singleShot(3000, self._force_live2d_repaint)
-                logger.info("[ChatPage] Live2D placeholder replaced with widget")
+                print("[ChatPage] Live2D placeholder replaced with widget")
             else:
                 # fallback: indexOf 没找到 — 追加到布局末尾
                 self._live2d_layout.addWidget(self.live2d_widget, stretch=1)
@@ -765,7 +765,7 @@ class ChatPage(QWidget):
                 QTimer.singleShot(0, self._force_live2d_repaint)
                 QTimer.singleShot(500, self._force_live2d_repaint)
                 QTimer.singleShot(3000, self._force_live2d_repaint)
-                logger.info("[ChatPage] Live2D placeholder replaced (fallback append)")
+                print("[ChatPage] Live2D placeholder replaced (fallback append)")
 
         # 创建动画控制器
         self._animation_controller = AnimationController(self.live2d_widget)
@@ -783,9 +783,9 @@ class ChatPage(QWidget):
             self._load_default_vrm_model()
             # 显示 VRM 切换按钮
             self._btn_vrm.show()
-            logger.info("[ChatPage] VRM widget 已创建（隐藏）")
+            print("[ChatPage] VRM widget 已创建（隐藏）")
         else:
-            logger.info("[ChatPage] VRMWidget 不可用，跳过 VRM 支持")
+            print("[ChatPage] VRMWidget 不可用，跳过 VRM 支持")
 
     def _force_live2d_repaint(self):
         """微调窗口尺寸强制 QWebEngineView 合成到屏幕"""
@@ -826,9 +826,9 @@ class ChatPage(QWidget):
         )
         if os.path.exists(vrm_path):
             self._vrm_widget.load_model(vrm_path)
-            logger.info(f"[ChatPage] VRM 默认模型已加载: {vrm_path}")
+            print(f"[ChatPage] VRM 默认模型已加载: {vrm_path}")
         else:
-            logger.info(f"[ChatPage] VRM 默认模型不存在: {vrm_path}")
+            print(f"[ChatPage] VRM 默认模型不存在: {vrm_path}")
 
     def switch_model_type(self, model_type: str):
         """切换 Live2D / VRM 模型显示"""
@@ -836,7 +836,7 @@ class ChatPage(QWidget):
             return
 
         if model_type == "vrm" and self._vrm_widget is None:
-            logger.info("[ChatPage] VRM widget 不可用，无法切换")
+            print("[ChatPage] VRM widget 不可用，无法切换")
             return
 
         if model_type == "vrm":
@@ -850,7 +850,7 @@ class ChatPage(QWidget):
             self._btn_live2d.setChecked(False)
             self._btn_vrm.setChecked(True)
             self._vrm_variant_bar.show()
-            logger.info("[ChatPage] 已切换到 VRM 模型")
+            print("[ChatPage] 已切换到 VRM 模型")
         else:
             if self._vrm_widget:
                 self._vrm_widget.hide()
@@ -862,7 +862,7 @@ class ChatPage(QWidget):
             self._btn_live2d.setChecked(True)
             self._btn_vrm.setChecked(False)
             self._vrm_variant_bar.hide()
-            logger.info("[ChatPage] 已切换到 Live2D 模型")
+            print("[ChatPage] 已切换到 Live2D 模型")
 
     def _switch_vrm_variant(self, variant: str):
         """切换 VRM 变体"""
@@ -883,7 +883,7 @@ class ChatPage(QWidget):
             # 更新按钮选中状态
             for name, btn in self._btn_vrm_variants.items():
                 btn.setChecked(name == variant)
-            logger.info(f"[ChatPage] 切换 VRM 变体: {variant} → {filename}")
+            print(f"[ChatPage] 切换 VRM 变体: {variant} → {filename}")
 
     def _import_vrm_model(self):
         """导入新的 VRM 模型文件"""
@@ -901,7 +901,7 @@ class ChatPage(QWidget):
         if self._vrm_widget and self._current_model_type == "vrm":
             self._vrm_widget.load_model(dest)
         InfoBar.success("导入成功", f"VRM 模型已导入: {model_name}", parent=self)
-        logger.info(f"[ChatPage] 导入 VRM: {path} → {dest}")
+        print(f"[ChatPage] 导入 VRM: {path} → {dest}")
 
     def _import_live2d_model(self):
         """导入新的 Live2D 模型文件夹"""
@@ -923,7 +923,7 @@ class ChatPage(QWidget):
                     self.live2d_widget.load_model(model_json)
                 break
         InfoBar.success("导入成功", f"Live2D 模型已导入: {model_name}", parent=self)
-        logger.info(f"[ChatPage] 导入 Live2D: {path} → {dest_dir}")
+        print(f"[ChatPage] 导入 Live2D: {path} → {dest_dir}")
 
     def _apply_vrm_display_config(self):
         """读取保存的 VRM 显示配置并应用到当前模型"""
@@ -1010,7 +1010,7 @@ class ChatPage(QWidget):
             self.tts_combo.blockSignals(False)
             self.voice_combo.blockSignals(False)
         except Exception as e:
-            logger.info(f"[ChatPage] 加载 TTS 配置失败: {e}")
+            print(f"[ChatPage] 加载 TTS 配置失败: {e}")
             self.tts_combo.blockSignals(False)
             self.voice_combo.blockSignals(False)
 
@@ -1036,7 +1036,7 @@ class ChatPage(QWidget):
                     })
                 self._save_chat_history()
         except Exception as e:
-            logger.info(f"[ChatPage] 从后端加载历史失败: {e}")
+            print(f"[ChatPage] 从后端加载历史失败: {e}")
 
     # ========== 发送/流式对话 ==========
 
@@ -1191,7 +1191,7 @@ class ChatPage(QWidget):
                     # 通过信号传回主线程（线程安全），携带序号
                     self._tts_audio_signal.emit(audio_path, seq_num)
             except Exception as e:
-                logger.info(f"[ChatPage] 流式 TTS 句子合成失败: {e}")
+                print(f"[ChatPage] 流式 TTS 句子合成失败: {e}")
         self._tts_executor.submit(_tts_task, sentence, seq)
 
     @Slot(dict)
@@ -1219,7 +1219,7 @@ class ChatPage(QWidget):
             if action.get("type") == "change_expression" and self._animation_controller:
                 emotion = action.get("emotion", "neutral")
                 self._animation_controller.trigger_emotion(emotion, lock_duration=5.0)
-                logger.info(f"[ChatPage] FC 表情指令: {emotion}")
+                print(f"[ChatPage] FC 表情指令: {emotion}")
 
         # 自动表情检测 → 统一通过 AnimationController（优化 #6: 去重）
         if reply_text and not any(a.get("type") == "change_expression" for a in ui_actions):
@@ -1405,7 +1405,7 @@ class ChatPage(QWidget):
             # 启动口型同步动画
             self._start_lipsync()
         except Exception as e:
-            logger.info(f"[ChatPage] 音频播放失败: {e}")
+            print(f"[ChatPage] 音频播放失败: {e}")
 
     def _start_lipsync(self):
         """TTS 播放时驱动 Live2D 口型动画"""
@@ -1844,7 +1844,7 @@ class ChatPage(QWidget):
                             self.voice_combo.addItem(str(v), userData=str(v))
                     return
         except Exception as e:
-            logger.info(f"[ChatPage] 获取 GPT-SoVITS 音色失败: {e}")
+            print(f"[ChatPage] 获取 GPT-SoVITS 音色失败: {e}")
         self.voice_combo.addItem("默认音色", userData="default")
 
     def _on_tts_engine_changed_chat(self, index: int):
@@ -1925,7 +1925,7 @@ class ChatPage(QWidget):
             with open(_TTS_PREFS_FILE, "w", encoding="utf-8") as f:
                 json.dump(tts_prefs, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger.info(f"[ChatPage] TTS 偏好保存失败: {e}")
+            print(f"[ChatPage] TTS 偏好保存失败: {e}")
 
     def sync_tts_from_settings(self, engine: str, voice_id: str):
         """从设置页同步 TTS 配置到 Chat 页"""
@@ -2039,7 +2039,7 @@ class ChatPage(QWidget):
         if self.backend:
             worker = TTSWorker(self.backend, text, parent=self)
             worker.audio_ready.connect(self._on_tts_audio_ready)
-            worker.error.connect(lambda e: logger.info(f"[ChatPage] 主动说话 TTS 失败: {e}"))
+            worker.error.connect(lambda e: print(f"[ChatPage] 主动说话 TTS 失败: {e}"))
             worker.finished.connect(lambda: self._cleanup_tts_worker(worker))
             self._tts_workers.append(worker)
             worker.start()

@@ -1,8 +1,5 @@
-import logging
 """
 Stardew Valley游戏代理实现
-
-logger = logging.getLogger(__name__)
 
 提供Stardew Valley游戏的完整集成，包括：
 - 通过SMAPI连接到Stardew Valley
@@ -46,8 +43,8 @@ class StardewValleyAgent(GameAgent):
         # 状态轮询任务
         self._poll_task = None
         
-        logger.info(f" Stardew Valley代理初始化完成")
-        logger.info(f" SMAPI服务器: {self.host}:{self.port}")
+        print(f" Stardew Valley代理初始化完成")
+        print(f" SMAPI服务器: {self.host}:{self.port}")
     
     async def connect(self) -> bool:
         """连接到Stardew Valley SMAPI服务器"""
@@ -58,30 +55,30 @@ class StardewValleyAgent(GameAgent):
             self._session = aiohttp.ClientSession()
             
             # 测试连接
-            logger.info(f" 正在连接到Stardew Valley SMAPI服务器: {self.host}:{self.port}")
+            print(f" 正在连接到Stardew Valley SMAPI服务器: {self.host}:{self.port}")
             
             # 测试API
             async with self._session.get(f"{self._api_base}/info") as response:
                 if response.status == 200:
                     info = await response.json()
-                    logger.info(f" SMAPI版本: {info.get('version', '未知')}")
+                    print(f" SMAPI版本: {info.get('version', '未知')}")
                     
                     self.connected = True
-                    logger.info(" Stardew Valley连接成功")
+                    print(" Stardew Valley连接成功")
                     
                     # 启动状态轮询
                     self._poll_task = asyncio.create_task(self._poll_state())
                     
                     return True
                 else:
-                    logger.info(f" Stardew Valley连接失败: HTTP {response.status}")
+                    print(f" Stardew Valley连接失败: HTTP {response.status}")
                     return False
             
         except ImportError:
-            logger.info(" 未安装aiohttp库，请执行: pip install aiohttp")
+            print(" 未安装aiohttp库，请执行: pip install aiohttp")
             return False
         except Exception as e:
-            logger.info(f" Stardew Valley连接失败: {e}")
+            print(f" Stardew Valley连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -101,16 +98,16 @@ class StardewValleyAgent(GameAgent):
                 self._session = None
             
             self.connected = False
-            logger.info(" Stardew Valley连接已断开")
+            print(" Stardew Valley连接已断开")
             
         except Exception as e:
-            logger.info(f" Stardew Valley断开连接失败: {e}")
+            print(f" Stardew Valley断开连接失败: {e}")
     
     async def get_state(self) -> Optional[GameState]:
         """获取Stardew Valley游戏状态"""
         try:
             if not self.connected or not self._session:
-                logger.info(" 未连接到Stardew Valley")
+                print(" 未连接到Stardew Valley")
                 return None
             
             # 获取游戏状态
@@ -169,25 +166,25 @@ class StardewValleyAgent(GameAgent):
                     
                     return state
                 else:
-                    logger.info(f" 获取游戏状态失败: HTTP {response.status}")
+                    print(f" 获取游戏状态失败: HTTP {response.status}")
                     return None
             
         except Exception as e:
-            logger.info(f" 获取Stardew Valley状态失败: {e}")
+            print(f" 获取Stardew Valley状态失败: {e}")
             return None
     
     async def execute_action(self, action: GameAction) -> bool:
         """执行Stardew Valley动作"""
         try:
             if not self.connected or not self._session:
-                logger.info(" 未连接到Stardew Valley")
+                print(" 未连接到Stardew Valley")
                 return False
             
             action_type = action.action_type
             parameters = action.parameters
             
-            logger.info(f" 执行Stardew Valley动作: {action_type}")
-            logger.info(f" 参数: {parameters}")
+            print(f" 执行Stardew Valley动作: {action_type}")
+            print(f" 参数: {parameters}")
             
             # 根据动作类型执行
             if action_type == "chat":
@@ -201,24 +198,24 @@ class StardewValleyAgent(GameAgent):
             elif action_type == "time":
                 await self._set_time(parameters)
             else:
-                logger.info(f" 未知的动作类型: {action_type}")
+                print(f" 未知的动作类型: {action_type}")
                 return False
             
             # 通知动作回调
             self._notify_action(action)
             
-            logger.info(f" Stardew Valley动作执行成功: {action_type}")
+            print(f" Stardew Valley动作执行成功: {action_type}")
             return True
             
         except Exception as e:
-            logger.info(f" Stardew Valley动作执行失败: {e}")
+            print(f" Stardew Valley动作执行失败: {e}")
             return False
     
     async def _chat(self, parameters: Dict[str, Any]):
         """发送聊天消息"""
         message = parameters.get("message", "")
         
-        logger.info(f" 发送聊天: {message}")
+        print(f" 发送聊天: {message}")
         
         # 发送聊天命令
         await self.send_command(f"say {message}")
@@ -227,7 +224,7 @@ class StardewValleyAgent(GameAgent):
         """执行命令"""
         command = parameters.get("command", "")
         
-        logger.info(f" 执行命令: {command}")
+        print(f" 执行命令: {command}")
         
         # 发送命令
         await self.send_command(command)
@@ -238,7 +235,7 @@ class StardewValleyAgent(GameAgent):
         item = parameters.get("item", "")
         count = parameters.get("count", 1)
         
-        logger.info(f" 给予物品: {player} {item} x{count}")
+        print(f" 给予物品: {player} {item} x{count}")
         
         # 发送给予命令
         await self.send_command(f"player_additem {item} {count}")
@@ -249,7 +246,7 @@ class StardewValleyAgent(GameAgent):
         x = parameters.get("x", 0)
         y = parameters.get("y", 0)
         
-        logger.info(f" 传送到: {location} ({x}, {y})")
+        print(f" 传送到: {location} ({x}, {y})")
         
         # 发送传送命令
         await self.send_command(f"world_settime {location} {x} {y}")
@@ -258,7 +255,7 @@ class StardewValleyAgent(GameAgent):
         """设置时间"""
         time = parameters.get("time", 0)
         
-        logger.info(f" 设置时间: {time}")
+        print(f" 设置时间: {time}")
         
         # 发送时间命令
         await self.send_command(f"world_settime {time}")
@@ -267,10 +264,10 @@ class StardewValleyAgent(GameAgent):
         """发送SMAPI命令"""
         try:
             if not self.connected or not self._session:
-                logger.info(" 未连接到Stardew Valley")
+                print(" 未连接到Stardew Valley")
                 return None
             
-            logger.info(f" 发送命令: {command}")
+            print(f" 发送命令: {command}")
             
             # 发送命令
             async with self._session.post(
@@ -280,14 +277,14 @@ class StardewValleyAgent(GameAgent):
             ) as response:
                 if response.status == 200:
                     result = await response.json()
-                    logger.info(f" 命令响应: {result}")
+                    print(f" 命令响应: {result}")
                     return result.get("result", "")
                 else:
-                    logger.info(f" 命令发送失败: HTTP {response.status}")
+                    print(f" 命令发送失败: HTTP {response.status}")
                     return None
             
         except Exception as e:
-            logger.info(f" 命令发送失败: {e}")
+            print(f" 命令发送失败: {e}")
             return None
     
     def _get_headers(self) -> Dict[str, str]:
@@ -343,7 +340,7 @@ class StardewValleyAgent(GameAgent):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.info(f" 状态轮询失败: {e}")
+                    print(f" 状态轮询失败: {e}")
                     await asyncio.sleep(10)
             
         except asyncio.CancelledError:

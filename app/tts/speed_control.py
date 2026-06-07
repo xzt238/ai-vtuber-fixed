@@ -1,10 +1,7 @@
-import logging
 """
 TTS语速控制模块
 提供语速调整、停顿控制、情感语速等功能
 """
-
-logger = logging.getLogger(__name__)
 
 import re
 from typing import Optional, Dict, Any, List
@@ -59,7 +56,7 @@ class SpeedController:
             SpeedMode.VERY_FAST: 1.6
         }
         
-        logger.info("[SpeedController] 初始化完成")
+        print("[SpeedController] 初始化完成")
     
     def get_speed_factor(self, emotion: str = None) -> float:
         """获取语速因子"""
@@ -189,7 +186,7 @@ class SpeedController:
         if "pause_after_question" in config:
             self.config.pause_after_question = config["pause_after_question"]
         
-        logger.info(f"[SpeedController] 配置已更新: {config}")
+        print(f"[SpeedController] 配置已更新: {config}")
 
 # 全局实例
 _speed_controller: Optional[SpeedController] = None

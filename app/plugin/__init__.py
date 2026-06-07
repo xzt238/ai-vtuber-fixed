@@ -1,10 +1,7 @@
-import logging
 """
 插件系统模块
 支持插件加载、插件管理、插件执行
 """
-
-logger = logging.getLogger(__name__)
 
 import os
 import json
@@ -103,7 +100,7 @@ class PluginLoader:
                     plugins.append(manifest)
                     
                 except Exception as e:
-                    logger.info(f"[Plugin] 读取插件清单失败: {plugin_dir.name}, {e}")
+                    print(f"[Plugin] 读取插件清单失败: {plugin_dir.name}, {e}")
         
         return plugins
     
@@ -123,7 +120,7 @@ class PluginLoader:
                 full_path = full_path.with_suffix(".py")
             
             if not full_path.exists():
-                logger.info(f"[Plugin] 插件文件不存在: {full_path}")
+                print(f"[Plugin] 插件文件不存在: {full_path}")
                 return None
             
             # 动态导入模块
@@ -138,21 +135,21 @@ class PluginLoader:
             if func_name:
                 entry_func = getattr(module, func_name, None)
                 if entry_func is None:
-                    logger.info(f"[Plugin] 入口函数不存在: {func_name}")
+                    print(f"[Plugin] 入口函数不存在: {func_name}")
                     return None
                 return entry_func
             else:
                 return module
             
         except Exception as e:
-            logger.info(f"[Plugin] 加载插件失败: {plugin_id}, {e}")
+            print(f"[Plugin] 加载插件失败: {plugin_id}, {e}")
             return None
     
     async def unload_plugin(self, plugin_id: str):
         """卸载插件"""
         if plugin_id in self.loaded_modules:
             del self.loaded_modules[plugin_id]
-            logger.info(f"[Plugin] 插件已卸载: {plugin_id}")
+            print(f"[Plugin] 插件已卸载: {plugin_id}")
 
 class PluginManager:
     """插件管理器"""
@@ -177,7 +174,7 @@ class PluginManager:
         self.plugins_dir = Path(plugins_dir)
         self.plugins_dir.mkdir(parents=True, exist_ok=True)
         
-        logger.info(f"[Plugin] 初始化完成: plugins_dir={plugins_dir}")
+        print(f"[Plugin] 初始化完成: plugins_dir={plugins_dir}")
     
     async def initialize(self):
         """初始化插件系统"""
@@ -201,7 +198,7 @@ class PluginManager:
             )
             self.plugins[manifest.id] = plugin_info
         
-        logger.info(f"[Plugin] 发现了 {len(manifests)} 个插件")
+        print(f"[Plugin] 发现了 {len(manifests)} 个插件")
         
         # 自动加载启用的插件
         if self.auto_load:
@@ -216,7 +213,7 @@ class PluginManager:
     async def load_plugin(self, plugin_id: str) -> bool:
         """加载插件"""
         if plugin_id not in self.plugins:
-            logger.info(f"[Plugin] 插件不存在: {plugin_id}")
+            print(f"[Plugin] 插件不存在: {plugin_id}")
             return False
         
         plugin_info = self.plugins[plugin_id]
@@ -239,11 +236,11 @@ class PluginManager:
             plugin_info.status = PluginStatus.LOADED
             plugin_info.loaded_at = datetime.now()
             
-            logger.info(f"[Plugin] 插件加载成功: {plugin_id}")
+            print(f"[Plugin] 插件加载成功: {plugin_id}")
             return True
             
         except Exception as e:
-            logger.info(f"[Plugin] 插件加载失败: {plugin_id}, {e}")
+            print(f"[Plugin] 插件加载失败: {plugin_id}, {e}")
             plugin_info.status = PluginStatus.ERROR
             return False
     
@@ -264,11 +261,11 @@ class PluginManager:
             self.plugins[plugin_id].status = PluginStatus.DISABLED
             self.plugins[plugin_id].loaded_at = None
             
-            logger.info(f"[Plugin] 插件卸载成功: {plugin_id}")
+            print(f"[Plugin] 插件卸载成功: {plugin_id}")
             return True
             
         except Exception as e:
-            logger.info(f"[Plugin] 插件卸载失败: {plugin_id}, {e}")
+            print(f"[Plugin] 插件卸载失败: {plugin_id}, {e}")
             return False
     
     async def enable_plugin(self, plugin_id: str) -> bool:
@@ -297,7 +294,7 @@ class PluginManager:
     async def execute_plugin(self, plugin_id: str, **kwargs) -> Any:
         """执行插件"""
         if plugin_id not in self.plugin_instances:
-            logger.info(f"[Plugin] 插件未加载: {plugin_id}")
+            print(f"[Plugin] 插件未加载: {plugin_id}")
             return None
         
         try:
@@ -319,11 +316,11 @@ class PluginManager:
                     result = plugin_instance.execute(**kwargs)
                 return result
             else:
-                logger.info(f"[Plugin] 插件不可执行: {plugin_id}")
+                print(f"[Plugin] 插件不可执行: {plugin_id}")
                 return None
             
         except Exception as e:
-            logger.info(f"[Plugin] 插件执行失败: {plugin_id}, {e}")
+            print(f"[Plugin] 插件执行失败: {plugin_id}, {e}")
             return None
     
     def get_plugin(self, plugin_id: str) -> Optional[PluginInfo]:

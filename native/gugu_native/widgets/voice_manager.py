@@ -1,8 +1,5 @@
-import logging
 """
 实时语音管理器 — sounddevice + Silero VAD
-
-logger = logging.getLogger(__name__)
 
 功能:
 - 实时麦克风输入
@@ -187,7 +184,7 @@ class RealtimeVoiceManager(QObject):
         self._asr_workers_mutex.lock()
         self._asr_workers.clear()
         self._asr_workers_mutex.unlock()
-        logger.info("[VoiceManager] cleanup completed")
+        print("[VoiceManager] cleanup completed")
 
     @property
     def backend(self):
@@ -227,10 +224,10 @@ class RealtimeVoiceManager(QObject):
                     self._vad_model = torch.jit.load(local_model_path, map_location=torch.device('cpu'))
                     self._vad_model.eval()
                     self._vad_ready = True
-                    logger.info(f"[VoiceManager] Silero VAD 从本地加载成功: {local_model_path}")
+                    print(f"[VoiceManager] Silero VAD 从本地加载成功: {local_model_path}")
                     return True
                 except Exception as e:
-                    logger.info(f"[VoiceManager] 本地 Silero VAD JIT 加载失败: {e}，尝试 ONNX...")
+                    print(f"[VoiceManager] 本地 Silero VAD JIT 加载失败: {e}，尝试 ONNX...")
 
             # v15: 尝试本地 ONNX 版本（更轻量，不需要 PyTorch JIT）
             local_onnx_path = os.path.join(
@@ -241,10 +238,10 @@ class RealtimeVoiceManager(QObject):
                 try:
                     self._vad_model = _SileroOnnxWrapper(local_onnx_path)
                     self._vad_ready = True
-                    logger.info(f"[VoiceManager] Silero VAD ONNX 从本地加载成功: {local_onnx_path}")
+                    print(f"[VoiceManager] Silero VAD ONNX 从本地加载成功: {local_onnx_path}")
                     return True
                 except Exception as e:
-                    logger.info(f"[VoiceManager] 本地 Silero VAD ONNX 加载失败: {e}，回退到 torch.hub...")
+                    print(f"[VoiceManager] 本地 Silero VAD ONNX 加载失败: {e}，回退到 torch.hub...")
 
             # 回退：torch.hub.load（需要网络，可能失败）
             model, utils = torch.hub.load(
@@ -254,14 +251,14 @@ class RealtimeVoiceManager(QObject):
             )
             self._vad_model = model
             self._vad_ready = True
-            logger.info("[VoiceManager] Silero VAD 通过 torch.hub 加载成功")
+            print("[VoiceManager] Silero VAD 通过 torch.hub 加载成功")
             return True
         except ImportError:
-            logger.info("[VoiceManager] PyTorch 未安装，使用能量检测 VAD")
+            print("[VoiceManager] PyTorch 未安装，使用能量检测 VAD")
             self._vad_ready = False
             return False
         except Exception as e:
-            logger.info(f"[VoiceManager] Silero VAD 加载失败: {e}，使用能量检测 VAD")
+            print(f"[VoiceManager] Silero VAD 加载失败: {e}，使用能量检测 VAD")
             self._vad_ready = False
             return False
 
@@ -376,13 +373,13 @@ class RealtimeVoiceManager(QObject):
                 dtype='int16',
                 blocksize=self._frame_size,
             ) as stream:
-                logger.info("[VoiceManager] 实时监听已启动")
+                print("[VoiceManager] 实时监听已启动")
 
                 while not self._stop_event.is_set():
                     try:
                         data, overflowed = stream.read(self._frame_size)
                         if overflowed:
-                            logger.info("[VoiceManager] 音频缓冲区溢出")
+                            print("[VoiceManager] 音频缓冲区溢出")
 
                         # 转为 float32 用于 VAD
                         audio_float = data.flatten().astype(np.float32) / 32768.0
@@ -416,7 +413,7 @@ class RealtimeVoiceManager(QObject):
 
                     except Exception as e:
                         if not self._stop_event.is_set():
-                            logger.info(f"[VoiceManager] 录音错误: {e}")
+                            print(f"[VoiceManager] 录音错误: {e}")
                         break
 
         except Exception as e:
@@ -430,7 +427,7 @@ class RealtimeVoiceManager(QObject):
         if self._is_speaking and self._audio_buffer:
             self._finalize_speech_segment()
 
-        logger.info("[VoiceManager] 实时监听已停止")
+        print("[VoiceManager] 实时监听已停止")
 
     def _finalize_speech_segment(self):
         """结束当前语音段，异步启动 ASR 识别

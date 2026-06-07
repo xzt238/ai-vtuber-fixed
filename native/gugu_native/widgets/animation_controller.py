@@ -1,8 +1,5 @@
-import logging
 """
 Live2D 主动动画控制器
-
-logger = logging.getLogger(__name__)
 
 让 Live2D 角色从"会说话的贴纸"进化为"有灵魂的伙伴"。
 
@@ -190,14 +187,14 @@ class AnimationController:
         self._idle_timer.start(2000)
         # 1 秒后播放问候动画
         self._greet_timer.start(1000)
-        logger.info("[AnimationController] 动画控制器已启动")
+        print("[AnimationController] 动画控制器已启动")
 
     def stop(self):
         """停止动画控制器"""
         self._is_active = False
         self._idle_timer.stop()
         self._greet_timer.stop()
-        logger.info("[AnimationController] 动画控制器已停止")
+        print("[AnimationController] 动画控制器已停止")
 
     def pause_idle(self):
         """暂停 idle 动画定时器（窗口最小化时调用）
@@ -239,7 +236,7 @@ class AnimationController:
         # 2. 触发动作
         self._apply_motion(emotion)
 
-        logger.info(f"[AnimationController] 触发情绪动画: {emotion}")
+        print(f"[AnimationController] 触发情绪动画: {emotion}")
 
     def detect_emotion_from_text(self, text: str) -> str:
         """
@@ -400,12 +397,12 @@ class AnimationController:
     def _on_motions_updated(self, motion_groups: list):
         """模型动作分组列表更新"""
         self._available_motions = motion_groups
-        logger.info(f"[AnimationController] 可用动作分组: {motion_groups}")
+        print(f"[AnimationController] 可用动作分组: {motion_groups}")
 
     def _on_expressions_updated(self, expressions: list):
         """模型表情列表更新"""
         self._available_expressions = expressions
-        logger.info(f"[AnimationController] 可用表情: {expressions}")
+        print(f"[AnimationController] 可用表情: {expressions}")
 
     def _random_idle_interval(self) -> float:
         """生成随机 idle 动画间隔"""

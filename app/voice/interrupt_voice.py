@@ -1,10 +1,7 @@
-import logging
 """
 =====================================
 支持打断的语音输入模块
 =====================================
-
-logger = logging.getLogger(__name__)
 
 【模块功能概述】
 本模块实现了支持实时语音打断的语音输入功能，
@@ -88,14 +85,14 @@ class InterruptibleVoiceInput:
         self.vad.on_speech_start = self._on_vad_speech_start
         self.vad.on_speech_end = self._on_vad_speech_end
         
-        logger.info("[InterruptibleVoice] 初始化完成")
+        print("[InterruptibleVoice] 初始化完成")
     
     async def initialize(self) -> bool:
         """异步初始化"""
         # 加载VAD模型
         success = await self.vad.load_model()
         if success:
-            logger.info("[InterruptibleVoice] VAD模型加载成功")
+            print("[InterruptibleVoice] VAD模型加载成功")
         return success
     
     def is_available(self) -> bool:
@@ -122,7 +119,7 @@ class InterruptibleVoiceInput:
         """设置AI说话状态"""
         self.is_ai_speaking = is_speaking
         self.current_ai_response = response
-        logger.info(f"[InterruptibleVoice] AI说话状态: {is_speaking}")
+        print(f"[InterruptibleVoice] AI说话状态: {is_speaking}")
     
     async def start(self) -> bool:
         """开始录音"""
@@ -130,7 +127,7 @@ class InterruptibleVoiceInput:
             return False
         
         if not self.is_available():
-            logger.info("[InterruptibleVoice] 语音输入不可用")
+            print("[InterruptibleVoice] 语音输入不可用")
             return False
         
         try:
@@ -143,7 +140,7 @@ class InterruptibleVoiceInput:
             # 定义音频回调
             def audio_callback(indata, frames, time, status):
                 if status:
-                    logger.info(f"[InterruptibleVoice] 录音状态: {status}")
+                    print(f"[InterruptibleVoice] 录音状态: {status}")
                 
                 # 复制音频数据
                 audio_chunk = indata.copy().flatten()
@@ -168,11 +165,11 @@ class InterruptibleVoiceInput:
             )
             self.recorder.start()
             
-            logger.info("[InterruptibleVoice] 开始录音")
+            print("[InterruptibleVoice] 开始录音")
             return True
             
         except Exception as e:
-            logger.info(f"[InterruptibleVoice] 开始录音失败: {e}")
+            print(f"[InterruptibleVoice] 开始录音失败: {e}")
             self.is_recording = False
             return False
     
@@ -191,11 +188,11 @@ class InterruptibleVoiceInput:
     
     async def _on_vad_speech_start(self):
         """VAD检测到语音开始"""
-        logger.info("[InterruptibleVoice] 检测到用户开始说话")
+        print("[InterruptibleVoice] 检测到用户开始说话")
         
         # 如果AI正在说话，触发打断
         if self.is_ai_speaking:
-            logger.info("[InterruptibleVoice] 触发打断AI说话")
+            print("[InterruptibleVoice] 触发打断AI说话")
             await self.interrupt_handler.handle_interrupt(
                 heard_response=self.current_ai_response,
                 reason=InterruptReason.USER_SPEECH
@@ -207,7 +204,7 @@ class InterruptibleVoiceInput:
     
     async def _on_vad_speech_end(self):
         """VAD检测到语音结束"""
-        logger.info("[InterruptibleVoice] 检测到用户停止说话")
+        print("[InterruptibleVoice] 检测到用户停止说话")
         
         # 保存语音音频
         if self.speech_audio:
@@ -241,11 +238,11 @@ class InterruptibleVoiceInput:
                 audio_int = (audio_data * 32767).astype('int16')
                 f.writeframes(audio_int.tobytes())
             
-            logger.info(f"[InterruptibleVoice] 保存音频: {temp_file.name}")
+            print(f"[InterruptibleVoice] 保存音频: {temp_file.name}")
             return temp_file.name
             
         except Exception as e:
-            logger.info(f"[InterruptibleVoice] 保存音频失败: {e}")
+            print(f"[InterruptibleVoice] 保存音频失败: {e}")
             return None
     
     async def stop(self) -> Optional[str]:
@@ -274,7 +271,7 @@ class InterruptibleVoiceInput:
             return None
             
         except Exception as e:
-            logger.info(f"[InterruptibleVoice] 停止录音失败: {e}")
+            print(f"[InterruptibleVoice] 停止录音失败: {e}")
             return None
     
     def get_stats(self) -> Dict[str, Any]:

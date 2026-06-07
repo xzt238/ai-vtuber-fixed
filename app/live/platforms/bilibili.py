@@ -1,8 +1,5 @@
-import logging
 """
 Bilibili直播平台实现
-
-logger = logging.getLogger(__name__)
 
 提供Bilibili直播弹幕接收、发送等功能。
 
@@ -57,13 +54,13 @@ class BilibiliPlatform(LivePlatform):
             # 获取直播间信息
             room_info = await self._get_room_info(room_id)
             if not room_info:
-                logger.info(f" 获取直播间信息失败: {room_id}")
+                print(f" 获取直播间信息失败: {room_id}")
                 return False
             
             # 获取WebSocket连接信息
             ws_info = await self._get_ws_info(room_id)
             if not ws_info:
-                logger.info(f" 获取WebSocket信息失败: {room_id}")
+                print(f" 获取WebSocket信息失败: {room_id}")
                 return False
             
             # 连接WebSocket
@@ -72,7 +69,7 @@ class BilibiliPlatform(LivePlatform):
             if success:
                 self.connected = True
                 self._stats["connected_at"] = datetime.now()
-                logger.info(f" Bilibili直播间连接成功: {room_id}")
+                print(f" Bilibili直播间连接成功: {room_id}")
                 
                 # 启动心跳
                 self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
@@ -80,12 +77,12 @@ class BilibiliPlatform(LivePlatform):
                 # 启动消息接收
                 self._ws_task = asyncio.create_task(self._receive_messages())
             else:
-                logger.info(f" Bilibili直播间连接失败: {room_id}")
+                print(f" Bilibili直播间连接失败: {room_id}")
             
             return success
             
         except Exception as e:
-            logger.info(f" Bilibili连接失败: {e}")
+            print(f" Bilibili连接失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -117,17 +114,17 @@ class BilibiliPlatform(LivePlatform):
             self.room_id = None
             self._stats["connected_at"] = None
             
-            logger.info(" Bilibili直播间已断开")
+            print(" Bilibili直播间已断开")
             
         except Exception as e:
-            logger.info(f" Bilibili断开连接失败: {e}")
+            print(f" Bilibili断开连接失败: {e}")
             self._stats["error_count"] += 1
     
     async def send_danmaku(self, content: str) -> bool:
         """发送弹幕"""
         try:
             if not self.connected or not self.room_id:
-                logger.info(" 未连接到直播间")
+                print(" 未连接到直播间")
                 return False
             
             # 构建请求数据
@@ -152,14 +149,14 @@ class BilibiliPlatform(LivePlatform):
                     result = await response.json()
                     
                     if result.get("code") == 0:
-                        logger.info(f" 弹幕发送成功: {content}")
+                        print(f" 弹幕发送成功: {content}")
                         return True
                     else:
-                        logger.info(f" 弹幕发送失败: {result.get('message', '未知错误')}")
+                        print(f" 弹幕发送失败: {result.get('message', '未知错误')}")
                         return False
             
         except Exception as e:
-            logger.info(f" 弹幕发送失败: {e}")
+            print(f" 弹幕发送失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -176,11 +173,11 @@ class BilibiliPlatform(LivePlatform):
                     if result.get("code") == 0:
                         return result.get("data")
                     else:
-                        logger.info(f" 获取直播间信息失败: {result.get('message', '未知错误')}")
+                        print(f" 获取直播间信息失败: {result.get('message', '未知错误')}")
                         return None
             
         except Exception as e:
-            logger.info(f" 获取直播间信息失败: {e}")
+            print(f" 获取直播间信息失败: {e}")
             return None
     
     async def _get_ws_info(self, room_id: str) -> Optional[Dict[str, Any]]:
@@ -196,11 +193,11 @@ class BilibiliPlatform(LivePlatform):
                     if result.get("code") == 0:
                         return result.get("data")
                     else:
-                        logger.info(f" 获取WebSocket信息失败: {result.get('message', '未知错误')}")
+                        print(f" 获取WebSocket信息失败: {result.get('message', '未知错误')}")
                         return None
             
         except Exception as e:
-            logger.info(f" 获取WebSocket信息失败: {e}")
+            print(f" 获取WebSocket信息失败: {e}")
             return None
     
     async def _connect_websocket(self, ws_info: Dict[str, Any]) -> bool:
@@ -211,7 +208,7 @@ class BilibiliPlatform(LivePlatform):
             # 获取WebSocket服务器列表
             host_list = ws_info.get("host_server_list", [])
             if not host_list:
-                logger.info(" 无可用的WebSocket服务器")
+                print(" 无可用的WebSocket服务器")
                 return False
             
             # 连接到第一个可用的服务器
@@ -236,21 +233,21 @@ class BilibiliPlatform(LivePlatform):
                     }
                     await self._ws.send(json.dumps(auth_msg))
                     
-                    logger.info(f" WebSocket连接成功: {host}:{port}")
+                    print(f" WebSocket连接成功: {host}:{port}")
                     return True
                     
                 except Exception as e:
-                    logger.info(f" WebSocket连接失败 {host}:{port}: {e}")
+                    print(f" WebSocket连接失败 {host}:{port}: {e}")
                     continue
             
-            logger.info(" 所有WebSocket服务器连接失败")
+            print(" 所有WebSocket服务器连接失败")
             return False
             
         except ImportError:
-            logger.info(" 未安装websockets库，请执行: pip install websockets")
+            print(" 未安装websockets库，请执行: pip install websockets")
             return False
         except Exception as e:
-            logger.info(f" WebSocket连接失败: {e}")
+            print(f" WebSocket连接失败: {e}")
             return False
     
     async def _receive_messages(self):
@@ -273,13 +270,13 @@ class BilibiliPlatform(LivePlatform):
                     await self._process_message(data)
                     
                 except Exception as e:
-                    logger.info(f" 消息解析失败: {e}")
+                    print(f" 消息解析失败: {e}")
                     self._stats["error_count"] += 1
             
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.info(f" 消息接收失败: {e}")
+            print(f" 消息接收失败: {e}")
             self._stats["error_count"] += 1
     
     async def _process_message(self, data: Dict[str, Any]):
@@ -337,7 +334,7 @@ class BilibiliPlatform(LivePlatform):
                 self._notify_system(system_msg)
             
         except Exception as e:
-            logger.info(f" 消息处理失败: {e}")
+            print(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
     
     async def _heartbeat_loop(self):
@@ -355,7 +352,7 @@ class BilibiliPlatform(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.info(f" 心跳发送失败: {e}")
+                    print(f" 心跳发送失败: {e}")
                     self._stats["error_count"] += 1
                     await asyncio.sleep(5)
             

@@ -1,11 +1,8 @@
-import logging
 #!/usr/bin/env python3
 """
 =====================================
 语音识别模块 (ASR) - 优化版
 =====================================
-
-logger = logging.getLogger(__name__)
 
 【模块功能概述】
 本模块实现了 AI VTuber 系统的语音识别（ASR, Automatic Speech Recognition）功能，
@@ -192,22 +189,22 @@ class FasterWhisperASR(ASREngine):
             if download_root:
                 os.environ["HF_HOME"] = download_root
             
-            logger.info(f" 加载 Faster-Whisper 模型: {model_size} ({device})...")
+            print(f" 加载 Faster-Whisper 模型: {model_size} ({device})...")
             self.model = WhisperModel(
                 model_size,
                 device=device,
                 compute_type=compute_type
             )
-            logger.info(" Faster-Whisper 模型加载完成!")
+            print(" Faster-Whisper 模型加载完成!")
             
             # 模型加载成功后立即预热，消除首次推理的冷启动延迟
             self._warmup()
             
         except ImportError:
-            logger.info("️ faster-whisper 未安装: pip install faster-whisper")
+            print("️ faster-whisper 未安装: pip install faster-whisper")
             self.model = None
         except Exception as e:
-            logger.info(f"️ Faster-Whisper 加载失败: {e}")
+            print(f"️ Faster-Whisper 加载失败: {e}")
             self.model = None
     
     def _warmup(self):
@@ -238,7 +235,7 @@ class FasterWhisperASR(ASREngine):
             return
         
         try:
-            logger.info(" 预热 ASR 模型...")
+            print(" 预热 ASR 模型...")
             import numpy as np
             import soundfile as sf
             
@@ -259,9 +256,9 @@ class FasterWhisperASR(ASREngine):
             os.unlink(tmp_path)
             
             self._warmed_up = True
-            logger.info(" ASR 模型预热完成!")
+            print(" ASR 模型预热完成!")
         except Exception as e:
-            logger.info(f"️ ASR 预热失败: {e}")
+            print(f"️ ASR 预热失败: {e}")
     
     def recognize(self, audio_path: str) -> Optional[str]:
         """
@@ -294,7 +291,7 @@ class FasterWhisperASR(ASREngine):
             text = "".join([seg.text for seg in segments])
             return text.strip() if text else None
         except Exception as e:
-            logger.info(f"️ 识别错误: {e}")
+            print(f"️ 识别错误: {e}")
             return None
     
     def recognize_batch(self, audio_paths: List[str]) -> List[Optional[str]]:
@@ -369,7 +366,7 @@ class WhisperASR(ASREngine):
             超时设置为 60 秒，避免大音频文件导致请求挂起
         """
         if not self.api_key:
-            logger.info("️ 请配置 OpenAI API Key")
+            print("️ 请配置 OpenAI API Key")
             return None
         
         try:
@@ -393,10 +390,10 @@ class WhisperASR(ASREngine):
                 result = response.json()
                 return result.get("text", "").strip()
             else:
-                logger.info(f"️ Whisper API错误: {response.status_code}")
+                print(f"️ Whisper API错误: {response.status_code}")
                 return None
         except Exception as e:
-            logger.info(f"️ 识别错误: {e}")
+            print(f"️ 识别错误: {e}")
             return None
     
     def is_available(self) -> bool:
@@ -453,7 +450,7 @@ class FunASRASR(ASREngine):
         try:
             self._load_model()
         except Exception as e:
-            logger.info(f"️ FunASR 加载失败: {e}")
+            print(f"️ FunASR 加载失败: {e}")
             tb.print_exc()
     
     def _load_model(self):
@@ -487,8 +484,8 @@ class FunASRASR(ASREngine):
                 from app.device_manager import DeviceManager
                 device = DeviceManager.get_best_device()
             
-            logger.info(f" 加载 FunASR 模型: {model_name}...")
-            logger.info(f" 缓存目录: {models_cache}")
+            print(f" 加载 FunASR 模型: {model_name}...")
+            print(f" 缓存目录: {models_cache}")
             
             # 检查本地是否有预下载的模型缓存
             # Paraformer 模型的 ModelScope 缓存路径格式固定
@@ -496,7 +493,7 @@ class FunASRASR(ASREngine):
             
             if model_cache_path.exists():
                 # 本地缓存存在，直接从本地加载（无需网络）
-                logger.info(" 找到本地模型缓存!")
+                print(" 找到本地模型缓存!")
                 self.model = AutoModel(
                     model=str(model_cache_path),
                     device=device,
@@ -504,15 +501,15 @@ class FunASRASR(ASREngine):
                 )
             else:
                 # 本地无缓存，从 ModelScope 下载（可能较慢）
-                logger.info(" 未找到缓存，下载模型...")
+                print(" 未找到缓存，下载模型...")
                 self.model = AutoModel(model=model_name, device=device)
             
-            logger.info(" FunASR 模型加载完成!")
+            print(" FunASR 模型加载完成!")
         except ImportError:
-            logger.info("️ funasr 未安装: pip install funasr")
+            print("️ funasr 未安装: pip install funasr")
             self.model = None
         except Exception as e:
-            logger.info(f"️ FunASR 加载失败: {e}")
+            print(f"️ FunASR 加载失败: {e}")
             self.model = None
     
     def recognize(self, audio_path: str) -> Optional[str]:
@@ -569,7 +566,7 @@ class FunASRASR(ASREngine):
                 return text.replace(" ", "").strip()
             return None
         except Exception as e:
-            logger.info(f"️ 识别错误: {e}")
+            print(f"️ 识别错误: {e}")
             return None
     
     def is_available(self) -> bool:
@@ -645,11 +642,11 @@ class MimoASR(ASREngine):
             3. 解析返回的文本结果
         """
         if not self.api_key:
-            logger.info("⚠️ 请配置 MiMo API Key")
+            print("⚠️ 请配置 MiMo API Key")
             return None
 
         if not os.path.exists(audio_path):
-            logger.info(f"⚠️ 音频文件不存在: {audio_path}")
+            print(f"⚠️ 音频文件不存在: {audio_path}")
             return None
 
         try:
@@ -709,7 +706,7 @@ class MimoASR(ASREngine):
                 "max_completion_tokens": 1024
             }
 
-            logger.info(f"[MiMo ASR] 识别: {os.path.basename(audio_path)} ({len(audio_bytes)} bytes)")
+            print(f"[MiMo ASR] 识别: {os.path.basename(audio_path)} ({len(audio_bytes)} bytes)")
 
             response = requests.post(
                 f"{self.base_url}/chat/completions",
@@ -729,20 +726,20 @@ class MimoASR(ASREngine):
                     text = content if content else reasoning
                     if text:
                         text = text.strip()
-                        logger.info(f"[MiMo ASR] 识别成功: {text[:50]}...")
+                        print(f"[MiMo ASR] 识别成功: {text[:50]}...")
                         return text
                     else:
-                        logger.info("[MiMo ASR] API 返回成功但无文本内容")
+                        print("[MiMo ASR] API 返回成功但无文本内容")
                         return None
                 else:
-                    logger.info(f"[MiMo ASR] API 响应无 choices: {result}")
+                    print(f"[MiMo ASR] API 响应无 choices: {result}")
                     return None
             else:
-                logger.info(f"[MiMo ASR] API 错误: {response.status_code} - {response.text[:200]}")
+                print(f"[MiMo ASR] API 错误: {response.status_code} - {response.text[:200]}")
                 return None
 
         except Exception as e:
-            logger.info(f"[MiMo ASR] 识别失败: {e}")
+            print(f"[MiMo ASR] 识别失败: {e}")
             return None
 
     def is_available(self) -> bool:
@@ -819,7 +816,7 @@ class ASRFactory:
             return MimoASR(mimo_config)
         else:
             # 未知 provider：警告并回退到 Faster-Whisper
-            logger.info(f"️ 未知的ASR provider: {provider}，使用Faster-Whisper")
+            print(f"️ 未知的ASR provider: {provider}，使用Faster-Whisper")
             return FasterWhisperASR(config.get("faster_whisper", {}))
 
 
@@ -897,9 +894,9 @@ class ASRManager:
                     })
                     if engine.is_available():
                         self._engines[provider] = engine
-                        logger.info(f"[ASR Manager] 已加载: {provider}")
+                        print(f"[ASR Manager] 已加载: {provider}")
             except Exception as e:
-                logger.info(f"[ASR Manager] 加载 {provider} 失败: {e}")
+                print(f"[ASR Manager] 加载 {provider} 失败: {e}")
         
         # 设置当前引擎：优先使用配置指定的 provider
         if self._current_provider in self._engines:
@@ -938,7 +935,7 @@ class ASRManager:
         # 当前引擎不可用，遍历其他引擎作为 Fallback
         for prov, engine in self._engines.items():
             if prov != self._current_provider and engine.is_available():
-                logger.info(f"[ASR Manager] Fallback 到 {prov}")
+                print(f"[ASR Manager] Fallback 到 {prov}")
                 self._current_provider = prov
                 self._current_engine = engine
                 return engine.recognize(audio_path)
@@ -966,18 +963,18 @@ class ASRManager:
         
         # 检查 provider 是否已加载
         if provider not in self._engines:
-            logger.info(f"[ASR Manager] Provider '{provider}' 未加载")
+            print(f"[ASR Manager] Provider '{provider}' 未加载")
             return False
         
         # 检查引擎是否可用
         if not self._engines[provider].is_available():
-            logger.info(f"[ASR Manager] Provider '{provider}' 不可用")
+            print(f"[ASR Manager] Provider '{provider}' 不可用")
             return False
         
         # 执行切换
         self._current_provider = provider
         self._current_engine = self._engines[provider]
-        logger.info(f"[ASR Manager] 已切换到: {provider}")
+        print(f"[ASR Manager] 已切换到: {provider}")
         return True
     
     def get_current_provider(self) -> str:
@@ -1010,5 +1007,5 @@ if __name__ == "__main__":
     
     # 通过工厂创建引擎
     asr = ASRFactory.create(test_config)
-    logger.info(f" ASR引擎创建成功: {type(asr).__name__}")
-    logger.info(f"   可用状态: {asr.is_available()}")
+    print(f" ASR引擎创建成功: {type(asr).__name__}")
+    print(f"   可用状态: {asr.is_available()}")

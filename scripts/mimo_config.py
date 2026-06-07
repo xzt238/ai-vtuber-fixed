@@ -1,9 +1,6 @@
-import logging
 #!/usr/bin/env python3
 """
 MiMo Token Plan 配置写入器
-
-logger = logging.getLogger(__name__)
 
 由 start.bat 调用，根据用户选择写入各模块的偏好文件。
 不修改 config.yaml，仅写入 app/cache/ 下的偏好文件。
@@ -82,7 +79,7 @@ def configure_llm(llm_mimo):
         d["model"] = "mimo-v2.5"
         pc["mimo"]["base_url"] = MIMO_TOKEN_PLAN_URL
         pc["mimo"]["model"] = "mimo-v2.5"
-        logger.info(f"  [MiMo] LLM → MiMo (token plan)")
+        print(f"  [MiMo] LLM → MiMo (token plan)")
     else:
         # 恢复默认: 让 config.yaml 的 provider 生效
         # 但保留 mimo base_url 以便 UI 中切换时也能用 token plan URL
@@ -91,7 +88,7 @@ def configure_llm(llm_mimo):
         if "model" in d and d["model"] == "mimo-v2.5":
             del d["model"]
         pc["mimo"]["base_url"] = MIMO_TOKEN_PLAN_URL
-        logger.info(f"  [MiMo] LLM → 默认 (保留 token plan URL)")
+        print(f"  [MiMo] LLM → 默认 (保留 token plan URL)")
 
     _save_json(path, d)
 
@@ -108,7 +105,7 @@ def configure_tts(tts_mimo):
         d.setdefault("provider_configs", {})
         d["provider_configs"].setdefault("mimo", {})
         d["provider_configs"]["mimo"]["base_url"] = MIMO_TOKEN_PLAN_URL
-        logger.info(f"  [MiMo] TTS → MiMo (token plan)")
+        print(f"  [MiMo] TTS → MiMo (token plan)")
     else:
         # 恢复默认: 不覆盖 provider，如果之前是 mimo 则删除
         if d.get("provider") == "mimo":
@@ -120,7 +117,7 @@ def configure_tts(tts_mimo):
         d.setdefault("provider_configs", {})
         d["provider_configs"].setdefault("mimo", {})
         d["provider_configs"]["mimo"]["base_url"] = MIMO_TOKEN_PLAN_URL
-        logger.info(f"  [MiMo] TTS → 默认 (保留 token plan URL)")
+        print(f"  [MiMo] TTS → 默认 (保留 token plan URL)")
 
     _save_json(path, d)
 
@@ -136,7 +133,7 @@ def configure_asr(asr_mimo):
         d["provider_configs"].setdefault("mimo", {})
         d["provider_configs"]["mimo"]["base_url"] = MIMO_TOKEN_PLAN_URL
         d["provider_configs"]["mimo"]["model"] = "mimo-v2.5"
-        logger.info(f"  [MiMo] ASR → MiMo (token plan)")
+        print(f"  [MiMo] ASR → MiMo (token plan)")
     else:
         # 恢复默认
         if d.get("provider") == "mimo":
@@ -144,7 +141,7 @@ def configure_asr(asr_mimo):
         d.setdefault("provider_configs", {})
         d["provider_configs"].setdefault("mimo", {})
         d["provider_configs"]["mimo"]["base_url"] = MIMO_TOKEN_PLAN_URL
-        logger.info(f"  [MiMo] ASR → 默认 (保留 token plan URL)")
+        print(f"  [MiMo] ASR → 默认 (保留 token plan URL)")
 
     _save_json(path, d)
 
@@ -159,7 +156,7 @@ def configure_vision(vision_mimo):
         d.setdefault("provider_configs", {})
         d["provider_configs"].setdefault("mimo_vision", {})
         d["provider_configs"]["mimo_vision"]["base_url"] = MIMO_TOKEN_PLAN_URL
-        logger.info(f"  [MiMo] Vision → MiMo (token plan)")
+        print(f"  [MiMo] Vision → MiMo (token plan)")
     else:
         # 恢复默认
         if d.get("default_provider") == "mimo_vision":
@@ -167,7 +164,7 @@ def configure_vision(vision_mimo):
         d.setdefault("provider_configs", {})
         d["provider_configs"].setdefault("mimo_vision", {})
         d["provider_configs"]["mimo_vision"]["base_url"] = MIMO_TOKEN_PLAN_URL
-        logger.info(f"  [MiMo] Vision → 默认 (保留 token plan URL)")
+        print(f"  [MiMo] Vision → 默认 (保留 token plan URL)")
 
     _save_json(path, d)
 
@@ -178,10 +175,10 @@ def check_api_key():
     d = _load_json(path)
     mimo_key = d.get("mimo", "")
     if mimo_key and mimo_key.startswith("tp-"):
-        logger.info(f"  [MiMo] API Key: 已配置 (token plan)")
+        print(f"  [MiMo] API Key: 已配置 (token plan)")
         return True
     else:
-        logger.info(f"  [MiMo] API Key: 未配置 — 请在 UI 中填入 MiMo Token Plan API Key")
+        print(f"  [MiMo] API Key: 未配置 — 请在 UI 中填入 MiMo Token Plan API Key")
         return False
 
 
@@ -189,17 +186,17 @@ def main():
     choice = sys.argv[1] if len(sys.argv) > 1 else "1"
 
     if choice not in CHOICE_MAP:
-        logger.info(f"[错误] 无效选择: {choice}，请输入 0-6")
+        print(f"[错误] 无效选择: {choice}，请输入 0-6")
         sys.exit(1)
 
     llm_mimo, tts_mimo, asr_mimo, vision_mimo = CHOICE_MAP[choice]
 
-    logger.info()
+    print()
     if choice == "0":
-        logger.info("[MiMo] 清除偏好，恢复 config.yaml 默认配置")
+        print("[MiMo] 清除偏好，恢复 config.yaml 默认配置")
     else:
-        logger.info(f"[MiMo] 配置方案 {choice}:")
-    logger.info()
+        print(f"[MiMo] 配置方案 {choice}:")
+    print()
 
     configure_llm(llm_mimo)
     configure_tts(tts_mimo)
@@ -207,8 +204,8 @@ def main():
     configure_vision(vision_mimo)
     check_api_key()
 
-    logger.info()
-    logger.info("[MiMo] 配置完成 ✓")
+    print()
+    print("[MiMo] 配置完成 ✓")
 
 
 if __name__ == "__main__":

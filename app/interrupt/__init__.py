@@ -1,10 +1,7 @@
-import logging
 """
 语音打断处理器
 实现用户打断AI说话的功能，支持asyncio.Task取消链
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 from typing import Optional, Dict, Any, Callable, List
@@ -38,7 +35,7 @@ class TaskRegistry:
         """注册任务"""
         self.tasks[key] = task
         self.task_info[key] = info or {}
-        logger.info(f"[TaskRegistry] 注册任务: {key}")
+        print(f"[TaskRegistry] 注册任务: {key}")
     
     def unregister(self, key: str):
         """注销任务"""
@@ -46,13 +43,13 @@ class TaskRegistry:
             del self.tasks[key]
             if key in self.task_info:
                 del self.task_info[key]
-            logger.info(f"[TaskRegistry] 注销任务: {key}")
+            print(f"[TaskRegistry] 注销任务: {key}")
     
     async def cancel(self, key: str) -> bool:
         """取消指定任务"""
         task = self.tasks.get(key)
         if task and not task.done():
-            logger.info(f"[TaskRegistry] 取消任务: {key}")
+            print(f"[TaskRegistry] 取消任务: {key}")
             task.cancel()
             try:
                 await task
@@ -68,7 +65,7 @@ class TaskRegistry:
         for key in list(self.tasks.keys()):
             if await self.cancel(key):
                 cancelled += 1
-        logger.info(f"[TaskRegistry] 取消了 {cancelled} 个任务")
+        print(f"[TaskRegistry] 取消了 {cancelled} 个任务")
         return cancelled
     
     def get_active_tasks(self) -> List[str]:
@@ -112,7 +109,7 @@ class InterruptionHandler:
         self.on_interrupt_complete: Optional[Callable] = None
         self.on_heard_response_saved: Optional[Callable] = None
         
-        logger.info("[Interrupt] 打断处理器初始化完成")
+        print("[Interrupt] 打断处理器初始化完成")
     
     async def handle_interrupt(self, heard_response: str = "", 
                               reason: InterruptReason = InterruptReason.USER_SPEECH) -> bool:
@@ -124,19 +121,19 @@ class InterruptionHandler:
         if self.last_interrupt_time:
             elapsed = (datetime.now() - self.last_interrupt_time).total_seconds() * 1000
             if elapsed < self.config["interrupt_cooldown_ms"]:
-                logger.info(f"[Interrupt] 打断冷却中，剩余 {self.config['interrupt_cooldown_ms'] - elapsed:.0f}ms")
+                print(f"[Interrupt] 打断冷却中，剩余 {self.config['interrupt_cooldown_ms'] - elapsed:.0f}ms")
                 return False
         
         if self.is_interrupted:
-            logger.info("[Interrupt] 已经在处理打断中")
+            print("[Interrupt] 已经在处理打断中")
             return False
         
         self.is_interrupted = True
         start_time = datetime.now()
         
-        logger.info(f"[Interrupt] 检测到打断，原因: {reason.value}")
+        print(f"[Interrupt] 检测到打断，原因: {reason.value}")
         if heard_response:
-            logger.info(f"[Interrupt] 已听到的回复: {heard_response[:100]}...")
+            print(f"[Interrupt] 已听到的回复: {heard_response[:100]}...")
         
         # 触发开始回调
         if self.on_interrupt_start:
@@ -178,7 +175,7 @@ class InterruptionHandler:
         if self.on_interrupt_complete:
             await self.on_interrupt_complete(event)
         
-        logger.info(f"[Interrupt] 打断处理完成，耗时 {duration_ms:.1f}ms，取消了 {cancelled_count} 个任务")
+        print(f"[Interrupt] 打断处理完成，耗时 {duration_ms:.1f}ms，取消了 {cancelled_count} 个任务")
         return True
     
     def get_heard_response(self) -> str:
@@ -224,7 +221,7 @@ class InterruptionHandler:
     def update_config(self, config: Dict[str, Any]):
         """更新配置"""
         self.config.update(config)
-        logger.info(f"[Interrupt] 配置已更新: {config}")
+        print(f"[Interrupt] 配置已更新: {config}")
 
 # 全局打断处理器实例
 _interrupt_handler: Optional[InterruptionHandler] = None

@@ -1,8 +1,5 @@
-import logging
 """
 弹幕发送器
-
-logger = logging.getLogger(__name__)
 
 提供Bilibili直播弹幕发送功能。
 """
@@ -60,17 +57,17 @@ class DanmakuSender:
                     result = await response.json()
                     
                     if result.get("code") == 0:
-                        logger.info(f" 弹幕发送成功: {message}")
+                        print(f" 弹幕发送成功: {message}")
                         return True
                     else:
-                        logger.info(f" 弹幕发送失败: {result.get('message', '未知错误')}")
+                        print(f" 弹幕发送失败: {result.get('message', '未知错误')}")
                         return False
                 else:
-                    logger.info(f" 弹幕发送失败: HTTP {response.status}")
+                    print(f" 弹幕发送失败: HTTP {response.status}")
                     return False
                     
         except Exception as e:
-            logger.info(f" 弹幕发送失败: {e}")
+            print(f" 弹幕发送失败: {e}")
             return False
     
     async def send_with_retry(self, room_id: str, message: str, max_retries: int = 3) -> bool:
@@ -86,7 +83,7 @@ class DanmakuSender:
                     await asyncio.sleep(1)
                     
             except Exception as e:
-                logger.info(f" 弹幕发送重试 {attempt + 1}/{max_retries} 失败: {e}")
+                print(f" 弹幕发送重试 {attempt + 1}/{max_retries} 失败: {e}")
                 if attempt < max_retries - 1:
                     await asyncio.sleep(1)
         
@@ -99,7 +96,7 @@ class DanmakuSender:
                 await self.session.close()
                 self.session = None
         except Exception as e:
-            logger.info(f" 关闭HTTP会话失败: {e}")
+            print(f" 关闭HTTP会话失败: {e}")
     
     def set_auth(self, csrf: str, cookie: str):
         """设置认证信息"""

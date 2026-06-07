@@ -1,8 +1,5 @@
-import logging
 """
 飞书 Bot实现
-
-logger = logging.getLogger(__name__)
 
 提供飞书 Bot的完整集成，包括：
 - 连接到飞书
@@ -39,8 +36,8 @@ class FeishuBot(Bot):
         # 飞书客户端
         self._client = None
         
-        logger.info(f" 飞书 Bot初始化完成")
-        logger.info(f" App ID: {self.app_id}")
+        print(f" 飞书 Bot初始化完成")
+        print(f" App ID: {self.app_id}")
     
     async def connect(self) -> bool:
         """连接到飞书"""
@@ -56,7 +53,7 @@ class FeishuBot(Bot):
                 .build()
             
             # 测试连接
-            logger.info(f" 正在连接到飞书...")
+            print(f" 正在连接到飞书...")
             
             # 获取tenant_access_token
             request = lark.auth.v3.TenantAccessTokenInternalRequest.builder() \
@@ -70,17 +67,17 @@ class FeishuBot(Bot):
             
             if response.success():
                 self.connected = True
-                logger.info(" 飞书 Bot连接成功")
+                print(" 飞书 Bot连接成功")
                 return True
             else:
-                logger.info(f" 飞书 Bot连接失败: {response.msg}")
+                print(f" 飞书 Bot连接失败: {response.msg}")
                 return False
             
         except ImportError:
-            logger.info(" 未安装lark-oapi库，请执行: pip install lark-oapi")
+            print(" 未安装lark-oapi库，请执行: pip install lark-oapi")
             return False
         except Exception as e:
-            logger.info(f" 飞书 Bot连接失败: {e}")
+            print(f" 飞书 Bot连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -90,16 +87,16 @@ class FeishuBot(Bot):
             self._client = None
             
             self.connected = False
-            logger.info(" 飞书 Bot已断开")
+            print(" 飞书 Bot已断开")
             
         except Exception as e:
-            logger.info(f" 飞书 Bot断开失败: {e}")
+            print(f" 飞书 Bot断开失败: {e}")
     
     async def send_message(self, receive_id: str, content: str, message_type: str = "text") -> bool:
         """发送飞书消息"""
         try:
             if not self.connected or not self._client:
-                logger.info(" 飞书 Bot未连接")
+                print(" 飞书 Bot未连接")
                 return False
             
             # 构建消息内容
@@ -121,21 +118,21 @@ class FeishuBot(Bot):
             response = self._client.im.v1.message.create(request)
             
             if response.success():
-                logger.info(f" 飞书消息发送成功: {content}")
+                print(f" 飞书消息发送成功: {content}")
                 return True
             else:
-                logger.info(f" 飞书消息发送失败: {response.msg}")
+                print(f" 飞书消息发送失败: {response.msg}")
                 return False
             
         except Exception as e:
-            logger.info(f" 飞书消息发送失败: {e}")
+            print(f" 飞书消息发送失败: {e}")
             return False
     
     async def send_image(self, receive_id: str, image_path: str) -> bool:
         """发送飞书图片"""
         try:
             if not self.connected or not self._client:
-                logger.info(" 飞书 Bot未连接")
+                print(" 飞书 Bot未连接")
                 return False
             
             # 上传图片
@@ -175,24 +172,24 @@ class FeishuBot(Bot):
                 response = self._client.im.v1.message.create(request)
                 
                 if response.success():
-                    logger.info(f" 飞书图片发送成功: {image_path}")
+                    print(f" 飞书图片发送成功: {image_path}")
                     return True
                 else:
-                    logger.info(f" 飞书图片发送失败: {response.msg}")
+                    print(f" 飞书图片发送失败: {response.msg}")
                     return False
             else:
-                logger.info(f" 飞书图片上传失败: {response.msg}")
+                print(f" 飞书图片上传失败: {response.msg}")
                 return False
             
         except Exception as e:
-            logger.info(f" 飞书图片发送失败: {e}")
+            print(f" 飞书图片发送失败: {e}")
             return False
     
     def get_chat_list(self) -> List[Dict[str, Any]]:
         """获取聊天列表"""
         try:
             if not self.connected or not self._client:
-                logger.info(" 飞书 Bot未连接")
+                print(" 飞书 Bot未连接")
                 return []
             
             from lark_oapi.api.im.v1 import ListChatRequest
@@ -210,11 +207,11 @@ class FeishuBot(Bot):
                     for chat in response.data.items
                 ]
             else:
-                logger.info(f" 获取聊天列表失败: {response.msg}")
+                print(f" 获取聊天列表失败: {response.msg}")
                 return []
             
         except Exception as e:
-            logger.info(f" 获取聊天列表失败: {e}")
+            print(f" 获取聊天列表失败: {e}")
             return []
 
 

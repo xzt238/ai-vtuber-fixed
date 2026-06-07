@@ -1,10 +1,7 @@
-import logging
 """
 VAD (Voice Activity Detection) 模块
 使用 Silero VAD 进行高精度语音活动检测，支持实时语音打断
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 import numpy as np
@@ -59,7 +56,7 @@ class SileroVAD:
         self.audio_buffer: List[np.ndarray] = []
         self.max_buffer_size = 50  # 最多保留50个音频块
         
-        logger.info("[VAD] 初始化完成")
+        print("[VAD] 初始化完成")
     
     async def load_model(self) -> bool:
         """加载Silero VAD模型"""
@@ -74,15 +71,15 @@ class SileroVAD:
                     onnx=False
                 )
                 self.model_loaded = True
-                logger.info("[VAD] Silero VAD模型加载成功")
+                print("[VAD] Silero VAD模型加载成功")
                 return True
             except Exception as e:
-                logger.info(f"[VAD] Silero VAD加载失败，使用简化VAD: {e}")
+                print(f"[VAD] Silero VAD加载失败，使用简化VAD: {e}")
                 self.model_loaded = False
                 return True  # 使用简化版本
                 
         except Exception as e:
-            logger.info(f"[VAD] 模型加载失败: {e}")
+            print(f"[VAD] 模型加载失败: {e}")
             return False
     
     async def process_audio(self, audio_chunk: np.ndarray) -> Optional[VADState]:
@@ -124,7 +121,7 @@ class SileroVAD:
                     self.miss_count = 0
                     new_state = VADState.ACTIVE
                     self.stats["state_transitions"] += 1
-                    logger.info("[VAD] 检测到语音开始 (IDLE -> ACTIVE)")
+                    print("[VAD] 检测到语音开始 (IDLE -> ACTIVE)")
                     if self.on_speech_start:
                         await self.on_speech_start()
             else:
@@ -139,7 +136,7 @@ class SileroVAD:
                     self.miss_count = 0
                     new_state = VADState.INACTIVE
                     self.stats["state_transitions"] += 1
-                    logger.info("[VAD] 检测到语音结束 (ACTIVE -> INACTIVE)")
+                    print("[VAD] 检测到语音结束 (ACTIVE -> INACTIVE)")
                     if self.on_speech_end:
                         await self.on_speech_end()
             else:
@@ -152,7 +149,7 @@ class SileroVAD:
                 self.hit_count = 0
                 new_state = VADState.ACTIVE
                 self.stats["state_transitions"] += 1
-                logger.info("[VAD] 检测到新语音 (INACTIVE -> ACTIVE)")
+                print("[VAD] 检测到新语音 (INACTIVE -> ACTIVE)")
                 if self.on_speech_start:
                     await self.on_speech_start()
         
@@ -222,7 +219,7 @@ class SileroVAD:
         self.hit_count = 0
         self.miss_count = 0
         self.audio_buffer.clear()
-        logger.info("[VAD] 状态已重置")
+        print("[VAD] 状态已重置")
 
 # 全局VAD实例
 _vad: Optional[SileroVAD] = None

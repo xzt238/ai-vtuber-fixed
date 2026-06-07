@@ -1,10 +1,7 @@
-import logging
 """
 快手直播平台增强版
 实现完整的弹幕接收和发送功能
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 import json
@@ -69,7 +66,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
             "last_danmaku_time": None
         }
         
-        logger.info("[KuaishouEnhanced] 初始化完成")
+        print("[KuaishouEnhanced] 初始化完成")
     
     def _get_platform_type(self) -> PlatformType:
         """获取平台类型"""
@@ -81,24 +78,24 @@ class KuaishouPlatformEnhanced(LivePlatform):
             self.kuaishou_config.room_id = room_id
         
         if not self.kuaishou_config.room_id:
-            logger.info("[KuaishouEnhanced] 错误: 未配置直播间ID")
+            print("[KuaishouEnhanced] 错误: 未配置直播间ID")
             return False
         
         self.connection_state = KuaishouConnectionState.CONNECTING
-        logger.info(f"[KuaishouEnhanced] 正在连接直播间: {self.kuaishou_config.room_id}")
+        print(f"[KuaishouEnhanced] 正在连接直播间: {self.kuaishou_config.room_id}")
         
         try:
             # 获取直播间信息
             room_info = await self._get_room_info()
             if not room_info:
-                logger.info("[KuaishouEnhanced] 错误: 无法获取直播间信息")
+                print("[KuaishouEnhanced] 错误: 无法获取直播间信息")
                 self.connection_state = KuaishouConnectionState.DISCONNECTED
                 return False
             
             # 建立WebSocket连接
             success = await self._connect_websocket()
             if not success:
-                logger.info("[KuaishouEnhanced] 错误: WebSocket连接失败")
+                print("[KuaishouEnhanced] 错误: WebSocket连接失败")
                 self.connection_state = KuaishouConnectionState.DISCONNECTED
                 return False
             
@@ -113,11 +110,11 @@ class KuaishouPlatformEnhanced(LivePlatform):
             self.stats["connection_time"] = datetime.now()
             self.reconnect_attempts = 0
             
-            logger.info(f"[KuaishouEnhanced] 连接成功: {room_info.get('title', '未知')}")
+            print(f"[KuaishouEnhanced] 连接成功: {room_info.get('title', '未知')}")
             return True
             
         except Exception as e:
-            logger.info(f"[KuaishouEnhanced] 连接失败: {e}")
+            print(f"[KuaishouEnhanced] 连接失败: {e}")
             self.connection_state = KuaishouConnectionState.DISCONNECTED
             return False
     
@@ -147,11 +144,11 @@ class KuaishouPlatformEnhanced(LivePlatform):
             self.connected = False
             self.connection_state = KuaishouConnectionState.DISCONNECTED
             
-            logger.info("[KuaishouEnhanced] 已断开连接")
+            print("[KuaishouEnhanced] 已断开连接")
             return True
             
         except Exception as e:
-            logger.info(f"[KuaishouEnhanced] 断开连接失败: {e}")
+            print(f"[KuaishouEnhanced] 断开连接失败: {e}")
             return False
     
     async def _get_room_info(self) -> Optional[Dict[str, Any]]:
@@ -183,7 +180,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
             return None
             
         except Exception as e:
-            logger.info(f"[KuaishouEnhanced] 获取直播间信息失败: {e}")
+            print(f"[KuaishouEnhanced] 获取直播间信息失败: {e}")
             return None
     
     async def _connect_websocket(self) -> bool:
@@ -214,14 +211,14 @@ class KuaishouPlatformEnhanced(LivePlatform):
                 }
             )
             
-            logger.info("[KuaishouEnhanced] WebSocket连接成功")
+            print("[KuaishouEnhanced] WebSocket连接成功")
             return True
             
         except ImportError:
-            logger.info("[KuaishouEnhanced] 错误: 未安装websockets库")
+            print("[KuaishouEnhanced] 错误: 未安装websockets库")
             return False
         except Exception as e:
-            logger.info(f"[KuaishouEnhanced] WebSocket连接失败: {e}")
+            print(f"[KuaishouEnhanced] WebSocket连接失败: {e}")
             return False
     
     async def _heartbeat_loop(self):
@@ -242,7 +239,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.info(f"[KuaishouEnhanced] 心跳发送失败: {e}")
+                    print(f"[KuaishouEnhanced] 心跳发送失败: {e}")
                     await asyncio.sleep(1)
                     
         except asyncio.CancelledError:
@@ -263,7 +260,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.info(f"[KuaishouEnhanced] 消息接收失败: {e}")
+                    print(f"[KuaishouEnhanced] 消息接收失败: {e}")
                     # 尝试重连
                     if self.connected:
                         await self._reconnect()
@@ -299,7 +296,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
         except json.JSONDecodeError:
             pass
         except Exception as e:
-            logger.info(f"[KuaishouEnhanced] 消息处理失败: {e}")
+            print(f"[KuaishouEnhanced] 消息处理失败: {e}")
     
     async def _handle_danmaku(self, data: Dict[str, Any]):
         """处理弹幕消息"""
@@ -332,12 +329,12 @@ class KuaishouPlatformEnhanced(LivePlatform):
                     else:
                         callback(danmaku)
                 except Exception as e:
-                    logger.info(f"[KuaishouEnhanced] 弹幕回调失败: {e}")
+                    print(f"[KuaishouEnhanced] 弹幕回调失败: {e}")
             
-            logger.info(f"[KuaishouEnhanced] 弹幕: {danmaku.username}: {danmaku.content}")
+            print(f"[KuaishouEnhanced] 弹幕: {danmaku.username}: {danmaku.content}")
             
         except Exception as e:
-            logger.info(f"[KuaishouEnhanced] 弹幕处理失败: {e}")
+            print(f"[KuaishouEnhanced] 弹幕处理失败: {e}")
     
     async def _handle_gift(self, data: Dict[str, Any]):
         """处理礼物消息"""
@@ -371,12 +368,12 @@ class KuaishouPlatformEnhanced(LivePlatform):
                     else:
                         callback(gift_msg)
                 except Exception as e:
-                    logger.info(f"[KuaishouEnhanced] 礼物回调失败: {e}")
+                    print(f"[KuaishouEnhanced] 礼物回调失败: {e}")
             
-            logger.info(f"[KuaishouEnhanced] 礼物: {gift_msg.username} 送出了 {gift_msg.gift_name} x{gift_msg.gift_count}")
+            print(f"[KuaishouEnhanced] 礼物: {gift_msg.username} 送出了 {gift_msg.gift_name} x{gift_msg.gift_count}")
             
         except Exception as e:
-            logger.info(f"[KuaishouEnhanced] 礼物处理失败: {e}")
+            print(f"[KuaishouEnhanced] 礼物处理失败: {e}")
     
     async def _handle_like(self, data: Dict[str, Any]):
         """处理点赞消息"""
@@ -389,7 +386,7 @@ class KuaishouPlatformEnhanced(LivePlatform):
     async def send_danmaku(self, content: str) -> bool:
         """发送弹幕"""
         if not self.connected or not self.websocket:
-            logger.info("[KuaishouEnhanced] 错误: 未连接")
+            print("[KuaishouEnhanced] 错误: 未连接")
             return False
         
         try:
@@ -403,11 +400,11 @@ class KuaishouPlatformEnhanced(LivePlatform):
             # 发送消息
             await self.websocket.send(json.dumps(message))
             
-            logger.info(f"[KuaishouEnhanced] 发送弹幕: {content}")
+            print(f"[KuaishouEnhanced] 发送弹幕: {content}")
             return True
             
         except Exception as e:
-            logger.info(f"[KuaishouEnhanced] 发送弹幕失败: {e}")
+            print(f"[KuaishouEnhanced] 发送弹幕失败: {e}")
             return False
     
     async def _reconnect(self):
@@ -419,21 +416,21 @@ class KuaishouPlatformEnhanced(LivePlatform):
         self.reconnect_attempts += 1
         
         if self.reconnect_attempts > self.kuaishou_config.max_reconnect_attempts:
-            logger.info("[KuaishouEnhanced] 重连次数超过限制，停止重连")
+            print("[KuaishouEnhanced] 重连次数超过限制，停止重连")
             self.connected = False
             self.connection_state = KuaishouConnectionState.DISCONNECTED
             return
         
-        logger.info(f"[KuaishouEnhanced] 尝试重连 ({self.reconnect_attempts}/{self.kuaishou_config.max_reconnect_attempts})")
+        print(f"[KuaishouEnhanced] 尝试重连 ({self.reconnect_attempts}/{self.kuaishou_config.max_reconnect_attempts})")
         
         await asyncio.sleep(self.kuaishou_config.reconnect_interval)
         
         # 重新连接
         success = await self.connect()
         if success:
-            logger.info("[KuaishouEnhanced] 重连成功")
+            print("[KuaishouEnhanced] 重连成功")
         else:
-            logger.info("[KuaishouEnhanced] 重连失败")
+            print("[KuaishouEnhanced] 重连失败")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""

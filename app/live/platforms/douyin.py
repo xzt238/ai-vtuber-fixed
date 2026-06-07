@@ -1,8 +1,5 @@
-import logging
 """
 抖音直播平台实现
-
-logger = logging.getLogger(__name__)
 
 提供抖音直播弹幕接收、发送等功能。
 
@@ -56,13 +53,13 @@ class DouyinPlatform(LivePlatform):
             # 获取直播间信息
             room_info = await self._get_room_info(room_id)
             if not room_info:
-                logger.info(f" 获取直播间信息失败: {room_id}")
+                print(f" 获取直播间信息失败: {room_id}")
                 return False
             
             # 获取WebSocket连接信息
             ws_info = await self._get_ws_info(room_id)
             if not ws_info:
-                logger.info(f" 获取WebSocket信息失败: {room_id}")
+                print(f" 获取WebSocket信息失败: {room_id}")
                 return False
             
             # 连接WebSocket
@@ -71,7 +68,7 @@ class DouyinPlatform(LivePlatform):
             if success:
                 self.connected = True
                 self._stats["connected_at"] = datetime.now()
-                logger.info(f" 抖音直播间连接成功: {room_id}")
+                print(f" 抖音直播间连接成功: {room_id}")
                 
                 # 启动心跳
                 self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
@@ -79,12 +76,12 @@ class DouyinPlatform(LivePlatform):
                 # 启动消息接收
                 self._ws_task = asyncio.create_task(self._receive_messages())
             else:
-                logger.info(f" 抖音直播间连接失败: {room_id}")
+                print(f" 抖音直播间连接失败: {room_id}")
             
             return success
             
         except Exception as e:
-            logger.info(f" 抖音连接失败: {e}")
+            print(f" 抖音连接失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -116,28 +113,28 @@ class DouyinPlatform(LivePlatform):
             self.room_id = None
             self._stats["connected_at"] = None
             
-            logger.info(" 抖音直播间已断开")
+            print(" 抖音直播间已断开")
             
         except Exception as e:
-            logger.info(f" 抖音断开连接失败: {e}")
+            print(f" 抖音断开连接失败: {e}")
             self._stats["error_count"] += 1
     
     async def send_danmaku(self, content: str) -> bool:
         """发送弹幕"""
         try:
             if not self.connected or not self.room_id:
-                logger.info(" 未连接到直播间")
+                print(" 未连接到直播间")
                 return False
             
             # 抖音弹幕发送API
             # 注意：抖音的弹幕发送需要特殊的认证和参数
             # 这里提供基本框架，实际实现需要根据抖音API调整
             
-            logger.info(f" 抖音弹幕发送功能需要进一步实现: {content}")
+            print(f" 抖音弹幕发送功能需要进一步实现: {content}")
             return False
             
         except Exception as e:
-            logger.info(f" 弹幕发送失败: {e}")
+            print(f" 弹幕发送失败: {e}")
             self._stats["error_count"] += 1
             return False
     
@@ -164,11 +161,11 @@ class DouyinPlatform(LivePlatform):
                     if result.get("status_code") == 0:
                         return result.get("data", {}).get("room_info")
                     else:
-                        logger.info(f" 获取直播间信息失败: {result}")
+                        print(f" 获取直播间信息失败: {result}")
                         return None
             
         except Exception as e:
-            logger.info(f" 获取直播间信息失败: {e}")
+            print(f" 获取直播间信息失败: {e}")
             return None
     
     async def _get_ws_info(self, room_id: str) -> Optional[Dict[str, Any]]:
@@ -200,7 +197,7 @@ class DouyinPlatform(LivePlatform):
             }
             
         except Exception as e:
-            logger.info(f" 获取WebSocket信息失败: {e}")
+            print(f" 获取WebSocket信息失败: {e}")
             return None
     
     async def _connect_websocket(self, ws_info: Dict[str, Any]) -> bool:
@@ -218,14 +215,14 @@ class DouyinPlatform(LivePlatform):
             # 连接WebSocket
             self._ws = await websockets.connect(uri)
             
-            logger.info(f" 抖音WebSocket连接成功")
+            print(f" 抖音WebSocket连接成功")
             return True
             
         except ImportError:
-            logger.info(" 未安装websockets库，请执行: pip install websockets")
+            print(" 未安装websockets库，请执行: pip install websockets")
             return False
         except Exception as e:
-            logger.info(f" 抖音WebSocket连接失败: {e}")
+            print(f" 抖音WebSocket连接失败: {e}")
             return False
     
     async def _receive_messages(self):
@@ -246,13 +243,13 @@ class DouyinPlatform(LivePlatform):
                     await self._process_message(data)
                     
                 except Exception as e:
-                    logger.info(f" 消息解析失败: {e}")
+                    print(f" 消息解析失败: {e}")
                     self._stats["error_count"] += 1
             
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.info(f" 消息接收失败: {e}")
+            print(f" 消息接收失败: {e}")
             self._stats["error_count"] += 1
     
     async def _process_message(self, data: Dict[str, Any]):
@@ -315,7 +312,7 @@ class DouyinPlatform(LivePlatform):
                 self._notify_system(system_msg)
             
         except Exception as e:
-            logger.info(f" 消息处理失败: {e}")
+            print(f" 消息处理失败: {e}")
             self._stats["error_count"] += 1
     
     async def _heartbeat_loop(self):
@@ -333,7 +330,7 @@ class DouyinPlatform(LivePlatform):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.info(f" 心跳发送失败: {e}")
+                    print(f" 心跳发送失败: {e}")
                     self._stats["error_count"] += 1
                     await asyncio.sleep(5)
             

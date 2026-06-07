@@ -1,8 +1,5 @@
-import logging
 """
 LINE Bot实现
-
-logger = logging.getLogger(__name__)
 
 提供LINE Bot的完整集成，包括：
 - 连接到LINE
@@ -37,7 +34,7 @@ class LineBot(Bot):
         # LINE客户端
         self._handler = None
         
-        logger.info(f" LINE Bot初始化完成")
+        print(f" LINE Bot初始化完成")
     
     async def connect(self) -> bool:
         """连接到LINE"""
@@ -73,24 +70,24 @@ class LineBot(Bot):
                 self._notify_message(bot_message)
             
             # 测试连接
-            logger.info(f" 正在连接到LINE...")
+            print(f" 正在连接到LINE...")
             
             # 获取Bot信息
             bot_info = self._line_bot_api.get_bot_info()
             
             if bot_info:
                 self.connected = True
-                logger.info(f" LINE Bot连接成功: {bot_info.display_name}")
+                print(f" LINE Bot连接成功: {bot_info.display_name}")
                 return True
             else:
-                logger.info(" LINE Bot连接失败")
+                print(" LINE Bot连接失败")
                 return False
             
         except ImportError:
-            logger.info(" 未安装line-bot-sdk库，请执行: pip install line-bot-sdk")
+            print(" 未安装line-bot-sdk库，请执行: pip install line-bot-sdk")
             return False
         except Exception as e:
-            logger.info(f" LINE Bot连接失败: {e}")
+            print(f" LINE Bot连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -101,16 +98,16 @@ class LineBot(Bot):
             self._line_bot_api = None
             
             self.connected = False
-            logger.info(" LINE Bot已断开")
+            print(" LINE Bot已断开")
             
         except Exception as e:
-            logger.info(f" LINE Bot断开失败: {e}")
+            print(f" LINE Bot断开失败: {e}")
     
     async def send_message(self, user_id: str, content: str, message_type: str = "text") -> bool:
         """发送LINE消息"""
         try:
             if not self.connected or not self._line_bot_api:
-                logger.info(" LINE Bot未连接")
+                print(" LINE Bot未连接")
                 return False
             
             # 发送消息
@@ -119,18 +116,18 @@ class LineBot(Bot):
                 TextSendMessage(text=content)
             )
             
-            logger.info(f" LINE消息发送成功: {content}")
+            print(f" LINE消息发送成功: {content}")
             return True
             
         except Exception as e:
-            logger.info(f" LINE消息发送失败: {e}")
+            print(f" LINE消息发送失败: {e}")
             return False
     
     async def reply_message(self, reply_token: str, content: str) -> bool:
         """回复LINE消息"""
         try:
             if not self.connected or not self._line_bot_api:
-                logger.info(" LINE Bot未连接")
+                print(" LINE Bot未连接")
                 return False
             
             # 回复消息
@@ -139,18 +136,18 @@ class LineBot(Bot):
                 TextSendMessage(text=content)
             )
             
-            logger.info(f" LINE消息回复成功: {content}")
+            print(f" LINE消息回复成功: {content}")
             return True
             
         except Exception as e:
-            logger.info(f" LINE消息回复失败: {e}")
+            print(f" LINE消息回复失败: {e}")
             return False
     
     async def send_image(self, user_id: str, image_url: str, preview_url: str = "") -> bool:
         """发送LINE图片"""
         try:
             if not self.connected or not self._line_bot_api:
-                logger.info(" LINE Bot未连接")
+                print(" LINE Bot未连接")
                 return False
             
             # 发送图片
@@ -162,18 +159,18 @@ class LineBot(Bot):
                 )
             )
             
-            logger.info(f" LINE图片发送成功: {image_url}")
+            print(f" LINE图片发送成功: {image_url}")
             return True
             
         except Exception as e:
-            logger.info(f" LINE图片发送失败: {e}")
+            print(f" LINE图片发送失败: {e}")
             return False
     
     def get_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
         """获取用户资料"""
         try:
             if not self.connected or not self._line_bot_api:
-                logger.info(" LINE Bot未连接")
+                print(" LINE Bot未连接")
                 return None
             
             # 获取用户资料
@@ -187,7 +184,7 @@ class LineBot(Bot):
             }
             
         except Exception as e:
-            logger.info(f" 获取用户资料失败: {e}")
+            print(f" 获取用户资料失败: {e}")
             return None
 
 

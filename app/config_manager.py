@@ -1,8 +1,5 @@
-import logging
 """
 配置管理器
-
-logger = logging.getLogger(__name__)
 
 提供配置缓存、热更新、配置变更通知等功能。
 """
@@ -83,7 +80,7 @@ class ConfigManager:
                 
                 return True
             except Exception as e:
-                logger.info(f"[ConfigManager] 设置配置失败: {e}")
+                print(f"[ConfigManager] 设置配置失败: {e}")
                 return False
     
     def watch_config(self, key: str, callback: Callable) -> None:
@@ -122,7 +119,7 @@ class ConfigManager:
                 
                 return True
             except Exception as e:
-                logger.info(f"[ConfigManager] 重新加载配置失败: {e}")
+                print(f"[ConfigManager] 重新加载配置失败: {e}")
                 return False
     
     def _load_config_from_source(self, key: str, default: Any = None) -> Any:
@@ -140,7 +137,7 @@ class ConfigManager:
                     data = json.load(f)
                     return data.get('value', default)
             except Exception as e:
-                logger.info(f"[ConfigManager] 读取配置文件失败: {e}")
+                print(f"[ConfigManager] 读取配置文件失败: {e}")
         
         return default
     
@@ -191,7 +188,7 @@ class ConfigManager:
                 try:
                     callback(key, value)
                 except Exception as e:
-                    logger.info(f"[ConfigManager] 通知观察者失败: {e}")
+                    print(f"[ConfigManager] 通知观察者失败: {e}")
     
     def _parse_env_value(self, value: str) -> Any:
         """解析环境变量值"""
@@ -259,7 +256,7 @@ class ConfigManager:
                 
                 return True
         except Exception as e:
-            logger.info(f"[ConfigManager] 导出配置失败: {e}")
+            print(f"[ConfigManager] 导出配置失败: {e}")
             return False
     
     def import_config(self, input_file: str) -> bool:
@@ -276,7 +273,7 @@ class ConfigManager:
             
             return True
         except Exception as e:
-            logger.info(f"[ConfigManager] 导入配置失败: {e}")
+            print(f"[ConfigManager] 导入配置失败: {e}")
             return False
 
 
@@ -306,21 +303,21 @@ def reload_config(key: str = None) -> bool:
 
 if __name__ == "__main__":
     # 测试配置管理器
-    logger.info("测试配置管理器...")
+    print("测试配置管理器...")
     
     # 测试设置和获取配置
     set_config("test.key1", "value1")
     set_config("test.key2", {"nested": "value2"})
     
-    logger.info(f"test.key1 = {get_config('test.key1')}")
-    logger.info(f"test.key2 = {get_config('test.key2')}")
+    print(f"test.key1 = {get_config('test.key1')}")
+    print(f"test.key2 = {get_config('test.key2')}")
     
     # 测试配置信息
     info = config_manager.get_config_info("test.key1")
-    logger.info(f"test.key1 信息: {info}")
+    print(f"test.key1 信息: {info}")
     
     # 测试导出配置
     config_manager.export_config("test_config_export.json")
-    logger.info("配置已导出到 test_config_export.json")
+    print("配置已导出到 test_config_export.json")
     
-    logger.info("配置管理器测试完成")
+    print("配置管理器测试完成")

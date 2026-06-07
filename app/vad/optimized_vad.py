@@ -1,10 +1,7 @@
-import logging
 """
 优化版 VAD (Voice Activity Detection) 模块
 新增：自适应阈值、降噪、更精确的状态机
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 import numpy as np
@@ -77,7 +74,7 @@ class OptimizedSileroVAD:
         # 语音开始时间
         self.speech_start_time: Optional[datetime] = None
         
-        logger.info("[OptimizedVAD] 初始化完成")
+        print("[OptimizedVAD] 初始化完成")
     
     async def load_model(self) -> bool:
         """加载Silero VAD模型"""
@@ -91,14 +88,14 @@ class OptimizedSileroVAD:
                     onnx=False
                 )
                 self.model_loaded = True
-                logger.info("[OptimizedVAD] Silero VAD模型加载成功")
+                print("[OptimizedVAD] Silero VAD模型加载成功")
                 return True
             except Exception as e:
-                logger.info(f"[OptimizedVAD] Silero VAD加载失败，使用简化VAD: {e}")
+                print(f"[OptimizedVAD] Silero VAD加载失败，使用简化VAD: {e}")
                 self.model_loaded = False
                 return True
         except Exception as e:
-            logger.info(f"[OptimizedVAD] 模型加载失败: {e}")
+            print(f"[OptimizedVAD] 模型加载失败: {e}")
             return False
     
     async def process_audio(self, audio_chunk: np.ndarray) -> Optional[VADState]:
@@ -153,7 +150,7 @@ class OptimizedSileroVAD:
                     self.speech_start_time = datetime.now()
                     new_state = VADState.ACTIVE
                     self.stats["state_transitions"] += 1
-                    logger.info(f"[OptimizedVAD] 检测到语音开始 (IDLE -> ACTIVE), prob={smoothed_prob:.2f}")
+                    print(f"[OptimizedVAD] 检测到语音开始 (IDLE -> ACTIVE), prob={smoothed_prob:.2f}")
                     if self.on_speech_start:
                         await self.on_speech_start()
             else:
@@ -175,7 +172,7 @@ class OptimizedSileroVAD:
                     self.miss_count = 0
                     new_state = VADState.INACTIVE
                     self.stats["state_transitions"] += 1
-                    logger.info(f"[OptimizedVAD] 检测到语音结束 (ACTIVE -> INACTIVE)")
+                    print(f"[OptimizedVAD] 检测到语音结束 (ACTIVE -> INACTIVE)")
                     if self.on_speech_end:
                         await self.on_speech_end()
             else:
@@ -188,7 +185,7 @@ class OptimizedSileroVAD:
                 self.speech_start_time = datetime.now()
                 new_state = VADState.ACTIVE
                 self.stats["state_transitions"] += 1
-                logger.info(f"[OptimizedVAD] 检测到新语音 (INACTIVE -> ACTIVE)")
+                print(f"[OptimizedVAD] 检测到新语音 (INACTIVE -> ACTIVE)")
                 if self.on_speech_start:
                     await self.on_speech_start()
         
@@ -297,7 +294,7 @@ class OptimizedSileroVAD:
         self.audio_buffer.clear()
         self.prob_history.clear()
         self.speech_start_time = None
-        logger.info("[OptimizedVAD] 状态已重置")
+        print("[OptimizedVAD] 状态已重置")
 
 # 全局实例
 _optimized_vad: Optional[OptimizedSileroVAD] = None

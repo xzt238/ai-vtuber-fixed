@@ -1,10 +1,7 @@
-import logging
 """
 缓存优化模块
 提供内存缓存、磁盘缓存、LRU策略、缓存预热等功能
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 import hashlib
@@ -175,7 +172,7 @@ class DiskCache:
             with open(self.index_file, "w", encoding="utf-8") as f:
                 json.dump(self.index, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger.info(f"[DiskCache] 保存索引失败: {e}")
+            print(f"[DiskCache] 保存索引失败: {e}")
     
     def _get_cache_path(self, key: str) -> Path:
         """获取缓存文件路径"""
@@ -221,7 +218,7 @@ class DiskCache:
             return value
             
         except Exception as e:
-            logger.info(f"[DiskCache] 读取缓存失败: {e}")
+            print(f"[DiskCache] 读取缓存失败: {e}")
             self.stats["misses"] += 1
             return None
     
@@ -250,7 +247,7 @@ class DiskCache:
             self._check_capacity()
             
         except Exception as e:
-            logger.info(f"[DiskCache] 写入缓存失败: {e}")
+            print(f"[DiskCache] 写入缓存失败: {e}")
     
     def delete(self, key: str) -> bool:
         """删除缓存"""
@@ -333,7 +330,7 @@ class CacheOptimizer:
         # 缓存预热函数
         self.warmup_functions: List[Callable] = []
         
-        logger.info("[CacheOptimizer] 初始化完成")
+        print("[CacheOptimizer] 初始化完成")
     
     async def get(self, key: str, loader: Callable = None) -> Optional[Any]:
         """获取缓存（多级）"""
@@ -385,7 +382,7 @@ class CacheOptimizer:
     
     async def warmup(self):
         """缓存预热"""
-        logger.info("[CacheOptimizer] 开始缓存预热...")
+        print("[CacheOptimizer] 开始缓存预热...")
         
         for func in self.warmup_functions:
             try:
@@ -394,9 +391,9 @@ class CacheOptimizer:
                 else:
                     func()
             except Exception as e:
-                logger.info(f"[CacheOptimizer] 预热失败: {e}")
+                print(f"[CacheOptimizer] 预热失败: {e}")
         
-        logger.info("[CacheOptimizer] 缓存预热完成")
+        print("[CacheOptimizer] 缓存预热完成")
     
     def register_warmup(self, func: Callable):
         """注册预热函数"""

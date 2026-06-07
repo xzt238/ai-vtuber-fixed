@@ -1,10 +1,7 @@
-import logging
 """
 音频预处理模块
 提供降噪、音量标准化、静音检测等功能
 """
-
-logger = logging.getLogger(__name__)
 
 import numpy as np
 from typing import Optional, Tuple
@@ -44,7 +41,7 @@ class AudioPreprocessor:
         self.noise_samples: list = []
         self.noise_profile: Optional[np.ndarray] = None
         
-        logger.info("[AudioPreprocessor] 初始化完成")
+        print("[AudioPreprocessor] 初始化完成")
     
     def process(self, audio: np.ndarray) -> np.ndarray:
         """处理音频"""

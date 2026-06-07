@@ -1,10 +1,7 @@
-import logging
 """
 性能监控模块
 提供CPU、内存、GPU、响应时间等性能指标监控
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 import time
@@ -70,7 +67,7 @@ class PerformanceMonitor:
             "start_time": None
         }
         
-        logger.info("[PerformanceMonitor] 初始化完成")
+        print("[PerformanceMonitor] 初始化完成")
     
     async def start_monitoring(self, interval: float = 1.0):
         """开始监控"""
@@ -82,7 +79,7 @@ class PerformanceMonitor:
         self.stats["start_time"] = datetime.now()
         
         self.monitor_task = asyncio.create_task(self._monitor_loop())
-        logger.info(f"[PerformanceMonitor] 开始监控 (间隔: {interval}秒)")
+        print(f"[PerformanceMonitor] 开始监控 (间隔: {interval}秒)")
     
     async def stop_monitoring(self):
         """停止监控"""
@@ -95,7 +92,7 @@ class PerformanceMonitor:
             except asyncio.CancelledError:
                 pass
         
-        logger.info("[PerformanceMonitor] 停止监控")
+        print("[PerformanceMonitor] 停止监控")
     
     async def _monitor_loop(self):
         """监控循环"""
@@ -112,7 +109,7 @@ class PerformanceMonitor:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.info(f"[PerformanceMonitor] 监控循环错误: {e}")
+            print(f"[PerformanceMonitor] 监控循环错误: {e}")
     
     async def _collect_metrics(self) -> PerformanceMetrics:
         """收集性能指标"""
@@ -153,7 +150,7 @@ class PerformanceMonitor:
                 metrics.network_recv_mb = net_io.bytes_recv / (1024 * 1024)
             
         except Exception as e:
-            logger.info(f"[PerformanceMonitor] 收集指标失败: {e}")
+            print(f"[PerformanceMonitor] 收集指标失败: {e}")
         
         return metrics
     
@@ -172,7 +169,7 @@ class PerformanceMonitor:
         
         for alert in alerts:
             self.stats["total_alerts"] += 1
-            logger.info(f"[PerformanceMonitor] 警报: {alert}")
+            print(f"[PerformanceMonitor] 警报: {alert}")
             
             for callback in self.alert_callbacks:
                 try:
@@ -181,7 +178,7 @@ class PerformanceMonitor:
                     else:
                         callback(alert, metrics)
                 except Exception as e:
-                    logger.info(f"[PerformanceMonitor] 警报回调失败: {e}")
+                    print(f"[PerformanceMonitor] 警报回调失败: {e}")
     
     def record_latency(self, operation: str, latency_ms: float):
         """记录延迟"""
@@ -194,7 +191,7 @@ class PerformanceMonitor:
         # 检查延迟警报
         if latency_ms > self.alert_thresholds["latency_ms"]:
             alert = f"{operation} 延迟过高: {latency_ms:.1f}ms"
-            logger.info(f"[PerformanceMonitor] 警报: {alert}")
+            print(f"[PerformanceMonitor] 警报: {alert}")
     
     def get_current_metrics(self) -> Optional[PerformanceMetrics]:
         """获取当前指标"""

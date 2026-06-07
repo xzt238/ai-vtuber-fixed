@@ -1,9 +1,6 @@
-import logging
 """
 核心模块单元测试
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 import sys
@@ -161,16 +158,16 @@ async def run_all_tests():
     ]
     
     # 运行测试
-    logger.info("\n" + "="*60)
-    logger.info("运行核心模块单元测试")
-    logger.info("="*60 + "\n")
+    print("\n" + "="*60)
+    print("运行核心模块单元测试")
+    print("="*60 + "\n")
     
     for test_name, test_func in tests:
         await runner.run_test(test_name, test_func, "核心模块测试")
     
     # 生成报告
     report = runner.generate_report()
-    logger.info("\n" + report)
+    print("\n" + report)
     
     # 保存报告
     runner.save_report("tests/test_report.md")

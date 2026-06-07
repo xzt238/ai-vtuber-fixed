@@ -1,8 +1,5 @@
-import logging
 """
 项目共享配置数据（单一数据源）
-
-logger = logging.getLogger(__name__)
 
 消除多处维护同一数据的重复问题：
 - app/shared_config.py          ← 唯一数据源（本文件）
@@ -244,7 +241,7 @@ def _load_ports():
                 'WS_PORT': web_cfg.get('ws_port', 12394),
             }
     except Exception as e:
-        logger.info(f"[Config] 端口加载失败(使用默认值): {e}")
+        print(f"[Config] 端口加载失败(使用默认值): {e}")
     return {'HTTP_PORT': 12393, 'WS_PORT': 12394}
 
 _ports = _load_ports()
@@ -315,7 +312,7 @@ def unblock_dlls(directory: str, recursive: bool = True):
             capture_output=True, timeout=30
         )
     except Exception as e:
-        logger.info(f"[DLL] 解锁失败: {e}")
+        print(f"[DLL] 解锁失败: {e}")
 
 
 def filter_tool_markers(text: str) -> str:

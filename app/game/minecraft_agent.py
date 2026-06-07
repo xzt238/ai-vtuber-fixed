@@ -1,8 +1,5 @@
-import logging
 """
 Minecraft游戏代理实现
-
-logger = logging.getLogger(__name__)
 
 提供Minecraft游戏的完整集成，包括：
 - 连接到Minecraft服务器
@@ -50,10 +47,10 @@ class MinecraftAgent(GameAgent):
         # 状态轮询任务
         self._poll_task = None
         
-        logger.info(f" Minecraft代理初始化完成")
-        logger.info(f" 服务器: {self.host}:{self.port}")
-        logger.info(f" 用户名: {self.username}")
-        logger.info(f" 版本: {self.version}")
+        print(f" Minecraft代理初始化完成")
+        print(f" 服务器: {self.host}:{self.port}")
+        print(f" 用户名: {self.username}")
+        print(f" 版本: {self.version}")
     
     async def connect(self) -> bool:
         """连接到Minecraft服务器"""
@@ -70,7 +67,7 @@ class MinecraftAgent(GameAgent):
             )
             
             # 连接到服务器
-            logger.info(f" 正在连接到Minecraft服务器: {self.host}:{self.port}")
+            print(f" 正在连接到Minecraft服务器: {self.host}:{self.port}")
             
             # 使用asyncio运行同步的连接操作
             await asyncio.get_event_loop().run_in_executor(
@@ -78,7 +75,7 @@ class MinecraftAgent(GameAgent):
             )
             
             self.connected = True
-            logger.info(" Minecraft连接成功")
+            print(" Minecraft连接成功")
             
             # 启动状态轮询
             self._poll_task = asyncio.create_task(self._poll_state())
@@ -86,10 +83,10 @@ class MinecraftAgent(GameAgent):
             return True
             
         except ImportError:
-            logger.info(" 未安装minecraft库，请执行: pip install minecraft-python")
+            print(" 未安装minecraft库，请执行: pip install minecraft-python")
             return False
         except Exception as e:
-            logger.info(f" Minecraft连接失败: {e}")
+            print(f" Minecraft连接失败: {e}")
             return False
     
     async def disconnect(self):
@@ -111,16 +108,16 @@ class MinecraftAgent(GameAgent):
                 self._client = None
             
             self.connected = False
-            logger.info(" Minecraft连接已断开")
+            print(" Minecraft连接已断开")
             
         except Exception as e:
-            logger.info(f" Minecraft断开连接失败: {e}")
+            print(f" Minecraft断开连接失败: {e}")
     
     async def get_state(self) -> Optional[GameState]:
         """获取Minecraft游戏状态"""
         try:
             if not self.connected or not self._client:
-                logger.info(" 未连接到Minecraft")
+                print(" 未连接到Minecraft")
                 return None
             
             # 获取玩家信息
@@ -189,21 +186,21 @@ class MinecraftAgent(GameAgent):
             return state
             
         except Exception as e:
-            logger.info(f" 获取Minecraft状态失败: {e}")
+            print(f" 获取Minecraft状态失败: {e}")
             return None
     
     async def execute_action(self, action: GameAction) -> bool:
         """执行Minecraft动作"""
         try:
             if not self.connected or not self._client:
-                logger.info(" 未连接到Minecraft")
+                print(" 未连接到Minecraft")
                 return False
             
             action_type = action.action_type
             parameters = action.parameters
             
-            logger.info(f" 执行Minecraft动作: {action_type}")
-            logger.info(f" 参数: {parameters}")
+            print(f" 执行Minecraft动作: {action_type}")
+            print(f" 参数: {parameters}")
             
             # 根据动作类型执行
             if action_type == "move":
@@ -221,17 +218,17 @@ class MinecraftAgent(GameAgent):
             elif action_type == "drop":
                 await self._drop(parameters)
             else:
-                logger.info(f" 未知的动作类型: {action_type}")
+                print(f" 未知的动作类型: {action_type}")
                 return False
             
             # 通知动作回调
             self._notify_action(action)
             
-            logger.info(f" Minecraft动作执行成功: {action_type}")
+            print(f" Minecraft动作执行成功: {action_type}")
             return True
             
         except Exception as e:
-            logger.info(f" Minecraft动作执行失败: {e}")
+            print(f" Minecraft动作执行失败: {e}")
             return False
     
     async def _move(self, parameters: Dict[str, Any]):
@@ -240,7 +237,7 @@ class MinecraftAgent(GameAgent):
         y = parameters.get("y", 0)
         z = parameters.get("z", 0)
         
-        logger.info(f" 移动到: ({x}, {y}, {z})")
+        print(f" 移动到: ({x}, {y}, {z})")
         
         # 使用pathfinding或直接设置位置
         # 这里简化实现，直接发送位置
@@ -253,7 +250,7 @@ class MinecraftAgent(GameAgent):
         """发送聊天消息"""
         message = parameters.get("message", "")
         
-        logger.info(f" 发送聊天: {message}")
+        print(f" 发送聊天: {message}")
         
         if hasattr(self._client, 'chat'):
             await asyncio.get_event_loop().run_in_executor(
@@ -264,7 +261,7 @@ class MinecraftAgent(GameAgent):
         """攻击目标"""
         target = parameters.get("target", "")
         
-        logger.info(f" 攻击目标: {target}")
+        print(f" 攻击目标: {target}")
         
         # 查找目标实体
         if hasattr(self._client, 'entities'):
@@ -284,7 +281,7 @@ class MinecraftAgent(GameAgent):
         y = parameters.get("y", 0)
         z = parameters.get("z", 0)
         
-        logger.info(f" 挖掘方块: {block_type} at ({x}, {y}, {z})")
+        print(f" 挖掘方块: {block_type} at ({x}, {y}, {z})")
         
         # 发送挖掘命令
         await self.send_command(f"mine {x} {y} {z}")
@@ -296,7 +293,7 @@ class MinecraftAgent(GameAgent):
         y = parameters.get("y", 0)
         z = parameters.get("z", 0)
         
-        logger.info(f" 放置方块: {block_type} at ({x}, {y}, {z})")
+        print(f" 放置方块: {block_type} at ({x}, {y}, {z})")
         
         # 发送放置命令
         await self.send_command(f"setblock {x} {y} {z} {block_type}")
@@ -305,7 +302,7 @@ class MinecraftAgent(GameAgent):
         """使用物品"""
         item = parameters.get("item", "")
         
-        logger.info(f" 使用物品: {item}")
+        print(f" 使用物品: {item}")
         
         # 发送使用命令
         await self.send_command(f"use {item}")
@@ -315,7 +312,7 @@ class MinecraftAgent(GameAgent):
         item = parameters.get("item", "")
         count = parameters.get("count", 1)
         
-        logger.info(f" 丢弃物品: {item} x{count}")
+        print(f" 丢弃物品: {item} x{count}")
         
         # 发送丢弃命令
         await self.send_command(f"drop {item} {count}")
@@ -324,10 +321,10 @@ class MinecraftAgent(GameAgent):
         """发送Minecraft命令"""
         try:
             if not self.connected or not self._client:
-                logger.info(" 未连接到Minecraft")
+                print(" 未连接到Minecraft")
                 return False
             
-            logger.info(f" 发送命令: {command}")
+            print(f" 发送命令: {command}")
             
             # 发送命令
             if hasattr(self._client, 'chat'):
@@ -335,11 +332,11 @@ class MinecraftAgent(GameAgent):
                     None, self._client.chat, f"/{command}"
                 )
             
-            logger.info(f" 命令发送成功: {command}")
+            print(f" 命令发送成功: {command}")
             return True
             
         except Exception as e:
-            logger.info(f" 命令发送失败: {e}")
+            print(f" 命令发送失败: {e}")
             return False
     
     async def chat(self, message: str) -> bool:
@@ -392,7 +389,7 @@ class MinecraftAgent(GameAgent):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.info(f" 状态轮询失败: {e}")
+                    print(f" 状态轮询失败: {e}")
                     await asyncio.sleep(5)
             
         except asyncio.CancelledError:

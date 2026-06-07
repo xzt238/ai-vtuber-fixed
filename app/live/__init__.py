@@ -1,8 +1,5 @@
-import logging
 """
 直播平台集成模块
-
-logger = logging.getLogger(__name__)
 
 提供Bilibili直播弹幕接收、解析、AI回复、弹幕发送等功能。
 
@@ -97,8 +94,8 @@ class LiveSystem:
         self._connected = False
         self._room_id = None
         
-        logger.info(f" 直播系统初始化完成")
-        logger.info(f" 存储目录: {self.storage_dir}")
+        print(f" 直播系统初始化完成")
+        print(f" 存储目录: {self.storage_dir}")
     
     @property
     def bilibili_client(self):
@@ -146,7 +143,7 @@ class LiveSystem:
             try:
                 callback(message)
             except Exception as e:
-                logger.info(f" 消息回调失败: {e}")
+                print(f" 消息回调失败: {e}")
     
     async def connect(self, room_id: str) -> bool:
         """连接到直播间"""
@@ -158,17 +155,17 @@ class LiveSystem:
             
             if success:
                 self._connected = True
-                logger.info(f" 连接直播间成功: {room_id}")
+                print(f" 连接直播间成功: {room_id}")
                 
                 # 设置消息处理回调
                 self.bilibili_client.set_message_handler(self._handle_message)
             else:
-                logger.info(f" 连接直播间失败: {room_id}")
+                print(f" 连接直播间失败: {room_id}")
             
             return success
             
         except Exception as e:
-            logger.info(f" 连接直播间失败: {e}")
+            print(f" 连接直播间失败: {e}")
             return False
     
     async def disconnect(self):
@@ -180,10 +177,10 @@ class LiveSystem:
             self._connected = False
             self._room_id = None
             
-            logger.info(f" 断开直播间连接")
+            print(f" 断开直播间连接")
             
         except Exception as e:
-            logger.info(f" 断开连接失败: {e}")
+            print(f" 断开连接失败: {e}")
     
     def _handle_message(self, message: Dict[str, Any]):
         """处理接收到的消息"""
@@ -200,7 +197,7 @@ class LiveSystem:
                     self._handle_danmaku(parsed_message.data)
                 
         except Exception as e:
-            logger.info(f" 消息处理失败: {e}")
+            print(f" 消息处理失败: {e}")
     
     def _handle_danmaku(self, danmaku: Danmaku):
         """处理弹幕消息"""
@@ -224,7 +221,7 @@ class LiveSystem:
                 self._notify_message(response_message)
                 
         except Exception as e:
-            logger.info(f" 弹幕处理失败: {e}")
+            print(f" 弹幕处理失败: {e}")
     
     async def _send_danmaku_response(self, response: str):
         """发送弹幕回复"""
@@ -233,12 +230,12 @@ class LiveSystem:
                 success = await self.danmaku_sender.send(self._room_id, response)
                 
                 if success:
-                    logger.info(f" 弹幕回复发送成功: {response}")
+                    print(f" 弹幕回复发送成功: {response}")
                 else:
-                    logger.info(f" 弹幕回复发送失败: {response}")
+                    print(f" 弹幕回复发送失败: {response}")
                     
         except Exception as e:
-            logger.info(f" 弹幕回复发送失败: {e}")
+            print(f" 弹幕回复发送失败: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取直播系统统计信息"""

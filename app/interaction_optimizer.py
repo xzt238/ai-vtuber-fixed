@@ -1,10 +1,7 @@
-import logging
 """
 用户交互优化模块
 提供防抖、节流、操作队列、反馈优化等功能
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 import time
@@ -141,7 +138,7 @@ class ActionQueue:
                 except asyncio.TimeoutError:
                     continue
                 except Exception as e:
-                    logger.info(f"[ActionQueue] 处理失败: {e}")
+                    print(f"[ActionQueue] 处理失败: {e}")
         
         self.process_task = asyncio.create_task(process_loop())
     
@@ -191,7 +188,7 @@ class FeedbackManager:
                 else:
                     handler(feedback)
             except Exception as e:
-                logger.info(f"[FeedbackManager] 反馈处理失败: {e}")
+                print(f"[FeedbackManager] 反馈处理失败: {e}")
     
     async def show_success(self, action_id: str, message: str):
         """显示成功反馈"""
@@ -244,7 +241,7 @@ class InteractionOptimizer:
             "queued_actions": 0
         }
         
-        logger.info("[InteractionOptimizer] 初始化完成")
+        print("[InteractionOptimizer] 初始化完成")
     
     async def process_action(self, action: UserAction, 
                            handler: Callable[[UserAction], Awaitable]) -> Any:

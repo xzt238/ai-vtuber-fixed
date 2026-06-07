@@ -1,8 +1,5 @@
-import logging
 """
 弹幕解析器
-
-logger = logging.getLogger(__name__)
 
 提供Bilibili直播弹幕解析功能。
 """
@@ -44,7 +41,7 @@ class DanmakuParser:
                 return self._parse_other(message)
                 
         except Exception as e:
-            logger.info(f" 消息解析失败: {e}")
+            print(f" 消息解析失败: {e}")
             return None
     
     def _parse_danmaku(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -90,7 +87,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            logger.info(f" 弹幕解析失败: {e}")
+            print(f" 弹幕解析失败: {e}")
             return None
     
     def _parse_gift(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -130,7 +127,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            logger.info(f" 礼物解析失败: {e}")
+            print(f" 礼物解析失败: {e}")
             return None
     
     def _parse_system_message(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -149,7 +146,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            logger.info(f" 系统消息解析失败: {e}")
+            print(f" 系统消息解析失败: {e}")
             return None
     
     def _parse_welcome(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -168,7 +165,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            logger.info(f" 欢迎消息解析失败: {e}")
+            print(f" 欢迎消息解析失败: {e}")
             return None
     
     def _parse_interact(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -199,7 +196,7 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            logger.info(f" 互动消息解析失败: {e}")
+            print(f" 互动消息解析失败: {e}")
             return None
     
     def _parse_other(self, message: Dict[str, Any]) -> Optional[LiveMessage]:
@@ -217,5 +214,5 @@ class DanmakuParser:
             )
             
         except Exception as e:
-            logger.info(f" 其他消息解析失败: {e}")
+            print(f" 其他消息解析失败: {e}")
             return None

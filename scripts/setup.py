@@ -1,9 +1,6 @@
-import logging
 #!/usr/bin/env python3
 """
 GuguGaga AI-VTuber - One-Click Setup Script
-
-logger = logging.getLogger(__name__)
 
 All-in-one: embedded Python, dependencies, models, verification.
 No more cmd.exe parsing nightmares - everything runs in Python!
@@ -119,10 +116,10 @@ def format_time(secs):
     return f"{h}h{m:02d}m"
 
 def print_header(step, total, title):
-    logger.info()
-    logger.info(f"  [{step}/{total}] {title}")
-    logger.info(f"  {'-'*50}")
-    logger.info()
+    print()
+    print(f"  [{step}/{total}] {title}")
+    print(f"  {'-'*50}")
+    print()
 
 # ================================================================
 #  Download with Progress
@@ -133,8 +130,8 @@ def download_file(url, dest, desc=None):
     if desc is None:
         desc = os.path.basename(dest)
 
-    logger.info(f"  Downloading: {desc}")
-    logger.info(f"  URL: {url}")
+    print(f"  Downloading: {desc}")
+    print(f"  URL: {url}")
 
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -176,11 +173,11 @@ def download_file(url, dest, desc=None):
 
         elapsed = time.time() - start
         avg = done / elapsed if elapsed > 0 else 0
-        logger.info()
-        logger.info(f"  [OK] {desc} - {format_size(done)} in {format_time(elapsed)} (avg {format_speed(avg)})")
+        print()
+        print(f"  [OK] {desc} - {format_size(done)} in {format_time(elapsed)} (avg {format_speed(avg)})")
         return True
     except Exception as e:
-        logger.info(f"\n  [XX] Download failed: {e}")
+        print(f"\n  [XX] Download failed: {e}")
         if os.path.exists(dest):
             os.remove(dest)
         return False
@@ -199,7 +196,7 @@ def download_and_extract_zip(url, extract_to, rename_from=None, rename_to=None, 
         parent = os.path.dirname(os.path.abspath(extract_to))
         os.makedirs(parent, exist_ok=True)
 
-        logger.info("  Extracting...", end='', flush=True)
+        print("  Extracting...", end='', flush=True)
         with zipfile.ZipFile(zip_path, 'r') as zf:
             zf.extractall(parent)
 
@@ -211,11 +208,11 @@ def download_and_extract_zip(url, extract_to, rename_from=None, rename_to=None, 
             os.rename(src, dst)
 
         os.remove(zip_path)
-        logger.info(" Done!")
-        logger.info(f"  [OK] {desc} extracted")
+        print(" Done!")
+        print(f"  [OK] {desc} extracted")
         return True
     except Exception as e:
-        logger.info(f"\n  [XX] Extract failed: {e}")
+        print(f"\n  [XX] Extract failed: {e}")
         if os.path.exists(zip_path):
             os.remove(zip_path)
         return False
@@ -259,10 +256,10 @@ def setup_embedded_python(project_root):
     python_exe = os.path.join(python_dir, 'python.exe')
 
     if os.path.exists(python_exe):
-        logger.info("  [OK] Embedded Python already exists")
+        print("  [OK] Embedded Python already exists")
         return python_exe
 
-    logger.info("  Embedded Python not found, downloading...")
+    print("  Embedded Python not found, downloading...")
     os.makedirs(python_dir, exist_ok=True)
 
     # Download
@@ -272,21 +269,21 @@ def setup_embedded_python(project_root):
         return None
 
     # Extract
-    logger.info("  Extracting...", end='', flush=True)
+    print("  Extracting...", end='', flush=True)
     with zipfile.ZipFile(zip_path, 'r') as zf:
         zf.extractall(python_dir)
     os.remove(zip_path)
-    logger.info(" Done!")
+    print(" Done!")
 
     # Configure _pth
-    logger.info("  Configuring paths...", end='', flush=True)
+    print("  Configuring paths...", end='', flush=True)
     pth_path = os.path.join(python_dir, 'python311._pth')
     with open(pth_path, 'w') as f:
         f.write('python311.zip\nLib\nLib\\site-packages\n..\nimport site\n')
-    logger.info(" Done!")
+    print(" Done!")
 
     # Install pip
-    logger.info("  Installing pip...", end='', flush=True)
+    print("  Installing pip...", end='', flush=True)
     get_pip_path = os.path.join(python_dir, 'get-pip.py')
     try:
         urllib.request.urlretrieve('https://bootstrap.pypa.io/get-pip.py', get_pip_path)
@@ -296,12 +293,12 @@ def setup_embedded_python(project_root):
             capture_output=True, timeout=120
         )
     except Exception as e:
-        logger.info(f" pip install warning: {e}")
+        print(f" pip install warning: {e}")
     if os.path.exists(get_pip_path):
         os.remove(get_pip_path)
-    logger.info(" Done!")
+    print(" Done!")
 
-    logger.info("  [OK] Embedded Python installed!")
+    print("  [OK] Embedded Python installed!")
     return python_exe
 
 # ================================================================
@@ -330,31 +327,31 @@ def check_import(python, module_name):
 def install_package(python, import_name, pip_spec, level):
     """Install a single pip package. Returns 'ok', 'skip', or 'fail'."""
     if check_import(python, import_name):
-        logger.info(f"    [OK] {import_name} - already installed")
+        print(f"    [OK] {import_name} - already installed")
         return 'skip'
 
-    logger.info(f"    Installing {import_name} ({pip_spec})...")
+    print(f"    Installing {import_name} ({pip_spec})...")
 
     mirror_args = ['-i', PIP_MIRROR_URL, '--trusted-host', PIP_TRUSTED]
 
     # First try: with mirror
     rc = pip_install(python, [pip_spec] + mirror_args)
     if rc == 0:
-        logger.info(f"    [OK] {import_name}")
+        print(f"    [OK] {import_name}")
         return 'ok'
 
     # Second try: default PyPI
-    logger.info(f"    Retry {import_name} with default PyPI...")
+    print(f"    Retry {import_name} with default PyPI...")
     rc = pip_install(python, [pip_spec])
     if rc == 0:
-        logger.info(f"    [OK] {import_name}")
+        print(f"    [OK] {import_name}")
         return 'ok'
 
     # Failed
     if level == 'required':
-        logger.info(f"    [XX] {import_name} FAILED (required!)")
+        print(f"    [XX] {import_name} FAILED (required!)")
     else:
-        logger.info(f"    [--] {import_name} failed ({level}, core still works)")
+        print(f"    [--] {import_name} failed ({level}, core still works)")
     return 'fail'
 
 def install_pytorch_cuda(python):
@@ -366,16 +363,16 @@ def install_pytorch_cuda(python):
         )
         if r.returncode == 0:
             v = subprocess.run(
-                python + ['-c', 'import torch; logger.info(torch.__version__)'],
+                python + ['-c', 'import torch; print(torch.__version__)'],
                 capture_output=True, text=True, timeout=10
             )
-            logger.info(f"    [OK] PyTorch CUDA {v.stdout.strip()} already available")
+            print(f"    [OK] PyTorch CUDA {v.stdout.strip()} already available")
             return True
     except Exception:
         pass
 
-    logger.info("    PyTorch CUDA not available, installing...")
-    logger.info("    (This may take 5-15 minutes, ~2GB download)")
+    print("    PyTorch CUDA not available, installing...")
+    print("    (This may take 5-15 minutes, ~2GB download)")
 
     # Install new version first - pip handles upgrade automatically
     # NEVER uninstall before install - if install fails, we lose the old version too
@@ -403,17 +400,17 @@ def install_pytorch_cuda(python):
                 capture_output=True, timeout=30
             )
             if v.returncode == 0:
-                logger.info("    [OK] PyTorch CUDA installed")
+                print("    [OK] PyTorch CUDA installed")
                 return True
             else:
-                logger.info("    [XX] PyTorch installed but CUDA not available (GPU driver issue?)")
+                print("    [XX] PyTorch installed but CUDA not available (GPU driver issue?)")
                 return False
         except Exception:
-            logger.info("    [XX] PyTorch installed but CUDA check failed")
+            print("    [XX] PyTorch installed but CUDA check failed")
             return False
 
     # Fallback: try with --extra-index-url (keeps PyPI as secondary source)
-    logger.info("    Retrying with --extra-index-url...")
+    print("    Retrying with --extra-index-url...")
     rc = pip_install(
         python,
         [f'torch=={TORCH_CUDA_VERSION}',
@@ -429,17 +426,17 @@ def install_pytorch_cuda(python):
                 capture_output=True, timeout=30
             )
             if v.returncode == 0:
-                logger.info("    [OK] PyTorch CUDA installed (fallback)")
+                print("    [OK] PyTorch CUDA installed (fallback)")
                 return True
         except Exception:
             pass
 
-    logger.info("    [XX] PyTorch CUDA install failed (GPU inference unavailable)")
+    print("    [XX] PyTorch CUDA install failed (GPU inference unavailable)")
     return False
 
 def unlock_dlls(project_root):
     """Unlock DLL security marks on pip-downloaded binaries."""
-    logger.info("    Unlocking DLL security marks...")
+    print("    Unlocking DLL security marks...")
     pkg_dirs = [
         os.path.join(project_root, 'python', 'Lib', 'site-packages', d)
         for d in ('torch', 'funasr', 'rapidocr_onnxruntime')
@@ -455,7 +452,7 @@ def unlock_dlls(project_root):
                 )
             except Exception:
                 pass
-    logger.info("    [OK] DLLs unlocked")
+    print("    [OK] DLLs unlocked")
 
 # ================================================================
 #  Model Download
@@ -480,11 +477,11 @@ def download_models(project_root):
     # --- s2Gv3.pth ---
     s2g = os.path.join(pretrained_dir, 's2Gv3.pth')
     if check_model_file(s2g, 100_000_000):
-        logger.info(f"    [OK] s2Gv3.pth already exists ({format_size(os.path.getsize(s2g))})")
+        print(f"    [OK] s2Gv3.pth already exists ({format_size(os.path.getsize(s2g))})")
         stats['skip'] += 1
     else:
         if os.path.exists(s2g):
-            logger.info("    [--] s2Gv3.pth corrupted (too small), re-downloading...")
+            print("    [--] s2Gv3.pth corrupted (too small), re-downloading...")
             os.remove(s2g)
         if download_file(
             f"{HF_MIRROR}/jackal119/GPT-SoVITS-v3/resolve/main/pretrained_models/s2Gv3.pth",
@@ -492,17 +489,17 @@ def download_models(project_root):
         ):
             stats['ok'] += 1
         else:
-            logger.info("    Manual: https://hf-mirror.com/jackal119/GPT-SoVITS-v3")
+            print("    Manual: https://hf-mirror.com/jackal119/GPT-SoVITS-v3")
             stats['fail'] += 1
 
     # --- s1v3.ckpt (GPT v3/v4 pretrained model) ---
     s1v = os.path.join(pretrained_dir, 's1v3.ckpt')
     if check_model_file(s1v, 100_000_000):
-        logger.info(f"    [OK] s1v3.ckpt already exists ({format_size(os.path.getsize(s1v))})")
+        print(f"    [OK] s1v3.ckpt already exists ({format_size(os.path.getsize(s1v))})")
         stats['skip'] += 1
     else:
         if os.path.exists(s1v):
-            logger.info("    [--] s1v3.ckpt corrupted (too small), re-downloading...")
+            print("    [--] s1v3.ckpt corrupted (too small), re-downloading...")
             os.remove(s1v)
         if download_file(
             f"{HF_MIRROR}/kevinwang676/GPT-SoVITS-v3/resolve/main/GPT_SoVITS/pretrained_models/s1v3.ckpt",
@@ -510,14 +507,14 @@ def download_models(project_root):
         ):
             stats['ok'] += 1
         else:
-            logger.info("    Manual: https://hf-mirror.com/kevinwang676/GPT-SoVITS-v3")
+            print("    Manual: https://hf-mirror.com/kevinwang676/GPT-SoVITS-v3")
             stats['fail'] += 1
 
     # --- chinese-hubert-base ---
     hubert_dir = os.path.join(pretrained_dir, 'chinese-hubert-base')
     hubert = os.path.join(hubert_dir, 'pytorch_model.bin')
     if check_model_file(hubert, 100_000_000):
-        logger.info(f"    [OK] chinese-hubert-base already exists ({format_size(os.path.getsize(hubert))})")
+        print(f"    [OK] chinese-hubert-base already exists ({format_size(os.path.getsize(hubert))})")
         stats['skip'] += 1
     else:
         os.makedirs(hubert_dir, exist_ok=True)
@@ -533,7 +530,7 @@ def download_models(project_root):
     g2pw_dir = os.path.join(project_root, 'GPT-SoVITS', 'GPT_SoVITS', 'text', 'G2PWModel')
     g2pw = os.path.join(g2pw_dir, 'g2pW.onnx')
     if check_model_file(g2pw, 1_000_000):
-        logger.info(f"    [OK] G2PW model already exists ({format_size(os.path.getsize(g2pw))})")
+        print(f"    [OK] G2PW model already exists ({format_size(os.path.getsize(g2pw))})")
         stats['skip'] += 1
     else:
         if os.path.exists(g2pw_dir):
@@ -551,7 +548,7 @@ def download_models(project_root):
     bigvgan_generator = os.path.join(bigvgan_dir, 'bigvgan_generator.pt')
     bigvgan_config = os.path.join(bigvgan_dir, 'config.json')
     if check_model_file(bigvgan_generator, 100_000_000) and check_model_file(bigvgan_config, 100):
-        logger.info(f"    [OK] BigVGAN v2 already exists ({format_size(os.path.getsize(bigvgan_generator))})")
+        print(f"    [OK] BigVGAN v2 already exists ({format_size(os.path.getsize(bigvgan_generator))})")
         stats['skip'] += 1
     else:
         os.makedirs(bigvgan_dir, exist_ok=True)
@@ -571,14 +568,14 @@ def download_models(project_root):
         if dl_ok:
             stats['ok'] += 1
         else:
-            logger.info("    Manual: https://hf-mirror.com/nvidia/bigvgan_v2_24khz_100band_256x")
+            print("    Manual: https://hf-mirror.com/nvidia/bigvgan_v2_24khz_100band_256x")
             stats['fail'] += 1
 
     # --- SV 说话人验证 (ERes2NetV2) ---
     sv_dir = os.path.join(pretrained_dir, 'sv')
     sv_file = os.path.join(sv_dir, 'pretrained_eres2netv2w24s4ep4.ckpt')
     if check_model_file(sv_file, 100_000_000):
-        logger.info(f"    [OK] SV model (ERes2NetV2) already exists ({format_size(os.path.getsize(sv_file))})")
+        print(f"    [OK] SV model (ERes2NetV2) already exists ({format_size(os.path.getsize(sv_file))})")
         stats['skip'] += 1
     else:
         os.makedirs(sv_dir, exist_ok=True)
@@ -588,7 +585,7 @@ def download_models(project_root):
         ):
             stats['ok'] += 1
         else:
-            logger.info("    Manual: https://hf-mirror.com/lj1995/GPT-SoVITS")
+            print("    Manual: https://hf-mirror.com/lj1995/GPT-SoVITS")
             stats['fail'] += 1
 
     return stats
@@ -604,23 +601,23 @@ def run_verification(python, project_root):
 
     # Embedded Python
     if os.path.exists(os.path.join(project_root, 'python', 'python.exe')):
-        logger.info("    [OK] Embedded Python")
+        print("    [OK] Embedded Python")
         results['ok'] += 1
     else:
-        logger.info("    [XX] Embedded Python - MISSING")
+        print("    [XX] Embedded Python - MISSING")
         results['fail'] += 1
 
     # pip
     try:
         r = subprocess.run(python + ['-m', 'pip', '--version'], capture_output=True, timeout=10)
         if r.returncode == 0:
-            logger.info("    [OK] pip")
+            print("    [OK] pip")
             results['ok'] += 1
         else:
-            logger.info("    [XX] pip - MISSING")
+            print("    [XX] pip - MISSING")
             results['fail'] += 1
     except Exception:
-        logger.info("    [XX] pip - MISSING")
+        print("    [XX] pip - MISSING")
         results['fail'] += 1
 
     # PyTorch CUDA
@@ -631,26 +628,26 @@ def run_verification(python, project_root):
         )
         if r.returncode == 0:
             v = subprocess.run(
-                python + ['-c', 'import torch; logger.info(torch.__version__)'],
+                python + ['-c', 'import torch; print(torch.__version__)'],
                 capture_output=True, text=True, timeout=10
             )
-            logger.info(f"    [OK] PyTorch CUDA {v.stdout.strip()}")
+            print(f"    [OK] PyTorch CUDA {v.stdout.strip()}")
             results['ok'] += 1
         else:
-            logger.info("    [--] PyTorch CUDA - NOT AVAILABLE (CPU mode)")
+            print("    [--] PyTorch CUDA - NOT AVAILABLE (CPU mode)")
             results['warn'] += 1
     except Exception:
-        logger.info("    [--] PyTorch CUDA - NOT AVAILABLE (CPU mode)")
+        print("    [--] PyTorch CUDA - NOT AVAILABLE (CPU mode)")
         results['warn'] += 1
 
     # Core packages
     for imp_name, _, level in PACKAGES:
         if level == 'required':
             if check_import(python, imp_name):
-                logger.info(f"    [OK] {imp_name}")
+                print(f"    [OK] {imp_name}")
                 results['ok'] += 1
             else:
-                logger.info(f"    [XX] {imp_name} - MISSING")
+                print(f"    [XX] {imp_name} - MISSING")
                 results['fail'] += 1
 
     # Model files
@@ -668,30 +665,30 @@ def run_verification(python, project_root):
 
     for name, path, min_size, required in model_checks:
         if check_model_file(path, min_size):
-            logger.info(f"    [OK] {name}")
+            print(f"    [OK] {name}")
             results['ok'] += 1
         else:
             if required:
-                logger.info(f"    [XX] {name} - MISSING")
+                print(f"    [XX] {name} - MISSING")
                 results['fail'] += 1
             else:
-                logger.info(f"    [--] {name} - MISSING (optional)")
+                print(f"    [--] {name} - MISSING (optional)")
                 results['warn'] += 1
 
     # Native Desktop (PySide6)
     if check_import(python, 'PySide6'):
-        logger.info("    [OK] PySide6 (Native Desktop)")
+        print("    [OK] PySide6 (Native Desktop)")
         results['ok'] += 1
     else:
-        logger.info("    [--] PySide6 - MISSING (Native Desktop 不可用，可用 WebUI 模式)")
+        print("    [--] PySide6 - MISSING (Native Desktop 不可用，可用 WebUI 模式)")
         results['warn'] += 1
 
     # Live2D
     if check_import(python, 'live2d'):
-        logger.info("    [OK] live2d-py (Live2D 模型支持)")
+        print("    [OK] live2d-py (Live2D 模型支持)")
         results['ok'] += 1
     else:
-        logger.info("    [--] live2d-py - MISSING (Live2D 不可用，角色不会动)")
+        print("    [--] live2d-py - MISSING (Live2D 不可用，角色不会动)")
         results['warn'] += 1
 
     return results
@@ -722,24 +719,24 @@ def main():
         'models': 'Models Only',
         'verify': 'Verification Only',
     }
-    logger.info()
-    logger.info("  ======================================================")
-    logger.info()
-    logger.info("    GuguGaga AI-VTuber - Setup")
-    logger.info(f"    Mode: {mode_labels[mode]}")
+    print()
+    print("  ======================================================")
+    print()
+    print("    GuguGaga AI-VTuber - Setup")
+    print(f"    Mode: {mode_labels[mode]}")
     if mode == 'all':
-        logger.info()
-        logger.info("    This will:")
-        logger.info("      1. Download embedded Python 3.11")
-        logger.info("      2. Install all Python packages")
-        logger.info("      3. Download AI model files")
-        logger.info("      4. Run verification")
-        logger.info()
-        logger.info("    All downloads use China mirror sources")
-        logger.info("    Estimated time: 20-40 minutes")
-    logger.info()
-    logger.info("  ======================================================")
-    logger.info()
+        print()
+        print("    This will:")
+        print("      1. Download embedded Python 3.11")
+        print("      2. Install all Python packages")
+        print("      3. Download AI model files")
+        print("      4. Run verification")
+        print()
+        print("    All downloads use China mirror sources")
+        print("    Estimated time: 20-40 minutes")
+    print()
+    print("  ======================================================")
+    print()
 
     if mode == 'all':
         input("  Press Enter to start, or close to cancel...")
@@ -747,10 +744,10 @@ def main():
     # Find Python
     python = find_python(project_root)
     if python is None:
-        logger.info("  [XX] No Python found! Install Python 3.11 first:")
-        logger.info("       https://www.python.org/downloads/release/python-3119/")
+        print("  [XX] No Python found! Install Python 3.11 first:")
+        print("       https://www.python.org/downloads/release/python-3119/")
         return 1
-    logger.info(f"  Using: {' '.join(python)}")
+    print(f"  Using: {' '.join(python)}")
 
     step = 0
     totals = {'all': 6, 'deps': 3, 'models': 3, 'verify': 1}
@@ -770,14 +767,14 @@ def main():
         print_header(step, total, "Python Packages (Tsinghua mirror)")
 
         # Upgrade pip
-        logger.info("  Upgrading pip...")
+        print("  Upgrading pip...")
         subprocess.run(
             python + ['-m', 'pip', 'install', '--upgrade', 'pip',
                       '-i', PIP_MIRROR_URL, '--trusted-host', PIP_TRUSTED],
             capture_output=True, timeout=120
         )
-        logger.info("  [OK] pip upgraded")
-        logger.info()
+        print("  [OK] pip upgraded")
+        print()
 
         # Install packages
         pkg_stats = {'ok': 0, 'skip': 0, 'fail': 0}
@@ -785,8 +782,8 @@ def main():
             result = install_package(python, imp_name, pip_spec, level)
             pkg_stats[result] += 1
 
-        logger.info()
-        logger.info(f"  Package summary: {pkg_stats['ok']} installed, {pkg_stats['skip']} already present, {pkg_stats['fail']} failed")
+        print()
+        print(f"  Package summary: {pkg_stats['ok']} installed, {pkg_stats['skip']} already present, {pkg_stats['fail']} failed")
 
         # PyTorch CUDA
         step += 1
@@ -794,7 +791,7 @@ def main():
         install_pytorch_cuda(python)
 
         # Unlock DLLs
-        logger.info()
+        print()
         unlock_dlls(project_root)
 
     # ===== Models =====
@@ -809,8 +806,8 @@ def main():
                 python = [embedded_path]
 
         dl_stats = download_models(project_root)
-        logger.info()
-        logger.info(f"  Model summary: {dl_stats['ok']} downloaded, {dl_stats['skip']} already present, {dl_stats['fail']} failed")
+        print()
+        print(f"  Model summary: {dl_stats['ok']} downloaded, {dl_stats['skip']} already present, {dl_stats['fail']} failed")
 
     # ===== Verification =====
     step += 1
@@ -818,26 +815,26 @@ def main():
     v = run_verification(python, project_root)
 
     # ===== Summary =====
-    logger.info()
-    logger.info("  ======================================================")
+    print()
+    print("  ======================================================")
     if v['fail'] == 0:
-        logger.info("    SETUP COMPLETE - All checks passed!")
+        print("    SETUP COMPLETE - All checks passed!")
     else:
-        logger.info(f"    SETUP COMPLETE - {v['fail']} check(s) failed")
-    logger.info()
-    logger.info(f"    Results: [OK] {v['ok']}  [XX] {v['fail']}  [--] {v['warn']}")
-    logger.info()
+        print(f"    SETUP COMPLETE - {v['fail']} check(s) failed")
+    print()
+    print(f"    Results: [OK] {v['ok']}  [XX] {v['fail']}  [--] {v['warn']}")
+    print()
 
     if v['fail'] == 0:
-        logger.info("    Next steps:")
-        logger.info("      1. Run scripts\\go.bat to start browser mode")
-        logger.info("      2. Enter your API key in the WebUI settings panel")
-        logger.info("      3. Start chatting!")
+        print("    Next steps:")
+        print("      1. Run scripts\\go.bat to start browser mode")
+        print("      2. Enter your API key in the WebUI settings panel")
+        print("      3. Start chatting!")
     else:
-        logger.info("    Some checks failed. Core features may still work.")
-        logger.info("    Missing items can be downloaded/installed manually.")
-    logger.info()
-    logger.info("  ======================================================")
+        print("    Some checks failed. Core features may still work.")
+        print("    Missing items can be downloaded/installed manually.")
+    print()
+    print("  ======================================================")
 
     return 0 if v['fail'] == 0 else 1
 
@@ -846,5 +843,5 @@ if __name__ == '__main__':
     try:
         sys.exit(main())
     except KeyboardInterrupt:
-        logger.info("\n\n  Setup cancelled by user.")
+        print("\n\n  Setup cancelled by user.")
         sys.exit(1)

@@ -1,8 +1,5 @@
-import logging
 """
 文生图模块
-
-logger = logging.getLogger(__name__)
 
 提供文生图API支持，包括：
 - 通义万相
@@ -87,9 +84,9 @@ class ImageGenerator:
         # HTTP会话
         self._session = None
         
-        logger.info(f" 文生图模块初始化完成")
-        logger.info(f" 提供商: {self.provider.value}")
-        logger.info(f" 模型: {self.model}")
+        print(f" 文生图模块初始化完成")
+        print(f" 提供商: {self.provider.value}")
+        print(f" 模型: {self.model}")
     
     async def generate(self, request: ImageRequest) -> ImageResponse:
         """生成图像"""
@@ -114,7 +111,7 @@ class ImageGenerator:
                 raise ValueError(f"不支持的提供商: {self.provider}")
             
         except Exception as e:
-            logger.info(f" 图像生成失败: {e}")
+            print(f" 图像生成失败: {e}")
             raise
     
     async def _generate_wanx(self, request: ImageRequest) -> ImageResponse:
@@ -169,7 +166,7 @@ class ImageGenerator:
                     raise Exception(f"通义万相请求失败: {result}")
             
         except Exception as e:
-            logger.info(f" 通义万相生成失败: {e}")
+            print(f" 通义万相生成失败: {e}")
             raise
     
     async def _poll_wanx_task(self, task_id: str, max_retries: int = 30) -> List[str]:
@@ -234,7 +231,7 @@ class ImageGenerator:
                     raise Exception(f"智谱CogView请求失败: {result}")
             
         except Exception as e:
-            logger.info(f" 智谱CogView生成失败: {e}")
+            print(f" 智谱CogView生成失败: {e}")
             raise
     
     async def _generate_kolors(self, request: ImageRequest) -> ImageResponse:
@@ -275,7 +272,7 @@ class ImageGenerator:
                     raise Exception(f"可图请求失败: {result}")
             
         except Exception as e:
-            logger.info(f" 可图生成失败: {e}")
+            print(f" 可图生成失败: {e}")
             raise
     
     async def _generate_dall_e(self, request: ImageRequest) -> ImageResponse:
@@ -314,7 +311,7 @@ class ImageGenerator:
                     raise Exception(f"DALL-E请求失败: {result}")
             
         except Exception as e:
-            logger.info(f" DALL-E生成失败: {e}")
+            print(f" DALL-E生成失败: {e}")
             raise
     
     async def _generate_flux(self, request: ImageRequest) -> ImageResponse:
@@ -354,7 +351,7 @@ class ImageGenerator:
                     raise Exception(f"Flux请求失败: {result}")
             
         except Exception as e:
-            logger.info(f" Flux生成失败: {e}")
+            print(f" Flux生成失败: {e}")
             raise
     
     async def _generate_mimo(self, request: ImageRequest) -> ImageResponse:
@@ -395,7 +392,7 @@ class ImageGenerator:
                     raise Exception(f"MiMo请求失败: {result}")
             
         except Exception as e:
-            logger.info(f" MiMo生成失败: {e}")
+            print(f" MiMo生成失败: {e}")
             raise
     
     async def generate_simple(self, prompt: str, **kwargs) -> List[str]:

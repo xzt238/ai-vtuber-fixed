@@ -1,8 +1,5 @@
-import logging
 """
 游戏感知框架模块
-
-logger = logging.getLogger(__name__)
 
 提供游戏感知和交互功能。
 
@@ -103,7 +100,7 @@ class GameAgent:
             try:
                 callback(state)
             except Exception as e:
-                logger.info(f" 状态回调失败: {e}")
+                print(f" 状态回调失败: {e}")
     
     def _notify_action(self, action: GameAction):
         """通知动作回调"""
@@ -111,7 +108,7 @@ class GameAgent:
             try:
                 callback(action)
             except Exception as e:
-                logger.info(f" 动作回调失败: {e}")
+                print(f" 动作回调失败: {e}")
     
     async def connect(self) -> bool:
         """连接到游戏"""
@@ -154,43 +151,43 @@ class MinecraftAgent(GameAgent):
         self.game_mode = "survival"
         self.difficulty = "normal"
         
-        logger.info(f" Minecraft代理初始化完成")
-        logger.info(f" 服务器: {self.host}:{self.port}")
-        logger.info(f" 用户名: {self.username}")
+        print(f" Minecraft代理初始化完成")
+        print(f" 服务器: {self.host}:{self.port}")
+        print(f" 用户名: {self.username}")
     
     async def connect(self) -> bool:
         """连接到Minecraft服务器"""
         try:
             # 这里应该实现实际的Minecraft连接
             # 由于Minecraft连接需要特定的库，这里只是示例
-            logger.info(f" 连接到Minecraft服务器: {self.host}:{self.port}")
+            print(f" 连接到Minecraft服务器: {self.host}:{self.port}")
             
             # 模拟连接
             await asyncio.sleep(1)
             
             self.connected = True
-            logger.info(" Minecraft连接成功")
+            print(" Minecraft连接成功")
             
             return True
             
         except Exception as e:
-            logger.info(f" Minecraft连接失败: {e}")
+            print(f" Minecraft连接失败: {e}")
             return False
     
     async def disconnect(self):
         """断开Minecraft连接"""
         try:
             if self.connected:
-                logger.info(" 断开Minecraft连接")
+                print(" 断开Minecraft连接")
                 self.connected = False
         except Exception as e:
-            logger.info(f" 断开Minecraft连接失败: {e}")
+            print(f" 断开Minecraft连接失败: {e}")
     
     async def get_state(self) -> Optional[GameState]:
         """获取Minecraft游戏状态"""
         try:
             if not self.connected:
-                logger.info(" 未连接到Minecraft")
+                print(" 未连接到Minecraft")
                 return None
             
             # 这里应该获取实际的游戏状态
@@ -225,14 +222,14 @@ class MinecraftAgent(GameAgent):
             return state
             
         except Exception as e:
-            logger.info(f" 获取Minecraft状态失败: {e}")
+            print(f" 获取Minecraft状态失败: {e}")
             return None
     
     async def execute_action(self, action: GameAction) -> bool:
         """执行Minecraft动作"""
         try:
             if not self.connected:
-                logger.info(" 未连接到Minecraft")
+                print(" 未连接到Minecraft")
                 return False
             
             # 这里应该执行实际的游戏动作
@@ -241,8 +238,8 @@ class MinecraftAgent(GameAgent):
             action_type = action.action_type
             parameters = action.parameters
             
-            logger.info(f" 执行Minecraft动作: {action_type}")
-            logger.info(f" 参数: {parameters}")
+            print(f" 执行Minecraft动作: {action_type}")
+            print(f" 参数: {parameters}")
             
             # 模拟动作执行
             await asyncio.sleep(0.1)
@@ -250,21 +247,21 @@ class MinecraftAgent(GameAgent):
             # 通知动作回调
             self._notify_action(action)
             
-            logger.info(f" Minecraft动作执行成功: {action_type}")
+            print(f" Minecraft动作执行成功: {action_type}")
             return True
             
         except Exception as e:
-            logger.info(f" Minecraft动作执行失败: {e}")
+            print(f" Minecraft动作执行失败: {e}")
             return False
     
     async def send_command(self, command: str) -> bool:
         """发送Minecraft命令"""
         try:
             if not self.connected:
-                logger.info(" 未连接到Minecraft")
+                print(" 未连接到Minecraft")
                 return False
             
-            logger.info(f" 发送Minecraft命令: {command}")
+            print(f" 发送Minecraft命令: {command}")
             
             # 这里应该发送实际的命令
             # 由于Minecraft命令发送需要特定的库，这里只是示例
@@ -272,11 +269,11 @@ class MinecraftAgent(GameAgent):
             # 模拟命令发送
             await asyncio.sleep(0.1)
             
-            logger.info(f" Minecraft命令发送成功: {command}")
+            print(f" Minecraft命令发送成功: {command}")
             return True
             
         except Exception as e:
-            logger.info(f" Minecraft命令发送失败: {e}")
+            print(f" Minecraft命令发送失败: {e}")
             return False
     
     async def chat(self, message: str) -> bool:
@@ -334,8 +331,8 @@ class GameAgentManager:
         # 游戏代理缓存
         self.agents: Dict[str, GameAgent] = {}
         
-        logger.info(f" 游戏代理管理器初始化完成")
-        logger.info(f" 存储目录: {self.storage_dir}")
+        print(f" 游戏代理管理器初始化完成")
+        print(f" 存储目录: {self.storage_dir}")
     
     def create_agent(self, game_type: GameType, config: Dict[str, Any] = None) -> Optional[GameAgent]:
         """创建游戏代理"""
@@ -353,18 +350,18 @@ class GameAgentManager:
                 from .stardew_valley_agent import StardewValleyAgent
                 agent = StardewValleyAgent(config)
             else:
-                logger.info(f" 不支持的游戏类型: {game_type}")
+                print(f" 不支持的游戏类型: {game_type}")
                 return None
             
             # 生成代理ID
             agent_id = f"{game_type.value}_{len(self.agents)}"
             self.agents[agent_id] = agent
             
-            logger.info(f" 游戏代理创建成功: {agent_id}")
+            print(f" 游戏代理创建成功: {agent_id}")
             return agent
             
         except Exception as e:
-            logger.info(f" 游戏代理创建失败: {e}")
+            print(f" 游戏代理创建失败: {e}")
             return None
     
     def get_agent(self, agent_id: str) -> Optional[GameAgent]:
@@ -382,12 +379,12 @@ class GameAgentManager:
                 agent = self.agents[agent_id]
                 asyncio.create_task(agent.disconnect())
                 del self.agents[agent_id]
-                logger.info(f" 游戏代理移除成功: {agent_id}")
+                print(f" 游戏代理移除成功: {agent_id}")
             else:
-                logger.info(f" 游戏代理不存在: {agent_id}")
+                print(f" 游戏代理不存在: {agent_id}")
                 
         except Exception as e:
-            logger.info(f" 游戏代理移除失败: {e}")
+            print(f" 游戏代理移除失败: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""

@@ -1,8 +1,5 @@
-import logging
 """
 新增功能调试页面
-
-logger = logging.getLogger(__name__)
 
 提供RAG、直播、SVC、唱歌、SD、游戏、多Agent、Bot、视觉输入等功能的调试界面。
 
@@ -630,7 +627,7 @@ class DebugPage(QWidget, LazyPageMixin):
         """更新配置"""
         # 这里应该更新配置文件
         # 简化实现，只打印日志
-        logger.info(f" 更新配置: {key} = {value}")
+        print(f" 更新配置: {key} = {value}")
 
     def _refresh_status(self):
         """刷新状态显示"""
@@ -640,45 +637,45 @@ class DebugPage(QWidget, LazyPageMixin):
 
     def _test_rag(self):
         """测试RAG功能"""
-        logger.info(" 测试RAG功能...")
+        print(" 测试RAG功能...")
         # 这里应该调用后端的RAG测试功能
 
     def _connect_live(self):
         """连接直播间"""
-        logger.info(" 连接直播间...")
+        print(" 连接直播间...")
         # 这里应该调用后端的直播连接功能
 
     def _load_svc_model(self):
         """加载SVC模型"""
-        logger.info(" 加载SVC模型...")
+        print(" 加载SVC模型...")
         # 这里应该调用后端的SVC模型加载功能
 
     def _test_singing(self):
         """测试唱歌功能"""
-        logger.info(" 测试唱歌功能...")
+        print(" 测试唱歌功能...")
         # 这里应该调用后端的唱歌测试功能
 
     def _connect_sd(self):
         """连接SD WebUI"""
-        logger.info(" 连接SD WebUI...")
+        print(" 连接SD WebUI...")
         # 这里应该调用后端的SD连接功能
 
     def _connect_game(self):
         """连接游戏"""
-        logger.info(" 连接游戏...")
+        print(" 连接游戏...")
         # 这里应该调用后端的游戏连接功能
 
     def _create_test_agent(self):
         """创建测试代理"""
-        logger.info(" 创建测试代理...")
+        print(" 创建测试代理...")
         # 这里应该调用后端的代理创建功能
 
     def _connect_bot(self):
         """连接Bot"""
-        logger.info(" 连接Bot...")
+        print(" 连接Bot...")
         # 这里应该调用后端的Bot连接功能
 
     def _open_camera(self):
         """打开摄像头"""
-        logger.info(" 打开摄像头...")
+        print(" 打开摄像头...")
         # 这里应该调用后端的摄像头打开功能

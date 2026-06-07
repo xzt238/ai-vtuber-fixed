@@ -1,10 +1,7 @@
-import logging
 """
 移动端支持模块
 提供移动端API接口、响应式设计、触摸交互支持
 """
-
-logger = logging.getLogger(__name__)
 
 import asyncio
 from typing import Optional, Dict, Any, List
@@ -70,7 +67,7 @@ class MobileAPIServer:
             "total_messages": 0
         }
         
-        logger.info("[MobileAPI] 初始化完成")
+        print("[MobileAPI] 初始化完成")
     
     async def start(self):
         """启动API服务器"""
@@ -89,11 +86,11 @@ class MobileAPIServer:
             site = web.TCPSite(runner, self.host, self.port)
             await site.start()
             
-            logger.info(f"[MobileAPI] 服务器启动: http://{self.host}:{self.port}")
+            print(f"[MobileAPI] 服务器启动: http://{self.host}:{self.port}")
             return True
             
         except Exception as e:
-            logger.info(f"[MobileAPI] 服务器启动失败: {e}")
+            print(f"[MobileAPI] 服务器启动失败: {e}")
             return False
     
     def _register_routes(self, app):
