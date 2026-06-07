@@ -4,7 +4,7 @@
 """
 
 import asyncio
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum

@@ -47,7 +47,7 @@ import argparse
 import atexit
 import base64
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, Tuple
 
 # 将当前 app/ 目录插入 Python 模块搜索路径的最前面
 sys.path.insert(0, str(Path(__file__).parent))
@@ -92,8 +92,8 @@ warnings.filterwarnings("ignore", message=".*Couldn.t find ffmpeg.*")
 warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*ffmpeg.*")
 
 # ============ 核心工具模块 ============
-from logger_new import get_logger, security_logger
-from utils import validate_path, temp_file, friendly_error
+from logger_new import get_logger
+from utils import temp_file, friendly_error
 from tts_cache import TTSCache
 
 # ============ 导入重构后的模块 ============

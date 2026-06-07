@@ -19,13 +19,10 @@
 import os
 import asyncio
 import tempfile
-import threading
 import numpy as np
-from pathlib import Path
 from typing import Optional, Callable, Dict, Any
-from datetime import datetime
 
-from app.vad import get_vad, VADConfig, VADState
+from app.vad import get_vad, VADConfig
 from app.interrupt import get_interrupt_handler, InterruptReason
 import logging
 

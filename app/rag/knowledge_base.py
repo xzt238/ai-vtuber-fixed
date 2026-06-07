@@ -6,7 +6,6 @@
 
 import os
 import json
-import hashlib
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -15,7 +14,7 @@ from datetime import datetime
 # 日志模块
 logger = logging.getLogger("rag.knowledge_base")
 
-from . import Document, TextChunk, RetrievalResult, SearchResult
+from . import Document, RetrievalResult, SearchResult
 
 
 class KnowledgeBase:

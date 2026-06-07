@@ -47,7 +47,7 @@ Live2D 是一种将 2D 插画"活起来"的技术，可以让平面角色呈现�
 import os
 import json
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)

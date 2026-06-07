@@ -20,12 +20,6 @@ TTS 缓存系统 (TTS Cache System)
 日期: 2026-04-06
 """
 
-import os          # 用于检查源音频文件是否存在
-import hashlib     # 用于对缓存键进行 MD5 哈希，生成唯一文件名
-import shutil      # 用于高效复制文件（copy2 保留元数据）和递归删除目录
-import time        # 用于获取当前时间戳，计算文件年龄和实现限频机制
-from pathlib import Path     # 面向对象的路径操作，比 os.path 更安全可读
-from typing import Optional  # 类型提示：表示返回值可能为 None
 import logging
 
 logger = logging.getLogger(__name__)

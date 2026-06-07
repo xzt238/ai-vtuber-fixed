@@ -24,13 +24,8 @@
 """
 
 # ==================== 标准库导入 ====================
-import os                           # 操作系统接口：环境变量、文件大小、路径操作
 import sys                          # 系统相关：sys.path 动态修改、解释器信息
-import tempfile                     # 临时文件/目录的创建与管理
-import shutil                       # 高级文件操作：递归删除目录等
-from pathlib import Path            # 面向对象的路径处理，跨平台兼容（Windows/Linux/macOS）
-from typing import Optional, Union  # 类型注解：Optional 表示可选，Union 表示多类型
-from contextlib import contextmanager  # 装饰器：将普通函数变为上下文管理器（支持 with 语法）
+from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)

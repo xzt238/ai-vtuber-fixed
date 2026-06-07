@@ -8,7 +8,7 @@ import json
 import asyncio
 import importlib
 import importlib.util
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path

@@ -3,11 +3,10 @@
 新增：自适应阈值、降噪、更精确的状态机
 """
 
-import asyncio
 import numpy as np
 from enum import Enum
-from dataclasses import dataclass, field
-from typing import Optional, Callable, List, Deque
+from dataclasses import dataclass
+from typing import Optional, Callable, Deque
 from collections import deque
 from datetime import datetime
 import logging

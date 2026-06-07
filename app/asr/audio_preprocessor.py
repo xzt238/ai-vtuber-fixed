@@ -4,7 +4,7 @@
 """
 
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional
 from dataclasses import dataclass
 import logging
 

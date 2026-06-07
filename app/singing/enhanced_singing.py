@@ -3,11 +3,9 @@ AI唱歌增强版
 支持多种唱歌模式、伴奏分离、旋律生成
 """
 
-import asyncio
 import numpy as np
 from typing import Optional, Dict, Any, List, Tuple
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from enum import Enum
 import logging
 

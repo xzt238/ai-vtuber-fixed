@@ -5,7 +5,6 @@ AI回复生成器
 """
 
 from typing import Dict, Any, Optional
-from datetime import datetime
 
 from . import Danmaku
 import logging

@@ -13,10 +13,8 @@ Discord Bot实现
 """
 
 import os
-import json
 import asyncio
-from typing import Optional, Dict, Any, List, Callable
-from datetime import datetime
+from typing import Dict, Any, List
 
 from . import Bot, BotMessage
 import logging

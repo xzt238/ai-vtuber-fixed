@@ -11,9 +11,8 @@ import os
 import json
 import asyncio
 import aiohttp
-import hashlib
 import time
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 from . import (

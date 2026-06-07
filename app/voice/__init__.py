@@ -40,8 +40,6 @@ VoiceInputFactory 根据使用场景（本地 vs Web）创建对应的输入实�
 
 import os
 import tempfile
-import threading
-from pathlib import Path
 from typing import Optional, Callable, Dict, Any
 import logging
 

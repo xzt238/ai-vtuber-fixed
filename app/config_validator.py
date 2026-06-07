@@ -5,8 +5,7 @@
 """
 
 import os
-import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from dataclasses import dataclass
 from enum import Enum
 import logging

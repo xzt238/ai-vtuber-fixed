@@ -26,15 +26,13 @@ import json
 import time
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, List, Union, Iterator
+from typing import Optional, Dict, Any, List, Iterator
 from enum import Enum
-from threading import Thread
 
 logger = logging.getLogger(__name__)
 
 # 日志模块
 logger = logging.getLogger("vision")
-from copy import deepcopy
 
 
 # ==================== Provider 类型 ====================

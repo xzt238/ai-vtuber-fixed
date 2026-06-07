@@ -17,7 +17,7 @@ import os
 import json
 import time
 import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from . import Tool
 

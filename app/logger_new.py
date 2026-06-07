@@ -19,11 +19,6 @@
 日期: 2026-04-06
 """
 
-import os       # 操作系统接口（本模块中用于文件路径操作）
-import logging  # Python 标准日志库，提供 Logger、Handler、Formatter 等核心组件
-from pathlib import Path  # 面向对象的路径处理
-from logging.handlers import RotatingFileHandler  # 日志文件自动轮转处理器
-from typing import Optional  # 类型注解：表示可选值
 
 logger = logging.getLogger(__name__)
 

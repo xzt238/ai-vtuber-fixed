@@ -3,12 +3,10 @@ VAD (Voice Activity Detection) 模块
 使用 Silero VAD 进行高精度语音活动检测，支持实时语音打断
 """
 
-import asyncio
 import numpy as np
 from enum import Enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, Callable, List
-from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)

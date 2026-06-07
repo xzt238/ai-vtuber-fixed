@@ -16,8 +16,6 @@
 """
 
 import os
-import json
-import asyncio
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, Callable
 from dataclasses import dataclass
@@ -270,9 +268,5 @@ __all__ = [
 from .bilibili import BilibiliPlatform
 from .douyin import DouyinPlatform
 from .kuaishou import KuaishouPlatform
-from .douyu import DouyuPlatform
-from .huya import HuyaPlatform
 from .youtube import YouTubePlatform
 from .twitch import TwitchPlatform
-from .tiktok import TikTokPlatform
-from .weixin_video import WeixinVideoPlatform

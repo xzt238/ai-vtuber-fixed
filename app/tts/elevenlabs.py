@@ -7,9 +7,7 @@ ElevenLabs TTS引擎
 import os
 import json
 import asyncio
-import tempfile
 from typing import Optional, Dict, Any
-from pathlib import Path
 
 from . import TTSEngine
 import logging

@@ -16,8 +16,7 @@ import os
 import json
 import asyncio
 import aiohttp
-from typing import Optional, Dict, Any, List
-from pathlib import Path
+from typing import Dict, Any, List
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum

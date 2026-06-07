@@ -8,7 +8,6 @@ import os
 import hashlib
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
 
 from . import Document
 import logging

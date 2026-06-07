@@ -4,7 +4,6 @@ AI唱歌模块
 """
 
 import os
-import asyncio
 import logging
 import numpy as np
 from typing import Optional, Dict, Any, List

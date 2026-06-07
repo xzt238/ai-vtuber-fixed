@@ -4,7 +4,7 @@
 提供检索增强生成功能。
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)

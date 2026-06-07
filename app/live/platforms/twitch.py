@@ -8,10 +8,8 @@ Twitch直播平台实现
 """
 
 import os
-import json
 import asyncio
-import aiohttp
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime
 
 from . import (

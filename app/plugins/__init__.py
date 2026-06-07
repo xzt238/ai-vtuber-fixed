@@ -22,7 +22,6 @@
 """
 
 import os
-import sys
 import json
 import importlib
 import logging

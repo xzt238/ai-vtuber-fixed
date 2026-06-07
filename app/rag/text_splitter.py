@@ -7,7 +7,6 @@
 import re
 import hashlib
 from typing import List, Dict, Any
-from dataclasses import dataclass
 
 from . import TextChunk
 

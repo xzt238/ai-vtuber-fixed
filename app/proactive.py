@@ -26,7 +26,7 @@ v1.9.51: 新增功能
 import time
 import threading
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from main import AIVTuber

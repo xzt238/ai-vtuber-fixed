@@ -5,9 +5,8 @@ RAG知识库模块
 
 import os
 import json
-import asyncio
 import hashlib
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path

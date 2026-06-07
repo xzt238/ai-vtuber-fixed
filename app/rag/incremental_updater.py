@@ -5,7 +5,7 @@ RAG增量更新模块
 
 import hashlib
 import json
-from typing import Optional, Dict, Any, List, Set, Tuple
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
