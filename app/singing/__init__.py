@@ -5,10 +5,14 @@ AI唱歌模块
 
 import os
 import asyncio
+import logging
 import numpy as np
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from enum import Enum
+
+# 日志模块
+logger = logging.getLogger("singing")
 
 class SingingEngine(Enum):
     """唱歌引擎类型"""
@@ -55,7 +59,7 @@ class SingingManager:
         self.is_singing = False
         self.current_song = None
         
-        print(f"[Singing] 初始化完成: engine={self.engine.value}, device={self.device}")
+        logger.info(f"初始化完成: engine={self.engine.value}, device={self.device}")
     
     async def load_model(self) -> bool:
         """加载模型"""
@@ -67,10 +71,10 @@ class SingingManager:
             elif self.engine == SingingEngine.SO_VITS_SVC:
                 return await self._load_so_vits_svc()
             else:
-                print(f"[Singing] 不支持的引擎: {self.engine}")
+                logger.error(f"不支持的引擎: {self.engine}")
                 return False
         except Exception as e:
-            print(f"[Singing] 模型加载失败: {e}")
+            logger.error(f"模型加载失败: {e}")
             return False
     
     async def _load_gpt_sovits(self) -> bool:
@@ -78,9 +82,9 @@ class SingingManager:
         try:
             # 检查参考音频
             if not self.ref_audio_path:
-                print("[Singing] 警告: 未设置参考音频路径")
+                logger.warning("未设置参考音频路径")
             
-            print(f"[Singing] 加载GPT-SoVITS模型: {self.model_path}")
+            logger.info(f"加载GPT-SoVITS模型: {self.model_path}")
             
             # 模拟模型加载
             self.model = {
@@ -91,17 +95,17 @@ class SingingManager:
             }
             
             self.model_loaded = True
-            print("[Singing] GPT-SoVITS模型加载成功")
+            logger.info("GPT-SoVITS模型加载成功")
             return True
             
         except Exception as e:
-            print(f"[Singing] GPT-SoVITS模型加载失败: {e}")
+            logger.error(f"GPT-SoVITS模型加载失败: {e}")
             return False
     
     async def _load_rvc(self) -> bool:
         """加载RVC模型"""
         try:
-            print(f"[Singing] 加载RVC模型: {self.model_path}")
+            logger.info(f"加载RVC模型: {self.model_path}")
             
             self.model = {
                 "type": "rvc",
@@ -110,17 +114,17 @@ class SingingManager:
             }
             
             self.model_loaded = True
-            print("[Singing] RVC模型加载成功")
+            logger.info("RVC模型加载成功")
             return True
             
         except Exception as e:
-            print(f"[Singing] RVC模型加载失败: {e}")
+            logger.error(f"RVC模型加载失败: {e}")
             return False
     
     async def _load_so_vits_svc(self) -> bool:
         """加载So-VITS-SVC模型"""
         try:
-            print(f"[Singing] 加载So-VITS-SVC模型: {self.model_path}")
+            logger.info(f"加载So-VITS-SVC模型: {self.model_path}")
             
             self.model = {
                 "type": "so_vits_svc",
@@ -129,22 +133,22 @@ class SingingManager:
             }
             
             self.model_loaded = True
-            print("[Singing] So-VITS-SVC模型加载成功")
+            logger.info("So-VITS-SVC模型加载成功")
             return True
             
         except Exception as e:
-            print(f"[Singing] So-VITS-SVC模型加载失败: {e}")
+            logger.error(f"So-VITS-SVC模型加载失败: {e}")
             return False
     
     async def sing_lyrics(self, lyrics: str, melody: List[float] = None) -> Optional[np.ndarray]:
         """唱歌词"""
         if not self.model_loaded:
-            print("[Singing] 模型未加载")
+            logger.warning("模型未加载")
             return None
         
         try:
             self.is_singing = True
-            print(f"[Singing] 开始唱歌: {lyrics}")
+            logger.info(f"开始唱歌: {lyrics}")
             
             # 根据引擎类型调用不同的合成方法
             if self.engine == SingingEngine.GPT_SOVITS:
@@ -159,19 +163,19 @@ class SingingManager:
             self.is_singing = False
             
             if audio is not None:
-                print(f"[Singing] 唱歌完成，音频长度: {len(audio)}")
+                logger.info(f"唱歌完成，音频长度: {len(audio)}")
             
             return audio
             
         except Exception as e:
-            print(f"[Singing] 唱歌失败: {e}")
+            logger.error(f"唱歌失败: {e}")
             self.is_singing = False
             return None
     
     async def _sing_gpt_sovits(self, lyrics: str, melody: List[float] = None) -> Optional[np.ndarray]:
         """使用GPT-SoVITS唱歌"""
         # 这里应该调用真实的GPT-SoVITS唱歌功能
-        print(f"[Singing] GPT-SoVITS合成: {lyrics}")
+        logger.info(f"GPT-SoVITS合成: {lyrics}")
         
         # 模拟合成（实际应该调用模型推理）
         # 返回合成的音频
@@ -183,7 +187,7 @@ class SingingManager:
     
     async def _sing_rvc(self, lyrics: str, melody: List[float] = None) -> Optional[np.ndarray]:
         """使用RVC唱歌"""
-        print(f"[Singing] RVC合成: {lyrics}")
+        logger.info(f"RVC合成: {lyrics}")
         
         # 模拟合成
         duration = len(lyrics) * 0.3
@@ -194,7 +198,7 @@ class SingingManager:
     
     async def _sing_so_vits_svc(self, lyrics: str, melody: List[float] = None) -> Optional[np.ndarray]:
         """使用So-VITS-SVC唱歌"""
-        print(f"[Singing] So-VITS-SVC合成: {lyrics}")
+        logger.info(f"So-VITS-SVC合成: {lyrics}")
         
         # 模拟合成
         duration = len(lyrics) * 0.3
@@ -206,7 +210,7 @@ class SingingManager:
     async def sing_song(self, song_segments: List[SongSegment]) -> Optional[np.ndarray]:
         """唱整首歌"""
         if not self.model_loaded:
-            print("[Singing] 模型未加载")
+            logger.warning("模型未加载")
             return None
         
         try:
@@ -216,7 +220,7 @@ class SingingManager:
             all_audio = []
             
             for i, segment in enumerate(song_segments):
-                print(f"[Singing] 合成片段 {i+1}/{len(song_segments)}: {segment.lyrics}")
+                logger.info(f"合成片段 {i+1}/{len(song_segments)}: {segment.lyrics}")
                 
                 audio = await self.sing_lyrics(segment.lyrics)
                 if audio is not None:
@@ -232,13 +236,13 @@ class SingingManager:
             if all_audio:
                 # 合并所有音频
                 combined = np.concatenate(all_audio)
-                print(f"[Singing] 歌曲合成完成，总长度: {len(combined)}")
+                logger.info(f"歌曲合成完成，总长度: {len(combined)}")
                 return combined
             
             return None
             
         except Exception as e:
-            print(f"[Singing] 歌曲合成失败: {e}")
+            logger.error(f"歌曲合成失败: {e}")
             self.is_singing = False
             self.current_song = None
             return None
@@ -260,7 +264,7 @@ class SingingManager:
         self.current_song = None
         self.model = None
         self.model_loaded = False
-        print("[Singing] 模型已卸载")
+        logger.info("模型已卸载")
 
 # 全局唱歌管理器实例
 _singing_manager: Optional[SingingManager] = None
