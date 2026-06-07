@@ -16,11 +16,15 @@ import os
 import json
 import asyncio
 import time
+import logging
 from typing import Optional, Dict, Any, List, Callable
 from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
 import threading
+
+# 日志模块
+logger = logging.getLogger("vision_input")
 
 # 版本信息
 __version__ = "1.0.0"
@@ -79,8 +83,8 @@ class CameraInput:
         # 回调函数
         self._frame_callbacks: List[Callable] = []
         
-        print(f" 摄像头输入初始化完成: {camera_id}")
-        print(f" 设备ID: {device_id}, 分辨率: {self.width}x{self.height}, FPS: {self.fps}")
+        logger.info(f"摄像头输入初始化完成: {camera_id}")
+        logger.info(f"设备ID: {device_id}, 分辨率: {self.width}x{self.height}, FPS: {self.fps}")
     
     def add_frame_callback(self, callback: Callable):
         """添加帧回调"""
@@ -96,42 +100,42 @@ class CameraInput:
             try:
                 callback(frame)
             except Exception as e:
-                print(f" 帧回调失败: {e}")
+                logger.error(f"帧回调失败: {e}")
     
     async def open(self) -> bool:
         """打开摄像头"""
         try:
             # 这里应该实现实际的摄像头打开
             # 由于摄像头操作需要特定的库，这里只是示例
-            print(f" 打开摄像头: {self.camera_id}")
+            logger.info(f"打开摄像头: {self.camera_id}")
             
             # 模拟打开
             await asyncio.sleep(0.1)
             
             self.is_open = True
-            print(f" 摄像头打开成功: {self.camera_id}")
+            logger.info(f"摄像头打开成功: {self.camera_id}")
             
             return True
             
         except Exception as e:
-            print(f" 摄像头打开失败: {e}")
+            logger.error(f"摄像头打开失败: {e}")
             return False
     
     async def close(self):
         """关闭摄像头"""
         try:
             if self.is_open:
-                print(f" 关闭摄像头: {self.camera_id}")
+                logger.info(f"关闭摄像头: {self.camera_id}")
                 self.is_open = False
                 self.capture = None
         except Exception as e:
-            print(f" 摄像头关闭失败: {e}")
+            logger.error(f"摄像头关闭失败: {e}")
     
     async def read_frame(self) -> Optional[CameraFrame]:
         """读取一帧"""
         try:
             if not self.is_open:
-                print(" 摄像头未打开")
+                logger.warning("摄像头未打开")
                 return None
             
             # 这里应该实现实际的帧读取
@@ -160,7 +164,7 @@ class CameraInput:
             return frame
             
         except Exception as e:
-            print(f" 帧读取失败: {e}")
+            logger.error(f"帧读取失败: {e}")
             return None
     
     async def read_frames(self, count: int = 1) -> List[CameraFrame]:
@@ -203,8 +207,8 @@ class CameraManager:
         # 摄像头缓存
         self.cameras: Dict[str, CameraInput] = {}
         
-        print(f" 摄像头管理器初始化完成")
-        print(f" 存储目录: {self.storage_dir}")
+        logger.info(f"摄像头管理器初始化完成")
+        logger.info(f"存储目录: {self.storage_dir}")
     
     def create_camera(self, camera_id: str, config: Dict[str, Any] = None) -> CameraInput:
         """创建摄像头"""
@@ -226,7 +230,7 @@ class CameraManager:
             camera = self.cameras[camera_id]
             asyncio.create_task(camera.close())
             del self.cameras[camera_id]
-            print(f" 摄像头移除成功: {camera_id}")
+            logger.info(f"摄像头移除成功: {camera_id}")
     
     async def open_all(self):
         """打开所有摄像头"""
@@ -234,7 +238,7 @@ class CameraManager:
             try:
                 await camera.open()
             except Exception as e:
-                print(f" 摄像头打开失败 {camera_id}: {e}")
+                logger.error(f"摄像头打开失败 {camera_id}: {e}")
     
     async def close_all(self):
         """关闭所有摄像头"""
@@ -242,7 +246,7 @@ class CameraManager:
             try:
                 await camera.close()
             except Exception as e:
-                print(f" 摄像头关闭失败 {camera_id}: {e}")
+                logger.error(f"摄像头关闭失败 {camera_id}: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""
@@ -271,24 +275,24 @@ class VisionProcessor:
         # 处理模型
         self.models: Dict[str, Any] = {}
         
-        print(f" 视觉处理器初始化完成")
-        print(f" 存储目录: {self.storage_dir}")
+        logger.info(f"视觉处理器初始化完成")
+        logger.info(f"存储目录: {self.storage_dir}")
     
     def load_model(self, model_name: str, model_path: str = None) -> bool:
         """加载视觉模型"""
         try:
             # 这里应该实现实际的模型加载
             # 由于视觉模型需要特定的库，这里只是示例
-            print(f" 加载视觉模型: {model_name}")
+            logger.info(f"加载视觉模型: {model_name}")
             
             # 模拟模型加载
             self.models[model_name] = {"name": model_name, "path": model_path}
             
-            print(f" 视觉模型加载成功: {model_name}")
+            logger.info(f"视觉模型加载成功: {model_name}")
             return True
             
         except Exception as e:
-            print(f" 视觉模型加载失败: {e}")
+            logger.error(f"视觉模型加载失败: {e}")
             return False
     
     def unload_model(self, model_name: str):
