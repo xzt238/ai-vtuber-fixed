@@ -64,7 +64,7 @@ class MemorySystem:
         self.storage_dir = self.config.get("storage_dir", "./memory")
         if not os.path.isabs(self.storage_dir):
             from app.shared_config import PROJECT_DIR
-            self.storage_dir = os.path.join(PROJECT_DIR, self.storage_dir)
+            self.storage_dir = Path(PROJECT_DIR) / self.storage_dir
             self.storage_dir = os.path.normpath(self.storage_dir)
         
         self.working_memory_limit = self.config.get("working_memory_limit", 30)
@@ -79,7 +79,7 @@ class MemorySystem:
         RetentionScorer.GRACE_PERIOD_HOURS = self.config.get("grace_period_hours", 12.0)
         
         vs_config = dict(self.config)
-        vs_config["storage_dir"] = os.path.join(self.storage_dir, "vectors")
+        vs_config["storage_dir"] = Path(self.storage_dir) / "vectors"
         vs_config["dedup_threshold"] = self.config.get("dedup_threshold", 0.95)
         self.vector_store = VectorStore(vs_config)
         

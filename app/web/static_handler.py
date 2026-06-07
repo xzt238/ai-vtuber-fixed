@@ -120,9 +120,9 @@ class _StaticFileHandler(http.server.SimpleHTTPRequestHandler):
             cache_dir = _StaticFileHandler._cache_dir
             candidates = []
             if cache_dir:
-                candidates.append(os.path.join(cache_dir, filename))
+                candidates.append(Path(cache_dir) / filename)
             if self._static_dir:
-                candidates.append(os.path.join(self._static_dir, "audio", filename))
+                candidates.append(Path(self._static_dir) / "audio", filename)
             for fpath in candidates:
                 if Path(fpath).exists():
                     try:
@@ -400,7 +400,7 @@ const expressionMap = {json.dumps(EXPRESSION_MAP, ensure_ascii=False)};
             self.send_json({"success": False, "error": "缓存目录未初始化"})
             return
 
-        layout_file = _os.path.join(cache_dir, "layout.json")
+        layout_file = _Path(cache_dir) / "layout.json"
 
         # GET: 读取布局数据
         if self.command == "GET":

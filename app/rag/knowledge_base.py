@@ -27,7 +27,7 @@ class KnowledgeBase:
         # 确保存储目录存在
         if not os.path.isabs(self.storage_dir):
             from app.shared_config import PROJECT_DIR
-            self.storage_dir = os.path.join(PROJECT_DIR, self.storage_dir)
+            self.storage_dir = Path(PROJECT_DIR) / self.storage_dir
             self.storage_dir = os.path.normpath(self.storage_dir)
         
         Path(self.storage_dir).mkdir(parents=True, exist_ok=True)

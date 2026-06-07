@@ -1685,7 +1685,7 @@ class WebSocketServer:
                 if os.path.isdir(base_path):
                     items = []
                     for item in os.listdir(base_path)[:50]:
-                        full_path = os.path.join(base_path, item)
+                        full_path = Path(base_path) / item
                         items.append({
                             "name": item,
                             "type": "dir" if os.path.isdir(full_path) else "file",
@@ -2918,9 +2918,9 @@ class WebSocketServer:
         try:
             # 获取 cache 目录路径 — 必须和 Config._load() 中的路径一致（app/cache/）
             app_module_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            cache_dir = os.path.join(app_module_dir, "cache")
+            cache_dir = Path(app_module_dir) / "cache"
             os.makedirs(cache_dir, exist_ok=True)
-            prefs_file = os.path.join(cache_dir, "llm_preferences.json")
+            prefs_file = Path(cache_dir) / "llm_preferences.json"
 
             # 构建偏好配置
             prefs = {
@@ -3064,8 +3064,8 @@ class WebSocketServer:
                             new_vision_key = vision_updates['minimax_vl']['api_key']
                             if new_vision_key:
                                 try:
-                                    cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cache")
-                                    keys_file = os.path.join(cache_dir, "api_keys.json")
+                                    cache_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / "cache"
+                                    keys_file = Path(cache_dir) / "api_keys.json"
                                     existing_keys = {}
                                     if Path(keys_file).exists():
                                         try:
@@ -3197,9 +3197,9 @@ class WebSocketServer:
         try:
             # 1. 持久化到 app/cache/api_keys.json
             import tempfile
-            cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cache")
+            cache_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / "cache"
             os.makedirs(cache_dir, exist_ok=True)
-            keys_file = os.path.join(cache_dir, "api_keys.json")
+            keys_file = Path(cache_dir) / "api_keys.json"
             
             # 读取已有的keys
             existing_keys = {}

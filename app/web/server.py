@@ -72,10 +72,10 @@ class WebServer:
             无
         """
         app_dir = os.path.dirname(os.path.abspath(__file__))
-        static = os.path.join(app_dir, "static")
+        static = Path(app_dir) / "static"
         # 注入 cache 目录到 handler(用于 /audio/ 路径映射)
         # app_dir = .../app/web/  →  cache 在 .../app/cache/
-        cache_dir = os.path.normpath(os.path.join(app_dir, "..", "cache"))
+        cache_dir = os.path.normpath(Path(app_dir) / "..", "cache")
         _StaticFileHandler._cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
         logger.info(f"Audio cache dir: {cache_dir}")

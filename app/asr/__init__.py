@@ -619,9 +619,7 @@ class MimoASR(ASREngine):
         """尝试从 config.yaml 的 llm.mimo 配置中读取 API Key"""
         try:
             import yaml
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), "config.yaml"
-            )
+            config_path = Path(os.path.dirname(os.path.dirname(__file__))) / "config.yaml"
             if Path(config_path).exists():
                 with open(config_path, "r", encoding="utf-8") as f:
                     cfg = yaml.safe_load(f)
@@ -804,9 +802,7 @@ class ASRFactory:
             if not mimo_config.get("api_key"):
                 try:
                     import yaml
-                    config_path = os.path.join(
-                        os.path.dirname(os.path.dirname(__file__)), "config.yaml"
-                    )
+                    config_path = Path(os.path.dirname(os.path.dirname(__file__))) / "config.yaml"
                     if Path(config_path).exists():
                         with open(config_path, "r", encoding="utf-8") as f:
                             cfg = yaml.safe_load(f)

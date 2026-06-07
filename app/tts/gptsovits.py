@@ -306,7 +306,7 @@ class GPTSoVITSEngine:
             # 绝对路径但文件不存在（项目移动过），回退到项目目录搜索同名文件
             basename = os.path.basename(path)
             for subdir in ['', '32k', 'ckpt', 's2_ckpt']:
-                candidate = os.path.join(project_dir, subdir, basename)
+                candidate = Path(project_dir) / subdir, basename
                 if os.path.isfile(candidate):
                     logger.debug(f"路径修正: {os.path.basename(path)} → {candidate.replace(chr(92), '/')}")
                     return candidate.replace('\\', '/')
@@ -321,7 +321,7 @@ class GPTSoVITSEngine:
             return path.replace('\\', '/')
 
         # 相对路径：相对于项目目录解析
-        abs_path = os.path.normpath(os.path.join(project_dir, path)).replace('\\', '/')
+        abs_path = os.path.normpath(Path(project_dir) / path).replace('\\', '/')
 
         # v1.9.61: 相对路径解析后文件不存在时，搜索全局权重目录
         if not os.path.isfile(abs_path):

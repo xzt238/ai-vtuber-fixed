@@ -61,7 +61,7 @@ class VectorStore:
         self.storage_dir = self.config.get("storage_dir", "./memory/vectors")
         if not os.path.isabs(self.storage_dir):
             from app.shared_config import PROJECT_DIR
-            self.storage_dir = os.path.join(PROJECT_DIR, self.storage_dir)
+            self.storage_dir = Path(PROJECT_DIR) / self.storage_dir
             self.storage_dir = os.path.normpath(self.storage_dir)
         self.embedding_dim = self.config.get("embedding_dim", 768)
         
@@ -196,39 +196,39 @@ class VectorStore:
         ms_org = model_name.split("/")[0] if "/" in model_name else ""
         
         search_paths = [
-            os.path.join(project_root, '.cache', 'modelscope', ms_org, ms_escaped) if ms_org else "",
-            os.path.join(project_root, '.cache', 'modelscope', 'hub', 'hub', 'sentence-transformers', model_basename),
-            os.path.join(project_root, '.cache', 'huggingface', 'hub', f"models--{hf_style}"),
-            os.path.join(project_root, 'models', 'modelscope', 'hub', 'hub', 'sentence-transformers', model_basename),
+            Path(project_root) / '.cache', 'modelscope', ms_org, ms_escaped if ms_org else "",
+            Path(project_root) / '.cache', 'modelscope', 'hub', 'hub', 'sentence-transformers', model_basename,
+            Path(project_root) / '.cache', 'huggingface', 'hub', f"models--{hf_style}",
+            Path(project_root) / 'models', 'modelscope', 'hub', 'hub', 'sentence-transformers', model_basename,
         ]
         
         for path in search_paths:
             if not path:
                 continue
-            if os.path.isfile(os.path.join(path, 'model.safetensors')) or \
-               os.path.isfile(os.path.join(path, 'pytorch_model.bin')):
+            if os.path.isfile(Path(path) / 'model.safetensors') or \
+               os.path.isfile(Path(path) / 'pytorch_model.bin'):
                 return path
-            if os.path.isdir(os.path.join(path, 'snapshots')):
-                snapshots_dir = os.path.join(path, 'snapshots')
+            if os.path.isdir(Path(path) / 'snapshots'):
+                snapshots_dir = Path(path) / 'snapshots'
                 snapshots = os.listdir(snapshots_dir) if os.path.isdir(snapshots_dir) else []
                 if snapshots:
-                    snap_path = os.path.join(snapshots_dir, snapshots[0])
-                    if os.path.isfile(os.path.join(snap_path, 'model.safetensors')) or \
-                       os.path.isfile(os.path.join(snap_path, 'pytorch_model.bin')):
+                    snap_path = Path(snapshots_dir) / snapshots[0]
+                    if os.path.isfile(Path(snap_path) / 'model.safetensors') or \
+                       os.path.isfile(Path(snap_path) / 'pytorch_model.bin'):
                         return snap_path
         
-        ms_cache = os.path.join(project_root, '.cache', 'modelscope')
+        ms_cache = Path(project_root) / '.cache', 'modelscope'
         if os.path.isdir(ms_cache):
             for org_dir in os.listdir(ms_cache):
-                org_path = os.path.join(ms_cache, org_dir)
+                org_path = Path(ms_cache) / org_dir
                 if not os.path.isdir(org_path):
                     continue
                 for model_dir in os.listdir(org_path):
                     clean_dir = model_dir.replace("___", ".").replace("--", "/")
                     if model_basename in clean_dir or clean_dir.endswith(model_basename):
-                        full_path = os.path.join(org_path, model_dir)
-                        if os.path.isfile(os.path.join(full_path, 'model.safetensors')) or \
-                           os.path.isfile(os.path.join(full_path, 'pytorch_model.bin')):
+                        full_path = Path(org_path) / model_dir
+                        if os.path.isfile(Path(full_path) / 'model.safetensors') or \
+                           os.path.isfile(Path(full_path) / 'pytorch_model.bin'):
                             return full_path
         return ""
     

@@ -234,7 +234,7 @@ def _load_ports() -> None:
     """从 config.yaml 加载端口配置，提供默认值"""
     try:
         import yaml
-        config_path = os.path.join(PROJECT_DIR, 'app', 'config.yaml')
+        config_path = Path(PROJECT_DIR) / 'app', 'config.yaml'
         if Path(config_path).exists():
             with open(config_path, 'r', encoding='utf-8') as f:
                 cfg = yaml.safe_load(f) or {}
