@@ -38,6 +38,18 @@
 
 
 
+## 🟢 v1.20.10 (2026-06-08) ✅ STABLE
+
+### 🔧 修复
+- **[FIX-001] QObject/QWidget 子类 __slots__ 导致段错误**：QObject 和 QWidget 子类不能使用 `__slots__`，因为 Qt 的元对象系统需要动态属性访问。添加 `__slots__` 会导致进程启动时静默段错误（无 Python traceback）。
+  - 移除 `__slots__`：PerformanceManager、TrayManager、HotkeyManager、RealtimeVoiceManager、SessionManager
+  - 保留 `__slots__`：ChatSession、AnimationController（纯 Python 类）
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/widgets/perf_manager.py`, `native/gugu_native/widgets/tray_manager.py`, `native/gugu_native/widgets/hotkey_manager.py`, `native/gugu_native/widgets/voice_manager.py`, `native/gugu_native/widgets/session_manager.py`, `native/main.py`, `app/version.py`
+
+---
+
 ## 🟢 v1.20.9 (2026-06-08) ✅ STABLE
 
 ### 🔧 修复
