@@ -36,6 +36,7 @@ v1.11.23 变更:
 import sys
 import os
 import time
+import time as _time
 import logging
 
 # ===== Win32 FFmpeg 扫描加速（必须在前 3 行，Qt 初始化前执行）=====
