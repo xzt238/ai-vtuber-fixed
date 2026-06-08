@@ -337,7 +337,8 @@ class GuguGagaApp(FluentWindow):
         )
 
         # 非首屏页面延迟创建，让首屏先渲染、用户先可交互
-        QTimer.singleShot(0, self._create_non_primary_pages)
+        # 注意：不能用 delay=0，否则 set_progress() 中的 processEvents() 会提前触发
+        QTimer.singleShot(200, self._create_non_primary_pages)
 
         # 导航栏样式优化
         try:
@@ -355,29 +356,44 @@ class GuguGagaApp(FluentWindow):
         第二批：设置相关页面（延迟 200ms，让先创建的页面先注册到导航栏）
         """
         # 第一批：轻量页面（LazyPageMixin，__init__ 只初始化属性+骨架屏）
-        from gugu_native.pages.train_page import TrainPage
-        self.train_page = TrainPage(self)
-        self.addSubInterface(
-            self.train_page,
-            FluentIcon.MICROPHONE,
-            "音色训练"
-        )
+        try:
+            logger.info("[DIAG] _create_non_primary_pages: creating TrainPage")
+            from gugu_native.pages.train_page import TrainPage
+            self.train_page = TrainPage(self)
+            self.addSubInterface(
+                self.train_page,
+                FluentIcon.MICROPHONE,
+                "音色训练"
+            )
+            logger.info("[DIAG] _create_non_primary_pages: TrainPage done")
+        except Exception as e:
+            logger.error(f"[DIAG] TrainPage failed: {e}")
 
-        from gugu_native.pages.memory_page import MemoryPage
-        self.memory_page = MemoryPage(self)
-        self.addSubInterface(
-            self.memory_page,
-            FluentIcon.BOOK_SHELF,
-            "记忆"
-        )
+        try:
+            logger.info("[DIAG] _create_non_primary_pages: creating MemoryPage")
+            from gugu_native.pages.memory_page import MemoryPage
+            self.memory_page = MemoryPage(self)
+            self.addSubInterface(
+                self.memory_page,
+                FluentIcon.BOOK_SHELF,
+                "记忆"
+            )
+            logger.info("[DIAG] _create_non_primary_pages: MemoryPage done")
+        except Exception as e:
+            logger.error(f"[DIAG] MemoryPage failed: {e}")
 
-        from gugu_native.pages.model_download_page import ModelDownloadPage
-        self.model_download_page = ModelDownloadPage(self)
-        self.addSubInterface(
-            self.model_download_page,
-            FluentIcon.DOWNLOAD,
-            "模型下载"
-        )
+        try:
+            logger.info("[DIAG] _create_non_primary_pages: creating ModelDownloadPage")
+            from gugu_native.pages.model_download_page import ModelDownloadPage
+            self.model_download_page = ModelDownloadPage(self)
+            self.addSubInterface(
+                self.model_download_page,
+                FluentIcon.DOWNLOAD,
+                "模型下载"
+            )
+            logger.info("[DIAG] _create_non_primary_pages: ModelDownloadPage done")
+        except Exception as e:
+            logger.error(f"[DIAG] ModelDownloadPage failed: {e}")
 
         # 第二批：设置页面（延迟 200ms，让先创建的页面先渲染）
         QTimer.singleShot(200, self._create_settings_pages)
