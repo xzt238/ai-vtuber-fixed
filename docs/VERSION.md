@@ -38,6 +38,17 @@
 
 
 
+## 🟢 v1.20.14 (2026-06-08) ✅ STABLE
+
+### 🔧 修复
+- **[FIX-001] 循环导入导致启动闪退**：`themes/manager.py` 顶部的 `from gugu_native.theme import AppColors` 造成循环导入链 `theme.py → themes/manager.py → theme.py`，导致段错误（无 Python traceback）。
+  - 移除顶部导入，改为 `get_colors()` 方法内局部导入
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/themes/manager.py`, `native/main.py`, `app/version.py`
+
+---
+
 ## 🟢 v1.20.13 (2026-06-08) ✅ STABLE
 
 ### 📝 文档
