@@ -49,7 +49,6 @@ class MultiLineInput(QWidget):
 
     def _init_ui(self) -> None:
         """初始化 UI"""
-        from gugu_native.theme import get_colors
         c = get_colors()
 
         main_layout = QVBoxLayout(self)
