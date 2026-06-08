@@ -2,7 +2,6 @@ import logging
 """
 GuguGaga AI-VTuber �� Ʒ����Դ������
 
-logger = logging.getLogger(__name__)
 
 ����:
   - app.ico (��ߴ� ICO)
@@ -179,6 +178,8 @@ def save_ico(img, path) -> None:
 
 def generate_all() -> None:
     """����������Դ"""
+
+logger = logging.getLogger(__name__)
     logger.info("Generating brand resources...")
 
     # Ӧ��ͼ��

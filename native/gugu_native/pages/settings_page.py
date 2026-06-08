@@ -2,7 +2,6 @@ import logging
 """
 设置页面 — LLM/TTS/ASR/系统配置
 
-logger = logging.getLogger(__name__)
 
 设计参考: LM Studio / Jan.ai 设置页
 - ScrollArea + HeaderCardWidget 分组卡片布局
@@ -1986,6 +1985,8 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     def _save_vision_config(self) -> None:
         """v1.9.76: 保存视觉配置"""
+
+logger = logging.getLogger(__name__)
         backend = self.backend
         if not backend:
             return

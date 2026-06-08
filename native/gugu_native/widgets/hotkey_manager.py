@@ -2,7 +2,6 @@ import logging
 """
 全局快捷键管理器 — pynput 实现
 
-logger = logging.getLogger(__name__)
 
 功能:
 - 全局快捷键注册/注销
@@ -170,4 +169,6 @@ class HotkeyManager(QObject):
     @property
     def is_running(self) -> None:
         """Is running"""
+
+logger = logging.getLogger(__name__)
         return self._is_running

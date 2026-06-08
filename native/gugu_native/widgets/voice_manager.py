@@ -2,7 +2,6 @@ import logging
 """
 实时语音管理器 — sounddevice + Silero VAD
 
-logger = logging.getLogger(__name__)
 
 功能:
 - 实时麦克风输入
@@ -508,6 +507,8 @@ class RealtimeVoiceManager(QObject):
 
     def _cleanup_asr_worker(self, worker) -> None:
         """清理已完成的 ASR 工作线程"""
+
+logger = logging.getLogger(__name__)
         self._asr_workers_mutex.lock()
         try:
             if worker in self._asr_workers:

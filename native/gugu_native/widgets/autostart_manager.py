@@ -2,7 +2,6 @@ import logging
 """
 开机自启管理器 — 跨平台（Windows/macOS/Linux）
 
-logger = logging.getLogger(__name__)
 
 功能:
 - 添加/移除开机自启
@@ -92,6 +91,8 @@ class AutoStartManager(QObject):
 
     def toggle(self) -> bool:
         """切换开机自启状态"""
+
+logger = logging.getLogger(__name__)
         if self.is_enabled():
             return self.disable()
         else:

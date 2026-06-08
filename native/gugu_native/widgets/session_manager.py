@@ -2,7 +2,6 @@ import logging
 """
 咕咕嘎嘎 AI-VTuber — 多会话管理器
 
-logger = logging.getLogger(__name__)
 
 功能:
 - 多会话（多标签）支持
@@ -521,6 +520,8 @@ class SessionManager(QWidget):
         """)
 
         self._session_list.setStyleSheet(f"""
+
+logger = logging.getLogger(__name__)
             QListWidget#sessionList {{
                 background-color: transparent;
                 border: none;

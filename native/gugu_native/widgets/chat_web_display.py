@@ -2,8 +2,6 @@ import logging
 """
 咕咕嘎嘎 AI-VTuber — QWebEngineView 聊天显示组件
 
-logger = logging.getLogger(__name__)
-
 完整 Markdown 渲染 + 消息操作 + 流式更新 + 主题切换
 
 架构:
@@ -15,6 +13,8 @@ logger = logging.getLogger(__name__)
 降级策略:
 - 如果 QWebEngineView 不可用，自动降级为 QTextEdit 模式
 """
+
+logger = logging.getLogger(__name__)
 
 import os
 import json

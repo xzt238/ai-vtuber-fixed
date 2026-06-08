@@ -2,7 +2,6 @@ import logging
 """
 Live2D 主动动画控制器
 
-logger = logging.getLogger(__name__)
 
 让 Live2D 角色从"会说话的贴纸"进化为"有灵魂的伙伴"。
 
@@ -409,4 +408,6 @@ class AnimationController:
 
     def _random_idle_interval(self) -> float:
         """生成随机 idle 动画间隔"""
+
+logger = logging.getLogger(__name__)
         return random.uniform(*self._idle_interval_range)

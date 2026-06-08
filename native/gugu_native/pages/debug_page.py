@@ -2,7 +2,6 @@ import logging
 """
 新增功能调试页面
 
-logger = logging.getLogger(__name__)
 
 提供RAG、直播、SVC、唱歌、SD、游戏、多Agent、Bot、视觉输入等功能的调试界面。
 
@@ -684,5 +683,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
     def _open_camera(self) -> None:
         """打开摄像头"""
+
+logger = logging.getLogger(__name__)
         logger.info(" 打开摄像头...")
         # 这里应该调用后端的摄像头打开功能
