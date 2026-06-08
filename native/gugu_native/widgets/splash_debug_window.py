@@ -337,7 +337,8 @@ class SplashDebugWindow(QWidget):
             display_text = text
 
         self._progress_label.setText(display_text)
-        QApplication.processEvents()       # 立即刷新 UI
+        # 注意：不要调用 processEvents()，否则会提前触发 QTimer.singleShot 延迟任务
+        # 导致 _create_non_primary_pages 在 __init__ 未完成时执行，引发段错误
         self._center_on_screen()           # 窗口居中
 
         # 首次调用 set_progress 后启动 10 秒倒计时显示跳过按钮
