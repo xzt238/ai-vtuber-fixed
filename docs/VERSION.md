@@ -38,6 +38,16 @@
 
 
 
+## 🟢 v1.20.15 (2026-06-08) ✅ STABLE
+
+### 🔧 修复
+- **[FIX-001] ThemeManager 未导入导致启动失败**：`theme.py` 中 `build_global_qss_v5()` 使用 `ThemeManager.get_instance()` 但未导入，导致 `NameError`。
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/theme.py`, `app/version.py`
+
+---
+
 ## 🟢 v1.20.14 (2026-06-08) ✅ STABLE
 
 ### 🔧 修复
