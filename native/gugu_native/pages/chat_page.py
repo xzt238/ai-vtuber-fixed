@@ -74,7 +74,7 @@ from gugu_native.widgets.message_search import MessageSearchBar
 from gugu_native.widgets.animation_controller import AnimationController
 
 # 主题回调注册
-from gugu_native.theme import register_theme_callback
+from gugu_native.theme import register_theme_callback, get_colors
 
 # VRM 3D 模型支持（可选依赖，优雅降级）
 try:
