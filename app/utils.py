@@ -28,6 +28,7 @@ from pathlib import Path
 import os
 import sys                          # 系统相关：sys.path 动态修改、解释器信息
 from typing import Optional, Union
+from contextlib import contextmanager
 import logging
 
 logger = logging.getLogger(__name__)
