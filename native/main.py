@@ -199,11 +199,13 @@ class GuguGagaApp(FluentWindow):
         self._perf_t3 = time.perf_counter()  # T10: 页面创建完成
 
         # 缩短/禁用页面切换动画，减少切换时的主线程卡顿
+        logger.info("[DIAG] __init__ step 9a: before stackedWidget")
         try:
             if hasattr(self, 'stackedWidget') and hasattr(self.stackedWidget, 'view'):
                 self.stackedWidget.view.setAnimationEnabled(False)
         except Exception as e:
             pass
+        logger.info("[DIAG] __init__ step 9b: after stackedWidget")
 
         # === 设置主题（从持久化偏好恢复）===
         if self._splash: self._splash.set_progress("正在应用主题...")
@@ -212,8 +214,10 @@ class GuguGagaApp(FluentWindow):
         logger.info("[DIAG] __init__ step 11: after _ensure_manager()")
         theme_id = manager.load_preferences()
         logger.info(f"[DIAG] __init__ step 12: theme_id={theme_id}")
+        logger.info("[DIAG] __init__ step 12a: before apply_theme_by_id")
         apply_theme_by_id(theme_id)
         logger.info("[DIAG] __init__ step 13: apply_theme_by_id done")
+        logger.info("[DIAG] __init__ step 13a: before get_global_qss")
         self.setStyleSheet(get_global_qss())
         logger.info("[DIAG] __init__ step 14: global QSS applied")
 
