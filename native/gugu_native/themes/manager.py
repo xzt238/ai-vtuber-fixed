@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from .registry import ThemeRegistry
 from .definitions import ThemeDefinition
+from gugu_native.theme import AppColors
 
 
 class ThemeManager:
