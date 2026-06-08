@@ -4,6 +4,7 @@
 提供所有页面通用的 helper，避免重复代码。
 """
 
+import sys
 import logging
 from typing import Optional
 from PySide6.QtCore import QTimer

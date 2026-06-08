@@ -23,6 +23,8 @@ v1.9.51: 新增功能
     由定时器线程调用，无需额外加锁（Python GIL 足够）。
 """
 
+import json
+import os
 import time
 import threading
 from datetime import datetime

@@ -4,9 +4,10 @@ LLM Prompt 注入系统
 包含 PromptInjection、PromptInjector 和 MemoryRAGInjector。
 """
 
+import json
 import re
 import logging
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Dict
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)

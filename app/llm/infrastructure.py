@@ -4,6 +4,7 @@ LLM 基础设施模块
 包含 RateLimiter（速率限制）、RetryStrategy（重试策略）和 StreamAccumulator（流式累积器）。
 """
 
+import json
 import time
 import logging
 import threading

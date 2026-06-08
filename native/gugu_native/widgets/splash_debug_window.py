@@ -16,6 +16,7 @@ StdoutRedirector:
 日期: 2026-05-28
 """
 
+import os
 import sys
 import re
 from datetime import datetime

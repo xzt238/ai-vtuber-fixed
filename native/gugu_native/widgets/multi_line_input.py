@@ -18,6 +18,8 @@ from PySide6.QtGui import QFont, QKeyEvent
 
 from qfluentwidgets import ToolButton, FluentIcon
 
+from gugu_native.theme import get_colors
+
 
 class MultiLineInput(QWidget):
     """多行输入框组件

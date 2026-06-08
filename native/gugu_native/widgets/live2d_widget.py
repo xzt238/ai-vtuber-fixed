@@ -22,6 +22,7 @@ API 与 v2.0 完全兼容：
   - 属性: model, model_path
 """
 
+import time
 import os
 import logging
 

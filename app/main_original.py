@@ -35,6 +35,7 @@
 日期: 2026-03-27
 """
 
+import time
 import os
 import sys
 import subprocess as _subprocess

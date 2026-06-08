@@ -11,6 +11,7 @@ Stardew Valley游戏代理实现
 日期: 2026-06-03
 """
 
+import time
 import os
 import json
 import asyncio

@@ -12,6 +12,7 @@
 - 支持颜色主题切换
 """
 
+import time
 import math
 import numpy as np
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel

@@ -354,6 +354,7 @@ def get_env_info() -> str:
         用于调试和日志记录，让开发者（或 AI 自己）知道当前运行环境。
         可被动态注入到提示词中，帮助 AI 理解其运行上下文。
     """
+import os
     import platform
     import os
     

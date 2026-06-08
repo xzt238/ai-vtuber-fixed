@@ -3,6 +3,7 @@ RAG增量更新模块
 支持文档增量更新、版本管理、变更追踪
 """
 
+import time
 import hashlib
 import json
 from typing import Optional, Dict, Any, List

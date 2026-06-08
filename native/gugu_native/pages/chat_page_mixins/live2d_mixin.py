@@ -4,6 +4,7 @@ ChatPage Live2D/VRM Mixin
 包含 Live2D 和 VRM 模型相关的功能。
 """
 
+import json
 import os
 import shutil
 import logging

@@ -26,6 +26,7 @@ MCP 协议核心概念:
 日期: 2026-05-01
 """
 
+import os
 import json
 import subprocess
 import sys
