@@ -57,6 +57,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
     """设置页面 — 卡片式分组布局，支持懒加载"""
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         ScrollArea.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("settingsPage")
@@ -71,9 +72,11 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         # 配置加载延迟到 on_backend_ready，减少启动时同步 I/O
 
     def show_skeleton(self) -> None:
+        """Show skeleton"""
         self._skeleton.show_skeleton()
 
     def hide_skeleton(self) -> None:
+        """Hide skeleton"""
         self._skeleton.hide_skeleton()
 
     def lazy_init(self) -> None:
@@ -802,6 +805,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             finished = Signal(list)  # 模型名列表
 
             def run(self) -> None:
+                """Run"""
                 try:
                     import requests
                     resp = requests.get("http://localhost:11434/api/tags", timeout=3)
@@ -1119,10 +1123,12 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                     error = Signal(str)
 
                     def __init__(self, backend_ref) -> None:
+                        """内部方法"""
                         super().__init__()
                         self._backend_ref = backend_ref
 
                     def run(self) -> None:
+                        """Run"""
                         try:
                             result = self._backend_ref.rebuild_llm()
                             if not result:
@@ -1160,10 +1166,12 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             finished = Signal(list)  # [(label, value), ...]
 
             def __init__(self, backend_ref) -> None:
+                """内部方法"""
                 super().__init__()
                 self._backend_ref = backend_ref
 
             def run(self) -> None:
+                """Run"""
                 voices = []
                 try:
                     tts = self._backend_ref.tts
@@ -1375,12 +1383,14 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                     error = Signal(str)
 
                     def __init__(self, backend_ref, voice_id_ref, provider_ref) -> None:
+                        """内部方法"""
                         super().__init__()
                         self._backend_ref = backend_ref
                         self._voice_id = voice_id_ref
                         self._provider = provider_ref
 
                     def run(self) -> None:
+                        """Run"""
                         try:
                             result = self._backend_ref.rebuild_tts()
                             if not result:

@@ -58,6 +58,7 @@ class HotkeyManager(QObject):
     error_occurred = Signal(str)
 
     def __init__(self, main_window=None, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._main_window = main_window
         self._listener = None
@@ -168,4 +169,5 @@ class HotkeyManager(QObject):
 
     @property
     def is_running(self) -> None:
+        """Is running"""
         return self._is_running

@@ -45,6 +45,7 @@ class DesktopPetWindow(QWidget):
     pet_closed = Signal()
 
     def __init__(self, main_window, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._main_window = main_window
         self._drag_pos = QPoint()

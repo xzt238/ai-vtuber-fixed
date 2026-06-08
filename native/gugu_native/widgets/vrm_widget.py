@@ -74,6 +74,7 @@ class _VRMStaticServer:
         return cls._instance
 
     def __init__(self) -> None:
+        """内部方法"""
         self._server = None
         self._thread = None
         self._port = None
@@ -90,12 +91,15 @@ class _VRMStaticServer:
 
             class Handler(http.server.SimpleHTTPRequestHandler):
                 def __init__(self, *args, **kwargs) -> None:
+                    """内部方法"""
                     super().__init__(*args, directory=root_dir, **kwargs)
 
                 def log_message(self, format, *args) -> None:
+                    """Log message"""
                     pass  # 抑制日志
 
                 def end_headers(self) -> None:
+                    """End headers"""
                     self.send_header("Access-Control-Allow-Origin", "*")
                     self.send_header("Cache-Control", "no-cache")
                     super().end_headers()
@@ -118,10 +122,12 @@ class _VRMStaticServer:
 
     @property
     def port(self) -> int:
+        """Port"""
         return self._port
 
     @property
     def base_url(self) -> str:
+        """Base url"""
         if self._port:
             return f"http://localhost:{self._port}"
         return None
@@ -860,54 +866,71 @@ class VRMWidget(QWidget):
     # ========== Public API — 显示设置 ==========
 
     def set_arm_angle(self, value: float) -> None:
+        """Set arm angle"""
         self._web_page.runJavaScript(f"if(window.setArmAngle)window.setArmAngle({value})")
 
     def set_model_scale(self, value: float) -> None:
+        """Set model scale"""
         self._web_page.runJavaScript(f"if(window.setModelScale)window.setModelScale({value})")
 
     def set_camera_distance(self, value: float) -> None:
+        """Set camera distance"""
         self._web_page.runJavaScript(f"if(window.setCameraDistance)window.setCameraDistance({value})")
 
     def set_light_intensity(self, value: float) -> None:
+        """Set light intensity"""
         self._web_page.runJavaScript(f"if(window.setLightIntensity)window.setLightIntensity({value})")
 
     def set_target_height(self, value: float) -> None:
+        """Set target height"""
         self._web_page.runJavaScript(f"if(window.setTargetHeight)window.setTargetHeight({value})")
 
     def set_model_y(self, value: float) -> None:
+        """Set model y"""
         self._web_page.runJavaScript(f"if(window.setModelY)window.setModelY({value})")
 
     def set_fov(self, value: float) -> None:
+        """Set fov"""
         self._web_page.runJavaScript(f"if(window.setFOV)window.setFOV({value})")
 
     def set_model_x(self, value: float) -> None:
+        """Set model x"""
         self._web_page.runJavaScript(f"if(window.setModelX)window.setModelX({value})")
 
     def set_model_rotation(self, value: float) -> None:
+        """Set model rotation"""
         self._web_page.runJavaScript(f"if(window.setModelRotation)window.setModelRotation({value})")
 
     def set_bg_opacity(self, value: float) -> None:
+        """Set bg opacity"""
         self._web_page.runJavaScript(f"if(window.setBgOpacity)window.setBgOpacity({value})")
 
     def set_ambient_light(self, value: float) -> None:
+        """Set ambient light"""
         self._web_page.runJavaScript(f"if(window.setAmbientLight)window.setAmbientLight({value})")
 
     def set_fill_light(self, value: float) -> None:
+        """Set fill light"""
         self._web_page.runJavaScript(f"if(window.setFillLight)window.setFillLight({value})")
 
     def set_anim_speed(self, value: float) -> None:
+        """Set anim speed"""
         self._web_page.runJavaScript(f"if(window.setAnimSpeed)window.setAnimSpeed({value})")
 
     def set_anim_amplitude(self, value: float) -> None:
+        """Set anim amplitude"""
         self._web_page.runJavaScript(f"if(window.setAnimAmplitude)window.setAnimAmplitude({value})")
 
     def set_head_tilt(self, value: float) -> None:
+        """Set head tilt"""
         self._web_page.runJavaScript(f"if(window.setHeadTilt)window.setHeadTilt({value})")
 
     def set_breath_amp(self, value: float) -> None:
+        """Set breath amp"""
         self._web_page.runJavaScript(f"if(window.setBreathAmp)window.setBreathAmp({value})")
 
     def apply_display_config(self, config: dict) -> None:
+        """Apply display config"""
         for key, method in [
             ("arm_angle", self.set_arm_angle),
             ("model_scale", self.set_model_scale),

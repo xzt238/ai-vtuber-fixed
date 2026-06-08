@@ -22,6 +22,7 @@ class ScreenshotSelector(QWidget):
     region_selected = Signal(str)  # 截图保存路径
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._start = QPoint()
         self._end = QPoint()
@@ -80,9 +81,11 @@ class ScreenshotSelector(QWidget):
         painter.end()
 
     def _selection_rect(self) -> QRect:
+        """内部方法"""
         return QRect(self._start, self._end)
 
     def mousePressEvent(self, event) -> None:
+        """Mousepressevent"""
         if event.button() == Qt.MouseButton.RightButton:
             self.close()
             return
@@ -92,11 +95,13 @@ class ScreenshotSelector(QWidget):
         self.update()
 
     def mouseMoveEvent(self, event) -> None:
+        """Mousemoveevent"""
         if self._selecting:
             self._end = event.pos()
             self.update()
 
     def mouseReleaseEvent(self, event) -> None:
+        """Mousereleaseevent"""
         if event.button() == Qt.MouseButton.LeftButton and self._selecting:
             self._selecting = False
             rect = self._selection_rect().normalized()
@@ -117,6 +122,7 @@ class ScreenshotSelector(QWidget):
             self.close()
 
     def keyPressEvent(self, event) -> None:
+        """Keypressevent"""
         if event.key() == Qt.Key.Key_Escape:
             self.close()
         super().keyPressEvent(event)

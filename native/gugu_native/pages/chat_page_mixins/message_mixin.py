@@ -160,6 +160,7 @@ class ChatPageMessageMixin:
         seq = self._tts_seq_counter
 
         def _tts_task(text, seq_num) -> None:
+            """内部方法"""
             try:
                 audio_path = self.backend.speak(text)
                 if audio_path and os.path.exists(audio_path):

@@ -323,6 +323,7 @@ class ThemeRegistry:
     """主题注册中心 — 管理所有已注册的主题定义"""
 
     def __init__(self) -> None:
+        """内部方法"""
         self._themes: dict[str, ThemeDefinition] = {}
 
     def register(self, definition: ThemeDefinition) -> None:

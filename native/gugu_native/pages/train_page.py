@@ -46,10 +46,12 @@ class ProjectListWorker(QThread):
     error = Signal(str)
 
     def __init__(self, trainer) -> None:
+        """内部方法"""
         super().__init__()
         self.trainer = trainer
 
     def run(self) -> None:
+        """Run"""
         try:
             projects = self.trainer.list_projects()
             self.done.emit(projects)
@@ -63,11 +65,13 @@ class _RecordWorker(QThread):
     error = Signal(str)
 
     def __init__(self, duration=5, sample_rate=16000, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self.duration = duration
         self.sample_rate = sample_rate
 
     def run(self) -> None:
+        """Run"""
         try:
             import sounddevice as sd
             import numpy as np
@@ -88,6 +92,7 @@ class TrainWorker(QThread):
     error = Signal(str)
 
     def __init__(self, trainer, project_name, config, stage="s1") -> None:
+        """内部方法"""
         super().__init__()
         self.trainer = trainer
         self.project_name = project_name
@@ -95,6 +100,7 @@ class TrainWorker(QThread):
         self.stage = stage
 
     def run(self) -> None:
+        """Run"""
         try:
             if self.stage == "s1":
                 result = self.trainer.start_training(self.project_name, self.config)
@@ -109,6 +115,7 @@ class TrainPage(QWidget, LazyPageMixin):
     """音色训练页面 — 支持懒加载，首次可见时才创建完整 UI"""
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("trainPage")
@@ -122,9 +129,11 @@ class TrainPage(QWidget, LazyPageMixin):
         self._skeleton.hide_skeleton()
 
     def show_skeleton(self) -> None:
+        """Show skeleton"""
         self._skeleton.show_skeleton()
 
     def hide_skeleton(self) -> None:
+        """Hide skeleton"""
         self._skeleton.hide_skeleton()
 
     def lazy_init(self) -> None:
@@ -150,6 +159,7 @@ class TrainPage(QWidget, LazyPageMixin):
         self._refresh_projects()
 
     def _init_ui(self) -> None:
+        """内部方法"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(8)
@@ -524,6 +534,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     @property
     def backend(self) -> None:
+        """Backend"""
         if self._backend is None:
             main_window = self.window()
             if hasattr(main_window, 'backend'):
@@ -532,6 +543,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     @property
     def trainer(self) -> None:
+        """Trainer"""
         if self._trainer is None:
             if self.backend and hasattr(self.backend, 'trainer'):
                 self._trainer = self.backend.trainer

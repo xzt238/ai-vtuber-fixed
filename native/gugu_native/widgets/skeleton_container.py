@@ -11,10 +11,12 @@ class SkeletonContainer(QFrame):
     """骨架屏容器：显示加载动画和提示文字"""
 
     def __init__(self, title_text: str = "正在加载...", parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._setup_ui(title_text)
 
     def _setup_ui(self, title_text: str) -> None:
+        """内部方法"""
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -29,9 +31,11 @@ class SkeletonContainer(QFrame):
         self.setVisible(False)
 
     def show_skeleton(self) -> None:
+        """Show skeleton"""
         self.setVisible(True)
         self._spinner.start()
 
     def hide_skeleton(self) -> None:
+        """Hide skeleton"""
         self._spinner.stop()
         self.setVisible(False)

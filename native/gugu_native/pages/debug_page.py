@@ -39,6 +39,7 @@ class DebugPage(QWidget, LazyPageMixin):
     """新增功能调试页面 — 支持懒加载"""
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("debugPage")
@@ -50,9 +51,11 @@ class DebugPage(QWidget, LazyPageMixin):
         self._skeleton.hide_skeleton()
 
     def show_skeleton(self) -> None:
+        """Show skeleton"""
         self._skeleton.show_skeleton()
 
     def hide_skeleton(self) -> None:
+        """Hide skeleton"""
         self._skeleton.hide_skeleton()
 
     def lazy_init(self) -> None:
@@ -73,6 +76,7 @@ class DebugPage(QWidget, LazyPageMixin):
         self._backend = backend
 
     def _init_ui(self) -> None:
+        """内部方法"""
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(8, 8, 8, 8)
 

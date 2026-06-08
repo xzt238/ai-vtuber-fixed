@@ -36,6 +36,7 @@ class _SileroOnnxWrapper:
     """
 
     def __init__(self, model_path: str) -> None:
+        """内部方法"""
         import onnxruntime
         opts = onnxruntime.SessionOptions()
         opts.inter_op_num_threads = 1
@@ -49,12 +50,14 @@ class _SileroOnnxWrapper:
         self._last_batch_size = 0
 
     def reset_states(self, batch_size=1) -> None:
+        """Reset states"""
         self._state = np.zeros((2, batch_size, 128), dtype=np.float32)
         self._context = np.zeros(0, dtype=np.float32)
         self._last_sr = 0
         self._last_batch_size = 0
 
     def __call__(self, x, sr: int) -> None:
+        """内部方法"""
         if not self._last_batch_size:
             self.reset_states(x.shape[0])
         if self._last_sr and self._last_sr != sr:
@@ -95,11 +98,13 @@ class _ASRWorker(QThread):
     error_occurred = Signal(str)     # 识别失败
 
     def __init__(self, backend, wav_path, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._backend = backend
         self._wav_path = wav_path
 
     def run(self) -> None:
+        """Run"""
         try:
             if self._backend and hasattr(self._backend, 'asr'):
                 text = self._backend.asr.recognize(self._wav_path)
@@ -138,6 +143,7 @@ class RealtimeVoiceManager(QObject):
     listening_changed = Signal(bool)         # is_listening
 
     def __init__(self, backend=None, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._backend = backend
         self._is_listening = False
@@ -191,6 +197,7 @@ class RealtimeVoiceManager(QObject):
 
     @property
     def backend(self) -> None:
+        """Backend"""
         # v1.9.78: 直接返回 _backend，移除 main-thread guard
         # 理由: backend 由 setter 设置（main.py 中 main_window.voice_manager.backend = self._backend），
         # 一旦设置就不会为 None。ASR 工作线程通过 _backend 直接访问，不需要 Qt widget 查找。
@@ -199,10 +206,12 @@ class RealtimeVoiceManager(QObject):
 
     @backend.setter
     def backend(self, value) -> None:
+        """Backend"""
         self._backend = value
 
     @property
     def is_listening(self) -> None:
+        """Is listening"""
         return self._is_listening
 
     def _init_vad(self) -> None:

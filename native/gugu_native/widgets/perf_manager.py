@@ -58,6 +58,7 @@ class PerformanceManager(QObject):
     GC_GEN2_INTERVAL_MS = GC_GEN2_INTERVAL_MS  # gen2: 每 120s
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
 
         # 已注册的可清理对象
@@ -145,6 +146,7 @@ class PerformanceManager(QObject):
         self._backend_init_started = True
 
         def _do_init() -> None:
+            """内部方法"""
             try:
                 # 触发后端初始化（通过 property）
                 main_window = self.parent()

@@ -24,6 +24,7 @@ class TrayManager(QObject):
     init_progress = Signal(str)  # 进度消息
 
     def __init__(self, main_window, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self.main_window = main_window
         self._tray = None

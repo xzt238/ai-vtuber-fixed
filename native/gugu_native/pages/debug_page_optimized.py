@@ -48,6 +48,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
     log_message = Signal(str, str)        # 日志消息信号
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("debugPageOptimized")
@@ -68,9 +69,11 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         self.log_message.connect(self._on_log_message)
 
     def show_skeleton(self) -> None:
+        """Show skeleton"""
         self._skeleton.show_skeleton()
 
     def hide_skeleton(self) -> None:
+        """Hide skeleton"""
         self._skeleton.hide_skeleton()
 
     def lazy_init(self) -> None:

@@ -113,6 +113,7 @@ class ChatPage(
     _tts_audio_signal = Signal(str, int)
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self.setObjectName("chatPage")
         self._backend = None
@@ -1197,6 +1198,7 @@ class ChatPage(
         self._tts_seq_counter += 1
         seq = self._tts_seq_counter
         def _tts_task(text, seq_num) -> None:
+            """内部方法"""
             try:
                 audio_path = self.backend.speak(text)
                 if audio_path and os.path.exists(audio_path):
@@ -1485,6 +1487,7 @@ class ChatPage(
                 self._sample_rate = 16000
 
                 def audio_callback(indata, frames, time_info, status) -> None:
+                    """Audio callback"""
                     self._recording_data.append(indata.copy())
 
                 self._recording_stream = sd.InputStream(

@@ -51,6 +51,7 @@ class ThemeSelector(QWidget):
     theme_selected = Signal(str)
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._cards: dict[str, object] = {}
         self._current_id = "dark"
@@ -119,19 +120,23 @@ class ThemeSelector(QWidget):
         self._update_selection()
 
     def _on_card_clicked(self, theme_id: str) -> None:
+        """内部方法"""
         self._current_id = theme_id
         self._update_selection()
         self.theme_selected.emit(theme_id)
 
     def _update_selection(self) -> None:
+        """内部方法"""
         for tid, card in self._cards.items():
             card.set_selected(tid == self._current_id)
 
     def set_current(self, theme_id: str) -> None:
+        """Set current"""
         self._current_id = theme_id
         self._update_selection()
 
     def refresh_theme(self) -> None:
+        """Refresh theme"""
         c = get_colors()
         if self._dark_label:
             self._dark_label.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px; font-weight: 500;")

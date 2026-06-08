@@ -28,11 +28,13 @@ class CheckUpdateWorker(QThread):
     error = Signal(str)
 
     def __init__(self, repo, current_version) -> None:
+        """内部方法"""
         super().__init__()
         self.repo = repo
         self.current_version = current_version
 
     def run(self) -> None:
+        """Run"""
         try:
             import urllib.request
             import urllib.error
@@ -84,6 +86,7 @@ class CheckUpdateWorker(QThread):
         try:
             # 分离版本号和后缀：1.9.88-hotfix → ("1.9.88", "hotfix")
             def _parse(v) -> None:
+                """内部方法"""
                 match = re.match(r'^([\d.]+)(?:[-.]?(\w+))?$', v.strip())
                 if not match:
                     return [0], ""
@@ -121,11 +124,13 @@ class DownloadWorker(QThread):
     error = Signal(str)
 
     def __init__(self, url, save_dir=None) -> None:
+        """内部方法"""
         super().__init__()
         self.url = url
         self.save_dir = save_dir or tempfile.gettempdir()
 
     def run(self) -> None:
+        """Run"""
         try:
 
             req = urllib.request.Request(self.url, headers={"User-Agent": "GuguGaga-AI-VTuber"})
@@ -169,6 +174,7 @@ class UpdateManager(QObject):
     error = Signal(str)
 
     def __init__(self, repo="xzt238/ai-vtuber-fixed", current_version=None, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         # 默认版本号从 app/version.py 读取，确保与项目版本一致
         if current_version is None:

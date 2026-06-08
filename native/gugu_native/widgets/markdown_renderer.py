@@ -112,6 +112,7 @@ class _CodeBlockTreeprocessor(markdown.treeprocessors.Treeprocessor):
     """树处理器 — 在 Markdown 解析后替换代码块占位符"""
 
     def run(self, root) -> None:
+        """Run"""
         for elem in root.iter():
             if elem.text and "<!--CODE_BLOCK_" in elem.text:
                 for placeholder, html in self._code_blocks.items():
@@ -295,6 +296,7 @@ def _extract_latex(text: str, latex_blocks: dict) -> str:
 
     # 先处理 $$...$$ (display math)
     def _replace_display(m) -> None:
+        """内部方法"""
         nonlocal block_idx
         placeholder = f"%%LATEX_DISPLAY_{block_idx}%%"
         latex_blocks[placeholder] = m.group(0)  # 保留原始 $$...$$
@@ -305,6 +307,7 @@ def _extract_latex(text: str, latex_blocks: dict) -> str:
 
     # 再处理 $...$ (inline math) — 注意避免匹配 $$ 残留
     def _replace_inline(m) -> None:
+        """内部方法"""
         nonlocal block_idx
         placeholder = f"%%LATEX_INLINE_{block_idx}%%"
         latex_blocks[placeholder] = m.group(0)  # 保留原始 $...$

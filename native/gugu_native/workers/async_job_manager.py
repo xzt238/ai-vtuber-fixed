@@ -42,6 +42,7 @@ class AsyncJobManager(QObject):
     job_failed = Signal(str, str)      # job_id, error
 
     def __init__(self, parent: Optional[QObject] = None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._active_jobs: Dict[str, QRunnable] = {}
         self._thread_pool = QThreadPool.globalInstance()

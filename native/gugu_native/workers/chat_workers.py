@@ -25,6 +25,7 @@ class StreamChatWorker(QThread):
     _SENTENCE_ENDS = set('。！？.!?')
 
     def __init__(self, backend, text, history, streaming_tts=False) -> None:
+        """内部方法"""
         super().__init__()
         self.backend = backend
         self.text = text
@@ -35,17 +36,20 @@ class StreamChatWorker(QThread):
         self._sentence_buffer = ""
 
     def stop_stream(self) -> None:
+        """Stop stream"""
         self._mutex.lock()
         self._stop_requested = True
         self._mutex.unlock()
 
     def is_stop_requested(self) -> None:
+        """Is stop requested"""
         self._mutex.lock()
         val = self._stop_requested
         self._mutex.unlock()
         return val
 
     def _extract_sentences(self, chunk_text: str) -> None:
+        """内部方法"""
         self._mutex.lock()
         try:
             self._sentence_buffer += chunk_text
@@ -68,6 +72,7 @@ class StreamChatWorker(QThread):
             self._mutex.unlock()
 
     def _get_and_clear_remaining_buffer(self) -> None:
+        """内部方法"""
         self._mutex.lock()
         try:
             remaining = self._sentence_buffer.strip()
@@ -77,10 +82,12 @@ class StreamChatWorker(QThread):
             self._mutex.unlock()
 
     def run(self) -> None:
+        """Run"""
         try:
             full_prompt = self.text  # 记忆由 LLM 内部 MemoryRAGInjector 统一处理
 
             def on_chunk(chunk_text: str) -> None:
+                """On chunk"""
                 if self.is_stop_requested():
                     return
                 self.chunk_received.emit(chunk_text)
@@ -90,6 +97,7 @@ class StreamChatWorker(QThread):
                         self.sentence_ready.emit(s)
 
             def on_tool_call(tool_name: str, display_text: str, tool_args: dict) -> None:
+                """On tool call"""
                 self.tool_call_status.emit(display_text)
 
             result = self.backend.llm.stream_chat(
@@ -177,11 +185,13 @@ class TTSWorker(QThread):
     error = Signal(str)
 
     def __init__(self, backend, text, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self.backend = backend
         self.text = text
 
     def run(self) -> None:
+        """Run"""
         try:
             audio_path = self.backend.speak(self.text)
             if audio_path and os.path.exists(audio_path):
@@ -196,11 +206,13 @@ class ASRWorker(QThread):
     error = Signal(str)
 
     def __init__(self, backend, audio_path) -> None:
+        """内部方法"""
         super().__init__()
         self.backend = backend
         self.audio_path = audio_path
 
     def run(self) -> None:
+        """Run"""
         try:
             text = self.backend.asr.recognize(self.audio_path)
             self.finished.emit(text or "")

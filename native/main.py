@@ -46,6 +46,7 @@ if os.name == 'nt':
     import subprocess as _sp_main
     _SP_MAIN_ORIG = _sp_main.check_output
     def _sp_main_patched(cmd, **kw) -> None:
+        """内部方法"""
         try:
             prog = (cmd[0] if isinstance(cmd, (list, tuple)) else str(cmd).split()[0]).lower()
         except Exception as e:
@@ -100,6 +101,7 @@ from gugu_native.theme import apply_theme, get_global_qss, get_colors, apply_the
 
 # 统一版本号（从 app/version.py 读取）
 def _get_version() -> None:
+    """内部方法"""
     try:
         from app.version import VERSION
         return VERSION
@@ -125,6 +127,7 @@ class GuguGagaApp(FluentWindow):
     """咕咕嘎嘎 AI-VTuber 主窗口"""
 
     def __init__(self, start_time=None, splash=None) -> None:
+        """内部方法"""
         super().__init__()
         import time as _time
         self._init_start_time = start_time or _time.time()
@@ -526,6 +529,7 @@ class GuguGagaApp(FluentWindow):
                 logger.warning("Backend has no preload_models_parallel(), falling back to serial")
                 import threading
                 def _preload_asr() -> None:
+                    """内部方法"""
                     try:
                         import time as _t
                         _t.sleep(0.01)
@@ -546,6 +550,7 @@ class GuguGagaApp(FluentWindow):
         """后台预热 TTS 模型 — 不阻塞 UI，首次对话前完成加载"""
 
         def _do_prewarm() -> None:
+            """内部方法"""
             try:
                 if not self.backend or not self.backend.tts:
                     return
@@ -922,6 +927,7 @@ def _check_dependencies() -> None:
 
 
 def main() -> None:
+    """Main"""
     # ★ 依赖检查（在 QApplication 之前，避免创建窗口后才发现依赖缺失）
     _check_dependencies()
 
@@ -932,6 +938,7 @@ def main() -> None:
     _last_checkpoint = _time.time()
 
     def _checkpoint(name) -> None:
+        """内部方法"""
         nonlocal _last_checkpoint
         now = _time.time()
         elapsed_total = now - _PROCESS_START

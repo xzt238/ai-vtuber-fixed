@@ -107,11 +107,13 @@ class StdoutRedirector(QObject):
     text_written = Signal(str)
 
     def __init__(self, original_stream=None, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._original = original_stream or sys.__stdout__
         self._buffer = ""
 
     def write(self, text) -> None:
+        """Write"""
         # 同时写入原始流（保留文件日志等）
         try:
             self._original.write(text)
@@ -128,6 +130,7 @@ class StdoutRedirector(QObject):
                 self.text_written.emit(line)
 
     def flush(self) -> None:
+        """Flush"""
         # 刷新剩余缓冲
         if self._buffer.strip():
             line = _strip_ansi(self._buffer.strip())
@@ -148,6 +151,7 @@ class SplashDebugWindow(QWidget):
     """自定义启动画面 + 内嵌运行调试窗口"""
 
     def __init__(self, logo_path=None, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
 
         # 窗口属性
@@ -422,16 +426,19 @@ class SplashDebugWindow(QWidget):
     # ========== 窗口拖动 ==========
 
     def mousePressEvent(self, event) -> None:
+        """Mousepressevent"""
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
+        """Mousemoveevent"""
         if self._drag_pos is not None and event.buttons() & Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_pos)
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
+        """Mousereleaseevent"""
         self._drag_pos = None
         super().mouseReleaseEvent(event)
 

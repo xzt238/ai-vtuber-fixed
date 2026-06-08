@@ -13,10 +13,12 @@ class AsyncJsonWorker(QThread):
     json_failed = Signal(str)    # error message
 
     def __init__(self, file_paths: list[str], parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._file_paths = file_paths
 
     def run(self) -> None:
+        """Run"""
         results = {}
         try:
             for fp in self._file_paths:

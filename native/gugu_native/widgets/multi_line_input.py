@@ -40,6 +40,7 @@ class MultiLineInput(QWidget):
     MAX_HEIGHT = MIN_HEIGHT + LINE_HEIGHT * (MAX_VISIBLE_LINES - 1)
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._quote_text = ""
         self._init_ui()
@@ -218,6 +219,7 @@ class _InputTextEdit(QTextEdit):
     """自定义 QTextEdit — 拦截 Enter 键"""
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._send_on_enter = True
 

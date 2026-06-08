@@ -55,6 +55,7 @@ class SpectrumWidget(QWidget):
     """
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._bands = np.zeros(BAND_COUNT)
         self._target_bands = np.zeros(BAND_COUNT)
@@ -83,6 +84,7 @@ class SpectrumWidget(QWidget):
             self._color_theme = theme
 
     def paintEvent(self, event) -> None:
+        """Paintevent"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -163,6 +165,7 @@ class AudioVisualizer(QWidget):
     FFT_IDLE_MS: int = 200    # ~5 fps
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._media_player = None
         self._audio_buffer = np.zeros(2048)
@@ -172,6 +175,7 @@ class AudioVisualizer(QWidget):
         self._init_ui()
 
     def _init_ui(self) -> None:
+        """内部方法"""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)

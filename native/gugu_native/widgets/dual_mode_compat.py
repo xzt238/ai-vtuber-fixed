@@ -44,6 +44,7 @@ class WebUICheckWorker(QObject):
     result_ready = Signal(bool)
 
     def __init__(self, http_port: int, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._http_port = http_port
 
@@ -70,6 +71,7 @@ class DualModeCompat:
     WEBUI_WS_PORT = _WEBUI_WS_PORT
 
     def __init__(self, project_dir: str) -> None:
+        """内部方法"""
         self.project_dir = Path(project_dir)
         self.cache_dir = self.project_dir / "app" / "cache"
         self.memory_dir = self.project_dir / "memory"
@@ -177,8 +179,10 @@ class DualModeCompat:
 
             # KI-015 FIX: 展开 ${VAR} 环境变量
             def expand_env_vars(text) -> None:
+                """Expand env vars"""
                 pattern = re.compile(r'\$\{(\w+)\}')
                 def replacer(match) -> None:
+                    """Replacer"""
                     var_name = match.group(1)
                     return os.environ.get(var_name, match.group(0))
                 return pattern.sub(replacer, text)

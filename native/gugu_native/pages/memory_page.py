@@ -45,12 +45,14 @@ class MemorySearchWorker(QThread):
     error = Signal(str)
 
     def __init__(self, memory_system, query, top_k=10) -> None:
+        """内部方法"""
         super().__init__()
         self.memory_system = memory_system
         self.query = query
         self.top_k = top_k
 
     def run(self) -> None:
+        """Run"""
         try:
             results = self.memory_system.search(self.query, top_k=self.top_k)
             self.results_ready.emit(results)
@@ -64,10 +66,12 @@ class ConsolidateWorker(QThread):
     error = Signal(str)
 
     def __init__(self, memory_system) -> None:
+        """内部方法"""
         super().__init__()
         self.memory_system = memory_system
 
     def run(self) -> None:
+        """Run"""
         try:
             result = self.memory_system.consolidate()
             self.done.emit(result)
@@ -79,6 +83,7 @@ class MemoryItemWidget(QTreeWidgetItem):
     """记忆条目 TreeWidget Item"""
 
     def __init__(self, parent, data: dict, layer: str, index: int) -> None:
+        """内部方法"""
         # 列: [重要性, 角色, 内容, 标签, 时间]
         importance = data.get("importance", 0)
         role = data.get("role", "")
@@ -137,6 +142,7 @@ class MemoryPage(QWidget, LazyPageMixin):
     """记忆页面 — 四层记忆系统可视化，支持懒加载"""
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("memoryPage")
@@ -150,9 +156,11 @@ class MemoryPage(QWidget, LazyPageMixin):
         self._skeleton.hide_skeleton()
 
     def show_skeleton(self) -> None:
+        """Show skeleton"""
         self._skeleton.show_skeleton()
 
     def hide_skeleton(self) -> None:
+        """Hide skeleton"""
         self._skeleton.hide_skeleton()
 
     def lazy_init(self) -> None:
@@ -192,6 +200,7 @@ class MemoryPage(QWidget, LazyPageMixin):
             self._stats_timer.stop()
 
     def _init_ui(self) -> None:
+        """内部方法"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(8)

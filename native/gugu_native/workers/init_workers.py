@@ -32,6 +32,7 @@ class BackendInitWorker(QObject):
     init_progress = Signal(str)     # 进度描述
 
     def __init__(self) -> None:
+        """内部方法"""
         super().__init__()
         self._backend_instance = None
 
@@ -75,6 +76,7 @@ class StatsResultWorker(QRunnable):
     """
 
     def __init__(self, memory_system) -> None:
+        """内部方法"""
         super().__init__()
         self._memory_system = memory_system
         self.setAutoDelete(False)  # 由调用方管理生命周期

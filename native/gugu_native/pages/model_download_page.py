@@ -335,6 +335,7 @@ class _DownloadWorker(QThread):
     finished = Signal(str, bool, str)    # model_id, success, message
 
     def __init__(self, model_info) -> None:
+        """内部方法"""
         super().__init__()
         self.model_info = model_info
 
@@ -385,6 +386,7 @@ class _DownloadWorker(QThread):
             del os.environ[key]
 
     def run(self) -> None:
+        """Run"""
         mdl = self.model_info
         mdl_type = mdl["type"]
         mdl_id = mdl["id"]
@@ -490,6 +492,7 @@ class ModelDownloadPage(ScrollArea, LazyPageMixin):
     """模型下载页面 — 支持懒加载，首次可见时才创建完整 UI"""
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         ScrollArea.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("modelDownloadPage")
@@ -501,9 +504,11 @@ class ModelDownloadPage(ScrollArea, LazyPageMixin):
         self._skeleton.hide_skeleton()
 
     def show_skeleton(self) -> None:
+        """Show skeleton"""
         self._skeleton.show_skeleton()
 
     def hide_skeleton(self) -> None:
+        """Hide skeleton"""
         self._skeleton.hide_skeleton()
 
     def lazy_init(self) -> None:
@@ -518,6 +523,7 @@ class ModelDownloadPage(ScrollArea, LazyPageMixin):
         register_theme_callback(self.refresh_theme)
 
     def _init_ui(self) -> None:
+        """内部方法"""
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 

@@ -23,6 +23,7 @@ class ThemeManager:
     _instance: 'ThemeManager | None' = None
 
     def __init__(self, registry: ThemeRegistry, prefs_path: str = "") -> None:
+        """内部方法"""
         self._registry = registry
         self._current_id = "dark"
         self._colors = None  # AppColors 实例

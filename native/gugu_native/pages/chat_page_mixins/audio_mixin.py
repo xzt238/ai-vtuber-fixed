@@ -146,6 +146,7 @@ class ChatPageAudioMixin:
                 self._sample_rate = 16000
 
                 def audio_callback(indata, frames, time_info, status) -> None:
+                    """Audio callback"""
                     self._recording_data.append(indata.copy())
 
                 self._recording_stream = sd.InputStream(

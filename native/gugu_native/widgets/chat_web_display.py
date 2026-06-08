@@ -820,6 +820,7 @@ class ChatBridge(QObject):
     markdownRendered = Signal(str, str)   # (request_id, html)
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._render_callbacks = {}
 
@@ -878,6 +879,7 @@ class ChatWebDisplay(QWidget):
     action_edit = Signal(str, str)
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._web_view = None
         self._bridge = None

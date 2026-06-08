@@ -37,6 +37,7 @@ class LogPage(QWidget):
     """日志查看页面"""
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self.setObjectName("logPage")
         
@@ -283,6 +284,7 @@ class LogHandler(logging.Handler):
     """自定义日志处理器，将日志发送到 LogPage"""
     
     def __init__(self, log_page: LogPage) -> None:
+        """内部方法"""
         super().__init__()
         self.log_page = log_page
     

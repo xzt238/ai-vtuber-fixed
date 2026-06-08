@@ -30,6 +30,7 @@ class MessageSearchBar(QWidget):
     searchClosed = Signal()
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self.setObjectName("messageSearchBar")
         self._result_count = 0

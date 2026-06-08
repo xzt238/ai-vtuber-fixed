@@ -71,6 +71,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
     """VRM 模型设置页面 — 支持懒加载，首次可见时才创建 VRMWidget"""
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("vrmSettingsPage")
@@ -83,9 +84,11 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
         self._skeleton.hide_skeleton()
 
     def show_skeleton(self) -> None:
+        """Show skeleton"""
         self._skeleton.show_skeleton()
 
     def hide_skeleton(self) -> None:
+        """Hide skeleton"""
         self._skeleton.hide_skeleton()
 
     def lazy_init(self) -> None:
@@ -101,6 +104,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
     # ========== UI 构建 ==========
 
     def _init_ui(self) -> None:
+        """内部方法"""
         # 清除 __init__ 中创建的占位 layout，避免重复设置
         old_layout = self.layout()
         if old_layout:
@@ -222,6 +226,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
 
         # 信号连接 — 防止循环
         def _from_slider(val) -> None:
+            """内部方法"""
             fval = vmin + val * step
             spinbox.blockSignals(True)
             spinbox.setValue(fval)
@@ -229,6 +234,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
             self._on_param_changed(param_name, fval)
 
         def _from_spinbox(val) -> None:
+            """内部方法"""
             ival = int((val - vmin) / step)
             slider.blockSignals(True)
             slider.setValue(ival)
@@ -259,6 +265,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
             self._vrm_widget.load_model(default_path)
 
     def _on_preview_loaded(self, _model_name: str) -> None:
+        """内部方法"""
         self._vrm_loaded = True
         self._apply_current_to_preview()
 

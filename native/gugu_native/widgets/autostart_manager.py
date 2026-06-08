@@ -28,6 +28,7 @@ class AutoStartManager(QObject):
     APP_NAME = "GuguGagaAI"
 
     def __init__(self, parent=None) -> None:
+        """内部方法"""
         super().__init__(parent)
         self._app_path = self._get_app_path()
 
