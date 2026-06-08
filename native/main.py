@@ -582,6 +582,24 @@ class GuguGagaApp(FluentWindow):
         # v1.11.30: TTS 模型后台预加载 — 不阻塞 UI，但提前加载 GPT-SoVITS 模型
         # 原来延迟到首次对话，导致首次发消息要等 5-10s。现在后台加载，首次对话无延迟。
         self._tts_prewarmed = False
+
+        # v1.20.16: 预导入 TTS 重量级依赖（torchaudio/librosa/ffmpeg）
+        # TTS_infer_pack.TTS 在顶层 import 这些库，首次导入耗时 ~30s
+        # 提前在后台线程预导入，后续 TTS 加载时 Python 直接从 sys.modules 缓存取，0s
+        def _preload_tts_deps() -> None:
+            """内部方法"""
+            try:
+                import importlib
+                for mod in ('torchaudio', 'librosa', 'ffmpeg'):
+                    try:
+                        importlib.import_module(mod)
+                    except ImportError:
+                        pass
+                logger.info("TTS deps preload: torchaudio/librosa/ffmpeg cached")
+            except Exception as e:
+                logger.debug(f"TTS deps preload skipped: {e}")
+        threading.Thread(target=_preload_tts_deps, daemon=True, name="tts-deps-preload").start()
+
         self._prewarm_tts_background()
 
     def _prewarm_tts_background(self) -> None:
