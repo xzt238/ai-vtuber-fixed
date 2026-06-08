@@ -27,7 +27,7 @@ class AutoStartManager(QObject):
     state_changed = Signal(bool)
     APP_NAME = "GuguGagaAI"
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._app_path = self._get_app_path()
 

@@ -46,7 +46,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
     status_updated = Signal(str, str)     # 状态更新信号
     log_message = Signal(str, str)        # 日志消息信号
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("featuresSettingsPage")
@@ -66,13 +66,13 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
         self.status_updated.connect(self._on_status_updated)
         self.log_message.connect(self._on_log_message)
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -91,11 +91,11 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
         self._refresh_timer.timeout.connect(self._refresh_status)
         self._refresh_timer.start(2000)
 
-    def set_backend(self, backend):
+    def set_backend(self, backend) -> None:
         """设置后端引用"""
         self._backend = backend
 
-    def _load_config(self):
+    def _load_config(self) -> None:
         """加载配置文件"""
         try:
             import yaml
@@ -110,7 +110,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
             self._log("ERROR", f"配置文件加载失败: {e}")
             self._config_data = {}
 
-    def _save_config(self):
+    def _save_config(self) -> None:
         """保存配置文件"""
         try:
             with open(self._config_file, 'w', encoding='utf-8') as f:
@@ -119,7 +119,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
         except Exception as e:
             self._log("ERROR", f"配置文件保存失败: {e}")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(8, 8, 8, 8)
@@ -177,7 +177,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
         
         main_layout.addWidget(main_splitter)
 
-    def _init_feature_list(self, layout):
+    def _init_feature_list(self, layout) -> None:
         """初始化左侧功能列表"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -217,7 +217,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
         card_layout.addStretch()
         layout.addWidget(card)
 
-    def _init_all_cards(self):
+    def _init_all_cards(self) -> None:
         """初始化所有配置卡片"""
         self._cards = {}
         
@@ -241,7 +241,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
         self._cards['plugin'] = self._create_plugin_card()
         self._right_layout.addWidget(self._cards['plugin'])
 
-    def _create_audio_card(self):
+    def _create_audio_card(self) -> None:
         """创建声音处理配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -345,7 +345,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_rag_card(self):
+    def _create_rag_card(self) -> None:
         """创建知识库配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -417,7 +417,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_roleplay_card(self):
+    def _create_roleplay_card(self) -> None:
         """创建角色扮演配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -477,7 +477,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_emotion_card(self):
+    def _create_emotion_card(self) -> None:
         """创建情感系统配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -554,7 +554,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_plugin_card(self):
+    def _create_plugin_card(self) -> None:
         """创建插件系统配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -625,7 +625,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _init_bottom_panel(self, layout):
+    def _init_bottom_panel(self, layout) -> None:
         """初始化底部面板"""
         # 创建标签页
         tab_widget = QTabWidget()
@@ -651,7 +651,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
         
         layout.addWidget(tab_widget)
 
-    def _show_feature_config(self, feature_key):
+    def _show_feature_config(self, feature_key) -> None:
         """显示功能配置"""
         # 隐藏所有卡片
         for key, card in self._cards.items():
@@ -663,7 +663,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
         
         self._log("DEBUG", f"切换到功能配置: {feature_key}")
 
-    def _update_config(self, key, value):
+    def _update_config(self, key, value) -> None:
         """更新配置"""
         # 更新内存中的配置
         keys = key.split('.')
@@ -682,14 +682,14 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
         
         self._log("INFO", f"配置更新: {key} = {value}")
 
-    def _on_config_changed(self, key, value):
+    def _on_config_changed(self, key, value) -> None:
         """配置变更处理"""
         # 更新状态标签
         feature = key.split('.')[0] if len(key.split('.')) > 1 else key
         if feature in self._status_labels:
             self._status_labels[feature].setText(f"配置已更新: {key}")
 
-    def _on_status_updated(self, feature, status):
+    def _on_status_updated(self, feature, status) -> None:
         """状态更新处理"""
         if feature in self._status_labels:
             self._status_labels[feature].setText(f"状态: {status}")
@@ -699,7 +699,7 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
             btn, status_label = self._feature_buttons[feature]
             status_label.setText(status)
 
-    def _on_log_message(self, level, message):
+    def _on_log_message(self, level, message) -> None:
         """日志消息处理"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{level}] {message}"
@@ -717,11 +717,11 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
             scrollbar = self._log_text.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
 
-    def _log(self, level, message):
+    def _log(self, level, message) -> None:
         """记录日志"""
         self.log_message.emit(level, message)
 
-    def _refresh_status(self):
+    def _refresh_status(self) -> None:
         """刷新状态"""
         # 这里应该从后端获取实际状态
         # 简化实现，只更新状态表格
@@ -731,39 +731,39 @@ class FeaturesSettingsPage(QWidget, LazyPageMixin):
             self._status_table.setItem(i, 1, QTableWidgetItem(label.text()))
             self._status_table.setItem(i, 2, QTableWidgetItem(datetime.now().strftime("%H:%M:%S")))
 
-    def _save_audio_config(self):
+    def _save_audio_config(self) -> None:
         """保存声音处理配置"""
         self._log("INFO", "保存声音处理配置...")
         self._save_config()
 
-    def _save_rag_config(self):
+    def _save_rag_config(self) -> None:
         """保存知识库配置"""
         self._log("INFO", "保存知识库配置...")
         self._save_config()
 
-    def _save_roleplay_config(self):
+    def _save_roleplay_config(self) -> None:
         """保存角色扮演配置"""
         self._log("INFO", "保存角色扮演配置...")
         self._save_config()
 
-    def _save_emotion_config(self):
+    def _save_emotion_config(self) -> None:
         """保存情感系统配置"""
         self._log("INFO", "保存情感系统配置...")
         self._save_config()
 
-    def _save_plugin_config(self):
+    def _save_plugin_config(self) -> None:
         """保存插件系统配置"""
         self._log("INFO", "保存插件系统配置...")
         self._save_config()
 
-    def _import_rag_document(self):
+    def _import_rag_document(self) -> None:
         """导入知识库文档"""
         self._log("INFO", "导入知识库文档...")
 
-    def _create_roleplay_character(self):
+    def _create_roleplay_character(self) -> None:
         """创建角色扮演角色"""
         self._log("INFO", "创建角色扮演角色...")
 
-    def _scan_plugins(self):
+    def _scan_plugins(self) -> None:
         """扫描插件"""
         self._log("INFO", "扫描插件...")

@@ -46,7 +46,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
     status_updated = Signal(str, str)     # 状态更新信号
     log_message = Signal(str, str)        # 日志消息信号
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("liveSettingsPage")
@@ -66,13 +66,13 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
         self.status_updated.connect(self._on_status_updated)
         self.log_message.connect(self._on_log_message)
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -91,11 +91,11 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
         self._refresh_timer.timeout.connect(self._refresh_status)
         self._refresh_timer.start(2000)
 
-    def set_backend(self, backend):
+    def set_backend(self, backend) -> None:
         """设置后端引用"""
         self._backend = backend
 
-    def _load_config(self):
+    def _load_config(self) -> None:
         """加载配置文件"""
         try:
             if self._config_file.exists():
@@ -109,7 +109,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
             self._log("ERROR", f"配置文件加载失败: {e}")
             self._config_data = {}
 
-    def _save_config(self):
+    def _save_config(self) -> None:
         """保存配置文件"""
         try:
             with open(self._config_file, 'w', encoding='utf-8') as f:
@@ -118,7 +118,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
         except Exception as e:
             self._log("ERROR", f"配置文件保存失败: {e}")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(8, 8, 8, 8)
@@ -176,7 +176,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
         
         main_layout.addWidget(main_splitter)
 
-    def _init_platform_list(self, layout):
+    def _init_platform_list(self, layout) -> None:
         """初始化左侧平台列表"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -218,7 +218,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
         card_layout.addStretch()
         layout.addWidget(card)
 
-    def _init_all_cards(self):
+    def _init_all_cards(self) -> None:
         """初始化所有配置卡片"""
         self._cards = {}
         
@@ -258,7 +258,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
         self._cards['weixin_video'] = self._create_weixin_video_card()
         self._right_layout.addWidget(self._cards['weixin_video'])
 
-    def _create_bilibili_card(self):
+    def _create_bilibili_card(self) -> None:
         """创建Bilibili配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -332,7 +332,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_douyin_card(self):
+    def _create_douyin_card(self) -> None:
         """创建抖音配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -394,7 +394,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_kuaishou_card(self):
+    def _create_kuaishou_card(self) -> None:
         """创建快手配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -456,7 +456,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_douyu_card(self):
+    def _create_douyu_card(self) -> None:
         """创建斗鱼配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -505,7 +505,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_huya_card(self):
+    def _create_huya_card(self) -> None:
         """创建虎牙配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -554,7 +554,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_youtube_card(self):
+    def _create_youtube_card(self) -> None:
         """创建YouTube配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -616,7 +616,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_twitch_card(self):
+    def _create_twitch_card(self) -> None:
         """创建Twitch配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -678,7 +678,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_tiktok_card(self):
+    def _create_tiktok_card(self) -> None:
         """创建TikTok配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -740,7 +740,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_weixin_video_card(self):
+    def _create_weixin_video_card(self) -> None:
         """创建微信视频号配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -789,7 +789,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _init_bottom_panel(self, layout):
+    def _init_bottom_panel(self, layout) -> None:
         """初始化底部面板"""
         # 创建标签页
         tab_widget = QTabWidget()
@@ -815,7 +815,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
         
         layout.addWidget(tab_widget)
 
-    def _show_platform_config(self, platform_key):
+    def _show_platform_config(self, platform_key) -> None:
         """显示平台配置"""
         # 隐藏所有卡片
         for key, card in self._cards.items():
@@ -827,7 +827,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
         
         self._log("DEBUG", f"切换到平台配置: {platform_key}")
 
-    def _update_config(self, key, value):
+    def _update_config(self, key, value) -> None:
         """更新配置"""
         # 更新内存中的配置
         keys = key.split('.')
@@ -846,14 +846,14 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
         
         self._log("INFO", f"配置更新: {key} = {value}")
 
-    def _on_config_changed(self, key, value):
+    def _on_config_changed(self, key, value) -> None:
         """配置变更处理"""
         # 更新状态标签
         platform = key.split('.')[1] if len(key.split('.')) > 1 else key
         if platform in self._status_labels:
             self._status_labels[platform].setText(f"配置已更新: {key}")
 
-    def _on_status_updated(self, platform, status):
+    def _on_status_updated(self, platform, status) -> None:
         """状态更新处理"""
         if platform in self._status_labels:
             self._status_labels[platform].setText(f"状态: {status}")
@@ -863,7 +863,7 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
             btn, status_label = self._platform_buttons[platform]
             status_label.setText(status)
 
-    def _on_log_message(self, level, message):
+    def _on_log_message(self, level, message) -> None:
         """日志消息处理"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{level}] {message}"
@@ -881,11 +881,11 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
             scrollbar = self._log_text.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
 
-    def _log(self, level, message):
+    def _log(self, level, message) -> None:
         """记录日志"""
         self.log_message.emit(level, message)
 
-    def _refresh_status(self):
+    def _refresh_status(self) -> None:
         """刷新状态"""
         # 这里应该从后端获取实际状态
         # 简化实现，只更新状态表格
@@ -896,12 +896,12 @@ class LiveSettingsPage(QWidget, LazyPageMixin):
             self._status_table.setItem(i, 2, QTableWidgetItem(self._config_data.get('live', {}).get(platform, {}).get('room_id', '')))
             self._status_table.setItem(i, 3, QTableWidgetItem(datetime.now().strftime("%H:%M:%S")))
 
-    def _connect_platform(self, platform):
+    def _connect_platform(self, platform) -> None:
         """连接平台"""
         self._log("INFO", f"正在连接{platform}直播间...")
         # 这里应该调用后端的连接功能
 
-    def _disconnect_platform(self, platform):
+    def _disconnect_platform(self, platform) -> None:
         """断开平台连接"""
         self._log("INFO", f"正在断开{platform}连接...")
         # 这里应该调用后端的断开功能

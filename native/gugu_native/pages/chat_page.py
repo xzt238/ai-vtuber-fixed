@@ -112,7 +112,7 @@ class ChatPage(
     # v14 FIX: Signal 携带序号 (audio_path, seq)，用于流式 TTS 句子排序
     _tts_audio_signal = Signal(str, int)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("chatPage")
         self._backend = None
@@ -154,7 +154,7 @@ class ChatPage(
         # 注册主题变更回调
         register_theme_callback(self.refresh_theme)
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """退出时清理：关闭线程池 + 停止定时器 + 清空 Worker 列表"""
         if hasattr(self, '_tts_executor') and self._tts_executor:
             self._tts_executor.shutdown(wait=False)
@@ -163,7 +163,7 @@ class ChatPage(
         if hasattr(self, '_tts_workers'):
             self._tts_workers.clear()
 
-    def _init_ui_shell(self):
+    def _init_ui_shell(self) -> None:
         """创建主布局框架 + 占位符（极轻量，让窗口尽快显示）"""
         from gugu_native.theme import get_colors
         c = get_colors()
@@ -245,7 +245,7 @@ class ChatPage(
         self._send_style = ""
         self._stop_style = ""
 
-    def _init_ui_content(self):
+    def _init_ui_content(self) -> None:
         """延迟创建具体控件（通过 QTimer.singleShot(0) 调度，让窗口先显示）"""
         # T10: 性能埋点
         if hasattr(self, '_perf_t4_start'):
@@ -665,7 +665,7 @@ class ChatPage(
         self._perf_t4_end = time.perf_counter()
         logger.info(f"[PERF] ChatPage _init_ui_content: {self._perf_t4_end - self._perf_t4_start:.3f}s")
 
-    def append_message_safe(self, role: str, text: str, timestamp: str = None):
+    def append_message_safe(self, role: str, text: str, timestamp: str = None) -> None:
         """安全追加消息 — 如果 ChatWebDisplay 未就绪，缓冲到队列"""
         if self._chat_display_ready and self.chat_display:
             if role == "user":
@@ -677,7 +677,7 @@ class ChatPage(
         else:
             self._pending_chat_messages.append((role, text, timestamp))
 
-    def _replay_pending_chat_messages(self):
+    def _replay_pending_chat_messages(self) -> None:
         """重放缓冲消息 — 在 ChatWebDisplay 创建后调用"""
         if not self._pending_chat_messages:
             return
@@ -691,7 +691,7 @@ class ChatPage(
         self._pending_chat_messages.clear()
 
     # T10: showEvent 埋点
-    def showEvent(self, event):
+    def showEvent(self, event) -> None:
         """首次显示时输出性能汇总"""
         super().showEvent(event)
         if not hasattr(self, '_perf_first_show'):
@@ -706,7 +706,7 @@ class ChatPage(
             if t1 > 0:
                 logger.info(f"[PERF] T1→T2: init前置 {t2-t1:.3f}s | T2→T3: 页面创建 {t3-t2:.3f}s | T1→T6: 总计 {t6-t1:.3f}s")
 
-    def _lazy_init_live2d(self):
+    def _lazy_init_live2d(self) -> None:
         """v1.10.2: 延迟创建 Live2DWidget — 让窗口先显示再加载 Chromium
 
         QWebEngineView 的创建需要启动 Chromium 渲染进程，这是整个启动链路中
@@ -800,7 +800,7 @@ class ChatPage(
         else:
             logger.info("[ChatPage] VRMWidget 不可用，跳过 VRM 支持")
 
-    def _force_live2d_repaint(self):
+    def _force_live2d_repaint(self) -> None:
         """微调窗口尺寸强制 QWebEngineView 合成到屏幕"""
         if not self.live2d_widget:
             return
@@ -810,7 +810,7 @@ class ChatPage(
             w.resize(g.width() + 1, g.height())
             w.resize(g.width(), g.height())
 
-    def _load_default_model(self):
+    def _load_default_model(self) -> None:
         """加载默认 Live2D 模型"""
         if self.live2d_widget is None:
             return  # Live2D 还没创建
@@ -828,7 +828,7 @@ class ChatPage(
             if self._chat_display_ready and self.chat_display:
                 self.chat_display.append_system_msg(f"默认模型不存在: {model_path}")
 
-    def _load_default_vrm_model(self):
+    def _load_default_vrm_model(self) -> None:
         """加载默认 VRM 3D 模型"""
         if self._vrm_widget is None:
             return
@@ -843,7 +843,7 @@ class ChatPage(
         else:
             logger.info(f"[ChatPage] VRM 默认模型不存在: {vrm_path}")
 
-    def switch_model_type(self, model_type: str):
+    def switch_model_type(self, model_type: str) -> None:
         """切换 Live2D / VRM 模型显示"""
         if model_type == self._current_model_type:
             return
@@ -877,7 +877,7 @@ class ChatPage(
             self._vrm_variant_bar.hide()
             logger.info("[ChatPage] 已切换到 Live2D 模型")
 
-    def _switch_vrm_variant(self, variant: str):
+    def _switch_vrm_variant(self, variant: str) -> None:
         """切换 VRM 变体"""
         if not self._vrm_widget:
             return
@@ -898,7 +898,7 @@ class ChatPage(
                 btn.setChecked(name == variant)
             logger.info(f"[ChatPage] 切换 VRM 变体: {variant} → {filename}")
 
-    def _import_vrm_model(self):
+    def _import_vrm_model(self) -> None:
         """导入新的 VRM 模型文件"""
         path, _ = QFileDialog.getOpenFileName(
             self, "选择 VRM 模型文件",
@@ -916,7 +916,7 @@ class ChatPage(
         InfoBar.success("导入成功", f"VRM 模型已导入: {model_name}", parent=self)
         logger.info(f"[ChatPage] 导入 VRM: {path} → {dest}")
 
-    def _import_live2d_model(self):
+    def _import_live2d_model(self) -> None:
         """导入新的 Live2D 模型文件夹"""
         path = QFileDialog.getExistingDirectory(
             self, "选择 Live2D 模型文件夹"
@@ -938,7 +938,7 @@ class ChatPage(
         InfoBar.success("导入成功", f"Live2D 模型已导入: {model_name}", parent=self)
         logger.info(f"[ChatPage] 导入 Live2D: {path} → {dest_dir}")
 
-    def _apply_vrm_display_config(self):
+    def _apply_vrm_display_config(self) -> None:
         """读取保存的 VRM 显示配置并应用到当前模型"""
         if not self._vrm_widget:
             return
@@ -954,7 +954,7 @@ class ChatPage(
             self._vrm_widget.apply_display_config(config)
 
     @property
-    def backend(self):
+    def backend(self) -> None:
         """获取后端实例（延迟初始化）"""
         if self._backend is None:
             main_window = self.window()
@@ -962,7 +962,7 @@ class ChatPage(
                 self._backend = main_window.backend
         return self._backend
 
-    def on_backend_ready(self):
+    def on_backend_ready(self) -> None:
         """后端就绪回调 — 启动 Live2D、加载 TTS 配置和对话历史"""
         if not self.backend:
             return
@@ -984,7 +984,7 @@ class ChatPage(
         else:
             QTimer.singleShot(300, self._load_backend_history)
 
-    def _load_tts_config_on_backend_ready(self):
+    def _load_tts_config_on_backend_ready(self) -> None:
         """后端就绪后加载 TTS 配置"""
         if not self._chat_display_ready:
             return
@@ -1026,7 +1026,7 @@ class ChatPage(
             self.tts_combo.blockSignals(False)
             self.voice_combo.blockSignals(False)
 
-    def _load_backend_history(self):
+    def _load_backend_history(self) -> None:
         """从 backend.history 加载对话历史"""
         if not self._chat_display_ready or not self.chat_display:
             return
@@ -1052,7 +1052,7 @@ class ChatPage(
 
     # ========== 发送/流式对话 ==========
 
-    def _send_message(self, text: str = ""):
+    def _send_message(self, text: str = "") -> None:
         """发送消息"""
         if self._is_streaming:
             return
@@ -1128,7 +1128,7 @@ class ChatPage(
         worker.tool_call_status.connect(self._on_tool_call_status)
         worker.start()
 
-    def _stop_streaming(self):
+    def _stop_streaming(self) -> None:
         """停止流式对话"""
         if self._worker and self._is_streaming:
             self._worker.stop_stream()
@@ -1153,14 +1153,14 @@ class ChatPage(
                     w.wait(500)
             self._tts_workers.clear()
 
-    def _on_send_or_stop(self):
+    def _on_send_or_stop(self) -> None:
         """发送/停止按钮点击——根据当前状态路由"""
         if self._is_streaming:
             self._stop_streaming()
         else:
             self._send_message()
 
-    def _set_streaming_state(self, streaming: bool):
+    def _set_streaming_state(self, streaming: bool) -> None:
         """流式状态切换——同按钮变色不消失（参考 ChatGPT 设计）"""
         self._is_streaming = streaming
         if streaming:
@@ -1174,18 +1174,18 @@ class ChatPage(
         self.input_field.setEnabled(not streaming)
 
     @Slot(str)
-    def _on_tool_call_status(self, display_text: str):
+    def _on_tool_call_status(self, display_text: str) -> None:
         """FC 工具调用状态提示 — 在聊天界面显示系统消息"""
         self.chat_display.append_system_msg(display_text)
 
     @Slot(str)
-    def _on_chunk(self, chunk_text: str):
+    def _on_chunk(self, chunk_text: str) -> None:
         """收到流式文本片段"""
         self._current_ai_text += chunk_text
         self.chat_display.update_streaming(self._current_ai_text)
 
     @Slot(str)
-    def _on_sentence_ready(self, sentence: str):
+    def _on_sentence_ready(self, sentence: str) -> None:
         """流式 TTS：检测到完整句子，在后台线程合成音频
 
         v14 FIX: 给每个句子分配递增序号，传递给 TTS 任务，
@@ -1196,7 +1196,7 @@ class ChatPage(
         # v14 FIX: 递增序号并捕获当前值
         self._tts_seq_counter += 1
         seq = self._tts_seq_counter
-        def _tts_task(text, seq_num):
+        def _tts_task(text, seq_num) -> None:
             try:
                 audio_path = self.backend.speak(text)
                 if audio_path and os.path.exists(audio_path):
@@ -1207,7 +1207,7 @@ class ChatPage(
         self._tts_executor.submit(_tts_task, sentence, seq)
 
     @Slot(dict)
-    def _on_stream_finished(self, result: dict):
+    def _on_stream_finished(self, result: dict) -> None:
         """流式对话完成"""
         # 守卫1: 流已停止
         if not self._is_streaming:
@@ -1257,7 +1257,7 @@ class ChatPage(
     _auto_expression_enabled = True
 
     @Slot(str)
-    def _on_error(self, error_msg: str):
+    def _on_error(self, error_msg: str) -> None:
         """处理错误"""
         self.chat_display.append_system_msg(f"错误: {error_msg}")
         self._current_ai_text = ""
@@ -1265,11 +1265,11 @@ class ChatPage(
 
     # ========== 消息操作回调 ==========
 
-    def _on_action_copy(self, text: str):
+    def _on_action_copy(self, text: str) -> None:
         """复制消息"""
         QApplication.clipboard().setText(text)
 
-    def _on_action_retry(self, msg_id: str):
+    def _on_action_retry(self, msg_id: str) -> None:
         """重试（重新生成最后一条 AI 回复）"""
         if self._is_streaming:
             return
@@ -1285,24 +1285,24 @@ class ChatPage(
             self.input_field.setText(last_user_msg)
             self._send_message()
 
-    def _on_action_quote(self, text: str):
+    def _on_action_quote(self, text: str) -> None:
         """引用消息"""
         self._pending_quote = text
         self.input_field.set_quote(text)
         self.input_field.setFocus()
 
-    def _on_action_edit(self, msg_id: str, text: str):
+    def _on_action_edit(self, msg_id: str, text: str) -> None:
         """编辑重发"""
         self.input_field.setText(text)
         self.input_field.setFocus()
 
     # ========== 搜索 ==========
 
-    def _toggle_search(self):
+    def _toggle_search(self) -> None:
         """切换搜索栏"""
         self.search_bar.show_search()
 
-    def _on_search(self, query: str):
+    def _on_search(self, query: str) -> None:
         """搜索消息 — 当前会话高亮 + 跨会话计数"""
         count = self.chat_display.search(query)
 
@@ -1334,14 +1334,14 @@ class ChatPage(
         else:
             self.search_bar.set_result_count(count)
 
-    def _on_search_navigate(self, direction: int):
+    def _on_search_navigate(self, direction: int) -> None:
         """导航搜索结果"""
         # 简单实现：重新搜索并高亮
         pass
 
     # ========== TTS/录音 ==========
 
-    def _on_tts_audio_ready(self, audio_path: str, seq: int = 0):
+    def _on_tts_audio_ready(self, audio_path: str, seq: int = 0) -> None:
         """TTS 合成完成回调 — 统一排队，不中断当前播放
 
         排序缓冲区机制（seq > 0 时生效）：
@@ -1368,7 +1368,7 @@ class ChatPage(
         # 尝试释放连续的排序序号并播放
         self._try_play_next()
 
-    def _try_play_next(self):
+    def _try_play_next(self) -> None:
         """统一的播放调度 — 释放排序缓冲区 + 播放下一首
 
         所有播放决策集中在此方法，避免多处重复释放导致竞态条件。
@@ -1402,14 +1402,14 @@ class ChatPage(
         state = self._media_player.playbackState()
         return state == QMediaPlayer.PlaybackState.PlayingState
 
-    def _cleanup_tts_worker(self, worker):
+    def _cleanup_tts_worker(self, worker) -> None:
         """清理已完成的 TTSWorker"""
         try:
             self._tts_workers.remove(worker)
         except ValueError:
             pass
 
-    def _play_audio(self, file_path: str):
+    def _play_audio(self, file_path: str) -> None:
         """播放音频（含 Live2D 口型同步）"""
         try:
             self._media_player.setSource(QUrl.fromLocalFile(file_path))
@@ -1419,7 +1419,7 @@ class ChatPage(
         except Exception as e:
             logger.info(f"[ChatPage] 音频播放失败: {e}")
 
-    def _start_lipsync(self):
+    def _start_lipsync(self) -> None:
         """TTS 播放时驱动 Live2D 口型动画"""
         if not self._animation_controller:
             return
@@ -1442,7 +1442,7 @@ class ChatPage(
             pass  # 未连接时 disconnect 会抛异常，忽略即可
         self._media_player.playbackStateChanged.connect(self._on_playback_state_changed)
 
-    def _lipsync_tick(self):
+    def _lipsync_tick(self) -> None:
         """口型同步定时更新 — 模拟嘴巴开合"""
         if not self.isVisible():
             return
@@ -1455,7 +1455,7 @@ class ChatPage(
         mouth_open = random.uniform(0.3, 1.0)
         self._animation_controller.set_mouth_open(mouth_open)
 
-    def _on_playback_state_changed(self, state):
+    def _on_playback_state_changed(self, state) -> None:
         """播放结束 → 播队首（排序缓冲区释放统一由 _try_play_next 处理）
 
         v1.11.15 FIX: 不再在此处释放排序缓冲区，避免与 _on_tts_audio_ready 的重复释放。
@@ -1470,7 +1470,7 @@ class ChatPage(
             # 统一走 _try_play_next（包含释放排序缓冲区 + 播放下一首）
             self._try_play_next()
 
-    def _toggle_recording(self, checked: bool):
+    def _toggle_recording(self, checked: bool) -> None:
         """切换录音状态"""
         if checked:
             self.record_btn.setText("停止")
@@ -1484,7 +1484,7 @@ class ChatPage(
                 self._recording_data = []
                 self._sample_rate = 16000
 
-                def audio_callback(indata, frames, time_info, status):
+                def audio_callback(indata, frames, time_info, status) -> None:
                     self._recording_data.append(indata.copy())
 
                 self._recording_stream = sd.InputStream(
@@ -1542,7 +1542,7 @@ class ChatPage(
                 self.chat_display.append_system_msg(f"录音停止失败: {e}")
 
     @Slot(str)
-    def _on_asr_result(self, text: str):
+    def _on_asr_result(self, text: str) -> None:
         """ASR 识别完成"""
         if self._recording_file:
             try:
@@ -1558,7 +1558,7 @@ class ChatPage(
             self.chat_display.append_system_msg("未能识别语音内容")
 
     @Slot(str)
-    def _on_asr_error(self, error_msg: str):
+    def _on_asr_error(self, error_msg: str) -> None:
         """ASR 识别失败"""
         if self._recording_file:
             try:
@@ -1570,7 +1570,7 @@ class ChatPage(
 
     # ========== 实时语音 ==========
 
-    def _toggle_realtime_voice(self, checked: bool):
+    def _toggle_realtime_voice(self, checked: bool) -> None:
         """切换实时语音模式
 
         v14 FIX: 改进错误处理和信号连接/断开逻辑
@@ -1612,7 +1612,7 @@ class ChatPage(
             except (RuntimeError, TypeError):
                 pass
 
-    def _on_realtime_speech(self, text: str):
+    def _on_realtime_speech(self, text: str) -> None:
         """实时语音识别完成
 
         v14 FIX: 完善停止逻辑，清空所有旧的 TTS 状态，
@@ -1645,13 +1645,13 @@ class ChatPage(
 
     # ========== 桌面宠物 ==========
 
-    def _toggle_pet(self):
+    def _toggle_pet(self) -> None:
         """切换桌面宠物模式"""
         main_window = self.window()
         if hasattr(main_window, '_toggle_desktop_pet'):
             main_window._toggle_desktop_pet()
 
-    def _on_clear_chat(self):
+    def _on_clear_chat(self) -> None:
         """清空对话（带确认）"""
         from qfluentwidgets import MessageBox
         msg = MessageBox("清空对话", "确定要清空所有对话记录吗？此操作不可撤销。", self)
@@ -1660,12 +1660,12 @@ class ChatPage(
 
     # ========== 拖拽发送 ==========
 
-    def dragEnterEvent(self, event: QDragEnterEvent):
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         """拖拽进入"""
         if event.mimeData().hasUrls() or event.mimeData().hasImage():
             event.acceptProposedAction()
 
-    def dropEvent(self, event: QDropEvent):
+    def dropEvent(self, event: QDropEvent) -> None:
         """拖拽释放 — 发送文件"""
         mime = event.mimeData()
         if mime.hasUrls():
@@ -1692,7 +1692,7 @@ class ChatPage(
 
     # ========== 图片/视觉/OCR ==========
 
-    def _upload_image(self):
+    def _upload_image(self) -> None:
         """上传图片进行视觉理解"""
         file_path, _ = QFileDialog.getOpenFileName(
             self, "选择图片", "",
@@ -1705,7 +1705,7 @@ class ChatPage(
         self.input_field.setFocus()
         self.input_field.setPlaceholderText("输入关于图片的问题，或直接按回车进行OCR识别...")
 
-    def _screenshot_ocr(self):
+    def _screenshot_ocr(self) -> None:
         """截图OCR — 区域选择截图后识别文字"""
         if not self.backend:
             self.chat_display.append_system_msg("后端未初始化，无法使用OCR")
@@ -1718,7 +1718,7 @@ class ChatPage(
         except Exception as e:
             self.chat_display.append_system_msg(f"截图OCR失败: {e}")
 
-    def _on_screenshot_ready(self, tmp_path: str):
+    def _on_screenshot_ready(self, tmp_path: str) -> None:
         """截图区域保存完成，开始 OCR"""
         self.chat_display.append_system_msg("正在识别屏幕文字...")
         self._ocr_worker = OCRWorker(self.backend, tmp_path)
@@ -1727,7 +1727,7 @@ class ChatPage(
         self._ocr_worker.start()
 
     @Slot(str)
-    def _on_ocr_result(self, text: str):
+    def _on_ocr_result(self, text: str) -> None:
         """OCR 识别完成"""
         if text:
             self.chat_display.append_system_msg(f"OCR 识别结果:\n{text}")
@@ -1736,7 +1736,7 @@ class ChatPage(
             self.chat_display.append_system_msg("OCR 未识别到文字")
 
     @Slot(str)
-    def _on_ocr_error(self, error: str):
+    def _on_ocr_error(self, error: str) -> None:
         """OCR 识别失败"""
         self.chat_display.append_system_msg(f"OCR 识别失败: {error}")
 
@@ -1763,21 +1763,21 @@ class ChatPage(
         return None  # 异步返回，结果通过信号传递
 
     @Slot(str)
-    def _on_vision_result(self, enriched_text: str):
+    def _on_vision_result(self, enriched_text: str) -> None:
         """视觉理解完成，发送消息"""
         self.input_field.setPlaceholderText("输入消息，Enter 发送 · Ctrl+F 搜索")
         if enriched_text:
             self._send_message(enriched_text)
 
     @Slot(str)
-    def _on_vision_error(self, error_msg: str):
+    def _on_vision_error(self, error_msg: str) -> None:
         """视觉理解失败"""
         self.chat_display.append_system_msg(f"视觉理解失败: {error_msg}")
         self.input_field.setPlaceholderText("输入消息，Enter 发送 · Ctrl+F 搜索")
 
     # ========== 多会话管理 ==========
 
-    def _on_session_switched(self, session_id: str):
+    def _on_session_switched(self, session_id: str) -> None:
         """切换会话"""
         # 保存当前会话
         self._save_current_session()
@@ -1799,13 +1799,13 @@ class ChatPage(
                 elif role == "assistant":
                     self.chat_display.append_ai_msg(content, timestamp=time_str)
 
-    def _on_session_created(self, session_id: str):
+    def _on_session_created(self, session_id: str) -> None:
         """创建新会话"""
         if self.chat_display:
             self.chat_display.clear()
         self._chat_messages = []
 
-    def _save_current_session(self):
+    def _save_current_session(self) -> None:
         """保存当前会话"""
         if not self.session_manager:
             return
@@ -1815,7 +1815,7 @@ class ChatPage(
 
     # ========== 消息记录 ==========
 
-    def _record_message(self, role: str, content: str):
+    def _record_message(self, role: str, content: str) -> None:
         """记录一条消息到历史列表"""
         if not hasattr(self, '_chat_messages'):
             self._chat_messages = []
@@ -1829,14 +1829,14 @@ class ChatPage(
 
     # ========== TTS 控制 ==========
 
-    def _populate_edge_voices_chat(self):
+    def _populate_edge_voices_chat(self) -> None:
         """填充 Edge TTS 音色列表"""
         from app.shared_config import EDGE_VOICES
         self.voice_combo.clear()
         for voice_id, label in EDGE_VOICES:
             self.voice_combo.addItem(f"{label}", userData=voice_id)
 
-    def _populate_gptsovits_voices_chat(self):
+    def _populate_gptsovits_voices_chat(self) -> None:
         """填充 GPT-SoVITS 音色列表"""
         self.voice_combo.clear()
         if not self.backend:
@@ -1859,7 +1859,7 @@ class ChatPage(
             logger.info(f"[ChatPage] 获取 GPT-SoVITS 音色失败: {e}")
         self.voice_combo.addItem("默认音色", userData="default")
 
-    def _on_tts_engine_changed_chat(self, index: int):
+    def _on_tts_engine_changed_chat(self, index: int) -> None:
         """Chat 页 TTS 引擎切换"""
         engine = self.tts_combo.currentText()
         if engine == "Edge TTS":
@@ -1868,11 +1868,11 @@ class ChatPage(
             self._populate_gptsovits_voices_chat()
         self._apply_tts_to_backend()
 
-    def _on_voice_changed_chat(self, index: int):
+    def _on_voice_changed_chat(self, index: int) -> None:
         """Chat 页音色切换"""
         self._apply_tts_to_backend()
 
-    def _on_speed_changed(self, value: int):
+    def _on_speed_changed(self, value: int) -> None:
         """TTS 速度滑块变更"""
         speed = value / 100.0
         if self.backend:
@@ -1884,12 +1884,12 @@ class ChatPage(
                 if hasattr(self.backend.tts, 'set_speed'):
                     self.backend.tts.set_speed(speed)
 
-    def _on_volume_changed(self, value: int):
+    def _on_volume_changed(self, value: int) -> None:
         """TTS 音量滑块变更"""
         volume = value / 100.0
         self._audio_output.setVolume(min(volume, 1.0))
 
-    def _on_tts_mode_toggled(self, checked: bool):
+    def _on_tts_mode_toggled(self, checked: bool) -> None:
         """TTS 流式/整段模式切换"""
         if checked:
             self.tts_mode_btn.setText("流式")
@@ -1905,7 +1905,7 @@ class ChatPage(
                 return str(user_data)
         return self.voice_combo.currentText()
 
-    def _apply_tts_to_backend(self):
+    def _apply_tts_to_backend(self) -> None:
         """将当前 TTS 选择应用到后端 — 使用线程安全的 rebuild_tts()"""
         if not self.backend:
             return
@@ -1939,7 +1939,7 @@ class ChatPage(
         except Exception as e:
             logger.info(f"[ChatPage] TTS 偏好保存失败: {e}")
 
-    def sync_tts_from_settings(self, engine: str, voice_id: str):
+    def sync_tts_from_settings(self, engine: str, voice_id: str) -> None:
         """从设置页同步 TTS 配置到 Chat 页"""
         self.tts_combo.blockSignals(True)
         self.voice_combo.blockSignals(True)
@@ -1963,13 +1963,13 @@ class ChatPage(
 
     # ========== 对话历史持久化 ==========
 
-    def _get_history_path(self):
+    def _get_history_path(self) -> None:
         """获取对话历史文件路径"""
         state_dir = os.path.join(PROJECT_DIR, "app", "state")
         os.makedirs(state_dir, exist_ok=True)
         return os.path.join(state_dir, "native_chat_history.json")
 
-    def _save_chat_history(self):
+    def _save_chat_history(self) -> None:
         """保存对话历史到 JSON"""
         try:
             messages = getattr(self, '_chat_messages', [])
@@ -1986,7 +1986,7 @@ class ChatPage(
         except Exception as e:
             pass
 
-    def _load_chat_history(self):
+    def _load_chat_history(self) -> None:
         """加载对话历史（优化 #9: 仅渲染最近20条，完整历史保存在 _chat_messages 中供 LLM 上下文使用）"""
         if not self.chat_display:
             return  # ChatWebDisplay 未创建，跳过（将在 _init_ui_content 中调用）
@@ -2011,7 +2011,7 @@ class ChatPage(
         except Exception as e:
             pass
 
-    def clear_chat(self):
+    def clear_chat(self) -> None:
         """清空对话"""
         if self.chat_display:
             self.chat_display.clear()
@@ -2020,7 +2020,7 @@ class ChatPage(
 
     # ========== 主动说话回调 ==========
 
-    def _on_proactive_speech(self, text: str):
+    def _on_proactive_speech(self, text: str) -> None:
         """处理 AI 主动说话回调"""
         from PySide6.QtCore import QMetaObject, Qt
         QMetaObject.invokeMethod(
@@ -2031,7 +2031,7 @@ class ChatPage(
         )
 
     @Slot(str)
-    def _handle_proactive_speech(self, text: str):
+    def _handle_proactive_speech(self, text: str) -> None:
         """在 UI 线程中处理主动说话（TTS 合成在后台线程）"""
         if not text:
             return
@@ -2060,7 +2060,7 @@ class ChatPage(
 
     # ========== 主题刷新 ==========
 
-    def refresh_theme(self):
+    def refresh_theme(self) -> None:
         """主题切换时刷新所有硬编码样式"""
         c = get_colors()
 
@@ -2254,7 +2254,7 @@ class ChatPage(
         """)
 
     @staticmethod
-    def _style_qcombobox(combo: QComboBox, c):
+    def _style_qcombobox(combo: QComboBox, c) -> None:
         """为原生 QComboBox 应用与 qfluentwidgets 风格一致的样式"""
         combo.setStyleSheet(f"""
             QComboBox {{

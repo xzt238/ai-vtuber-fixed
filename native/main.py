@@ -45,7 +45,7 @@ import logging
 if os.name == 'nt':
     import subprocess as _sp_main
     _SP_MAIN_ORIG = _sp_main.check_output
-    def _sp_main_patched(cmd, **kw):
+    def _sp_main_patched(cmd, **kw) -> None:
         try:
             prog = (cmd[0] if isinstance(cmd, (list, tuple)) else str(cmd).split()[0]).lower()
         except Exception as e:
@@ -99,7 +99,7 @@ from gugu_native.theme import apply_theme, get_global_qss, get_colors, apply_the
 # TrayManager / VoiceManager / HotkeyManager / DesktopPet / AutoStart / Update / Perf / DualMode
 
 # 统一版本号（从 app/version.py 读取）
-def _get_version():
+def _get_version() -> None:
     try:
         from app.version import VERSION
         return VERSION
@@ -124,7 +124,7 @@ logger = logging.getLogger('GuguGagaApp')
 class GuguGagaApp(FluentWindow):
     """咕咕嘎嘎 AI-VTuber 主窗口"""
 
-    def __init__(self, start_time=None, splash=None):
+    def __init__(self, start_time=None, splash=None) -> None:
         super().__init__()
         import time as _time
         self._init_start_time = start_time or _time.time()
@@ -249,7 +249,7 @@ class GuguGagaApp(FluentWindow):
 
         logger.info("GuguGagaApp initialized")
 
-    def _start_webui_check(self):
+    def _start_webui_check(self) -> None:
         """异步检测 WebUI 是否运行 — 纯通知式，不阻塞页面创建"""
         from gugu_native.widgets.dual_mode_compat import WebUICheckWorker
         self._webui_checker = WebUICheckWorker(self.dual_mode.WEBUI_HTTP_PORT)
@@ -259,7 +259,7 @@ class GuguGagaApp(FluentWindow):
         self._webui_check_thread.started.connect(self._webui_checker.check)
         self._webui_check_thread.start()
 
-    def _init_backend_managers(self):
+    def _init_backend_managers(self) -> None:
         """延迟创建后端管理器（窗口渲染完成后）"""
         if self._managers_initialized:
             return
@@ -284,7 +284,7 @@ class GuguGagaApp(FluentWindow):
         self._managers_initialized = True
         logger.info("Backend managers initialized (delayed)")
 
-    def _on_webui_check_result(self, is_running: bool):
+    def _on_webui_check_result(self, is_running: bool) -> None:
         """WebUI 检测回调 — 仅显示提示，不创建页面"""
         if is_running:
             from qfluentwidgets import InfoBar, InfoBarPosition
@@ -300,7 +300,7 @@ class GuguGagaApp(FluentWindow):
             self._webui_check_thread.quit()
             self._webui_check_thread.wait(2000)
 
-    def _create_pages(self):
+    def _create_pages(self) -> None:
         """创建导航页面 — 首屏立即创建，其余页面延迟创建以加速冷启动"""
 
         # 对话页面（首屏，立即创建）
@@ -324,7 +324,7 @@ class GuguGagaApp(FluentWindow):
         except Exception as e:
             pass
 
-    def _create_non_primary_pages(self):
+    def _create_non_primary_pages(self) -> None:
         """延迟创建非首屏页面 — 分批创建，减少单帧压力
 
         第一批：使用 LazyPageMixin 的页面（__init__ 极轻量，骨架屏占位）
@@ -358,7 +358,7 @@ class GuguGagaApp(FluentWindow):
         # 第二批：设置页面（延迟 200ms，让先创建的页面先渲染）
         QTimer.singleShot(200, self._create_settings_pages)
 
-    def _create_settings_pages(self):
+    def _create_settings_pages(self) -> None:
         """延迟创建设置相关页面"""
         try:
             from gugu_native.pages.vrm_settings_page import VRMSettingsPage
@@ -455,7 +455,7 @@ class GuguGagaApp(FluentWindow):
         )
 
     @property
-    def backend(self):
+    def backend(self) -> None:
         """延迟初始化后端
 
         v1.11.22: 异步初始化后，_backend 由 PerformanceManager._on_backend_init_done() 赋值。
@@ -468,7 +468,7 @@ class GuguGagaApp(FluentWindow):
 
     # ========== 异步后端就绪回调 ==========
 
-    def _on_backend_ready_async(self):
+    def _on_backend_ready_async(self) -> None:
         """后端就绪 — 错峰初始化各页面
 
         v1.11.23: 替代原来的 _on_backend_ready() 同步串行初始化。
@@ -525,7 +525,7 @@ class GuguGagaApp(FluentWindow):
                 # Fallback: 后端无 preload 方法时走旧逻辑
                 logger.warning("Backend has no preload_models_parallel(), falling back to serial")
                 import threading
-                def _preload_asr():
+                def _preload_asr() -> None:
                     try:
                         import time as _t
                         _t.sleep(0.01)
@@ -542,10 +542,10 @@ class GuguGagaApp(FluentWindow):
         self._tts_prewarmed = False
         self._prewarm_tts_background()
 
-    def _prewarm_tts_background(self):
+    def _prewarm_tts_background(self) -> None:
         """后台预热 TTS 模型 — 不阻塞 UI，首次对话前完成加载"""
 
-        def _do_prewarm():
+        def _do_prewarm() -> None:
             try:
                 if not self.backend or not self.backend.tts:
                     return
@@ -572,10 +572,10 @@ class GuguGagaApp(FluentWindow):
         threading.Thread(target=_do_prewarm, daemon=True, name="tts-prewarm").start()
         logger.info("TTS background prewarm started")
 
-    def _prewarm_tts(self):
+    def _prewarm_tts(self) -> None:
         """TTS 引擎预热 — 串行加载上次使用的音色项目,避免 ref_audio_path 为空报错"""
 
-        def prewarm_single_voice(voice_name, tts):
+        def prewarm_single_voice(voice_name, tts) -> None:
             """预热单个音色"""
             try:
                 if hasattr(tts, '_project_config'):
@@ -596,7 +596,7 @@ class GuguGagaApp(FluentWindow):
             except Exception as e:
                 logger.warning(f"TTS Prewarm: {voice_name} 预热失败: {e}")
 
-        def do_prewarm():
+        def do_prewarm() -> None:
             """后台预热主逻辑(串行,避免并发推理冲突)"""
             try:
                 if not self.backend or not self.backend.tts:
@@ -639,26 +639,26 @@ class GuguGagaApp(FluentWindow):
 
     # ========== 实时语音 ==========
 
-    def _on_speech_recognized(self, text: str):
+    def _on_speech_recognized(self, text: str) -> None:
         """语音识别完成 → 发送到对话"""
         if text:
             self.chat_page.input_field.setText(text)
             self.chat_page._send_message()
 
-    def _on_vad_state_changed(self, is_speaking: bool):
+    def _on_vad_state_changed(self, is_speaking: bool) -> None:
         """语音活动状态变化"""
         # 更新录音按钮状态
         if hasattr(self.chat_page, 'record_btn'):
             if is_speaking:
                 self.chat_page.record_btn.setText("识别中...")
 
-    def _on_voice_error(self, error_msg: str):
+    def _on_voice_error(self, error_msg: str) -> None:
         """语音错误"""
         self.chat_page.chat_display.append_system_msg(f"语音错误: {error_msg}")
 
     # ========== 全局快捷键 ==========
 
-    def _on_hotkey_triggered(self, action: str):
+    def _on_hotkey_triggered(self, action: str) -> None:
         """快捷键触发"""
         if action == "toggle_record":
             # 切换录音
@@ -692,7 +692,7 @@ class GuguGagaApp(FluentWindow):
 
     # ========== 桌面宠物 ==========
 
-    def _toggle_desktop_pet(self):
+    def _toggle_desktop_pet(self) -> None:
         """切换桌面宠物模式"""
         if self._pet_window and self._pet_window.isVisible():
             self._pet_window.hide()
@@ -710,7 +710,7 @@ class GuguGagaApp(FluentWindow):
             self._pet_window.show()
             self.hide()
 
-    def _pause_main_live2d(self):
+    def _pause_main_live2d(self) -> None:
         """暂停主窗口的 Live2D 渲染以节省 GPU 资源"""
         try:
             # v2.0: Web 渲染模式下无需手动管理定时器，只停止动画控制器
@@ -721,14 +721,14 @@ class GuguGagaApp(FluentWindow):
 
     # ========== 运行调试窗口 ==========
 
-    def show_debug_window(self):
+    def show_debug_window(self) -> None:
         """显示运行调试窗口（启动后已隐藏，可重新打开查看历史日志）"""
         if self._splash:
             self._splash.show()
             self._splash.raise_()
             self._splash.activateWindow()
 
-    def _resume_main_live2d(self):
+    def _resume_main_live2d(self) -> None:
         """恢复主窗口的 Live2D 渲染"""
         try:
             # v2.0: Web 渲染模式下无需手动管理定时器，只恢复动画控制器
@@ -737,7 +737,7 @@ class GuguGagaApp(FluentWindow):
         except Exception as e:
             logger.debug(f"Resume main Live2D failed: {e}")
 
-    def _on_pet_switch_to_main(self):
+    def _on_pet_switch_to_main(self) -> None:
         """宠物切回主窗口"""
         if self._pet_window:
             self._pet_window.hide()
@@ -746,7 +746,7 @@ class GuguGagaApp(FluentWindow):
         # 恢复主窗口 Live2D 渲染
         self._resume_main_live2d()
 
-    def _on_pet_closed(self):
+    def _on_pet_closed(self) -> None:
         """宠物窗口关闭"""
         self.show()
         # 恢复主窗口 Live2D 渲染
@@ -754,7 +754,7 @@ class GuguGagaApp(FluentWindow):
 
     # ========== 自动更新 ==========
 
-    def _on_update_check(self, result: dict):
+    def _on_update_check(self, result: dict) -> None:
         """更新检查完成"""
         if result.get("has_update"):
             version = result.get("latest_version", "")
@@ -775,7 +775,7 @@ class GuguGagaApp(FluentWindow):
             else:
                 self.update_manager.skip_version(version)
 
-    def _on_update_downloaded(self, file_path: str):
+    def _on_update_downloaded(self, file_path: str) -> None:
         """更新下载完成"""
         InfoBar.success(
             title="下载完成",
@@ -787,7 +787,7 @@ class GuguGagaApp(FluentWindow):
 
     # ========== 页面切换与窗口状态 ==========
 
-    def changeEvent(self, event):
+    def changeEvent(self, event) -> None:
         """监听窗口状态变化 — 最小化时暂停 idle 动画"""
         super().changeEvent(event)
         if event.type() == event.Type.WindowStateChange:
@@ -800,13 +800,13 @@ class GuguGagaApp(FluentWindow):
                 if controller:
                     controller.resume_idle()
 
-    def switchTo(self, widget):
+    def switchTo(self, widget) -> None:
         """重写页面切换 — 支持懒加载页面的 ensure_initialized()"""
         if widget and hasattr(widget, 'ensure_initialized'):
             widget.ensure_initialized()
         super().switchTo(widget)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event) -> None:
         """窗口 resize 期间广播拖动状态，暂停 Live2D 渲染"""
         super().resizeEvent(event)
         if hasattr(self, 'perf_manager'):
@@ -815,7 +815,7 @@ class GuguGagaApp(FluentWindow):
                 self._drag_timer.stop()
                 self._drag_timer.start(100)
 
-    def moveEvent(self, event):
+    def moveEvent(self, event) -> None:
         """窗口移动期间广播拖动状态，暂停 Live2D 渲染"""
         super().moveEvent(event)
         if hasattr(self, 'perf_manager'):
@@ -826,7 +826,7 @@ class GuguGagaApp(FluentWindow):
 
     # ========== 窗口事件 ==========
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event) -> None:
         """全局键盘事件 — Ctrl+F 搜索"""
         if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             if event.key() == Qt.Key.Key_F:
@@ -836,7 +836,7 @@ class GuguGagaApp(FluentWindow):
                 return
         super().keyPressEvent(event)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event) -> None:
         """关闭事件 — 最小化到托盘或退出"""
         # 先尝试最小化到托盘
         if not getattr(self, '_force_quit', False) and hasattr(self, 'tray_manager') and self.tray_manager.handle_close_event(event):
@@ -845,12 +845,12 @@ class GuguGagaApp(FluentWindow):
         # 正常退出
         self._cleanup_and_exit(event)
 
-    def _on_quit_requested(self):
+    def _on_quit_requested(self) -> None:
         """托盘菜单触发退出"""
         self._force_quit = True
         self.close()
 
-    def _cleanup_and_exit(self, event):
+    def _cleanup_and_exit(self, event) -> None:
         """清理资源并退出
 
         v1.11.22: 增量 GC 定时器停止 + gc.enable() 恢复 + 页面 Worker 清理
@@ -907,7 +907,7 @@ class GuguGagaApp(FluentWindow):
         logger.info("Cleanup completed")
 
 
-def _check_dependencies():
+def _check_dependencies() -> None:
     """检查关键依赖（PySide6），失败时弹出跨平台消息框"""
     try:
         import PySide6  # noqa: F401
@@ -921,7 +921,7 @@ def _check_dependencies():
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     # ★ 依赖检查（在 QApplication 之前，避免创建窗口后才发现依赖缺失）
     _check_dependencies()
 
@@ -931,7 +931,7 @@ def main():
     _PROCESS_START = _time.time()
     _last_checkpoint = _time.time()
 
-    def _checkpoint(name):
+    def _checkpoint(name) -> None:
         nonlocal _last_checkpoint
         now = _time.time()
         elapsed_total = now - _PROCESS_START

@@ -43,7 +43,7 @@ class ChatSession:
     """单个聊天会话数据"""
 
     def __init__(self, session_id: str = "", title: str = "新对话",
-                 messages: list = None, created_at: str = "", updated_at: str = ""):
+                 messages: list = None, created_at: str = "", updated_at: str = "") -> None:
         self.session_id = session_id or f"session_{int(time.time() * 1000)}"
         self.title = title
         self.messages = messages or []
@@ -69,10 +69,10 @@ class ChatSession:
             updated_at=data.get("updated_at", ""),
         )
 
-    def update_timestamp(self):
+    def update_timestamp(self) -> None:
         self.updated_at = datetime.now().isoformat()
 
-    def auto_title(self):
+    def auto_title(self) -> None:
         """根据第一条用户消息自动生成标题"""
         for msg in self.messages:
             if msg.get("role") == "user":
@@ -95,7 +95,7 @@ class SessionManager(QWidget):
     sessionCreated = Signal(str)
     sessionDeleted = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("sessionManager")
         self._sessions: Dict[str, ChatSession] = {}
@@ -114,7 +114,7 @@ class SessionManager(QWidget):
 
         self._load_sessions()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化 UI"""
         from gugu_native.theme import get_colors
         c = get_colors()
@@ -197,7 +197,7 @@ class SessionManager(QWidget):
 
     # ===== 会话操作 =====
 
-    def _on_new_session(self):
+    def _on_new_session(self) -> None:
         """新建对话"""
         session = ChatSession()
         self._sessions[session.session_id] = session
@@ -208,14 +208,14 @@ class SessionManager(QWidget):
         self.sessionCreated.emit(session.session_id)
         self.sessionSwitched.emit(session.session_id)
 
-    def _on_item_clicked(self, item: QListWidgetItem):
+    def _on_item_clicked(self, item: QListWidgetItem) -> None:
         """点击会话项"""
         session_id = item.data(Qt.ItemDataRole.UserRole)
         if session_id != self._current_session_id:
             self._current_session_id = session_id
             self.sessionSwitched.emit(session_id)
 
-    def _on_context_menu(self, pos):
+    def _on_context_menu(self, pos) -> None:
         """右键菜单"""
         item = self._session_list.itemAt(pos)
         if not item:
@@ -254,7 +254,7 @@ class SessionManager(QWidget):
         elif action == delete_action:
             self._delete_session(session_id)
 
-    def _rename_session(self, session_id: str):
+    def _rename_session(self, session_id: str) -> None:
         """重命名会话"""
         session = self._sessions.get(session_id)
         if not session:
@@ -269,7 +269,7 @@ class SessionManager(QWidget):
             self._update_session_item(session_id)
             self._save_session(session)
 
-    def _delete_session(self, session_id: str):
+    def _delete_session(self, session_id: str) -> None:
         """删除会话"""
         session = self._sessions.get(session_id)
         if not session:
@@ -305,7 +305,7 @@ class SessionManager(QWidget):
                     # 没有会话了，自动创建新的
                     self._on_new_session()
 
-    def _on_search(self, text: str):
+    def _on_search(self, text: str) -> None:
         """搜索会话"""
         text_lower = text.lower()
         for i in range(self._session_list.count()):
@@ -318,7 +318,7 @@ class SessionManager(QWidget):
 
     # ===== 会话列表管理 =====
 
-    def _add_session_item(self, session: ChatSession):
+    def _add_session_item(self, session: ChatSession) -> None:
         """添加会话列表项"""
         item = QListWidgetItem(session.title)
         item.setData(Qt.ItemDataRole.UserRole, session.session_id)
@@ -328,7 +328,7 @@ class SessionManager(QWidget):
         item.setToolTip(f"创建: {created_display}\n更新: {updated_display}\n消息: {len(session.messages)} 条")
         self._session_list.insertItem(0, item)  # 新会话在顶部
 
-    def _update_session_item(self, session_id: str):
+    def _update_session_item(self, session_id: str) -> None:
         """更新会话列表项"""
         session = self._sessions.get(session_id)
         if not session:
@@ -365,7 +365,7 @@ class SessionManager(QWidget):
         except (ValueError, TypeError):
             return iso_str[:16] if len(iso_str) > 16 else iso_str
 
-    def _select_session(self, session_id: str):
+    def _select_session(self, session_id: str) -> None:
         """选中会话"""
         for i in range(self._session_list.count()):
             item = self._session_list.item(i)
@@ -375,7 +375,7 @@ class SessionManager(QWidget):
 
     # ===== 持久化 =====
 
-    def _load_sessions(self):
+    def _load_sessions(self) -> None:
         """加载所有会话（优化 #10: 仅加载元数据，messages 在切换时按需读取）"""
         os.makedirs(self._state_dir, exist_ok=True)
 
@@ -423,7 +423,7 @@ class SessionManager(QWidget):
             self._current_session_id = sorted_sessions[0].session_id
             self._select_session(self._current_session_id)
 
-    def _ensure_messages_loaded(self, session: ChatSession):
+    def _ensure_messages_loaded(self, session: ChatSession) -> None:
         """优化 #10: 按需加载会话消息"""
         if session.messages is not None:
             return
@@ -440,7 +440,7 @@ class SessionManager(QWidget):
             session.messages = []
         session._messages_loaded = True
 
-    def _save_session(self, session: ChatSession):
+    def _save_session(self, session: ChatSession) -> None:
         """保存单个会话"""
         os.makedirs(self._state_dir, exist_ok=True)
         filepath = os.path.join(self._state_dir, f"{session.session_id}.json")
@@ -450,7 +450,7 @@ class SessionManager(QWidget):
         except Exception as e:
             logger.info(f"[SessionManager] 会话保存失败: {e}")
 
-    def _delete_session_file(self, session_id: str):
+    def _delete_session_file(self, session_id: str) -> None:
         """删除会话文件"""
         filepath = os.path.join(self._state_dir, f"{session_id}.json")
         try:
@@ -481,7 +481,7 @@ class SessionManager(QWidget):
             self._ensure_messages_loaded(session)
         return session
 
-    def update_session_messages(self, session_id: str, messages: list):
+    def update_session_messages(self, session_id: str, messages: list) -> None:
         """更新会话消息（优化 #2: 防抖保存，5s 无活动后批量写磁盘）"""
         session = self._sessions.get(session_id)
         if session:
@@ -495,7 +495,7 @@ class SessionManager(QWidget):
             self._dirty_sessions.add(session_id)
             self._save_timer.start(5000)  # 5秒无活动后批量保存
 
-    def _do_delayed_save(self):
+    def _do_delayed_save(self) -> None:
         """执行延迟保存（优化 #2: 由 _save_timer 触发）"""
         for sid in list(self._dirty_sessions):
             session = self._sessions.get(sid)
@@ -503,13 +503,13 @@ class SessionManager(QWidget):
                 self._save_session(session)
         self._dirty_sessions.clear()
 
-    def flush_dirty(self):
+    def flush_dirty(self) -> None:
         """强制保存所有脏会话（退出时调用）"""
         if self._save_timer.isActive():
             self._save_timer.stop()
         self._do_delayed_save()
 
-    def refresh_theme(self):
+    def refresh_theme(self) -> None:
         """刷新主题"""
         c = get_colors()
 

@@ -54,7 +54,7 @@ class SpectrumWidget(QWidget):
     支持渐变色、圆角柱、平滑动画。
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._bands = np.zeros(BAND_COUNT)
         self._target_bands = np.zeros(BAND_COUNT)
@@ -68,7 +68,7 @@ class SpectrumWidget(QWidget):
         # 优化 #3: 预创建渐变对象，避免每帧重建 32 个 QLinearGradient
         self._gradients = [QLinearGradient() for _ in range(BAND_COUNT)]
 
-    def set_bands(self, bands: np.ndarray):
+    def set_bands(self, bands: np.ndarray) -> None:
         """设置当前频谱数据（0.0~1.0 归一化）"""
         if len(bands) >= BAND_COUNT:
             self._target_bands = bands[:BAND_COUNT].copy()
@@ -77,12 +77,12 @@ class SpectrumWidget(QWidget):
             padded[:len(bands)] = bands
             self._target_bands = padded
 
-    def set_color_theme(self, theme: str):
+    def set_color_theme(self, theme: str) -> None:
         """设置颜色主题"""
         if theme in THEME_COLORS:
             self._color_theme = theme
 
-    def paintEvent(self, event):
+    def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -162,7 +162,7 @@ class AudioVisualizer(QWidget):
     FFT_ACTIVE_MS: int = 33   # ~30 fps
     FFT_IDLE_MS: int = 200    # ~5 fps
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._media_player = None
         self._audio_buffer = np.zeros(2048)
@@ -171,7 +171,7 @@ class AudioVisualizer(QWidget):
         self._simulate_mode = False
         self._init_ui()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
@@ -212,7 +212,7 @@ class AudioVisualizer(QWidget):
         self._theme_list = list(THEME_COLORS.keys())
         self._theme_index = 0
 
-    def connect_media_player(self, player: QMediaPlayer):
+    def connect_media_player(self, player: QMediaPlayer) -> None:
         """
         连接到 QMediaPlayer 以获取音频数据
 
@@ -228,7 +228,7 @@ class AudioVisualizer(QWidget):
         except Exception as e:
             pass
 
-    def set_audio_data(self, pcm_data: np.ndarray, sample_rate: int = 44100):
+    def set_audio_data(self, pcm_data: np.ndarray, sample_rate: int = 44100) -> None:
         """
         手动设置 PCM 音频数据进行 FFT
 
@@ -241,7 +241,7 @@ class AudioVisualizer(QWidget):
         if self._is_active:
             self._do_fft()
 
-    def _on_toggle(self, checked: bool):
+    def _on_toggle(self, checked: bool) -> None:
         """切换频谱显示"""
         self._is_active = checked
         if checked:
@@ -253,11 +253,11 @@ class AudioVisualizer(QWidget):
             self.spectrum.set_bands(np.zeros(BAND_COUNT))
             self.spectrum.update()
 
-    def _on_playback_state_changed(self, state):
+    def _on_playback_state_changed(self, state) -> None:
         """播放状态变化"""
         self._simulate_mode = (state == QMediaPlayer.PlaybackState.PlayingState)
 
-    def _do_fft(self):
+    def _do_fft(self) -> None:
         """执行 FFT 并更新频谱"""
         if self._simulate_mode or self._is_active:
             # 如果有真实 PCM 数据，使用 FFT
@@ -314,7 +314,7 @@ class AudioVisualizer(QWidget):
 
         return bands
 
-    def _generate_simulated_bands(self):
+    def _generate_simulated_bands(self) -> None:
         """生成模拟频谱动画（无真实音频输入时使用）"""
         import time
         t = time.time()
@@ -329,7 +329,7 @@ class AudioVisualizer(QWidget):
             bands[i] = max(0.05, base * decay * 0.6)
         self.spectrum.set_bands(bands)
 
-    def _cycle_theme(self):
+    def _cycle_theme(self) -> None:
         """循环切换颜色主题"""
         self._theme_index = (self._theme_index + 1) % len(self._theme_list)
         theme = self._theme_list[self._theme_index]
@@ -337,18 +337,18 @@ class AudioVisualizer(QWidget):
         self._theme_label.setText(theme)
         self.spectrum.update()
 
-    def showEvent(self, event):
+    def showEvent(self, event) -> None:
         """控件变为可见时，若已激活则启动 FFT 定时器"""
         super().showEvent(event)
         if self._is_active:
             self._fft_timer.start(self.FFT_ACTIVE_MS)
 
-    def hideEvent(self, event):
+    def hideEvent(self, event) -> None:
         """控件变为不可见时停止 FFT 定时器，避免后台空转"""
         super().hideEvent(event)
         self._fft_timer.stop()
 
-    def set_audio_active(self, active: bool):
+    def set_audio_active(self, active: bool) -> None:
         """设置音频活跃度状态，用于静默降频
 
         Args:

@@ -13,7 +13,7 @@ from qfluentwidgets import InfoBar, InfoBarPosition
 logger = logging.getLogger("gugu_native.utils")
 
 
-def show_info(parent, title: str, content: str, duration: int = 3000):
+def show_info(parent, title: str, content: str, duration: int = 3000) -> None:
     """显示信息栏（InfoBar）— 所有页面的统一通知方式"""
     InfoBar.info(
         title=title,
@@ -24,7 +24,7 @@ def show_info(parent, title: str, content: str, duration: int = 3000):
     )
 
 
-def show_warning(parent, title: str, content: str, duration: int = 4000):
+def show_warning(parent, title: str, content: str, duration: int = 4000) -> None:
     """显示警告栏"""
     InfoBar.warning(
         title=title,
@@ -35,7 +35,7 @@ def show_warning(parent, title: str, content: str, duration: int = 4000):
     )
 
 
-def show_error(parent, title: str, content: str, duration: int = 5000):
+def show_error(parent, title: str, content: str, duration: int = 5000) -> None:
     """显示错误栏"""
     InfoBar.error(
         title=title,
@@ -46,7 +46,7 @@ def show_error(parent, title: str, content: str, duration: int = 5000):
     )
 
 
-def deferred_call(callback, delay_ms: int = 50):
+def deferred_call(callback, delay_ms: int = 50) -> None:
     """延迟调用 — 避免在信号处理中阻塞 UI"""
     QTimer.singleShot(delay_ms, callback)
 

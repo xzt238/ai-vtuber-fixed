@@ -23,14 +23,14 @@ class TrayManager(QObject):
     # 信号：后端初始化进度
     init_progress = Signal(str)  # 进度消息
 
-    def __init__(self, main_window, parent=None):
+    def __init__(self, main_window, parent=None) -> None:
         super().__init__(parent)
         self.main_window = main_window
         self._tray = None
         self._menu = None
         self._backend_initialized = False
 
-    def setup(self):
+    def setup(self) -> None:
         """初始化托盘图标和菜单"""
         from app.shared_config import PROJECT_DIR
         _native_dir = os.path.join(PROJECT_DIR, "native")
@@ -98,31 +98,31 @@ class TrayManager(QObject):
             3000
         )
 
-    def _on_tray_activated(self, reason):
+    def _on_tray_activated(self, reason) -> None:
         """托盘图标激活事件"""
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             self._show_window()
 
-    def _show_window(self):
+    def _show_window(self) -> None:
         """显示并激活主窗口"""
         self.main_window.showNormal()
         self.main_window.activateWindow()
         self.main_window.raise_()
 
-    def _hide_window(self):
+    def _hide_window(self) -> None:
         """隐藏主窗口到托盘"""
         self.main_window.hide()
 
-    def _show_debug(self):
+    def _show_debug(self) -> None:
         """显示运行调试窗口"""
         if hasattr(self.main_window, 'show_debug_window'):
             self.main_window.show_debug_window()
 
-    def _on_quit(self):
+    def _on_quit(self) -> None:
         """用户请求退出"""
         self.quit_requested.emit()
 
-    def notify_backend_ready(self):
+    def notify_backend_ready(self) -> None:
         """通知后端初始化完成"""
         self._backend_initialized = True
         if self._tray:
@@ -133,7 +133,7 @@ class TrayManager(QObject):
                 2000
             )
 
-    def notify_backend_error(self, error_msg: str):
+    def notify_backend_error(self, error_msg: str) -> None:
         """通知后端初始化错误"""
         if self._tray:
             self._tray.showMessage(
@@ -143,12 +143,12 @@ class TrayManager(QObject):
                 5000
             )
 
-    def update_progress(self, message: str):
+    def update_progress(self, message: str) -> None:
         """更新初始化进度"""
         if self._tray:
             self._tray.setToolTip(f"咕咕嘎嘎 AI-VTuber - {message}")
 
-    def handle_close_event(self, event):
+    def handle_close_event(self, event) -> None:
         """
         处理主窗口关闭事件 — 最小化到托盘而非退出
 
@@ -166,7 +166,7 @@ class TrayManager(QObject):
                 return True
         return False
 
-    def toggle_record_action(self):
+    def toggle_record_action(self) -> None:
         """托盘菜单切换录音 — 带 None guard"""
         voice_manager = getattr(self.main_window, 'voice_manager', None)
         if voice_manager is None:
@@ -176,7 +176,7 @@ class TrayManager(QObject):
         else:
             voice_manager.start_listening()
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """清理托盘资源"""
         if self._tray:
             self._tray.hide()

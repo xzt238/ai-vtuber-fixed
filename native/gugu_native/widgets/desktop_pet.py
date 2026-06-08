@@ -44,7 +44,7 @@ class DesktopPetWindow(QWidget):
     pet_speak = Signal()
     pet_closed = Signal()
 
-    def __init__(self, main_window, parent=None):
+    def __init__(self, main_window, parent=None) -> None:
         super().__init__(parent)
         self._main_window = main_window
         self._drag_pos = QPoint()
@@ -53,7 +53,7 @@ class DesktopPetWindow(QWidget):
         self._init_ui()
         self._init_menu()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化 UI"""
         # 无边框 + 置顶 + 透明背景
         self.setWindowFlags(
@@ -78,7 +78,7 @@ class DesktopPetWindow(QWidget):
         # 延迟加载模型
         QTimer.singleShot(300, self._load_model)
 
-    def _init_menu(self):
+    def _init_menu(self) -> None:
         """初始化右键菜单"""
         self._menu = QMenu(self)
         # 菜单样式由全局 QSS 管理，跟随主题切换
@@ -107,7 +107,7 @@ class DesktopPetWindow(QWidget):
         close_action.triggered.connect(self._on_close_pet)
         self._menu.addAction(close_action)
 
-    def _load_model(self):
+    def _load_model(self) -> None:
         """加载 Live2D 模型"""
         # 尝试从主窗口的 ChatPage 获取当前模型路径
         model_path = None
@@ -129,24 +129,24 @@ class DesktopPetWindow(QWidget):
         else:
             logger.info(f"[DesktopPet] 模型不存在: {model_path}")
 
-    def _on_switch_to_main(self):
+    def _on_switch_to_main(self) -> None:
         """切回主窗口"""
         self.hide()
         self.switch_to_main.emit()
 
-    def _on_close_pet(self):
+    def _on_close_pet(self) -> None:
         """关闭宠物"""
         self.hide()
         self.pet_closed.emit()
 
-    def _on_random_motion(self):
+    def _on_random_motion(self) -> None:
         """随机动作"""
         if self.live2d_widget.model:
             self.live2d_widget.start_random_motion("TapBody")
 
     # ========== 拖拽移动 ==========
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:
         """鼠标按下 — 记录拖拽起始位置"""
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
@@ -156,13 +156,13 @@ class DesktopPetWindow(QWidget):
             self._menu.exec(event.globalPosition().toPoint())
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event) -> None:
         """鼠标移动 — 拖拽窗口"""
         if event.buttons() & Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_pos)
         super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event) -> None:
         """鼠标释放 — 仅在未拖拽时触发动作（移动距离 < 5px 视为点击）"""
         if event.button() == Qt.MouseButton.LeftButton and self.live2d_widget.model:
             release_pos = event.globalPosition().toPoint()
@@ -175,21 +175,21 @@ class DesktopPetWindow(QWidget):
                     pass
         super().mouseReleaseEvent(event)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event) -> None:
         """关闭事件"""
         self.pet_closed.emit()
         super().closeEvent(event)
 
     # ========== 隐藏时释放 Live2D 资源 ==========
 
-    def hideEvent(self, event):
+    def hideEvent(self, event) -> None:
         """隐藏时重置模型状态（Web 渲染模式下无需手动释放 VRAM）"""
         if hasattr(self, 'live2d_widget') and self.live2d_widget:
             self.live2d_widget.model = None
             self._model_loaded = False
         super().hideEvent(event)
 
-    def showEvent(self, event):
+    def showEvent(self, event) -> None:
         """显示时重新加载模型"""
         if hasattr(self, 'live2d_widget') and self.live2d_widget:
             if not self.live2d_widget.model:

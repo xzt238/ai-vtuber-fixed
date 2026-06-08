@@ -45,11 +45,11 @@ class ProjectListWorker(QThread):
     done = Signal(list)
     error = Signal(str)
 
-    def __init__(self, trainer):
+    def __init__(self, trainer) -> None:
         super().__init__()
         self.trainer = trainer
 
-    def run(self):
+    def run(self) -> None:
         try:
             projects = self.trainer.list_projects()
             self.done.emit(projects)
@@ -62,12 +62,12 @@ class _RecordWorker(QThread):
     finished = Signal(object)  # numpy array 或 None
     error = Signal(str)
 
-    def __init__(self, duration=5, sample_rate=16000, parent=None):
+    def __init__(self, duration=5, sample_rate=16000, parent=None) -> None:
         super().__init__(parent)
         self.duration = duration
         self.sample_rate = sample_rate
 
-    def run(self):
+    def run(self) -> None:
         try:
             import sounddevice as sd
             import numpy as np
@@ -87,14 +87,14 @@ class TrainWorker(QThread):
     done = Signal(dict)
     error = Signal(str)
 
-    def __init__(self, trainer, project_name, config, stage="s1"):
+    def __init__(self, trainer, project_name, config, stage="s1") -> None:
         super().__init__()
         self.trainer = trainer
         self.project_name = project_name
         self.config = config
         self.stage = stage
 
-    def run(self):
+    def run(self) -> None:
         try:
             if self.stage == "s1":
                 result = self.trainer.start_training(self.project_name, self.config)
@@ -108,7 +108,7 @@ class TrainWorker(QThread):
 class TrainPage(QWidget, LazyPageMixin):
     """音色训练页面 — 支持懒加载，首次可见时才创建完整 UI"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("trainPage")
@@ -121,13 +121,13 @@ class TrainPage(QWidget, LazyPageMixin):
         self._skeleton = SkeletonContainer("正在加载音色训练...", self)
         self._skeleton.hide_skeleton()
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -145,11 +145,11 @@ class TrainPage(QWidget, LazyPageMixin):
         if self.backend:
             self._on_backend_ready_impl()
 
-    def _on_backend_ready_impl(self):
+    def _on_backend_ready_impl(self) -> None:
         """后端就绪后的实际 UI 操作"""
         self._refresh_projects()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(8)
@@ -523,7 +523,7 @@ class TrainPage(QWidget, LazyPageMixin):
     # ========== 后端访问 ==========
 
     @property
-    def backend(self):
+    def backend(self) -> None:
         if self._backend is None:
             main_window = self.window()
             if hasattr(main_window, 'backend'):
@@ -531,13 +531,13 @@ class TrainPage(QWidget, LazyPageMixin):
         return self._backend
 
     @property
-    def trainer(self):
+    def trainer(self) -> None:
         if self._trainer is None:
             if self.backend and hasattr(self.backend, 'trainer'):
                 self._trainer = self.backend.trainer
         return self._trainer
 
-    def on_backend_ready(self):
+    def on_backend_ready(self) -> None:
         """后端就绪回调 — 刷新项目列表"""
         if not self._is_initialized:
             # 页面尚未初始化，保存后端引用但不执行 UI 操作
@@ -546,7 +546,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     # ========== 项目管理 ==========
 
-    def _refresh_projects(self):
+    def _refresh_projects(self) -> None:
         """刷新项目列表"""
         if not self.trainer:
             return
@@ -571,7 +571,7 @@ class TrainPage(QWidget, LazyPageMixin):
         except Exception as e:
             self._show_info("加载失败", str(e))
 
-    def _on_project_changed(self, project_name: str):
+    def _on_project_changed(self, project_name: str) -> None:
         """项目切换"""
         if not project_name:
             self._current_project = None
@@ -639,7 +639,7 @@ class TrainPage(QWidget, LazyPageMixin):
         except Exception as e:
             self._show_info("加载项目失败", str(e))
 
-    def _create_project(self):
+    def _create_project(self) -> None:
         """创建新项目"""
         name, ok = QInputDialog.getText(self, "新建项目", "项目名称:")
         if ok and name:
@@ -655,7 +655,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     # ========== 音频管理 ==========
 
-    def _upload_audio(self):
+    def _upload_audio(self) -> None:
         """上传音频文件"""
         if not self._current_project or not self.trainer:
             self._show_info("提示", "请先选择项目")
@@ -684,7 +684,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
         self._on_project_changed(self._current_project)
 
-    def _record_audio(self):
+    def _record_audio(self) -> None:
         """录制音频（异步线程，避免阻塞 UI）"""
         if not self._current_project:
             self._show_info("提示", "请先选择项目")
@@ -707,7 +707,7 @@ class TrainPage(QWidget, LazyPageMixin):
         self._record_worker.start()
 
     @Slot(object)
-    def _on_record_done(self, recording):
+    def _on_record_done(self, recording) -> None:
         """录音完成回调"""
         self.record_audio_btn.setEnabled(True)
         self.record_audio_btn.setText("录制")
@@ -749,13 +749,13 @@ class TrainPage(QWidget, LazyPageMixin):
             self._append_log(f"录音保存失败: {e}")
 
     @Slot(str)
-    def _on_record_error(self, error_msg: str):
+    def _on_record_error(self, error_msg: str) -> None:
         """录音失败回调"""
         self.record_audio_btn.setEnabled(True)
         self.record_audio_btn.setText("录制")
         self._show_info("录音失败", error_msg)
 
-    def _delete_audio(self):
+    def _delete_audio(self) -> None:
         """删除选中的音频"""
         if not self._current_project or not self.trainer:
             return
@@ -777,7 +777,7 @@ class TrainPage(QWidget, LazyPageMixin):
                 self._show_info("成功", "音频已删除")
                 self._on_project_changed(self._current_project)
 
-    def _show_audio_context_menu(self, pos):
+    def _show_audio_context_menu(self, pos) -> None:
         """音频列表右键菜单"""
         item = self.audio_list.itemAt(pos)
         if not item:
@@ -795,7 +795,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
         menu.exec(self.audio_list.viewport().mapToGlobal(pos))
 
-    def _set_as_ref_audio(self):
+    def _set_as_ref_audio(self) -> None:
         """设为参考音频"""
         if not self._current_project or not self.trainer:
             return
@@ -816,7 +816,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     # ========== 参考配置 ==========
 
-    def _on_ref_audio_changed(self, filename: str):
+    def _on_ref_audio_changed(self, filename: str) -> None:
         """参考音频切换"""
         if not self._current_project or not self.trainer:
             return
@@ -837,7 +837,7 @@ class TrainPage(QWidget, LazyPageMixin):
         except Exception as e:
             self.ref_text_edit.clear()
 
-    def _save_ref_config(self):
+    def _save_ref_config(self) -> None:
         """保存参考配置"""
         if not self._current_project or not self.trainer:
             return
@@ -856,7 +856,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
         self._show_info("成功", "参考配置已保存")
 
-    def _auto_asr(self):
+    def _auto_asr(self) -> None:
         """ASR 自动识别参考音频文本"""
         if not self._current_project or not self.trainer:
             return
@@ -885,7 +885,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     # ========== 训练配置 ==========
 
-    def _save_train_config(self):
+    def _save_train_config(self) -> None:
         """保存训练参数"""
         if not self._current_project or not self.trainer:
             return
@@ -907,7 +907,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     # ========== 训练执行 ==========
 
-    def _start_training(self, stage: str):
+    def _start_training(self, stage: str) -> None:
         """启动训练"""
         if not self._current_project or not self.trainer:
             self._show_info("提示", "请先选择项目")
@@ -943,7 +943,7 @@ class TrainPage(QWidget, LazyPageMixin):
         # 启动进度轮询
         self._progress_timer.start()
 
-    def _stop_training(self):
+    def _stop_training(self) -> None:
         """停止训练"""
         if not self.trainer:
             return
@@ -955,14 +955,14 @@ class TrainPage(QWidget, LazyPageMixin):
         self.train_status_label.setText("已停止")
         self.train_status_label.setStyleSheet(f"color: {c.error};")
 
-    def _set_training_state(self, training: bool):
+    def _set_training_state(self, training: bool) -> None:
         """设置训练中 UI 状态"""
         self.start_s1_btn.setEnabled(not training)
         self.start_s2_btn.setEnabled(not training)
         self.stop_train_btn.setEnabled(training)
         self._progress_timer.start() if training else self._progress_timer.stop()
 
-    def _on_train_progress(self, progress_data: dict):
+    def _on_train_progress(self, progress_data: dict) -> None:
         """训练进度回调"""
         step = progress_data.get("step", "")
         message = progress_data.get("message", "")
@@ -973,7 +973,7 @@ class TrainPage(QWidget, LazyPageMixin):
         self._append_log(f"[{step}] {message}")
         self.train_status_label.setText(message[:50])
 
-    def _poll_training_status(self):
+    def _poll_training_status(self) -> None:
         """轮询训练状态"""
         if not self.trainer:
             return
@@ -988,7 +988,7 @@ class TrainPage(QWidget, LazyPageMixin):
         except Exception as e:
             pass
 
-    def _on_train_done(self, stage: str, result: dict):
+    def _on_train_done(self, stage: str, result: dict) -> None:
         """训练完成"""
         self._set_training_state(False)
 
@@ -1008,7 +1008,7 @@ class TrainPage(QWidget, LazyPageMixin):
             self._append_log(f"训练失败: {error}")
             self._show_info("训练失败", error)
 
-    def _on_train_error(self, stage: str, error: str):
+    def _on_train_error(self, stage: str, error: str) -> None:
         """训练错误"""
         self._set_training_state(False)
         c = get_colors()
@@ -1018,7 +1018,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     # ========== 项目操作 ==========
 
-    def _reset_project(self):
+    def _reset_project(self) -> None:
         """重置项目"""
         if not self._current_project or not self.trainer:
             return
@@ -1036,7 +1036,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     # ========== 工具 ==========
 
-    def _append_log(self, text: str):
+    def _append_log(self, text: str) -> None:
         """追加训练日志"""
         from gugu_native.theme import get_colors, register_theme_callback
         c = get_colors()
@@ -1044,7 +1044,7 @@ class TrainPage(QWidget, LazyPageMixin):
         self.train_log.append(f'<span style="color: {c.log_timestamp};">[{timestamp}]</span> {text}')
         self.train_log.moveCursor(QTextCursor.MoveOperation.End)
 
-    def _show_info(self, title: str, content: str):
+    def _show_info(self, title: str, content: str) -> None:
         """显示信息栏"""
         InfoBar.info(
             title=title, content=content,
@@ -1053,7 +1053,7 @@ class TrainPage(QWidget, LazyPageMixin):
 
     # ========== 主题刷新（v1.9.80）==========
 
-    def refresh_theme(self):
+    def refresh_theme(self) -> None:
         """主题切换时刷新硬编码样式"""
         from gugu_native.theme import get_colors, register_theme_callback
         c = get_colors()

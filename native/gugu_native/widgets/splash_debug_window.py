@@ -44,7 +44,7 @@ def _strip_ansi(text: str) -> str:
 # ============================================================
 
 # 从 theme.py 引用颜色常量（延迟导入避免循环依赖）
-def _get_log_colors():
+def _get_log_colors() -> None:
     """获取日志颜色方案（延迟导入避免循环依赖）"""
     try:
         from gugu_native.theme import get_colors
@@ -78,7 +78,7 @@ _LOG_PATTERNS = [
 ]
 
 
-def _classify_log_line(line: str):
+def _classify_log_line(line: str) -> None:
     """根据内容返回日志行的颜色键"""
     for pattern, color_key in _LOG_PATTERNS:
         if re.search(pattern, line, re.IGNORECASE):
@@ -106,12 +106,12 @@ class StdoutRedirector(QObject):
 
     text_written = Signal(str)
 
-    def __init__(self, original_stream=None, parent=None):
+    def __init__(self, original_stream=None, parent=None) -> None:
         super().__init__(parent)
         self._original = original_stream or sys.__stdout__
         self._buffer = ""
 
-    def write(self, text):
+    def write(self, text) -> None:
         # 同时写入原始流（保留文件日志等）
         try:
             self._original.write(text)
@@ -127,7 +127,7 @@ class StdoutRedirector(QObject):
             if line:
                 self.text_written.emit(line)
 
-    def flush(self):
+    def flush(self) -> None:
         # 刷新剩余缓冲
         if self._buffer.strip():
             line = _strip_ansi(self._buffer.strip())
@@ -147,7 +147,7 @@ class StdoutRedirector(QObject):
 class SplashDebugWindow(QWidget):
     """自定义启动画面 + 内嵌运行调试窗口"""
 
-    def __init__(self, logo_path=None, parent=None):
+    def __init__(self, logo_path=None, parent=None) -> None:
         super().__init__(parent)
 
         # 窗口属性
@@ -173,7 +173,7 @@ class SplashDebugWindow(QWidget):
 
     # ========== UI 构建 ==========
 
-    def _setup_ui(self, logo_path):
+    def _setup_ui(self, logo_path) -> None:
         """构建界面布局"""
         # 整体暗色背景
         self.setStyleSheet(f"""
@@ -317,7 +317,7 @@ class SplashDebugWindow(QWidget):
         # 初始添加一条欢迎日志
         self.append_log("咕咕嘎嘎 AI-VTuber 启动中...")
 
-    def set_progress(self, text: str, percent: int = -1):
+    def set_progress(self, text: str, percent: int = -1) -> None:
         """更新启动进度文字 — 供 main.py 各阶段调用
 
         合并了进度刷新、窗口居中和跳过按钮计时器三项功能。
@@ -341,7 +341,7 @@ class SplashDebugWindow(QWidget):
             self._skip_timer_started = True
             QTimer.singleShot(10000, self._show_skip_button)
 
-    def _center_on_screen(self):
+    def _center_on_screen(self) -> None:
         """将窗口居中到屏幕"""
         screen = self.screen()
         if screen:
@@ -352,7 +352,7 @@ class SplashDebugWindow(QWidget):
 
     # ========== 日志追加 ==========
 
-    def append_log(self, text: str):
+    def append_log(self, text: str) -> None:
         """
         追加一行日志到调试窗口
 
@@ -401,14 +401,14 @@ class SplashDebugWindow(QWidget):
             scrollbar = self._log_view.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
 
-    def _show_skip_button(self):
+    def _show_skip_button(self) -> None:
         """显示跳过按钮"""
         self._skip_btn.setVisible(True)
         self.append_log("💡 启动时间较长？按 Esc 或点击「跳过等待」关闭启动画面")
 
     # ========== 调试窗口折叠 ==========
 
-    def _toggle_debug(self):
+    def _toggle_debug(self) -> None:
         """折叠/展开调试窗口"""
         if self._log_view.isVisible():
             self._log_view.setVisible(False)
@@ -421,27 +421,27 @@ class SplashDebugWindow(QWidget):
 
     # ========== 窗口拖动 ==========
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event) -> None:
         if self._drag_pos is not None and event.buttons() & Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_pos)
         super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event) -> None:
         self._drag_pos = None
         super().mouseReleaseEvent(event)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event) -> None:
         """按 Escape 键关闭启动画面"""
         if event.key() == Qt.Key.Key_Escape:
             self._dismiss()
         super().keyPressEvent(event)
 
-    def _dismiss(self):
+    def _dismiss(self) -> None:
         """跳过等待——后端就绪则激活主窗口，否则硬退出"""
         self.append_log("⚠ 用户手动跳过等待")
         if getattr(self, '_backend_ready', False):
@@ -460,13 +460,13 @@ class SplashDebugWindow(QWidget):
             import os
             os._exit(0)  # 硬退出，不依赖 Qt 事件循环
 
-    def mark_backend_ready(self):
+    def mark_backend_ready(self) -> None:
         """标记后端已就绪——由 main.py 调用"""
         self._backend_ready = True
 
     # ========== 生命周期 ==========
 
-    def fade_out_and_close(self):
+    def fade_out_and_close(self) -> None:
         """
         淡出动画后关闭窗口
 
@@ -478,7 +478,7 @@ class SplashDebugWindow(QWidget):
         # 短暂延迟让用户看到最后一条日志
         QTimer.singleShot(800, self._start_fade)
 
-    def _start_fade(self):
+    def _start_fade(self) -> None:
         """开始淡出动画"""
         self._opacity_effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self._opacity_effect)

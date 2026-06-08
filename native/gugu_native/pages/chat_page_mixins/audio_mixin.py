@@ -18,7 +18,7 @@ logger = logging.getLogger('ChatPage.Audio')
 class ChatPageAudioMixin:
     """音频处理 Mixin"""
 
-    def _on_tts_audio_ready(self, audio_path: str, seq: int = 0):
+    def _on_tts_audio_ready(self, audio_path: str, seq: int = 0) -> None:
         """TTS 合成完成回调 — 统一排队，不中断当前播放
 
         排序缓冲区机制（seq > 0 时生效）：
@@ -40,7 +40,7 @@ class ChatPageAudioMixin:
         # 尝试释放连续的排序序号并播放
         self._try_play_next()
 
-    def _try_play_next(self):
+    def _try_play_next(self) -> None:
         """统一的播放调度 — 释放排序缓冲区 + 播放下一首
 
         所有播放决策集中在此方法，避免多处重复释放导致竞态条件。
@@ -69,14 +69,14 @@ class ChatPageAudioMixin:
         state = self._media_player.playbackState()
         return state == QMediaPlayer.PlaybackState.PlayingState
 
-    def _cleanup_tts_worker(self, worker):
+    def _cleanup_tts_worker(self, worker) -> None:
         """清理已完成的 TTSWorker"""
         try:
             self._tts_workers.remove(worker)
         except ValueError:
             pass
 
-    def _play_audio(self, file_path: str):
+    def _play_audio(self, file_path: str) -> None:
         """播放音频（含 Live2D 口型同步）"""
         try:
             self._media_player.setSource(QUrl.fromLocalFile(file_path))
@@ -86,7 +86,7 @@ class ChatPageAudioMixin:
         except Exception as e:
             logger.error(f"Audio playback failed: {e}")
 
-    def _start_lipsync(self):
+    def _start_lipsync(self) -> None:
         """TTS 播放时驱动 Live2D 口型动画"""
         if not self._animation_controller:
             return
@@ -108,7 +108,7 @@ class ChatPageAudioMixin:
             pass
         self._media_player.playbackStateChanged.connect(self._on_playback_state_changed)
 
-    def _lipsync_tick(self):
+    def _lipsync_tick(self) -> None:
         """口型同步定时更新 — 模拟嘴巴开合"""
         if not self.isVisible():
             return
@@ -120,7 +120,7 @@ class ChatPageAudioMixin:
         mouth_open = random.uniform(0.3, 1.0)
         self._animation_controller.set_mouth_open(mouth_open)
 
-    def _on_playback_state_changed(self, state):
+    def _on_playback_state_changed(self, state) -> None:
         """播放结束 → 播队首"""
         if state != QMediaPlayer.PlaybackState.PlayingState:
             if self._animation_controller:
@@ -131,7 +131,7 @@ class ChatPageAudioMixin:
             # 统一走 _try_play_next
             self._try_play_next()
 
-    def _toggle_recording(self, checked: bool):
+    def _toggle_recording(self, checked: bool) -> None:
         """切换录音状态"""
         if checked:
             self.record_btn.setText("停止")
@@ -145,7 +145,7 @@ class ChatPageAudioMixin:
                 self._recording_data = []
                 self._sample_rate = 16000
 
-                def audio_callback(indata, frames, time_info, status):
+                def audio_callback(indata, frames, time_info, status) -> None:
                     self._recording_data.append(indata.copy())
 
                 self._recording_stream = sd.InputStream(
@@ -205,7 +205,7 @@ class ChatPageAudioMixin:
                 self.chat_display.append_system_msg(f"录音停止失败: {e}")
 
     @Slot(str)
-    def _on_asr_result(self, text: str):
+    def _on_asr_result(self, text: str) -> None:
         """ASR 识别完成"""
         if self._recording_file:
             try:
@@ -221,7 +221,7 @@ class ChatPageAudioMixin:
             self.chat_display.append_system_msg("未能识别语音内容")
 
     @Slot(str)
-    def _on_asr_error(self, error_msg: str):
+    def _on_asr_error(self, error_msg: str) -> None:
         """ASR 识别失败"""
         if self._recording_file:
             try:
@@ -231,7 +231,7 @@ class ChatPageAudioMixin:
             self._recording_file = None
         self.chat_display.append_system_msg(f"语音识别失败: {error_msg}")
 
-    def _toggle_realtime_voice(self, checked: bool):
+    def _toggle_realtime_voice(self, checked: bool) -> None:
         """切换实时语音模式"""
         main_window = self.window()
         if not hasattr(main_window, 'voice_manager') or main_window.voice_manager is None:
@@ -269,7 +269,7 @@ class ChatPageAudioMixin:
             except (RuntimeError, TypeError):
                 pass
 
-    def _on_realtime_speech(self, text: str):
+    def _on_realtime_speech(self, text: str) -> None:
         """实时语音识别完成"""
         if text:
             # 如果正在流式回复，先停止并终结当前消息

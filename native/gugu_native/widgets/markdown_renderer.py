@@ -65,7 +65,7 @@ class _CodeBlockPreprocessor(markdown.preprocessors.Preprocessor):
 
     FENCED_BLOCK_RE = markdown.preprocessors.Preprocessor.__class__.__dict__  # placeholder
 
-    def run(self, lines):
+    def run(self, lines) -> None:
         """处理 fenced code blocks"""
         new_lines = []
         in_code = False
@@ -111,7 +111,7 @@ class _CodeBlockPreprocessor(markdown.preprocessors.Preprocessor):
 class _CodeBlockTreeprocessor(markdown.treeprocessors.Treeprocessor):
     """树处理器 — 在 Markdown 解析后替换代码块占位符"""
 
-    def run(self, root):
+    def run(self, root) -> None:
         for elem in root.iter():
             if elem.text and "<!--CODE_BLOCK_" in elem.text:
                 for placeholder, html in self._code_blocks.items():
@@ -133,7 +133,7 @@ _MD_EXTENSIONS = ["fenced_code", "tables", "nl2br", "sane_lists"]
 _MD_INSTANCE = None
 
 
-def _get_md_instance():
+def _get_md_instance() -> None:
     """获取缓存的 Markdown 实例（线程安全：reset() 后可复用）"""
     global _MD_INSTANCE
     if _MD_INSTANCE is None:
@@ -294,7 +294,7 @@ def _extract_latex(text: str, latex_blocks: dict) -> str:
     block_idx = 0
 
     # 先处理 $$...$$ (display math)
-    def _replace_display(m):
+    def _replace_display(m) -> None:
         nonlocal block_idx
         placeholder = f"%%LATEX_DISPLAY_{block_idx}%%"
         latex_blocks[placeholder] = m.group(0)  # 保留原始 $$...$$
@@ -304,7 +304,7 @@ def _extract_latex(text: str, latex_blocks: dict) -> str:
     text = _LATEX_DISPLAY_RE.sub(_replace_display, text)
 
     # 再处理 $...$ (inline math) — 注意避免匹配 $$ 残留
-    def _replace_inline(m):
+    def _replace_inline(m) -> None:
         nonlocal block_idx
         placeholder = f"%%LATEX_INLINE_{block_idx}%%"
         latex_blocks[placeholder] = m.group(0)  # 保留原始 $...$

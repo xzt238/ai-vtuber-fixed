@@ -38,7 +38,7 @@ from gugu_native.widgets.skeleton_container import SkeletonContainer
 class DebugPage(QWidget, LazyPageMixin):
     """新增功能调试页面 — 支持懒加载"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("debugPage")
@@ -49,13 +49,13 @@ class DebugPage(QWidget, LazyPageMixin):
         self._skeleton = SkeletonContainer("正在加载调试页面...", self)
         self._skeleton.hide_skeleton()
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -68,11 +68,11 @@ class DebugPage(QWidget, LazyPageMixin):
         self._refresh_timer.timeout.connect(self._refresh_status)
         self._refresh_timer.start(2000)  # 每2秒刷新一次
 
-    def set_backend(self, backend):
+    def set_backend(self, backend) -> None:
         """设置后端引用"""
         self._backend = backend
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(8, 8, 8, 8)
 
@@ -114,7 +114,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
         main_layout.addWidget(splitter)
 
-    def _init_feature_list(self, layout):
+    def _init_feature_list(self, layout) -> None:
         """初始化左侧功能列表"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -142,7 +142,7 @@ class DebugPage(QWidget, LazyPageMixin):
         card_layout.addStretch()
         layout.addWidget(card)
 
-    def _init_rag_card(self, layout):
+    def _init_rag_card(self, layout) -> None:
         """初始化RAG知识库配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -196,7 +196,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
         layout.addWidget(card)
 
-    def _init_live_card(self, layout):
+    def _init_live_card(self, layout) -> None:
         """初始化直播平台配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -237,7 +237,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
         layout.addWidget(card)
 
-    def _init_svc_card(self, layout):
+    def _init_svc_card(self, layout) -> None:
         """初始化SVC声音转换配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -289,7 +289,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
         layout.addWidget(card)
 
-    def _init_singing_card(self, layout):
+    def _init_singing_card(self, layout) -> None:
         """初始化唱歌模块配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -330,7 +330,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
         layout.addWidget(card)
 
-    def _init_sd_card(self, layout):
+    def _init_sd_card(self, layout) -> None:
         """初始化Stable Diffusion配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -391,7 +391,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
         layout.addWidget(card)
 
-    def _init_game_card(self, layout):
+    def _init_game_card(self, layout) -> None:
         """初始化游戏感知框架配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -448,7 +448,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
         layout.addWidget(card)
 
-    def _init_multi_agent_card(self, layout):
+    def _init_multi_agent_card(self, layout) -> None:
         """初始化多AI群聊配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -490,7 +490,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
         layout.addWidget(card)
 
-    def _init_bot_card(self, layout):
+    def _init_bot_card(self, layout) -> None:
         """初始化社交Bot配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -554,7 +554,7 @@ class DebugPage(QWidget, LazyPageMixin):
 
         layout.addWidget(card)
 
-    def _init_vision_input_card(self, layout):
+    def _init_vision_input_card(self, layout) -> None:
         """初始化摄像头视觉输入配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -620,65 +620,65 @@ class DebugPage(QWidget, LazyPageMixin):
 
         layout.addWidget(card)
 
-    def _show_feature_config(self, feature_key):
+    def _show_feature_config(self, feature_key) -> None:
         """显示功能配置"""
         # 滚动到对应的配置卡片
         # 这里可以实现滚动逻辑
         pass
 
-    def _update_config(self, key, value):
+    def _update_config(self, key, value) -> None:
         """更新配置"""
         # 这里应该更新配置文件
         # 简化实现，只打印日志
         logger.info(f" 更新配置: {key} = {value}")
 
-    def _refresh_status(self):
+    def _refresh_status(self) -> None:
         """刷新状态显示"""
         # 这里应该从后端获取状态
         # 简化实现，只更新状态标签
         pass
 
-    def _test_rag(self):
+    def _test_rag(self) -> None:
         """测试RAG功能"""
         logger.info(" 测试RAG功能...")
         # 这里应该调用后端的RAG测试功能
 
-    def _connect_live(self):
+    def _connect_live(self) -> None:
         """连接直播间"""
         logger.info(" 连接直播间...")
         # 这里应该调用后端的直播连接功能
 
-    def _load_svc_model(self):
+    def _load_svc_model(self) -> None:
         """加载SVC模型"""
         logger.info(" 加载SVC模型...")
         # 这里应该调用后端的SVC模型加载功能
 
-    def _test_singing(self):
+    def _test_singing(self) -> None:
         """测试唱歌功能"""
         logger.info(" 测试唱歌功能...")
         # 这里应该调用后端的唱歌测试功能
 
-    def _connect_sd(self):
+    def _connect_sd(self) -> None:
         """连接SD WebUI"""
         logger.info(" 连接SD WebUI...")
         # 这里应该调用后端的SD连接功能
 
-    def _connect_game(self):
+    def _connect_game(self) -> None:
         """连接游戏"""
         logger.info(" 连接游戏...")
         # 这里应该调用后端的游戏连接功能
 
-    def _create_test_agent(self):
+    def _create_test_agent(self) -> None:
         """创建测试代理"""
         logger.info(" 创建测试代理...")
         # 这里应该调用后端的代理创建功能
 
-    def _connect_bot(self):
+    def _connect_bot(self) -> None:
         """连接Bot"""
         logger.info(" 连接Bot...")
         # 这里应该调用后端的Bot连接功能
 
-    def _open_camera(self):
+    def _open_camera(self) -> None:
         """打开摄像头"""
         logger.info(" 打开摄像头...")
         # 这里应该调用后端的摄像头打开功能

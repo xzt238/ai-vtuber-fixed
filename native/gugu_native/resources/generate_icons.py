@@ -21,7 +21,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RESOURCES_DIR = SCRIPT_DIR  # ���� resources/ ��
 
 
-def create_app_icon_png():
+def create_app_icon_png() -> None:
     """����Ӧ��ͼ�� PNG (256x256) �� AI�Ƽ����"""
     try:
         from PIL import Image, ImageDraw, ImageFont
@@ -100,7 +100,7 @@ def create_app_icon_png():
     return img
 
 
-def create_splash_image():
+def create_splash_image() -> None:
     """����������� (600x300)"""
     try:
         from PIL import Image, ImageDraw, ImageFont
@@ -143,7 +143,7 @@ def create_splash_image():
     return img
 
 
-def create_tray_icon():
+def create_tray_icon() -> None:
     """����ϵͳ����ͼ�� (32x32)"""
     try:
         from PIL import Image, ImageDraw
@@ -163,7 +163,7 @@ def create_tray_icon():
     return img
 
 
-def save_ico(img, path):
+def save_ico(img, path) -> None:
     """����Ϊ ICO (��ߴ�)"""
     from PIL import Image
     sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
@@ -177,7 +177,7 @@ def save_ico(img, path):
     logger.info(f"  Saved: {path}")
 
 
-def generate_all():
+def generate_all() -> None:
     """����������Դ"""
     logger.info("Generating brand resources...")
 

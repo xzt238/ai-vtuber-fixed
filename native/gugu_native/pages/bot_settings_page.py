@@ -46,7 +46,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
     status_updated = Signal(str, str)     # 状态更新信号
     log_message = Signal(str, str)        # 日志消息信号
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("botSettingsPage")
@@ -66,13 +66,13 @@ class BotSettingsPage(QWidget, LazyPageMixin):
         self.status_updated.connect(self._on_status_updated)
         self.log_message.connect(self._on_log_message)
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -91,11 +91,11 @@ class BotSettingsPage(QWidget, LazyPageMixin):
         self._refresh_timer.timeout.connect(self._refresh_status)
         self._refresh_timer.start(2000)
 
-    def set_backend(self, backend):
+    def set_backend(self, backend) -> None:
         """设置后端引用"""
         self._backend = backend
 
-    def _load_config(self):
+    def _load_config(self) -> None:
         """加载配置文件"""
         try:
             import yaml
@@ -110,7 +110,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
             self._log("ERROR", f"配置文件加载失败: {e}")
             self._config_data = {}
 
-    def _save_config(self):
+    def _save_config(self) -> None:
         """保存配置文件"""
         try:
             with open(self._config_file, 'w', encoding='utf-8') as f:
@@ -119,7 +119,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
         except Exception as e:
             self._log("ERROR", f"配置文件保存失败: {e}")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(8, 8, 8, 8)
@@ -177,7 +177,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
         
         main_layout.addWidget(main_splitter)
 
-    def _init_platform_list(self, layout):
+    def _init_platform_list(self, layout) -> None:
         """初始化左侧平台列表"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -218,7 +218,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
         card_layout.addStretch()
         layout.addWidget(card)
 
-    def _init_all_cards(self):
+    def _init_all_cards(self) -> None:
         """初始化所有配置卡片"""
         self._cards = {}
         
@@ -254,7 +254,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
         self._cards['line'] = self._create_line_card()
         self._right_layout.addWidget(self._cards['line'])
 
-    def _create_discord_card(self):
+    def _create_discord_card(self) -> None:
         """创建Discord配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -328,7 +328,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_telegram_card(self):
+    def _create_telegram_card(self) -> None:
         """创建Telegram配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -390,7 +390,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_qq_card(self):
+    def _create_qq_card(self) -> None:
         """创建QQ配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -465,7 +465,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_wechat_card(self):
+    def _create_wechat_card(self) -> None:
         """创建微信配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -540,7 +540,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_feishu_card(self):
+    def _create_feishu_card(self) -> None:
         """创建飞书配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -602,7 +602,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_dingtalk_card(self):
+    def _create_dingtalk_card(self) -> None:
         """创建钉钉配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -664,7 +664,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_slack_card(self):
+    def _create_slack_card(self) -> None:
         """创建Slack配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -727,7 +727,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_line_card(self):
+    def _create_line_card(self) -> None:
         """创建LINE配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -790,7 +790,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _init_bottom_panel(self, layout):
+    def _init_bottom_panel(self, layout) -> None:
         """初始化底部面板"""
         # 创建标签页
         tab_widget = QTabWidget()
@@ -816,7 +816,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
         
         layout.addWidget(tab_widget)
 
-    def _show_platform_config(self, platform_key):
+    def _show_platform_config(self, platform_key) -> None:
         """显示平台配置"""
         # 隐藏所有卡片
         for key, card in self._cards.items():
@@ -828,7 +828,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
         
         self._log("DEBUG", f"切换到平台配置: {platform_key}")
 
-    def _update_config(self, key, value):
+    def _update_config(self, key, value) -> None:
         """更新配置"""
         # 更新内存中的配置
         keys = key.split('.')
@@ -847,14 +847,14 @@ class BotSettingsPage(QWidget, LazyPageMixin):
         
         self._log("INFO", f"配置更新: {key} = {value}")
 
-    def _on_config_changed(self, key, value):
+    def _on_config_changed(self, key, value) -> None:
         """配置变更处理"""
         # 更新状态标签
         platform = key.split('.')[1] if len(key.split('.')) > 1 else key
         if platform in self._status_labels:
             self._status_labels[platform].setText(f"配置已更新: {key}")
 
-    def _on_status_updated(self, platform, status):
+    def _on_status_updated(self, platform, status) -> None:
         """状态更新处理"""
         if platform in self._status_labels:
             self._status_labels[platform].setText(f"状态: {status}")
@@ -864,7 +864,7 @@ class BotSettingsPage(QWidget, LazyPageMixin):
             btn, status_label = self._platform_buttons[platform]
             status_label.setText(status)
 
-    def _on_log_message(self, level, message):
+    def _on_log_message(self, level, message) -> None:
         """日志消息处理"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{level}] {message}"
@@ -882,11 +882,11 @@ class BotSettingsPage(QWidget, LazyPageMixin):
             scrollbar = self._log_text.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
 
-    def _log(self, level, message):
+    def _log(self, level, message) -> None:
         """记录日志"""
         self.log_message.emit(level, message)
 
-    def _refresh_status(self):
+    def _refresh_status(self) -> None:
         """刷新状态"""
         # 这里应该从后端获取实际状态
         # 简化实现，只更新状态表格
@@ -897,12 +897,12 @@ class BotSettingsPage(QWidget, LazyPageMixin):
             self._status_table.setItem(i, 2, QTableWidgetItem(self._config_data.get('bot', {}).get(platform, {}).get('token', '')[:10] + '...' if self._config_data.get('bot', {}).get(platform, {}).get('token', '') else ''))
             self._status_table.setItem(i, 3, QTableWidgetItem(datetime.now().strftime("%H:%M:%S")))
 
-    def _connect_bot(self, platform):
+    def _connect_bot(self, platform) -> None:
         """连接Bot"""
         self._log("INFO", f"正在连接{platform} Bot...")
         # 这里应该调用后端的连接功能
 
-    def _disconnect_bot(self, platform):
+    def _disconnect_bot(self, platform) -> None:
         """断开Bot连接"""
         self._log("INFO", f"正在断开{platform} Bot连接...")
         # 这里应该调用后端的断开功能

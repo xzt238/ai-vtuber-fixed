@@ -36,7 +36,7 @@ logger = logging.getLogger('LogPage')
 class LogPage(QWidget):
     """日志查看页面"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("logPage")
         
@@ -60,7 +60,7 @@ class LogPage(QWidget):
         
         logger.info("LogPage initialized")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化 UI"""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -149,33 +149,33 @@ class LogPage(QWidget):
         status_layout.addWidget(self.count_label)
         layout.addLayout(status_layout)
 
-    def _toggle_auto_scroll(self, checked: bool):
+    def _toggle_auto_scroll(self, checked: bool) -> None:
         """切换自动滚动"""
         self._auto_scroll = checked
 
-    def _filter_changed(self, level: str):
+    def _filter_changed(self, level: str) -> None:
         """日志级别过滤变更"""
         self._current_filter = level
         self._refresh_display()
 
-    def _search_changed(self, keyword: str):
+    def _search_changed(self, keyword: str) -> None:
         """搜索关键词变更"""
         self._search_keyword = keyword
         if not keyword:
             self._refresh_display()
 
-    def _do_search(self):
+    def _do_search(self) -> None:
         """执行搜索"""
         self._refresh_display()
 
-    def _clear_logs(self):
+    def _clear_logs(self) -> None:
         """清空日志"""
         self._log_buffer.clear()
         self.log_display.clear()
         self.count_label.setText("日志条数: 0")
         logger.info("Logs cleared")
 
-    def _export_logs(self):
+    def _export_logs(self) -> None:
         """导出日志"""
         try:
             from PySide6.QtWidgets import QFileDialog
@@ -193,7 +193,7 @@ class LogPage(QWidget):
             InfoBar.error("导出失败", f"错误: {e}", parent=self)
             logger.error(f"Failed to export logs: {e}")
 
-    def _refresh_display(self):
+    def _refresh_display(self) -> None:
         """刷新日志显示"""
         self.log_display.clear()
         for log_line in self._log_buffer:
@@ -217,7 +217,7 @@ class LogPage(QWidget):
         
         return True
 
-    def _append_log_to_display(self, log_line: str):
+    def _append_log_to_display(self, log_line: str) -> None:
         """添加日志到显示区域"""
         # 根据日志级别设置颜色
         if "ERROR" in log_line or "CRITICAL" in log_line:
@@ -232,19 +232,19 @@ class LogPage(QWidget):
         self.log_display.setTextColor(QColor(color))
         self.log_display.append(log_line)
 
-    def _scroll_to_bottom(self):
+    def _scroll_to_bottom(self) -> None:
         """滚动到底部"""
         cursor = self.log_display.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
         self.log_display.setTextCursor(cursor)
 
-    def _flush_log_buffer(self):
+    def _flush_log_buffer(self) -> None:
         """刷新日志缓冲区"""
         # 这里可以从日志文件或日志处理器读取新日志
         # 暂时使用定时器模拟
         pass
 
-    def add_log(self, message: str, level: str = "INFO"):
+    def add_log(self, message: str, level: str = "INFO") -> None:
         """添加日志"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         log_line = f"[{timestamp}] [{level}] {message}"
@@ -265,7 +265,7 @@ class LogPage(QWidget):
         # 更新计数
         self.count_label.setText(f"日志条数: {len(self._log_buffer)}")
 
-    def _apply_theme(self):
+    def _apply_theme(self) -> None:
         """应用主题"""
         colors = get_colors()
         self.log_display.setStyleSheet(f"""
@@ -282,11 +282,11 @@ class LogPage(QWidget):
 class LogHandler(logging.Handler):
     """自定义日志处理器，将日志发送到 LogPage"""
     
-    def __init__(self, log_page: LogPage):
+    def __init__(self, log_page: LogPage) -> None:
         super().__init__()
         self.log_page = log_page
     
-    def emit(self, record):
+    def emit(self, record) -> None:
         """发送日志记录"""
         try:
             msg = self.format(record)

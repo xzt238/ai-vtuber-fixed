@@ -31,12 +31,12 @@ class BackendInitWorker(QObject):
     init_failed = Signal(str)       # 错误信息
     init_progress = Signal(str)     # 进度描述
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._backend_instance = None
 
     @Slot()
-    def do_work(self):
+    def do_work(self) -> None:
         """在 Worker 线程中执行后端初始化
 
         构造 AIVTuber 实例（5-15s），通过 Signal 传回主线程赋值。
@@ -74,7 +74,7 @@ class StatsResultWorker(QRunnable):
         error(str): 读取错误信息
     """
 
-    def __init__(self, memory_system):
+    def __init__(self, memory_system) -> None:
         super().__init__()
         self._memory_system = memory_system
         self.setAutoDelete(False)  # 由调用方管理生命周期
@@ -82,7 +82,7 @@ class StatsResultWorker(QRunnable):
         self.stats_ready = self._bridge.stats_ready
         self.error = self._bridge.error
 
-    def run(self):
+    def run(self) -> None:
         """在线程池线程中异步读取记忆统计数据
 
         读取操作是纯只读（len / get_stats），与写操作不并发

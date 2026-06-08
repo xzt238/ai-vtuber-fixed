@@ -57,7 +57,7 @@ class HotkeyManager(QObject):
     hotkey_triggered = Signal(str)
     error_occurred = Signal(str)
 
-    def __init__(self, main_window=None, parent=None):
+    def __init__(self, main_window=None, parent=None) -> None:
         super().__init__(parent)
         self._main_window = main_window
         self._listener = None
@@ -71,7 +71,7 @@ class HotkeyManager(QObject):
         # 加载保存的配置
         self._load_config()
 
-    def _load_config(self):
+    def _load_config(self) -> None:
         """加载快捷键配置"""
         if os.path.exists(self._config_path):
             try:
@@ -81,7 +81,7 @@ class HotkeyManager(QObject):
             except Exception as e:
                 pass
 
-    def _save_config(self):
+    def _save_config(self) -> None:
         """保存快捷键配置"""
         try:
             os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
@@ -90,7 +90,7 @@ class HotkeyManager(QObject):
         except Exception as e:
             logger.info(f"[HotkeyManager] 保存配置失败: {e}")
 
-    def start(self):
+    def start(self) -> None:
         """开始监听全局快捷键"""
         if self._is_running:
             return
@@ -115,7 +115,7 @@ class HotkeyManager(QObject):
         except Exception as e:
             self.error_occurred.emit(f"快捷键启动失败: {e}")
 
-    def stop(self):
+    def stop(self) -> None:
         """停止监听"""
         if self._listener:
             try:
@@ -125,13 +125,13 @@ class HotkeyManager(QObject):
             self._listener = None
         self._is_running = False
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """清理资源 — 供 PerformanceManager 调用"""
         self.stop()
         self._main_window = None
         logger.info("[HotkeyManager] cleanup completed")
 
-    def update_hotkey(self, action: str, key_combo: str):
+    def update_hotkey(self, action: str, key_combo: str) -> None:
         """更新快捷键配置"""
         if action in self._hotkeys:
             self._hotkeys[action] = key_combo
@@ -167,5 +167,5 @@ class HotkeyManager(QObject):
         return "+".join(normalized)
 
     @property
-    def is_running(self):
+    def is_running(self) -> None:
         return self._is_running

@@ -44,13 +44,13 @@ class MemorySearchWorker(QThread):
     results_ready = Signal(list)
     error = Signal(str)
 
-    def __init__(self, memory_system, query, top_k=10):
+    def __init__(self, memory_system, query, top_k=10) -> None:
         super().__init__()
         self.memory_system = memory_system
         self.query = query
         self.top_k = top_k
 
-    def run(self):
+    def run(self) -> None:
         try:
             results = self.memory_system.search(self.query, top_k=self.top_k)
             self.results_ready.emit(results)
@@ -63,11 +63,11 @@ class ConsolidateWorker(QThread):
     done = Signal(dict)
     error = Signal(str)
 
-    def __init__(self, memory_system):
+    def __init__(self, memory_system) -> None:
         super().__init__()
         self.memory_system = memory_system
 
-    def run(self):
+    def run(self) -> None:
         try:
             result = self.memory_system.consolidate()
             self.done.emit(result)
@@ -78,7 +78,7 @@ class ConsolidateWorker(QThread):
 class MemoryItemWidget(QTreeWidgetItem):
     """记忆条目 TreeWidget Item"""
 
-    def __init__(self, parent, data: dict, layer: str, index: int):
+    def __init__(self, parent, data: dict, layer: str, index: int) -> None:
         # 列: [重要性, 角色, 内容, 标签, 时间]
         importance = data.get("importance", 0)
         role = data.get("role", "")
@@ -136,7 +136,7 @@ class MemoryItemWidget(QTreeWidgetItem):
 class MemoryPage(QWidget, LazyPageMixin):
     """记忆页面 — 四层记忆系统可视化，支持懒加载"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("memoryPage")
@@ -149,13 +149,13 @@ class MemoryPage(QWidget, LazyPageMixin):
         self._skeleton = SkeletonContainer("正在加载记忆系统...", self)
         self._skeleton.hide_skeleton()
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -174,24 +174,24 @@ class MemoryPage(QWidget, LazyPageMixin):
         if self.backend:
             self._on_backend_ready_impl()
 
-    def _on_backend_ready_impl(self):
+    def _on_backend_ready_impl(self) -> None:
         """后端就绪后的实际 UI 操作"""
         self._refresh_all()
 
-    def showEvent(self, event):
+    def showEvent(self, event) -> None:
         """页面可见时恢复定时刷新"""
         super().showEvent(event)
         if hasattr(self, '_stats_timer') and self._stats_timer:
             self._stats_timer.start()
             self._refresh_stats()
 
-    def hideEvent(self, event):
+    def hideEvent(self, event) -> None:
         """页面不可见时暂停刷新（节省资源）"""
         super().hideEvent(event)
         if hasattr(self, '_stats_timer') and self._stats_timer:
             self._stats_timer.stop()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(8)
@@ -375,7 +375,7 @@ class MemoryPage(QWidget, LazyPageMixin):
 
         return card, val_label
 
-    def _init_memory_tree(self, parent):
+    def _init_memory_tree(self, parent) -> None:
         """初始化记忆树"""
         self.memory_tree = QTreeWidget()
         self.memory_tree.setHeaderLabels(["重要性", "角色", "内容", "标签", "时间"])
@@ -416,7 +416,7 @@ class MemoryPage(QWidget, LazyPageMixin):
         parent.addWidget(self.memory_tree)
 
     @property
-    def backend(self):
+    def backend(self) -> None:
         """获取后端实例（延迟初始化）"""
         if self._backend is None:
             main_window = self.window()
@@ -425,13 +425,13 @@ class MemoryPage(QWidget, LazyPageMixin):
         return self._backend
 
     @property
-    def memory_system(self):
+    def memory_system(self) -> None:
         """获取记忆系统实例"""
         if self.backend and hasattr(self.backend, 'memory'):
             return self.backend.memory
         return None
 
-    def on_backend_ready(self):
+    def on_backend_ready(self) -> None:
         """后端就绪回调 — 刷新记忆数据"""
         if not self._is_initialized:
             # 页面尚未初始化，保存后端引用但不执行 UI 操作
@@ -440,7 +440,7 @@ class MemoryPage(QWidget, LazyPageMixin):
 
     # ========== 数据加载 ==========
 
-    def _refresh_all(self):
+    def _refresh_all(self) -> None:
         """刷新全部记忆数据"""
         mem = self.memory_system
         if not mem:
@@ -452,7 +452,7 @@ class MemoryPage(QWidget, LazyPageMixin):
         self._refresh_semantic()
         self._refresh_facts()
 
-    def _refresh_stats(self):
+    def _refresh_stats(self) -> None:
         """刷新统计面板（异步）— 使用 StatsResultWorker 在线程池中读取记忆数据
 
         v1.11.22: 从同步阻塞改为异步模式，主线程立即返回不卡顿。
@@ -469,7 +469,7 @@ class MemoryPage(QWidget, LazyPageMixin):
         QThreadPool.globalInstance().start(self._stats_worker)
 
     @Slot(dict)
-    def _on_stats_ready(self, stats: dict):
+    def _on_stats_ready(self, stats: dict) -> None:
         """异步统计结果回调 — 在主线程更新 UI
 
         Args:
@@ -490,14 +490,14 @@ class MemoryPage(QWidget, LazyPageMixin):
                 self._stats_worker = None
 
     @Slot(str)
-    def _on_stats_error(self, error_msg: str):
+    def _on_stats_error(self, error_msg: str) -> None:
         """异步统计读取错误回调"""
         logger.debug(f"Stats refresh error: {error_msg}")
         # 手动释放已完成的 worker（setAutoDelete=False）
         if hasattr(self, '_stats_worker') and self._stats_worker:
             self._stats_worker = None
 
-    def _refresh_working(self):
+    def _refresh_working(self) -> None:
         """刷新工作记忆"""
         self.working_root.takeChildren()
         mem = self.memory_system
@@ -520,7 +520,7 @@ class MemoryPage(QWidget, LazyPageMixin):
 
         self.working_root.setText(0, f"⚡ 工作记忆 ({len(mem.working_memory)})")
 
-    def _refresh_episodic(self):
+    def _refresh_episodic(self) -> None:
         """刷新情景记忆"""
         self.episodic_root.takeChildren()
         mem = self.memory_system
@@ -549,7 +549,7 @@ class MemoryPage(QWidget, LazyPageMixin):
         active_count = sum(1 for m in mem.episodic_memory if not m.is_forgotten)
         self.episodic_root.setText(0, f"📖 情景记忆 ({active_count})")
 
-    def _refresh_semantic(self):
+    def _refresh_semantic(self) -> None:
         """刷新语义记忆（向量库）"""
         self.semantic_root.takeChildren()
         mem = self.memory_system
@@ -574,7 +574,7 @@ class MemoryPage(QWidget, LazyPageMixin):
 
         self.semantic_root.setText(0, f"🧠 语义记忆 ({count})")
 
-    def _refresh_facts(self):
+    def _refresh_facts(self) -> None:
         """刷新事实记忆"""
         self.facts_root.takeChildren()
         mem = self.memory_system
@@ -603,7 +603,7 @@ class MemoryPage(QWidget, LazyPageMixin):
 
     # ========== 交互 ==========
 
-    def _on_item_clicked(self, item, column):
+    def _on_item_clicked(self, item, column) -> None:
         """点击记忆条目"""
         if not isinstance(item, MemoryItemWidget):
             return
@@ -630,7 +630,7 @@ class MemoryPage(QWidget, LazyPageMixin):
         # 保存当前选中
         self._selected_item = item
 
-    def _show_context_menu(self, pos):
+    def _show_context_menu(self, pos) -> None:
         """右键菜单"""
         item = self.memory_tree.itemAt(pos)
         if not isinstance(item, MemoryItemWidget):
@@ -656,7 +656,7 @@ class MemoryPage(QWidget, LazyPageMixin):
         self._selected_item = item
         menu.exec(self.memory_tree.viewport().mapToGlobal(pos))
 
-    def _show_search_context_menu(self, pos):
+    def _show_search_context_menu(self, pos) -> None:
         """搜索结果右键菜单"""
         item = self.search_results_tree.itemAt(pos)
         if not item:
@@ -670,7 +670,7 @@ class MemoryPage(QWidget, LazyPageMixin):
 
         menu.exec(self.search_results_tree.viewport().mapToGlobal(pos))
 
-    def _on_search_item_clicked(self, item, column):
+    def _on_search_item_clicked(self, item, column) -> None:
         """搜索结果点击"""
         c = get_colors()
         text = item.text(2)
@@ -686,7 +686,7 @@ class MemoryPage(QWidget, LazyPageMixin):
 
     # ========== 操作 ==========
 
-    def _do_search(self, query: str):
+    def _do_search(self, query: str) -> None:
         """执行记忆搜索"""
         if not query.strip():
             return
@@ -701,7 +701,7 @@ class MemoryPage(QWidget, LazyPageMixin):
         self._search_worker.start()
 
     @Slot(list)
-    def _on_search_results(self, results: list):
+    def _on_search_results(self, results: list) -> None:
         """搜索结果返回"""
         c = get_colors()
         self.search_results_tree.clear()
@@ -724,7 +724,7 @@ class MemoryPage(QWidget, LazyPageMixin):
 
         self.detail_tabs.setCurrentIndex(1)
 
-    def _edit_memory(self):
+    def _edit_memory(self) -> None:
         """编辑记忆"""
         item = getattr(self, '_selected_item', None)
         if not item or not isinstance(item, MemoryItemWidget):
@@ -745,7 +745,7 @@ class MemoryPage(QWidget, LazyPageMixin):
             else:
                 self._show_info("失败", "更新记忆失败")
 
-    def _delete_memory(self):
+    def _delete_memory(self) -> None:
         """删除记忆"""
         item = getattr(self, '_selected_item', None)
         if not item or not isinstance(item, MemoryItemWidget):
@@ -767,7 +767,7 @@ class MemoryPage(QWidget, LazyPageMixin):
             else:
                 self._show_info("失败", "删除记忆失败")
 
-    def _mark_important(self):
+    def _mark_important(self) -> None:
         """标记重要"""
         item = getattr(self, '_selected_item', None)
         if not item or not isinstance(item, MemoryItemWidget):
@@ -779,7 +779,7 @@ class MemoryPage(QWidget, LazyPageMixin):
         if ok:
             self._set_importance(importance)
 
-    def _set_importance(self, importance: int):
+    def _set_importance(self, importance: int) -> None:
         """设置重要性"""
         item = getattr(self, '_selected_item', None)
         if not item or not isinstance(item, MemoryItemWidget):
@@ -794,7 +794,7 @@ class MemoryPage(QWidget, LazyPageMixin):
             self._show_info("成功", f"已标记为重要性 {importance}")
             self._refresh_all()
 
-    def _consolidate(self):
+    def _consolidate(self) -> None:
         """记忆重整"""
         mem = self.memory_system
         if not mem:
@@ -812,14 +812,14 @@ class MemoryPage(QWidget, LazyPageMixin):
         self._consolidate_worker.error.connect(lambda e: self._on_consolidate_done({"error": e}))
         self._consolidate_worker.start()
 
-    def _animate_consolidate(self):
+    def _animate_consolidate(self) -> None:
         """重整按钮的 loading 动画"""
         self._consolidate_dots = (self._consolidate_dots + 1) % 4
         dots = "." * self._consolidate_dots
         self.consolidate_btn.setText(f"重整中{dots}")
 
     @Slot(dict)
-    def _on_consolidate_done(self, result: dict):
+    def _on_consolidate_done(self, result: dict) -> None:
         """重整完成"""
         if hasattr(self, '_consolidate_timer') and self._consolidate_timer:
             self._consolidate_timer.stop()
@@ -837,7 +837,7 @@ class MemoryPage(QWidget, LazyPageMixin):
             self._show_info("重整完成", msg)
             self._refresh_all()
 
-    def _export_memory(self):
+    def _export_memory(self) -> None:
         """导出记忆"""
         mem = self.memory_system
         if not mem:
@@ -858,7 +858,7 @@ class MemoryPage(QWidget, LazyPageMixin):
         except Exception as e:
             self._show_info("导出失败", str(e))
 
-    def _show_info(self, title: str, content: str):
+    def _show_info(self, title: str, content: str) -> None:
         """显示信息栏"""
         InfoBar.info(
             title=title,
@@ -870,7 +870,7 @@ class MemoryPage(QWidget, LazyPageMixin):
 
     # ========== 主题刷新（v1.9.80）==========
 
-    def refresh_theme(self):
+    def refresh_theme(self) -> None:
         """主题切换时刷新统计卡片等硬编码样式"""
         c = get_colors()
         # 重建统计卡片样式

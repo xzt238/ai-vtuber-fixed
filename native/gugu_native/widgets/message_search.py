@@ -29,14 +29,14 @@ class MessageSearchBar(QWidget):
     searchNavigate = Signal(int)
     searchClosed = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("messageSearchBar")
         self._result_count = 0
         self._current_index = 0
         self._init_ui()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化 UI"""
         from gugu_native.theme import get_colors
         c = get_colors()
@@ -98,7 +98,7 @@ class MessageSearchBar(QWidget):
         # 默认隐藏
         self.setVisible(False)
 
-    def _on_text_changed(self, text: str):
+    def _on_text_changed(self, text: str) -> None:
         """搜索文本变化"""
         if text.strip():
             self.searchRequested.emit(text.strip())
@@ -107,13 +107,13 @@ class MessageSearchBar(QWidget):
             self._current_index = 0
             self._update_count_label()
 
-    def _on_close(self):
+    def _on_close(self) -> None:
         """关闭搜索栏"""
         self._search_input.clear()
         self.setVisible(False)
         self.searchClosed.emit()
 
-    def set_result_count(self, count: int, cross_session: int = 0):
+    def set_result_count(self, count: int, cross_session: int = 0) -> None:
         """设置搜索结果数量
 
         Args:
@@ -127,7 +127,7 @@ class MessageSearchBar(QWidget):
             self._current_index = 1
         self._update_count_label()
 
-    def _update_count_label(self):
+    def _update_count_label(self) -> None:
         """更新计数标签"""
         if self._result_count == 0 and getattr(self, '_cross_session_count', 0) == 0:
             self._count_label.setText("无结果")
@@ -139,7 +139,7 @@ class MessageSearchBar(QWidget):
                 text += f" (+{self._cross_session_count})"
             self._count_label.setText(text)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event) -> None:
         """键盘事件 — ESC 关闭, Enter 下一个"""
         if event.key() == Qt.Key.Key_Escape:
             self._on_close()
@@ -147,12 +147,12 @@ class MessageSearchBar(QWidget):
             self.searchNavigate.emit(1)
         super().keyPressEvent(event)
 
-    def show_search(self):
+    def show_search(self) -> None:
         """显示搜索栏并聚焦"""
         self.setVisible(True)
         self._search_input.setFocus()
 
-    def refresh_theme(self):
+    def refresh_theme(self) -> None:
         """刷新主题"""
         c = get_colors()
 

@@ -56,7 +56,7 @@ _PROACTIVE_PREFS_FILE = os.path.join(_CACHE_DIR, "proactive_prefs.json")
 class SettingsPage(ScrollArea, LazyPageMixin):
     """设置页面 — 卡片式分组布局，支持懒加载"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         ScrollArea.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("settingsPage")
@@ -70,13 +70,13 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         self._skeleton.hide_skeleton()
         # 配置加载延迟到 on_backend_ready，减少启动时同步 I/O
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -93,7 +93,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         if self.backend:
             self._on_backend_ready_impl()
 
-    def _bind_autostart_switch(self):
+    def _bind_autostart_switch(self) -> None:
         """绑定开机自启开关到主窗口的 AutoStartManager"""
         if not hasattr(self, 'autostart_switch'):
             return
@@ -106,7 +106,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             )
 
     @property
-    def backend(self):
+    def backend(self) -> None:
         """获取后端实例 — 与 ChatPage 等页面保持一致的访问方式"""
         if self._backend is None:
             main_window = self.window()
@@ -114,7 +114,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 self._backend = main_window.backend
         return self._backend
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化 UI — 卡片式布局（v1.9.78: 模型相关配置置顶）"""
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -576,7 +576,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     # ========== 主题刷新 ==========
 
-    def refresh_theme(self):
+    def refresh_theme(self) -> None:
         """主题切换时刷新所有硬编码样式"""
         c = get_colors()
 
@@ -642,7 +642,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     # ========== 主题切换 ==========
 
-    def _on_theme_selected(self, theme_id: str):
+    def _on_theme_selected(self, theme_id: str) -> None:
         """主题选择回调 — 应用主题、持久化偏好、刷新全局样式
 
         Args:
@@ -676,7 +676,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     # ========== API Key 显隐 ==========
 
-    def _toggle_api_key_visibility(self):
+    def _toggle_api_key_visibility(self) -> None:
         """切换 API Key 显示/隐藏"""
         self._api_key_visible = not self._api_key_visible
         if self._api_key_visible:
@@ -690,7 +690,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     # ========== 统一保存 ==========
 
-    def _mark_dirty(self, *args):
+    def _mark_dirty(self, *args) -> None:
         """标记配置已修改 — 按钮边框变橙色提示"""
         self._dirty = True
         if hasattr(self, '_save_all_btn') and self._save_all_btn:
@@ -698,7 +698,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             self._save_all_btn.style().unpolish(self._save_all_btn)
             self._save_all_btn.style().polish(self._save_all_btn)
 
-    def _save_all_settings(self):
+    def _save_all_settings(self) -> None:
         """统一保存所有配置"""
         errors = []
         # LLM
@@ -752,7 +752,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     # ========== 检查更新 ==========
 
-    def _check_for_updates(self):
+    def _check_for_updates(self) -> None:
         """触发更新检查"""
         main_window = self.window()
         if hasattr(main_window, 'update_manager'):
@@ -772,7 +772,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         label = self.llm_provider.currentText()
         return _LABEL_TO_KEY.get(label, "minimax")
 
-    def _on_provider_changed(self, index: int):
+    def _on_provider_changed(self, index: int) -> None:
         """Provider 切换 - 加载对应的模型列表和默认值"""
         provider_key = self._get_current_provider_key()
         cfg = PROVIDER_CONFIG.get(provider_key, {})
@@ -794,14 +794,14 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         # 加载已保存的 API Key
         self._load_api_key_for_provider(provider_key)
 
-    def _load_ollama_models(self):
+    def _load_ollama_models(self) -> None:
         """从 Ollama API 动态获取模型列表（异步，不阻塞 UI）"""
         from PySide6.QtCore import QThread
 
         class _OllamaFetchWorker(QThread):
             finished = Signal(list)  # 模型名列表
 
-            def run(self):
+            def run(self) -> None:
                 try:
                     import requests
                     resp = requests.get("http://localhost:11434/api/tags", timeout=3)
@@ -818,14 +818,14 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         self._ollama_worker.finished.connect(self._on_ollama_models_fetched)
         self._ollama_worker.start()
 
-    def _on_ollama_models_fetched(self, models: list):
+    def _on_ollama_models_fetched(self, models: list) -> None:
         """Ollama 模型列表获取完成"""
         if models:
             self.model_combo.addItems(models)
         else:
             self.model_combo.addItem("qwen3:8b")
 
-    def _load_api_key_for_provider(self, provider_key: str):
+    def _load_api_key_for_provider(self, provider_key: str) -> None:
         """加载指定 provider 的已保存 API Key"""
         try:
             if os.path.exists(_API_KEYS_FILE):
@@ -838,7 +838,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         except Exception as e:
             self.api_key_input.setText("")
 
-    def _save_llm_config(self):
+    def _save_llm_config(self) -> None:
         """保存 LLM 配置"""
         provider_key = self._get_current_provider_key()
         api_key = self.api_key_input.text().strip()
@@ -895,7 +895,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             duration=2000
         )
 
-    def _save_api_key(self, provider_key: str, api_key: str):
+    def _save_api_key(self, provider_key: str, api_key: str) -> None:
         """保存 API Key 到 api_keys.json"""
         keys = {}
         if os.path.exists(_API_KEYS_FILE):
@@ -924,7 +924,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         label = self.image_gen_provider.currentText()
         return _IMAGE_GEN_LABEL_TO_KEY.get(label, "wanx")
 
-    def _on_image_gen_provider_changed(self, index: int):
+    def _on_image_gen_provider_changed(self, index: int) -> None:
         """文生图 Provider 切换 - 加载对应的模型列表和默认值"""
         provider_key = self._get_current_image_gen_provider_key()
         cfg = IMAGE_GEN_CONFIG.get(provider_key, {})
@@ -947,7 +947,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         # 加载已保存的 API Key
         self._load_image_gen_api_key_for_provider(provider_key)
 
-    def _load_image_gen_api_key_for_provider(self, provider_key: str):
+    def _load_image_gen_api_key_for_provider(self, provider_key: str) -> None:
         """加载指定文生图 provider 的已保存 API Key"""
         try:
             if os.path.exists(_API_KEYS_FILE):
@@ -961,7 +961,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         except Exception as e:
             self.image_gen_api_key.setText("")
 
-    def _toggle_image_gen_key_visibility(self):
+    def _toggle_image_gen_key_visibility(self) -> None:
         """切换文生图 API Key 显示/隐藏"""
         if self.image_gen_api_key.echoMode() == QLineEdit.EchoMode.Password:
             self.image_gen_api_key.setEchoMode(QLineEdit.EchoMode.Normal)
@@ -970,7 +970,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             self.image_gen_api_key.setEchoMode(QLineEdit.EchoMode.Password)
             self._toggle_image_gen_key_btn.setIcon(FluentIcon.VIEW)
 
-    def _save_image_gen_config(self):
+    def _save_image_gen_config(self) -> None:
         """保存文生图配置"""
         provider_key = self._get_current_image_gen_provider_key()
         api_key = self.image_gen_api_key.text().strip()
@@ -1029,7 +1029,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             duration=2000
         )
 
-    def _apply_image_gen_config_to_backend(self, provider_key: str, api_key: str, model: str, base_url: str, width: int, height: int):
+    def _apply_image_gen_config_to_backend(self, provider_key: str, api_key: str, model: str, base_url: str, width: int, height: int) -> None:
         """将文生图配置应用到后端"""
         backend = self.backend
         if not backend:
@@ -1053,7 +1053,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 image_gen_section["api_key"] = mimo_api_key
                 self.image_gen_api_key.setText(mimo_api_key)
 
-    def _apply_llm_config_to_backend(self, provider_key: str, api_key: str, model: str, base_url: str):
+    def _apply_llm_config_to_backend(self, provider_key: str, api_key: str, model: str, base_url: str) -> None:
         """将 LLM 配置应用到后端（引擎重建在后台线程执行）"""
         backend = self.backend
         if not backend:
@@ -1118,11 +1118,11 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 class _LLMRebuildWorker(QThread):
                     error = Signal(str)
 
-                    def __init__(self, backend_ref):
+                    def __init__(self, backend_ref) -> None:
                         super().__init__()
                         self._backend_ref = backend_ref
 
-                    def run(self):
+                    def run(self) -> None:
                         try:
                             result = self._backend_ref.rebuild_llm()
                             if not result:
@@ -1138,13 +1138,13 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     # ========== TTS 配置逻辑 ==========
 
-    def _populate_edge_voices(self):
+    def _populate_edge_voices(self) -> None:
         """填充 Edge TTS 音色列表"""
         self.tts_voice.clear()
         for voice_id, label in EDGE_VOICES:
             self.tts_voice.addItem(f"{label} ({voice_id})", userData=voice_id)
 
-    def _populate_gptsovits_voices(self):
+    def _populate_gptsovits_voices(self) -> None:
         """填充 GPT-SoVITS 音色列表（后台加载，不阻塞 UI）"""
         self.tts_voice.clear()
         backend = self.backend
@@ -1159,11 +1159,11 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         class _VoiceFetchWorker(QThread):
             finished = Signal(list)  # [(label, value), ...]
 
-            def __init__(self, backend_ref):
+            def __init__(self, backend_ref) -> None:
                 super().__init__()
                 self._backend_ref = backend_ref
 
-            def run(self):
+            def run(self) -> None:
                 voices = []
                 try:
                     tts = self._backend_ref.tts
@@ -1200,7 +1200,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         self._voice_fetch_worker.finished.connect(self._on_gptsovits_voices_fetched)
         self._voice_fetch_worker.start()
 
-    def _on_gptsovits_voices_fetched(self, voices: list):
+    def _on_gptsovits_voices_fetched(self, voices: list) -> None:
         """GPT-SoVITS 音色列表获取完成 — 填充列表后恢复已保存的音色"""
         self.tts_voice.clear()
         if voices:
@@ -1212,7 +1212,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         # 音色列表就绪后，尝试恢复之前保存的音色
         self._restore_tts_voice_after_populate()
 
-    def _on_tts_engine_changed(self, index: int):
+    def _on_tts_engine_changed(self, index: int) -> None:
         """TTS 引擎切换 — 动态填充音色列表"""
         engine = self.tts_engine.currentText()
         if engine == "Edge TTS":
@@ -1228,7 +1228,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         # 音色列表填充后，尝试恢复待恢复的音色（Edge/MiMo 是同步的，GPT-SoVITS 是异步的）
         self._restore_tts_voice_after_populate()
 
-    def _restore_tts_voice_after_populate(self):
+    def _restore_tts_voice_after_populate(self) -> None:
         """音色列表填充后，恢复待恢复的音色（处理异步加载的 GPT-SoVITS 等引擎）
 
         在以下时机调用：
@@ -1253,7 +1253,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             self.tts_voice.setCurrentIndex(voice_idx)
             self._pending_tts_voice = None  # 已恢复，清除
 
-    def _populate_mimo_tts_voices(self):
+    def _populate_mimo_tts_voices(self) -> None:
         """填充 MiMo TTS 预置音色列表"""
         self.tts_voice.clear()
         mimo_voices = [
@@ -1284,7 +1284,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 return str(user_data)
         return self.tts_voice.currentText()
 
-    def _save_tts_config(self):
+    def _save_tts_config(self) -> None:
         """保存 TTS 配置（持久化 + 后端同步）
 
         为所有引擎保存音色到 provider_configs，确保切换引擎后音色不丢失：
@@ -1374,13 +1374,13 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 class _TTSRebuildWorker(QThread):
                     error = Signal(str)
 
-                    def __init__(self, backend_ref, voice_id_ref, provider_ref):
+                    def __init__(self, backend_ref, voice_id_ref, provider_ref) -> None:
                         super().__init__()
                         self._backend_ref = backend_ref
                         self._voice_id = voice_id_ref
                         self._provider = provider_ref
 
-                    def run(self):
+                    def run(self) -> None:
                         try:
                             result = self._backend_ref.rebuild_tts()
                             if not result:
@@ -1412,7 +1412,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             duration=2000
         )
 
-    def _load_tts_prefs(self):
+    def _load_tts_prefs(self) -> None:
         """从 tts_preferences.json 加载 TTS 偏好
 
         恢复引擎选择 → 触发音色列表填充 → 恢复音色选择 → 恢复各引擎子配置
@@ -1466,7 +1466,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     # ========== 加载已保存的配置 ==========
 
-    def _load_saved_config(self):
+    def _load_saved_config(self) -> None:
         """从 llm_preferences.json 和 api_keys.json 加载已保存的配置"""
         try:
             prefs = {}
@@ -1507,7 +1507,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         # 加载 ASR 偏好
         self._load_asr_prefs()
 
-    def on_backend_ready(self):
+    def on_backend_ready(self) -> None:
         """后端就绪回调 - 从后端同步当前配置
 
         优先级: 偏好文件 (app/cache/*.json) > config.yaml
@@ -1522,12 +1522,12 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             return
         self._on_backend_ready_impl()
 
-    def _on_backend_ready_impl(self):
+    def _on_backend_ready_impl(self) -> None:
         """后端就绪后的实际 UI 操作 — 异步加载偏好文件，减少同步 I/O"""
         # 使用 AsyncJsonWorker 批量异步读取所有偏好文件
         self._load_prefs_async()
 
-    def _load_prefs_async(self):
+    def _load_prefs_async(self) -> None:
         """异步批量加载所有偏好文件"""
         from gugu_native.widgets.async_json_worker import AsyncJsonWorker
 
@@ -1545,7 +1545,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         self._prefs_worker.json_failed.connect(self._on_prefs_load_failed)
         self._prefs_worker.start()
 
-    def _on_prefs_loaded(self, results: dict):
+    def _on_prefs_loaded(self, results: dict) -> None:
         """所有偏好文件加载完成 — 批量更新 UI"""
         # results 格式: {file_path: data_dict_or_None}
         llm_prefs = results.get(_LLM_PREFS_FILE) or {}
@@ -1573,7 +1573,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         # 从 backend.config 补充偏好文件中不存在的配置
         self._apply_backend_config_fallback()
 
-    def _on_prefs_load_failed(self, error_msg: str):
+    def _on_prefs_load_failed(self, error_msg: str) -> None:
         """偏好文件异步加载失败 — 降级到同步读取"""
         logger.info(f"[SettingsPage] 异步偏好加载失败，降级到同步读取: {error_msg}")
         try:
@@ -1582,7 +1582,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         except Exception as e:
             logger.info(f"[SettingsPage] 同步降级加载也失败: {e}")
 
-    def _apply_llm_prefs(self, prefs: dict, api_keys: dict = None):
+    def _apply_llm_prefs(self, prefs: dict, api_keys: dict = None) -> None:
         """应用 LLM 偏好（输入是已解析的 dict）"""
         if not prefs:
             return
@@ -1618,7 +1618,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         except Exception as e:
             logger.info(f"[SettingsPage] 应用 LLM 偏好失败: {e}")
 
-    def _apply_tts_prefs(self, prefs: dict):
+    def _apply_tts_prefs(self, prefs: dict) -> None:
         """应用 TTS 偏好（输入是已解析的 dict）"""
         if not prefs:
             return
@@ -1653,7 +1653,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         except Exception as e:
             logger.info(f"[SettingsPage] 应用 TTS 偏好失败: {e}")
 
-    def _apply_asr_prefs(self, prefs: dict):
+    def _apply_asr_prefs(self, prefs: dict) -> None:
         """应用 ASR 偏好（输入是已解析的 dict）"""
         if not prefs:
             return
@@ -1670,7 +1670,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         except Exception as e:
             logger.info(f"[SettingsPage] 应用 ASR 偏好失败: {e}")
 
-    def _apply_vision_prefs(self, prefs: dict):
+    def _apply_vision_prefs(self, prefs: dict) -> None:
         """应用视觉偏好（输入是已解析的 dict）"""
         if not prefs:
             return
@@ -1684,7 +1684,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         except Exception as e:
             logger.info(f"[SettingsPage] 应用视觉偏好失败: {e}")
 
-    def _apply_proactive_prefs(self, prefs: dict):
+    def _apply_proactive_prefs(self, prefs: dict) -> None:
         """应用主动说话偏好（输入是已解析的 dict）"""
         if not prefs:
             return
@@ -1696,7 +1696,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         except Exception as e:
             logger.info(f"[SettingsPage] 应用主动说话偏好失败: {e}")
 
-    def _apply_backend_config_fallback(self):
+    def _apply_backend_config_fallback(self) -> None:
         """从 backend.config.yaml 补充偏好文件中不存在的配置"""
         try:
             backend = self.backend
@@ -1788,7 +1788,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             logger.info(f"[SettingsPage] _apply_backend_config_fallback 失败: {e}")
             traceback.print_exc()
 
-    def _on_proactive_toggled(self, checked: bool):
+    def _on_proactive_toggled(self, checked: bool) -> None:
         """v1.9.76: 主动说话开关切换"""
         backend = self.backend
         if not backend:
@@ -1823,7 +1823,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         # 持久化
         self._save_proactive_config()
 
-    def _on_proactive_interval_changed(self, value: int):
+    def _on_proactive_interval_changed(self, value: int) -> None:
         """v1.9.76: 主动说话间隔变更"""
         backend = self.backend
         if not backend:
@@ -1838,7 +1838,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
         self._save_proactive_config()
 
-    def _save_proactive_config(self):
+    def _save_proactive_config(self) -> None:
         """保存主动说话配置"""
         try:
             prefs_file = os.path.join(_CACHE_DIR, "proactive_prefs.json")
@@ -1852,7 +1852,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         except Exception as e:
             logger.info(f"[SettingsPage] 保存主动说话配置失败: {e}")
 
-    def _load_proactive_config(self):
+    def _load_proactive_config(self) -> None:
         """加载主动说话配置"""
         try:
             prefs_file = os.path.join(_CACHE_DIR, "proactive_prefs.json")
@@ -1871,13 +1871,13 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     # ========== ASR 配置逻辑 ==========
 
-    def _on_asr_provider_changed(self, index: int):
+    def _on_asr_provider_changed(self, index: int) -> None:
         """ASR 引擎切换"""
         # 0=FunASR, 1=MiMo ASR
         is_mimo = index == 1
         self.mimo_asr_base_url.setEnabled(is_mimo)
 
-    def _save_asr_config(self):
+    def _save_asr_config(self) -> None:
         """保存 ASR 配置"""
         provider_map = {0: "funasr", 1: "mimo"}
         provider = provider_map.get(self.asr_provider.currentIndex(), "funasr")
@@ -1936,7 +1936,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
             duration=2000
         )
 
-    def _load_asr_prefs(self):
+    def _load_asr_prefs(self) -> None:
         """从 asr_preferences.json 加载 ASR 偏好"""
         try:
             asr_prefs_file = os.path.join(_CACHE_DIR, "asr_preferences.json")
@@ -1962,7 +1962,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
 
     # ========== 视觉配置 ==========
 
-    def _on_vision_provider_changed(self, index: int):
+    def _on_vision_provider_changed(self, index: int) -> None:
         """v1.9.76: 视觉引擎切换"""
         # 0=RapidOCR, 1=MiniMax VL, 2=MiniCPM-V2, 3=MiMo Vision
         is_minimax = index == 1
@@ -1974,7 +1974,7 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         self.vision_int4_switch.setEnabled(is_minicpm)
         self.mimo_vision_base_url.setEnabled(is_mimo)
 
-    def _save_vision_config(self):
+    def _save_vision_config(self) -> None:
         """v1.9.76: 保存视觉配置"""
         backend = self.backend
         if not backend:

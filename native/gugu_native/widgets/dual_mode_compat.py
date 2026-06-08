@@ -43,11 +43,11 @@ class WebUICheckWorker(QObject):
 
     result_ready = Signal(bool)
 
-    def __init__(self, http_port: int, parent=None):
+    def __init__(self, http_port: int, parent=None) -> None:
         super().__init__(parent)
         self._http_port = http_port
 
-    def check(self):
+    def check(self) -> None:
         """在子线程中检测 WebUI 是否在运行"""
         try:
             import socket
@@ -69,7 +69,7 @@ class DualModeCompat:
     WEBUI_HTTP_PORT = _WEBUI_HTTP_PORT
     WEBUI_WS_PORT = _WEBUI_WS_PORT
 
-    def __init__(self, project_dir: str):
+    def __init__(self, project_dir: str) -> None:
         self.project_dir = Path(project_dir)
         self.cache_dir = self.project_dir / "app" / "cache"
         self.memory_dir = self.project_dir / "memory"
@@ -89,7 +89,7 @@ class DualModeCompat:
             "config_yaml": str(self.project_dir / "app" / "config.yaml"),
         }
 
-    def ensure_dirs(self):
+    def ensure_dirs(self) -> None:
         """确保共享目录存在"""
         for d in [self.cache_dir, self.memory_dir, self.state_dir]:
             d.mkdir(parents=True, exist_ok=True)
@@ -142,7 +142,7 @@ class DualModeCompat:
         except Exception as e:
             return False
 
-    def release_mutex(self):
+    def release_mutex(self) -> None:
         """释放互斥锁"""
         if self._mutex_handle:
             try:
@@ -176,9 +176,9 @@ class DualModeCompat:
                 content = f.read()
 
             # KI-015 FIX: 展开 ${VAR} 环境变量
-            def expand_env_vars(text):
+            def expand_env_vars(text) -> None:
                 pattern = re.compile(r'\$\{(\w+)\}')
-                def replacer(match):
+                def replacer(match) -> None:
                     var_name = match.group(1)
                     return os.environ.get(var_name, match.group(0))
                 return pattern.sub(replacer, text)
@@ -210,7 +210,7 @@ class DualModeCompat:
                 pass
         return {}
 
-    def save_llm_preferences(self, prefs: dict):
+    def save_llm_preferences(self, prefs: dict) -> None:
         """保存 LLM 偏好（与 WebUI 共享）"""
         self.ensure_dirs()
         pref_path = self.cache_dir / "llm_preferences.json"

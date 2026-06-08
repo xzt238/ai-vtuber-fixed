@@ -65,7 +65,7 @@ class _VRMStaticServer:
     _lock = threading.Lock()
 
     @classmethod
-    def get(cls):
+    def get(cls) -> None:
         """获取单例实例（懒启动）"""
         if cls._instance is None:
             with cls._lock:
@@ -73,13 +73,13 @@ class _VRMStaticServer:
                     cls._instance = cls()
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._server = None
         self._thread = None
         self._port = None
         self._start()
 
-    def _start(self):
+    def _start(self) -> None:
         """启动 HTTP 服务器"""
         if not os.path.isdir(_STATIC_DIR):
             _logger.info(f"静态文件目录不存在: {_STATIC_DIR}")
@@ -89,13 +89,13 @@ class _VRMStaticServer:
             root_dir = _STATIC_DIR
 
             class Handler(http.server.SimpleHTTPRequestHandler):
-                def __init__(self, *args, **kwargs):
+                def __init__(self, *args, **kwargs) -> None:
                     super().__init__(*args, directory=root_dir, **kwargs)
 
-                def log_message(self, format, *args):
+                def log_message(self, format, *args) -> None:
                     pass  # 抑制日志
 
-                def end_headers(self):
+                def end_headers(self) -> None:
                     self.send_header("Access-Control-Allow-Origin", "*")
                     self.send_header("Cache-Control", "no-cache")
                     super().end_headers()
@@ -126,7 +126,7 @@ class _VRMStaticServer:
             return f"http://localhost:{self._port}"
         return None
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """关闭服务器"""
         if self._server:
             try:
@@ -148,17 +148,17 @@ if WEBENGINE_AVAILABLE:
         model_error_signal = Signal(str)       # 模型加载错误
 
         @Slot(str)
-        def onModelLoaded(self, model_name: str):
+        def onModelLoaded(self, model_name: str) -> None:
             """JS 通知：模型加载完成"""
             self.model_loaded_signal.emit(model_name)
 
         @Slot()
-        def onPageReady(self):
+        def onPageReady(self) -> None:
             """JS 通知：Three.js 初始化完成"""
             self.page_ready_signal.emit()
 
         @Slot(str)
-        def onModelError(self, msg: str):
+        def onModelError(self, msg: str) -> None:
             """JS 通知：模型加载失败"""
             self.model_error_signal.emit(msg)
 
@@ -673,7 +673,7 @@ class VRMWidget(QWidget):
 
     model_loaded = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         """初始化 VRM 渲染组件
 
         Args:
@@ -734,27 +734,27 @@ class VRMWidget(QWidget):
 
     # ========== Qt 事件 ==========
 
-    def showEvent(self, event):
+    def showEvent(self, event) -> None:
         """widget 变为可见时触发 — 强制 canvas resize（修复隐藏时初始化为 0x0）"""
         super().showEvent(event)
         if self._web_view and self._page_ready:
             # 延迟 100ms 确保 Qt 布局已完成
             QTimer.singleShot(100, self._force_canvas_resize)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event) -> None:
         """widget 尺寸变化时触发 — 同步 canvas 尺寸"""
         super().resizeEvent(event)
         if self._web_view and self._page_ready:
             QTimer.singleShot(50, self._force_canvas_resize)
 
-    def _force_canvas_resize(self):
+    def _force_canvas_resize(self) -> None:
         """调用 JS forceResize() 同步 canvas 尺寸"""
         try:
             self._web_page.runJavaScript("if(window.forceResize)window.forceResize()")
         except Exception as e:
             pass
 
-    def _load_page(self):
+    def _load_page(self) -> None:
         """加载 VRM 渲染页面"""
         base_url = self._server.base_url
         if not base_url:
@@ -775,7 +775,7 @@ class VRMWidget(QWidget):
         url = QUrl(f"{base_url}/vrm_widget.html?_t={int(_time.time())}")
         self._web_view.setUrl(url)
 
-    def _show_placeholder(self, message: str):
+    def _show_placeholder(self, message: str) -> None:
         """显示占位提示"""
         layout = self.layout()
         if layout:
@@ -792,7 +792,7 @@ class VRMWidget(QWidget):
 
     # ========== JS → Python 回调 ==========
 
-    def _on_page_ready(self):
+    def _on_page_ready(self) -> None:
         """JS 通知页面就绪"""
         self._page_ready = True
         _logger.info("VRM 页面就绪（init3D 完成）")
@@ -802,14 +802,14 @@ class VRMWidget(QWidget):
             self._pending_model_path = None
             self.load_model(pending)
 
-    def _on_model_loaded(self, model_name: str):
+    def _on_model_loaded(self, model_name: str) -> None:
         """JS 通知模型加载完成"""
         self.model = True
         self._model_name = model_name
         self.model_loaded.emit(model_name)
         _logger.info(f"VRM 模型加载成功: {model_name}")
 
-    def _on_model_error(self, msg: str):
+    def _on_model_error(self, msg: str) -> None:
         """JS 通知模型加载失败"""
         _logger.error(f"VRM 模型加载失败: {msg}")
 
@@ -859,55 +859,55 @@ class VRMWidget(QWidget):
 
     # ========== Public API — 显示设置 ==========
 
-    def set_arm_angle(self, value: float):
+    def set_arm_angle(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setArmAngle)window.setArmAngle({value})")
 
-    def set_model_scale(self, value: float):
+    def set_model_scale(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setModelScale)window.setModelScale({value})")
 
-    def set_camera_distance(self, value: float):
+    def set_camera_distance(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setCameraDistance)window.setCameraDistance({value})")
 
-    def set_light_intensity(self, value: float):
+    def set_light_intensity(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setLightIntensity)window.setLightIntensity({value})")
 
-    def set_target_height(self, value: float):
+    def set_target_height(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setTargetHeight)window.setTargetHeight({value})")
 
-    def set_model_y(self, value: float):
+    def set_model_y(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setModelY)window.setModelY({value})")
 
-    def set_fov(self, value: float):
+    def set_fov(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setFOV)window.setFOV({value})")
 
-    def set_model_x(self, value: float):
+    def set_model_x(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setModelX)window.setModelX({value})")
 
-    def set_model_rotation(self, value: float):
+    def set_model_rotation(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setModelRotation)window.setModelRotation({value})")
 
-    def set_bg_opacity(self, value: float):
+    def set_bg_opacity(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setBgOpacity)window.setBgOpacity({value})")
 
-    def set_ambient_light(self, value: float):
+    def set_ambient_light(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setAmbientLight)window.setAmbientLight({value})")
 
-    def set_fill_light(self, value: float):
+    def set_fill_light(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setFillLight)window.setFillLight({value})")
 
-    def set_anim_speed(self, value: float):
+    def set_anim_speed(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setAnimSpeed)window.setAnimSpeed({value})")
 
-    def set_anim_amplitude(self, value: float):
+    def set_anim_amplitude(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setAnimAmplitude)window.setAnimAmplitude({value})")
 
-    def set_head_tilt(self, value: float):
+    def set_head_tilt(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setHeadTilt)window.setHeadTilt({value})")
 
-    def set_breath_amp(self, value: float):
+    def set_breath_amp(self, value: float) -> None:
         self._web_page.runJavaScript(f"if(window.setBreathAmp)window.setBreathAmp({value})")
 
-    def apply_display_config(self, config: dict):
+    def apply_display_config(self, config: dict) -> None:
         for key, method in [
             ("arm_angle", self.set_arm_angle),
             ("model_scale", self.set_model_scale),
@@ -931,7 +931,7 @@ class VRMWidget(QWidget):
 
     # ========== Public API — 口型同步 ==========
 
-    def set_mouth_open(self, value: float):
+    def set_mouth_open(self, value: float) -> None:
         """设置口型开合度（TTS 口型同步）
 
         Args:
@@ -943,7 +943,7 @@ class VRMWidget(QWidget):
 
     # ========== Public API — 表情控制 ==========
 
-    def set_expression(self, name: str, value: float = 1.0):
+    def set_expression(self, name: str, value: float = 1.0) -> None:
         """设置表情
 
         VRM 使用 expressionManager.setValue(name, value) 控制表情权重。

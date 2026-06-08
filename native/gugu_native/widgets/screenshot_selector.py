@@ -21,7 +21,7 @@ class ScreenshotSelector(QWidget):
 
     region_selected = Signal(str)  # 截图保存路径
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._start = QPoint()
         self._end = QPoint()
@@ -37,7 +37,7 @@ class ScreenshotSelector(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
         self.setCursor(Qt.CursorShape.CrossCursor)
 
-    def start(self):
+    def start(self) -> None:
         """启动截图 — 全屏遮罩"""
         screen = QApplication.primaryScreen()
         if not screen:
@@ -49,7 +49,7 @@ class ScreenshotSelector(QWidget):
         self.setGeometry(geometry)
         self.showFullScreen()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event) -> None:
         """绘制半透明遮罩 + 选区"""
         painter = QPainter(self)
         # 绘制全屏截图作为背景
@@ -82,7 +82,7 @@ class ScreenshotSelector(QWidget):
     def _selection_rect(self) -> QRect:
         return QRect(self._start, self._end)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.RightButton:
             self.close()
             return
@@ -91,12 +91,12 @@ class ScreenshotSelector(QWidget):
         self._selecting = True
         self.update()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event) -> None:
         if self._selecting:
             self._end = event.pos()
             self.update()
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton and self._selecting:
             self._selecting = False
             rect = self._selection_rect().normalized()
@@ -116,7 +116,7 @@ class ScreenshotSelector(QWidget):
             self.region_selected.emit(tmp_path)
             self.close()
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_Escape:
             self.close()
         super().keyPressEvent(event)

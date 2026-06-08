@@ -20,17 +20,17 @@ class LazyPageMixin:
 
     使用方式：
         class MyPage(QWidget, LazyPageMixin):
-            def __init__(self, parent=None):
+            def __init__(self, parent=None) -> None:
                 QWidget.__init__(self, parent)
                 LazyPageMixin.__init__(self)
                 ...
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._is_initialized = False
         self._is_loading = False
 
-    def ensure_initialized(self):
+    def ensure_initialized(self) -> None:
         """由 GuguGagaApp.switchTo() 调用，确保页面已初始化
 
         v1.12.0: 在初始化前后处理事件队列，防止 UI 冻结
@@ -50,15 +50,15 @@ class LazyPageMixin:
             # v1.12.0: 初始化完成后处理积压事件
             QApplication.processEvents()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """子类重写：完成实际的 UI 构造和控件填充"""
         raise NotImplementedError("子类必须重写 lazy_init()")
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         """显示骨架屏/加载占位"""
         pass
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         """隐藏骨架屏"""
         pass
 

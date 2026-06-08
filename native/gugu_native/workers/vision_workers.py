@@ -10,12 +10,12 @@ class OCRWorker(QThread):
     finished = Signal(str)
     error = Signal(str)
 
-    def __init__(self, backend, image_path):
+    def __init__(self, backend, image_path) -> None:
         super().__init__()
         self.backend = backend
         self.image_path = image_path
 
-    def run(self):
+    def run(self) -> None:
         try:
             backend = self.backend
             if backend is None:
@@ -49,13 +49,13 @@ class VisionWorker(QThread):
     result_ready = Signal(str)
     error_occurred = Signal(str)
 
-    def __init__(self, backend, image_path, user_text):
+    def __init__(self, backend, image_path, user_text) -> None:
         super().__init__()
         self.backend = backend
         self.image_path = image_path
         self.user_text = user_text
 
-    def run(self):
+    def run(self) -> None:
         try:
             backend = self.backend
             if backend is None:

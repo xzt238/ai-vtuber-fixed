@@ -38,7 +38,7 @@ _qss_cache: dict = {}
 _qss_cache_max_size = 10  # 最多缓存 10 个主题的 QSS
 
 
-def _ensure_manager():
+def _ensure_manager() -> None:
     """确保 ThemeManager 已初始化，未初始化时自动创建"""
     global _theme_manager
     if _theme_manager is None:
@@ -58,7 +58,7 @@ def _ensure_manager():
 _theme_change_callbacks: List[Callable] = []
 
 
-def register_theme_callback(callback: Callable):
+def register_theme_callback(callback: Callable) -> None:
     """注册主题变更回调 — 页面在 __init__ 中调用"""
     _theme_change_callbacks.append(callback)
     # 同时注册到 ThemeManager
@@ -66,7 +66,7 @@ def register_theme_callback(callback: Callable):
     manager.register_callback(callback)
 
 
-def unregister_theme_callback(callback: Callable):
+def unregister_theme_callback(callback: Callable) -> None:
     """反注册主题变更回调"""
     try:
         _theme_change_callbacks.remove(callback)
@@ -218,7 +218,7 @@ def is_dark() -> bool:
     return manager.is_dark()
 
 
-def apply_theme(theme: Theme):
+def apply_theme(theme: Theme) -> None:
     """应用主题（兼容旧接口，内部映射为 theme_id）
 
     Args:
@@ -228,7 +228,7 @@ def apply_theme(theme: Theme):
     apply_theme_by_id(theme_id)
 
 
-def apply_theme_by_id(theme_id: str):
+def apply_theme_by_id(theme_id: str) -> None:
     """通过主题 ID 应用主题 + 重新生成 QSS
 
     Args:
@@ -296,7 +296,7 @@ def get_global_qss() -> str:
     return qss
 
 
-def clear_qss_cache():
+def clear_qss_cache() -> None:
     """清空 QSS 缓存 — 主题配置变更时调用"""
     _qss_cache.clear()
 

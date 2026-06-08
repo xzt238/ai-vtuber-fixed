@@ -50,7 +50,7 @@ class ThemeSelector(QWidget):
 
     theme_selected = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._cards: dict[str, object] = {}
         self._current_id = "dark"

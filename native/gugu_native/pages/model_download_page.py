@@ -334,18 +334,18 @@ class _DownloadWorker(QThread):
     progress = Signal(str, int)          # model_id, percent
     finished = Signal(str, bool, str)    # model_id, success, message
 
-    def __init__(self, model_info):
+    def __init__(self, model_info) -> None:
         super().__init__()
         self.model_info = model_info
 
     @staticmethod
-    def _apply_hf_mirror(url):
+    def _apply_hf_mirror(url) -> None:
         """对 HuggingFace 官方 URL 替换为国内镜像"""
         if "huggingface.co" in url and "hf-mirror.com" not in url:
             return url.replace("huggingface.co", "hf-mirror.com")
         return url
 
-    def _download_file_with_progress(self, url, dest, mdl_id):
+    def _download_file_with_progress(self, url, dest, mdl_id) -> None:
         """下载单个文件，实时报告进度。"""
         url = self._apply_hf_mirror(url)
         os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -371,20 +371,20 @@ class _DownloadWorker(QThread):
 
         self.progress.emit(mdl_id, 98)
 
-    def _set_env(self, key, value):
+    def _set_env(self, key, value) -> None:
         """临时设置环境变量，返回旧值（None 表示之前不存在）"""
         old = os.environ.get(key)
         os.environ[key] = value
         return old
 
-    def _restore_env(self, key, old_value):
+    def _restore_env(self, key, old_value) -> None:
         """恢复环境变量"""
         if old_value is not None:
             os.environ[key] = old_value
         elif key in os.environ:
             del os.environ[key]
 
-    def run(self):
+    def run(self) -> None:
         mdl = self.model_info
         mdl_type = mdl["type"]
         mdl_id = mdl["id"]
@@ -489,7 +489,7 @@ class _DownloadWorker(QThread):
 class ModelDownloadPage(ScrollArea, LazyPageMixin):
     """模型下载页面 — 支持懒加载，首次可见时才创建完整 UI"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         ScrollArea.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("modelDownloadPage")
@@ -500,13 +500,13 @@ class ModelDownloadPage(ScrollArea, LazyPageMixin):
         self._skeleton = SkeletonContainer("正在加载模型下载...", self)
         self._skeleton.hide_skeleton()
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -517,7 +517,7 @@ class ModelDownloadPage(ScrollArea, LazyPageMixin):
         # 注册主题变更回调（延迟到 UI 创建后）
         register_theme_callback(self.refresh_theme)
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
@@ -654,7 +654,7 @@ class ModelDownloadPage(ScrollArea, LazyPageMixin):
 
         return card
 
-    def _on_download_model(self, mdl: dict):
+    def _on_download_model(self, mdl: dict) -> None:
         """开始下载模型"""
         model_id = mdl["id"]
         item_info = self._model_items.get(model_id)
@@ -687,13 +687,13 @@ class ModelDownloadPage(ScrollArea, LazyPageMixin):
         worker.start()
         self._download_worker = worker
 
-    def _on_download_progress(self, model_id: str, percent: int):
+    def _on_download_progress(self, model_id: str, percent: int) -> None:
         """下载进度更新"""
         item_info = self._model_items.get(model_id)
         if item_info:
             item_info["progress_bar"].setValue(percent)
 
-    def _on_download_finished(self, model_id: str, success: bool, message: str):
+    def _on_download_finished(self, model_id: str, success: bool, message: str) -> None:
         """下载完成回调"""
         item_info = self._model_items.get(model_id)
         if not item_info:
@@ -759,7 +759,7 @@ class ModelDownloadPage(ScrollArea, LazyPageMixin):
                 duration=5000,
             )
 
-    def refresh_statuses(self):
+    def refresh_statuses(self) -> None:
         """刷新所有模型的下载状态"""
         for mdl_id, item_info in self._model_items.items():
             mdl = item_info["info"]
@@ -810,7 +810,7 @@ class ModelDownloadPage(ScrollArea, LazyPageMixin):
 
     # ========== 主题刷新（v1.9.80）==========
 
-    def refresh_theme(self):
+    def refresh_theme(self) -> None:
         """主题切换时刷新卡片样式"""
         c = get_colors()
         for mdl_id, item_info in self._model_items.items():

@@ -21,7 +21,7 @@ logger = logging.getLogger('ChatPage.Message')
 class ChatPageMessageMixin:
     """消息处理 Mixin"""
 
-    def _send_message(self, text: str = ""):
+    def _send_message(self, text: str = "") -> None:
         """发送消息"""
         if self._is_streaming:
             return
@@ -96,7 +96,7 @@ class ChatPageMessageMixin:
         worker.tool_call_status.connect(self._on_tool_call_status)
         worker.start()
 
-    def _stop_streaming(self):
+    def _stop_streaming(self) -> None:
         """停止流式对话"""
         if self._worker and self._is_streaming:
             self._worker.stop_stream()
@@ -120,14 +120,14 @@ class ChatPageMessageMixin:
                     w.wait(500)
             self._tts_workers.clear()
 
-    def _on_send_or_stop(self):
+    def _on_send_or_stop(self) -> None:
         """发送/停止按钮点击——根据当前状态路由"""
         if self._is_streaming:
             self._stop_streaming()
         else:
             self._send_message()
 
-    def _set_streaming_state(self, streaming: bool):
+    def _set_streaming_state(self, streaming: bool) -> None:
         """流式状态切换"""
         self._is_streaming = streaming
         if streaming:
@@ -141,25 +141,25 @@ class ChatPageMessageMixin:
         self.input_field.setEnabled(not streaming)
 
     @Slot(str)
-    def _on_tool_call_status(self, display_text: str):
+    def _on_tool_call_status(self, display_text: str) -> None:
         """FC 工具调用状态提示"""
         self.chat_display.append_system_msg(display_text)
 
     @Slot(str)
-    def _on_chunk(self, chunk_text: str):
+    def _on_chunk(self, chunk_text: str) -> None:
         """收到流式文本片段"""
         self._current_ai_text += chunk_text
         self.chat_display.update_streaming(self._current_ai_text)
 
     @Slot(str)
-    def _on_sentence_ready(self, sentence: str):
+    def _on_sentence_ready(self, sentence: str) -> None:
         """流式 TTS：检测到完整句子，在后台线程合成音频"""
         if not sentence or not self.backend:
             return
         self._tts_seq_counter += 1
         seq = self._tts_seq_counter
 
-        def _tts_task(text, seq_num):
+        def _tts_task(text, seq_num) -> None:
             try:
                 audio_path = self.backend.speak(text)
                 if audio_path and os.path.exists(audio_path):
@@ -170,7 +170,7 @@ class ChatPageMessageMixin:
         self._tts_executor.submit(_tts_task, sentence, seq)
 
     @Slot(dict)
-    def _on_stream_finished(self, result: dict):
+    def _on_stream_finished(self, result: dict) -> None:
         """流式对话完成"""
         if not self._is_streaming:
             return
@@ -213,7 +213,7 @@ class ChatPageMessageMixin:
         self._save_chat_history()
 
     @Slot(str)
-    def _on_error(self, error_msg: str):
+    def _on_error(self, error_msg: str) -> None:
         """处理错误"""
         self.chat_display.append_system_msg(f"错误: {error_msg}")
         self._current_ai_text = ""
@@ -221,11 +221,11 @@ class ChatPageMessageMixin:
 
     # ========== 消息操作回调 ==========
 
-    def _on_action_copy(self, text: str):
+    def _on_action_copy(self, text: str) -> None:
         """复制消息"""
         QApplication.clipboard().setText(text)
 
-    def _on_action_retry(self, msg_id: str):
+    def _on_action_retry(self, msg_id: str) -> None:
         """重试（重新生成最后一条 AI 回复）"""
         if self._is_streaming:
             return
@@ -239,22 +239,22 @@ class ChatPageMessageMixin:
             self.input_field.setText(last_user_msg)
             self._send_message()
 
-    def _on_action_quote(self, text: str):
+    def _on_action_quote(self, text: str) -> None:
         """引用消息"""
         self._pending_quote = text
         self.input_field.set_quote(text)
         self.input_field.setFocus()
 
-    def _on_action_edit(self, msg_id: str, text: str):
+    def _on_action_edit(self, msg_id: str, text: str) -> None:
         """编辑重发"""
         self.input_field.setText(text)
         self.input_field.setFocus()
 
-    def _toggle_search(self):
+    def _toggle_search(self) -> None:
         """切换搜索栏"""
         self.search_bar.show_search()
 
-    def _on_search(self, keyword: str):
+    def _on_search(self, keyword: str) -> None:
         """搜索消息"""
         if not keyword:
             return
@@ -264,7 +264,7 @@ class ChatPageMessageMixin:
                 results.append(i)
         self.search_bar.set_results(results)
 
-    def _on_search_navigate(self, index: int):
+    def _on_search_navigate(self, index: int) -> None:
         """搜索结果导航"""
         if 0 <= index < len(self._chat_messages):
             self.chat_display.scroll_to_message(index)

@@ -47,7 +47,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
     status_updated = Signal(str, str)     # 状态更新信号
     log_message = Signal(str, str)        # 日志消息信号
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("debugPageOptimized")
@@ -67,13 +67,13 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         self.status_updated.connect(self._on_status_updated)
         self.log_message.connect(self._on_log_message)
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -92,11 +92,11 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         self._refresh_timer.timeout.connect(self._refresh_status)
         self._refresh_timer.start(2000)
 
-    def set_backend(self, backend):
+    def set_backend(self, backend) -> None:
         """设置后端引用"""
         self._backend = backend
 
-    def _load_config(self):
+    def _load_config(self) -> None:
         """加载配置文件"""
         try:
             if self._config_file.exists():
@@ -110,7 +110,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
             self._log("ERROR", f"配置文件加载失败: {e}")
             self._config_data = {}
 
-    def _save_config(self):
+    def _save_config(self) -> None:
         """保存配置文件"""
         try:
             with open(self._config_file, 'w', encoding='utf-8') as f:
@@ -119,7 +119,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         except Exception as e:
             self._log("ERROR", f"配置文件保存失败: {e}")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(8, 8, 8, 8)
@@ -177,7 +177,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         
         main_layout.addWidget(main_splitter)
 
-    def _init_feature_list(self, layout):
+    def _init_feature_list(self, layout) -> None:
         """初始化左侧功能列表"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -213,7 +213,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         card_layout.addStretch()
         layout.addWidget(card)
 
-    def _init_all_cards(self):
+    def _init_all_cards(self) -> None:
         """初始化所有配置卡片"""
         self._cards = {}
         
@@ -229,7 +229,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         self._cards['hot_reload'] = self._create_hot_reload_card()
         self._right_layout.addWidget(self._cards['hot_reload'])
 
-    def _create_system_card(self):
+    def _create_system_card(self) -> None:
         """创建系统调试配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -288,7 +288,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_performance_card(self):
+    def _create_performance_card(self) -> None:
         """创建性能监控配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -353,7 +353,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_hot_reload_card(self):
+    def _create_hot_reload_card(self) -> None:
         """创建配置热重载配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -412,7 +412,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_rag_card(self):
+    def _create_rag_card(self) -> None:
         """创建RAG知识库配置卡片（已移至功能设置页面）"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -492,7 +492,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_live_card(self):
+    def _create_live_card(self) -> None:
         """创建直播平台配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -545,7 +545,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_svc_card(self):
+    def _create_svc_card(self) -> None:
         """创建SVC声音转换配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -605,7 +605,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_singing_card(self):
+    def _create_singing_card(self) -> None:
         """创建唱歌模块配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -654,7 +654,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_multi_agent_card(self):
+    def _create_multi_agent_card(self) -> None:
         """创建多AI群聊配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -703,7 +703,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_vision_input_card(self):
+    def _create_vision_input_card(self) -> None:
         """创建摄像头视觉输入配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -777,7 +777,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
         return card
 
-    def _init_bottom_panel(self, layout):
+    def _init_bottom_panel(self, layout) -> None:
         """初始化底部面板"""
         # 创建标签页
         tab_widget = QTabWidget()
@@ -803,7 +803,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         
         layout.addWidget(tab_widget)
 
-    def _show_feature_config(self, feature_key):
+    def _show_feature_config(self, feature_key) -> None:
         """显示功能配置"""
         # 隐藏所有卡片
         for key, card in self._cards.items():
@@ -815,7 +815,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         
         self._log("DEBUG", f"切换到功能配置: {feature_key}")
 
-    def _update_config(self, key, value):
+    def _update_config(self, key, value) -> None:
         """更新配置"""
         # 更新内存中的配置
         keys = key.split('.')
@@ -834,14 +834,14 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         
         self._log("INFO", f"配置更新: {key} = {value}")
 
-    def _on_config_changed(self, key, value):
+    def _on_config_changed(self, key, value) -> None:
         """配置变更处理"""
         # 更新状态标签
         feature = key.split('.')[0]
         if feature in self._status_labels:
             self._status_labels[feature].setText(f"配置已更新: {key}")
 
-    def _on_status_updated(self, feature, status):
+    def _on_status_updated(self, feature, status) -> None:
         """状态更新处理"""
         if feature in self._status_labels:
             self._status_labels[feature].setText(f"状态: {status}")
@@ -851,7 +851,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
             btn, status_label = self._feature_buttons[feature]
             status_label.setText(status)
 
-    def _on_log_message(self, level, message):
+    def _on_log_message(self, level, message) -> None:
         """日志消息处理"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{level}] {message}"
@@ -869,11 +869,11 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
             scrollbar = self._log_text.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
 
-    def _log(self, level, message):
+    def _log(self, level, message) -> None:
         """记录日志"""
         self.log_message.emit(level, message)
 
-    def _refresh_status(self):
+    def _refresh_status(self) -> None:
         """刷新状态"""
         # 这里应该从后端获取实际状态
         # 简化实现，只更新状态表格
@@ -884,102 +884,102 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
             self._status_table.setItem(i, 2, QTableWidgetItem(datetime.now().strftime("%H:%M:%S")))
 
     # 操作按钮的回调函数
-    def _test_rag(self):
+    def _test_rag(self) -> None:
         """测试RAG功能"""
         self._log("INFO", "测试RAG功能...")
         # 这里应该调用后端的RAG测试功能
 
-    def _load_rag_document(self):
+    def _load_rag_document(self) -> None:
         """加载RAG文档"""
         self._log("INFO", "加载RAG文档...")
         # 这里应该调用后端的文档加载功能
 
-    def _connect_live(self):
+    def _connect_live(self) -> None:
         """连接直播间"""
         self._log("INFO", "连接直播间...")
         # 这里应该调用后端的直播连接功能
 
-    def _disconnect_live(self):
+    def _disconnect_live(self) -> None:
         """断开直播间连接"""
         self._log("INFO", "断开直播间连接...")
         # 这里应该调用后端的直播断开功能
 
-    def _load_svc_model(self):
+    def _load_svc_model(self) -> None:
         """加载SVC模型"""
         self._log("INFO", "加载SVC模型...")
         # 这里应该调用后端的SVC模型加载功能
 
-    def _test_svc(self):
+    def _test_svc(self) -> None:
         """测试SVC转换"""
         self._log("INFO", "测试SVC转换...")
         # 这里应该调用后端的SVC测试功能
 
-    def _load_singing_model(self):
+    def _load_singing_model(self) -> None:
         """加载唱歌模型"""
         self._log("INFO", "加载唱歌模型...")
         # 这里应该调用后端的唱歌模型加载功能
 
-    def _test_singing(self):
+    def _test_singing(self) -> None:
         """测试唱歌功能"""
         self._log("INFO", "测试唱歌功能...")
         # 这里应该调用后端的唱歌测试功能
 
-    def _create_test_agent(self):
+    def _create_test_agent(self) -> None:
         """创建测试代理"""
         self._log("INFO", "创建测试代理...")
         # 这里应该调用后端的代理创建功能
 
-    def _start_multi_agent_conversation(self):
+    def _start_multi_agent_conversation(self) -> None:
         """开始多Agent对话"""
         self._log("INFO", "开始多Agent对话...")
         # 这里应该调用后端的多Agent对话功能
 
-    def _open_camera(self):
+    def _open_camera(self) -> None:
         """打开摄像头"""
         self._log("INFO", "打开摄像头...")
         # 这里应该调用后端的摄像头打开功能
 
-    def _close_camera(self):
+    def _close_camera(self) -> None:
         """关闭摄像头"""
         self._log("INFO", "关闭摄像头...")
         # 这里应该调用后端的摄像头关闭功能
 
-    def _refresh_system_status(self):
+    def _refresh_system_status(self) -> None:
         """刷新系统状态"""
         self._log("INFO", "刷新系统状态...")
         # 这里应该调用后端的系统状态获取功能
         self._status_labels['system'].setText("状态: 正常")
 
-    def _clear_cache(self):
+    def _clear_cache(self) -> None:
         """清除缓存"""
         self._log("INFO", "清除缓存...")
         # 这里应该调用后端的缓存清除功能
 
-    def _start_performance_monitor(self):
+    def _start_performance_monitor(self) -> None:
         """开始性能监控"""
         self._log("INFO", "开始性能监控...")
         # 这里应该调用后端的性能监控启动功能
         self._status_labels['performance'].setText("状态: 监控中")
 
-    def _stop_performance_monitor(self):
+    def _stop_performance_monitor(self) -> None:
         """停止性能监控"""
         self._log("INFO", "停止性能监控...")
         # 这里应该调用后端的性能监控停止功能
         self._status_labels['performance'].setText("状态: 已停止")
 
-    def _start_hot_reload(self):
+    def _start_hot_reload(self) -> None:
         """开始配置热重载"""
         self._log("INFO", "开始配置热重载...")
         # 这里应该调用后端的配置热重载启动功能
         self._status_labels['hot_reload'].setText("状态: 监听中")
 
-    def _stop_hot_reload(self):
+    def _stop_hot_reload(self) -> None:
         """停止配置热重载"""
         self._log("INFO", "停止配置热重载...")
         # 这里应该调用后端的配置热重载停止功能
         self._status_labels['hot_reload'].setText("状态: 已停止")
 
-    def _navigate_to_features_settings(self):
+    def _navigate_to_features_settings(self) -> None:
         """导航到功能设置页面"""
         self._log("INFO", "导航到功能设置页面...")
         # 这里应该实现页面导航功能

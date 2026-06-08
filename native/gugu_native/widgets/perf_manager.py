@@ -57,7 +57,7 @@ class PerformanceManager(QObject):
     GC_GEN1_INTERVAL_MS = GC_GEN1_INTERVAL_MS   # gen1: 每 30s
     GC_GEN2_INTERVAL_MS = GC_GEN2_INTERVAL_MS  # gen2: 每 120s
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
         # 已注册的可清理对象
@@ -86,7 +86,7 @@ class PerformanceManager(QObject):
 
     # ========== 增量 GC ==========
 
-    def _setup_incremental_gc(self):
+    def _setup_incremental_gc(self) -> None:
         """初始化增量 GC — 禁用自动 GC，设置分代定时器
 
         禁用 Python 自动 GC（gc.disable()），改用 3 个 QTimer 分代回收：
@@ -113,7 +113,7 @@ class PerformanceManager(QObject):
         self._gc_gen2_timer.timeout.connect(lambda: self._run_gc_gen(2))
         self._gc_gen2_timer.start(self.GC_GEN2_INTERVAL_MS)
 
-    def _run_gc_gen(self, generation: int):
+    def _run_gc_gen(self, generation: int) -> None:
         """分代 GC — 仅回收指定代及更年轻的对象
 
         Args:
@@ -128,7 +128,7 @@ class PerformanceManager(QObject):
 
     # ========== 后端懒加载（同步，deprecated）==========
 
-    def schedule_backend_init(self, callback=None, delay_ms=2000):
+    def schedule_backend_init(self, callback=None, delay_ms=2000) -> None:
         """延迟初始化后端（同步模式 — deprecated，保留向后兼容）
 
         .. deprecated::
@@ -144,7 +144,7 @@ class PerformanceManager(QObject):
 
         self._backend_init_started = True
 
-        def _do_init():
+        def _do_init() -> None:
             try:
                 # 触发后端初始化（通过 property）
                 main_window = self.parent()
@@ -161,7 +161,7 @@ class PerformanceManager(QObject):
 
     # ========== 后端异步初始化 ==========
 
-    def schedule_backend_init_async(self, callback=None, delay_ms=2000):
+    def schedule_backend_init_async(self, callback=None, delay_ms=2000) -> None:
         """异步初始化后端 — 在 QThread 中执行，不阻塞主线程
 
         使用 MoveToThread 模式在 Worker 线程中构造 AIVTuber 实例，
@@ -194,7 +194,7 @@ class PerformanceManager(QObject):
         logger.info(f"Backend async init scheduled (delay={delay_ms}ms)")
 
     @Slot(object)
-    def _on_backend_init_done(self, backend_instance):
+    def _on_backend_init_done(self, backend_instance) -> None:
         """后端初始化完成 — 在主线程中赋值
 
         Worker 线程中构造的 AIVTuber 实例通过 Signal 传回主线程，
@@ -226,7 +226,7 @@ class PerformanceManager(QObject):
             self._init_thread.wait(3000)
 
     @Slot(str)
-    def _on_backend_init_failed(self, error_msg: str):
+    def _on_backend_init_failed(self, error_msg: str) -> None:
         """后端初始化失败回调"""
         logger.error(f"Backend init failed: {error_msg}")
         main_window = self.parent()
@@ -237,26 +237,26 @@ class PerformanceManager(QObject):
             self._init_thread.wait(3000)
 
     @Slot(str)
-    def _on_backend_init_progress(self, msg: str):
+    def _on_backend_init_progress(self, msg: str) -> None:
         """后端初始化进度回调"""
         logger.info(f"Backend init progress: {msg}")
 
     # ========== 资源注册 ==========
 
-    def register_cleanup_target(self, name: str, obj: QObject):
+    def register_cleanup_target(self, name: str, obj: QObject) -> None:
         """注册可清理的对象
 
         当需要释放内存时，会调用对象的 cleanup() 方法
         """
         self._cleanup_targets[name] = weakref.ref(obj, lambda ref: self._cleanup_targets.pop(name, None))
 
-    def unregister_cleanup_target(self, name: str):
+    def unregister_cleanup_target(self, name: str) -> None:
         """取消注册"""
         self._cleanup_targets.pop(name, None)
 
     # ========== 内存管理 ==========
 
-    def _check_memory(self):
+    def _check_memory(self) -> None:
         """定期检查内存使用"""
         mem_mb = self._get_process_memory()
         if mem_mb > self.MEMORY_CRITICAL_THRESHOLD:
@@ -306,7 +306,7 @@ class PerformanceManager(QObject):
             except Exception as e:
                 return 0.0
 
-    def force_cleanup(self):
+    def force_cleanup(self) -> None:
         """强制清理所有已注册的资源 + 后端缓存"""
         cleaned = 0
         for name, ref in list(self._cleanup_targets.items()):
@@ -325,7 +325,7 @@ class PerformanceManager(QObject):
         gc.collect(2)
         logger.info(f"Force cleanup completed: {cleaned} targets cleaned")
 
-    def _cleanup_backend_caches(self):
+    def _cleanup_backend_caches(self) -> None:
         """清理后端模块的临时缓存（不卸载模型）"""
         main_window = self.parent()
         if not main_window or not hasattr(main_window, 'backend'):
@@ -360,13 +360,13 @@ class PerformanceManager(QObject):
 
     # ========== 页面资源追踪 ==========
 
-    def track_page_resources(self, page_name: str, resources: list):
+    def track_page_resources(self, page_name: str, resources: list) -> None:
         """追踪页面使用的资源（临时文件、大对象等）"""
         for res in resources:
             if hasattr(res, 'cleanup'):
                 self.register_cleanup_target(f"{page_name}:{id(res)}", res)
 
-    def release_page_resources(self, page_name: str):
+    def release_page_resources(self, page_name: str) -> None:
         """释放页面资源"""
         prefix = f"{page_name}:"
         for name in list(self._cleanup_targets.keys()):
@@ -381,7 +381,7 @@ class PerformanceManager(QObject):
 
     # ========== M-001: 模型按需卸载 ==========
 
-    def unload_idle_models(self, idle_threshold_seconds: int = 300):
+    def unload_idle_models(self, idle_threshold_seconds: int = 300) -> None:
         """卸载长时间未使用的模型，释放内存
 
         v1.11.25 新增: 检查后端模块的最后使用时间，
@@ -432,7 +432,7 @@ class PerformanceManager(QObject):
 
     # ========== 窗口状态广播 ==========
 
-    def set_window_drag_state(self, dragging: bool):
+    def set_window_drag_state(self, dragging: bool) -> None:
         """广播窗口拖动/resize 状态给所有订阅组件
 
         Args:
@@ -443,7 +443,7 @@ class PerformanceManager(QObject):
 
     # ========== GC 调优 ==========
 
-    def tune_gc_thresholds(self):
+    def tune_gc_thresholds(self) -> None:
         """调优 Python GC 阈值，减少启动阶段暂停
 
         当前增量 GC 配置：gen0:5s / gen1:30s / gen2:120s。
@@ -454,7 +454,7 @@ class PerformanceManager(QObject):
 
     # ========== 清理 ==========
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """全局清理 — 恢复 GC + 停止定时器 + 强制清理资源
 
         在应用退出时调用，确保:

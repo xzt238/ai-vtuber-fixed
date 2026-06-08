@@ -84,7 +84,7 @@ class Live2DWidget(QOpenGLWidget):
     expressions_updated = Signal(list)  # 表情 ID 列表
     motions_updated = Signal(list)      # 动作分组列表
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         """初始化 Live2D 渲染组件
 
         Args:
@@ -131,7 +131,7 @@ class Live2DWidget(QOpenGLWidget):
     # OpenGL 生命周期
     # ============================================================
 
-    def initializeGL(self):
+    def initializeGL(self) -> None:
         """OpenGL 上下文初始化 — 由 Qt 在首次 show() 时自动调用"""
         if not _live2d_available:
             return
@@ -148,7 +148,7 @@ class Live2DWidget(QOpenGLWidget):
         except Exception as e:
             _logger.error(f"OpenGL 初始化失败: {e}")
 
-    def paintGL(self):
+    def paintGL(self) -> None:
         """每帧渲染 — 由 update() 触发"""
         if not _live2d_available:
             return
@@ -160,7 +160,7 @@ class Live2DWidget(QOpenGLWidget):
             self.model.Update()
             self.model.Draw()
 
-    def resizeGL(self, w: int, h: int):
+    def resizeGL(self, w: int, h: int) -> None:
         """窗口尺寸变化时调整模型视口
 
         Args:
@@ -174,7 +174,7 @@ class Live2DWidget(QOpenGLWidget):
     # 动画循环
     # ============================================================
 
-    def _on_tick(self):
+    def _on_tick(self) -> None:
         """动画帧更新 — 定时器回调
 
         每帧执行：
@@ -216,7 +216,7 @@ class Live2DWidget(QOpenGLWidget):
     # 鼠标事件（眼球/头部跟踪 + 点击交互）
     # ============================================================
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event) -> None:
         """鼠标移动 → 模型眼球/头部跟踪
 
         将 Qt 像素坐标归一化到 [0, 1] 范围传给 live2d-py。
@@ -233,7 +233,7 @@ class Live2DWidget(QOpenGLWidget):
             self._mouse_y = max(0.0, min(1.0, y))
         super().mouseMoveEvent(event)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:
         """鼠标点击 → 触发 TapBody 交互动作"""
         if self.model is not None:
             try:
@@ -246,7 +246,7 @@ class Live2DWidget(QOpenGLWidget):
     # 内部模型加载
     # ============================================================
 
-    def _do_load_model(self):
+    def _do_load_model(self) -> None:
         """内部方法：从 self.model_path 加载模型
 
         在 OpenGL 上下文就绪后调用（initializeGL 或 load_model 中）。
@@ -356,7 +356,7 @@ class Live2DWidget(QOpenGLWidget):
     # Public API — 表情控制
     # ============================================================
 
-    def set_expression(self, name: str):
+    def set_expression(self, name: str) -> None:
         """设置表情
 
         Args:
@@ -375,7 +375,7 @@ class Live2DWidget(QOpenGLWidget):
     # Public API — 动作控制
     # ============================================================
 
-    def start_motion(self, group: str, index: int = 0, priority=None):
+    def start_motion(self, group: str, index: int = 0, priority=None) -> None:
         """播放指定动作
 
         Args:
@@ -393,7 +393,7 @@ class Live2DWidget(QOpenGLWidget):
         except Exception as e:
             _logger.error(f"动作播放失败 '{group}[{index}]': {e}")
 
-    def start_random_motion(self, group: str = "TapBody", priority=None):
+    def start_random_motion(self, group: str = "TapBody", priority=None) -> None:
         """随机播放动作组中的一个动作
 
         Args:
@@ -414,7 +414,7 @@ class Live2DWidget(QOpenGLWidget):
     # Public API — 口型同步
     # ============================================================
 
-    def set_mouth_open(self, value: float):
+    def set_mouth_open(self, value: float) -> None:
         """设置口型开合度（TTS 口型同步）
 
         写入 Cubism 标准参数 ParamMouthOpenY。
@@ -437,7 +437,7 @@ class Live2DWidget(QOpenGLWidget):
     # Public API — 空闲动画
     # ============================================================
 
-    def start_idle(self):
+    def start_idle(self) -> None:
         """启动空闲动画（随机播放 Idle 分组动作）"""
         self.start_random_motion("Idle")
 
@@ -445,7 +445,7 @@ class Live2DWidget(QOpenGLWidget):
     # Public API — 帧率控制
     # ============================================================
 
-    def set_fps(self, fps: int):
+    def set_fps(self, fps: int) -> None:
         """设置渲染帧率
 
         Args:
@@ -457,7 +457,7 @@ class Live2DWidget(QOpenGLWidget):
             self._anim_timer.setInterval(interval_ms)
             _logger.debug(f"FPS 更新: {self._target_fps}")
 
-    def set_window_drag_state(self, dragging: bool):
+    def set_window_drag_state(self, dragging: bool) -> None:
         """响应窗口拖动/resize 状态变化，暂停或恢复重绘
 
         Args:

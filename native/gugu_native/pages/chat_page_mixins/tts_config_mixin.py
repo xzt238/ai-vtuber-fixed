@@ -21,14 +21,14 @@ logger = logging.getLogger('ChatPage.TTSConfig')
 class ChatPageTTSConfigMixin:
     """TTS 配置 Mixin"""
 
-    def _populate_edge_voices_chat(self):
+    def _populate_edge_voices_chat(self) -> None:
         """填充 Edge TTS 音色列表"""
         from app.shared_config import EDGE_VOICES
         self.voice_combo.clear()
         for voice_id, label in EDGE_VOICES:
             self.voice_combo.addItem(f"{label}", userData=voice_id)
 
-    def _populate_gptsovits_voices_chat(self):
+    def _populate_gptsovits_voices_chat(self) -> None:
         """填充 GPT-SoVITS 音色列表"""
         self.voice_combo.clear()
         if not self.backend:
@@ -51,7 +51,7 @@ class ChatPageTTSConfigMixin:
             logger.error(f"Failed to get GPT-SoVITS voices: {e}")
         self.voice_combo.addItem("默认音色", userData="default")
 
-    def _on_tts_engine_changed_chat(self, index: int):
+    def _on_tts_engine_changed_chat(self, index: int) -> None:
         """Chat 页 TTS 引擎切换"""
         engine = self.tts_combo.currentText()
         if engine == "Edge TTS":
@@ -60,11 +60,11 @@ class ChatPageTTSConfigMixin:
             self._populate_gptsovits_voices_chat()
         self._apply_tts_to_backend()
 
-    def _on_voice_changed_chat(self, index: int):
+    def _on_voice_changed_chat(self, index: int) -> None:
         """Chat 页音色切换"""
         self._apply_tts_to_backend()
 
-    def _on_speed_changed(self, value: int):
+    def _on_speed_changed(self, value: int) -> None:
         """TTS 速度滑块变更"""
         speed = value / 100.0
         if self.backend:
@@ -76,12 +76,12 @@ class ChatPageTTSConfigMixin:
                 if hasattr(self.backend.tts, 'set_speed'):
                     self.backend.tts.set_speed(speed)
 
-    def _on_volume_changed(self, value: int):
+    def _on_volume_changed(self, value: int) -> None:
         """TTS 音量滑块变更"""
         volume = value / 100.0
         self._audio_output.setVolume(min(volume, 1.0))
 
-    def _on_tts_mode_toggled(self, checked: bool):
+    def _on_tts_mode_toggled(self, checked: bool) -> None:
         """TTS 流式/整段模式切换"""
         if checked:
             self.tts_mode_btn.setText("流式")
@@ -97,7 +97,7 @@ class ChatPageTTSConfigMixin:
                 return str(user_data)
         return self.voice_combo.currentText()
 
-    def _apply_tts_to_backend(self):
+    def _apply_tts_to_backend(self) -> None:
         """将当前 TTS 选择应用到后端 — 使用线程安全的 rebuild_tts()"""
         if not self.backend:
             return
@@ -130,7 +130,7 @@ class ChatPageTTSConfigMixin:
         except Exception as e:
             logger.error(f"TTS preferences save failed: {e}")
 
-    def sync_tts_from_settings(self, engine: str, voice_id: str):
+    def sync_tts_from_settings(self, engine: str, voice_id: str) -> None:
         """从设置页同步 TTS 配置到 Chat 页"""
         self.tts_combo.blockSignals(True)
         self.voice_combo.blockSignals(True)
@@ -154,11 +154,11 @@ class ChatPageTTSConfigMixin:
 
     # ========== 对话历史持久化 ==========
 
-    def _get_history_path(self):
+    def _get_history_path(self) -> None:
         """获取对话历史文件路径"""
         return get_history_path()
 
-    def _save_chat_history(self):
+    def _save_chat_history(self) -> None:
         """保存对话历史到 JSON"""
         try:
             messages = getattr(self, '_chat_messages', [])
@@ -174,7 +174,7 @@ class ChatPageTTSConfigMixin:
         except Exception as e:
             pass
 
-    def _load_chat_history(self):
+    def _load_chat_history(self) -> None:
         """加载对话历史（仅渲染最近20条，完整历史保存在 _chat_messages 中供 LLM 上下文使用）"""
         if not self.chat_display:
             return
@@ -199,7 +199,7 @@ class ChatPageTTSConfigMixin:
         except Exception as e:
             pass
 
-    def clear_chat(self):
+    def clear_chat(self) -> None:
         """清空对话"""
         if self.chat_display:
             self.chat_display.clear()
@@ -208,7 +208,7 @@ class ChatPageTTSConfigMixin:
 
     # ========== 主动说话回调 ==========
 
-    def _on_proactive_speech(self, text: str):
+    def _on_proactive_speech(self, text: str) -> None:
         """处理 AI 主动说话回调"""
         from PySide6.QtCore import QMetaObject, Qt, Q_ARG
         QMetaObject.invokeMethod(
@@ -219,7 +219,7 @@ class ChatPageTTSConfigMixin:
         )
 
     @Slot(str)
-    def _handle_proactive_speech(self, text: str):
+    def _handle_proactive_speech(self, text: str) -> None:
         """在 UI 线程中处理主动说话（TTS 合成在后台线程）"""
         if not text:
             return

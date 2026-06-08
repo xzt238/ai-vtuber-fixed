@@ -41,7 +41,7 @@ class AsyncJobManager(QObject):
     job_finished = Signal(str)         # job_id
     job_failed = Signal(str, str)      # job_id, error
 
-    def __init__(self, parent: Optional[QObject] = None):
+    def __init__(self, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self._active_jobs: Dict[str, QRunnable] = {}
         self._thread_pool = QThreadPool.globalInstance()

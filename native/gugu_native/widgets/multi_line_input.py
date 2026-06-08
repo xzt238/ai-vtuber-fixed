@@ -39,12 +39,12 @@ class MultiLineInput(QWidget):
     # 最大高度
     MAX_HEIGHT = MIN_HEIGHT + LINE_HEIGHT * (MAX_VISIBLE_LINES - 1)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._quote_text = ""
         self._init_ui()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化 UI"""
         from gugu_native.theme import get_colors
         c = get_colors()
@@ -115,12 +115,12 @@ class MultiLineInput(QWidget):
 
         main_layout.addWidget(self._text_edit)
 
-    def keyPressEvent(self, event: QKeyEvent):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
         """键盘事件 — Enter 发送, Shift+Enter 换行"""
         # 不拦截，让 QTextEdit 处理
         super().keyPressEvent(event)
 
-    def _on_text_changed(self):
+    def _on_text_changed(self) -> None:
         """文本变化 — 自动调整高度"""
         doc = self._text_edit.document()
         # 计算所需高度
@@ -138,7 +138,7 @@ class MultiLineInput(QWidget):
         """获取输入文本"""
         return self._text_edit.toPlainText().strip()
 
-    def setText(self, text: str):
+    def setText(self, text: str) -> None:
         """设置输入文本"""
         self._text_edit.setPlainText(text)
         # 光标移到末尾
@@ -146,19 +146,19 @@ class MultiLineInput(QWidget):
         cursor.movePosition(cursor.MoveOperation.End)
         self._text_edit.setTextCursor(cursor)
 
-    def clear(self):
+    def clear(self) -> None:
         """清空输入"""
         self._text_edit.clear()
 
-    def setPlaceholderText(self, text: str):
+    def setPlaceholderText(self, text: str) -> None:
         """设置占位文本"""
         self._text_edit.setPlaceholderText(text)
 
-    def setEnabled(self, enabled: bool):
+    def setEnabled(self, enabled: bool) -> None:
         """设置启用状态"""
         self._text_edit.setEnabled(enabled)
 
-    def setFocus(self):
+    def setFocus(self) -> None:
         """聚焦输入框"""
         self._text_edit.setFocus()
 
@@ -166,14 +166,14 @@ class MultiLineInput(QWidget):
         """是否聚焦"""
         return self._text_edit.hasFocus()
 
-    def set_quote(self, text: str):
+    def set_quote(self, text: str) -> None:
         """设置引用文本"""
         self._quote_text = text
         short = text[:80] + ("..." if len(text) > 80 else "")
         self._quote_text_label.setText(short)
         self._quote_bar.setVisible(True)
 
-    def clear_quote(self):
+    def clear_quote(self) -> None:
         """清除引用"""
         self._quote_text = ""
         self._quote_bar.setVisible(False)
@@ -183,7 +183,7 @@ class MultiLineInput(QWidget):
         """获取引用文本"""
         return self._quote_text
 
-    def refresh_theme(self):
+    def refresh_theme(self) -> None:
         """刷新主题"""
         c = get_colors()
 
@@ -217,11 +217,11 @@ class MultiLineInput(QWidget):
 class _InputTextEdit(QTextEdit):
     """自定义 QTextEdit — 拦截 Enter 键"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._send_on_enter = True
 
-    def keyPressEvent(self, event: QKeyEvent):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
         """键盘事件 — Enter 发送, Shift+Enter 换行"""
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
@@ -243,7 +243,7 @@ class _InputTextEdit(QTextEdit):
 class MultiLineInputV2(MultiLineInput):
     """改进版多行输入框 — 自定义 QTextEdit 处理 Enter 键"""
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化 UI — 使用自定义 QTextEdit"""
         c = get_colors()
 

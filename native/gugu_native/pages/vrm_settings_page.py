@@ -70,7 +70,7 @@ _PARAMS = [
 class VRMSettingsPage(QWidget, LazyPageMixin):
     """VRM 模型设置页面 — 支持懒加载，首次可见时才创建 VRMWidget"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("vrmSettingsPage")
@@ -82,13 +82,13 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
         self._skeleton = SkeletonContainer("正在加载 VRM 设置...", self)
         self._skeleton.hide_skeleton()
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -100,7 +100,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
 
     # ========== UI 构建 ==========
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         # 清除 __init__ 中创建的占位 layout，避免重复设置
         old_layout = self.layout()
         if old_layout:
@@ -193,7 +193,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
         cfg = self._load_config()
         self._apply_config_to_ui(cfg)
 
-    def _create_slider_group(self, label_text, param_name, vmin, vmax, default, step):
+    def _create_slider_group(self, label_text, param_name, vmin, vmax, default, step) -> None:
         """创建横向滑块组：标签 + Slider + SpinBox"""
         group = QWidget()
         layout = QHBoxLayout(group)
@@ -221,14 +221,14 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
         spinbox.setValue(default)
 
         # 信号连接 — 防止循环
-        def _from_slider(val):
+        def _from_slider(val) -> None:
             fval = vmin + val * step
             spinbox.blockSignals(True)
             spinbox.setValue(fval)
             spinbox.blockSignals(False)
             self._on_param_changed(param_name, fval)
 
-        def _from_spinbox(val):
+        def _from_spinbox(val) -> None:
             ival = int((val - vmin) / step)
             slider.blockSignals(True)
             slider.setValue(ival)
@@ -246,7 +246,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
 
     # ========== 预览初始化 ==========
 
-    def _init_preview(self, layout):
+    def _init_preview(self, layout) -> None:
         """创建 VRMWidget 预览"""
         self._vrm_widget = VRMWidget()
         self._vrm_widget.model_loaded.connect(self._on_preview_loaded)
@@ -258,13 +258,13 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
         if os.path.exists(default_path):
             self._vrm_widget.load_model(default_path)
 
-    def _on_preview_loaded(self, _model_name: str):
+    def _on_preview_loaded(self, _model_name: str) -> None:
         self._vrm_loaded = True
         self._apply_current_to_preview()
 
     # ========== 参数控制 ==========
 
-    def _on_param_changed(self, param_name: str, value: float):
+    def _on_param_changed(self, param_name: str, value: float) -> None:
         """滑块值变化 → 实时应用到预览"""
         if not self._vrm_widget or not self._vrm_loaded:
             return
@@ -290,7 +290,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
         if fn:
             fn(value)
 
-    def _apply_current_to_preview(self):
+    def _apply_current_to_preview(self) -> None:
         """将当前所有滑块值一次性应用到预览"""
         if not self._vrm_loaded:
             return
@@ -304,7 +304,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
             fval = vmin + slider.value() * step
             self._on_param_changed(name, fval)
 
-    def _apply_config_to_ui(self, config: dict):
+    def _apply_config_to_ui(self, config: dict) -> None:
         """将配置 dict 应用到 UI（滑块 + SpinBox）"""
         for name, (slider, spinbox) in self._sliders.items():
             val = config.get(name, _DEFAULTS.get(name, 0))
@@ -349,7 +349,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
 
         return cfg
 
-    def _save_config(self):
+    def _save_config(self) -> None:
         """保存当前参数到 cache + config.yaml"""
         current = {}
         for name, (slider, _spinbox) in self._sliders.items():
@@ -383,7 +383,7 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
 
         InfoBar.success("保存成功", "VRM 显示配置已保存到 config.yaml 和缓存", parent=self)
 
-    def _reset_defaults(self):
+    def _reset_defaults(self) -> None:
         """重置所有参数为默认值"""
         self._apply_config_to_ui(_DEFAULTS)
         self._apply_current_to_preview()

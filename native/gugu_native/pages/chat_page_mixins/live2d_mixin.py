@@ -25,7 +25,7 @@ logger = logging.getLogger('ChatPage.Live2D')
 class ChatPageLive2DMixin:
     """Live2D/VRM 模型管理 Mixin"""
 
-    def _lazy_init_live2d(self):
+    def _lazy_init_live2d(self) -> None:
         """延迟创建 Live2DWidget — 让窗口先显示再加载 Chromium
 
         QWebEngineView 的创建需要启动 Chromium 渲染进程，这是整个启动链路中
@@ -105,7 +105,7 @@ class ChatPageLive2DMixin:
             self._vrm_widget = None
             logger.info("VRMWidget not available, skipping VRM support")
 
-    def _force_live2d_repaint(self):
+    def _force_live2d_repaint(self) -> None:
         """微调窗口尺寸强制 QWebEngineView 合成到屏幕"""
         if not self.live2d_widget:
             return
@@ -115,7 +115,7 @@ class ChatPageLive2DMixin:
             w.resize(g.width() + 1, g.height())
             w.resize(g.width(), g.height())
 
-    def _load_default_model(self):
+    def _load_default_model(self) -> None:
         """加载默认 Live2D 模型"""
         if self.live2d_widget is None:
             return
@@ -129,7 +129,7 @@ class ChatPageLive2DMixin:
             if self._chat_display_ready and self.chat_display:
                 self.chat_display.append_system_msg(f"默认模型不存在: {model_path}")
 
-    def _load_default_vrm_model(self):
+    def _load_default_vrm_model(self) -> None:
         """加载默认 VRM 3D 模型"""
         if self._vrm_widget is None:
             return
@@ -141,7 +141,7 @@ class ChatPageLive2DMixin:
         else:
             logger.warning(f"VRM default model not found: {vrm_path}")
 
-    def switch_model_type(self, model_type: str):
+    def switch_model_type(self, model_type: str) -> None:
         """切换 Live2D / VRM 模型显示"""
         if model_type == self._current_model_type:
             return
@@ -175,7 +175,7 @@ class ChatPageLive2DMixin:
             self._vrm_variant_bar.hide()
             logger.info("Switched to Live2D model")
 
-    def _switch_vrm_variant(self, variant: str):
+    def _switch_vrm_variant(self, variant: str) -> None:
         """切换 VRM 变体"""
         if not self._vrm_widget:
             return
@@ -198,7 +198,7 @@ class ChatPageLive2DMixin:
                 btn.setChecked(name == variant)
             logger.info(f"Switched VRM variant: {variant} → {filename}")
 
-    def _import_vrm_model(self):
+    def _import_vrm_model(self) -> None:
         """导入新的 VRM 模型文件"""
         path, _ = QFileDialog.getOpenFileName(
             self, "选择 VRM 模型文件",
@@ -218,7 +218,7 @@ class ChatPageLive2DMixin:
         InfoBar.success("导入成功", f"VRM 模型已导入: {model_name}", parent=self)
         logger.info(f"Imported VRM: {path} → {dest}")
 
-    def _import_live2d_model(self):
+    def _import_live2d_model(self) -> None:
         """导入新的 Live2D 模型文件夹"""
         path = QFileDialog.getExistingDirectory(
             self, "选择 Live2D 模型文件夹"
@@ -243,7 +243,7 @@ class ChatPageLive2DMixin:
         InfoBar.success("导入成功", f"Live2D 模型已导入: {model_name}", parent=self)
         logger.info(f"Imported Live2D: {path} → {dest_dir}")
 
-    def _apply_vrm_display_config(self):
+    def _apply_vrm_display_config(self) -> None:
         """读取保存的 VRM 显示配置并应用到当前模型"""
         if not self._vrm_widget:
             return

@@ -149,7 +149,7 @@ class AnimationController:
         controller.set_mouth_open(0.8)  # 口型同步
     """
 
-    def __init__(self, live2d_widget):
+    def __init__(self, live2d_widget) -> None:
         """
         初始化动画控制器
 
@@ -182,7 +182,7 @@ class AnimationController:
         if hasattr(live2d_widget, 'expressions_updated'):
             live2d_widget.expressions_updated.connect(self._on_expressions_updated)
 
-    def start(self):
+    def start(self) -> None:
         """启动动画控制器（idle 动画 + 问候动画）"""
         self._is_active = True
         self._last_idle_time = time.time()
@@ -193,14 +193,14 @@ class AnimationController:
         self._greet_timer.start(1000)
         logger.info("[AnimationController] 动画控制器已启动")
 
-    def stop(self):
+    def stop(self) -> None:
         """停止动画控制器"""
         self._is_active = False
         self._idle_timer.stop()
         self._greet_timer.stop()
         logger.info("[AnimationController] 动画控制器已停止")
 
-    def pause_idle(self):
+    def pause_idle(self) -> None:
         """暂停 idle 动画定时器（窗口最小化时调用）
 
         只停止 _idle_timer，trigger_emotion() 和 set_mouth_open() 不受影响。
@@ -209,7 +209,7 @@ class AnimationController:
             self._idle_timer.stop()
         self._idle_paused = True
 
-    def resume_idle(self):
+    def resume_idle(self) -> None:
         """恢复 idle 动画定时器（窗口恢复显示时调用）
 
         重置 _last_idle_time 避免积压触发。
@@ -220,7 +220,7 @@ class AnimationController:
         if self._is_active and not self._idle_timer.isActive():
             self._idle_timer.start(2000)
 
-    def trigger_emotion(self, emotion: str, lock_duration: float = 3.0):
+    def trigger_emotion(self, emotion: str, lock_duration: float = 3.0) -> None:
         """
         触发情绪动画
 
@@ -267,7 +267,7 @@ class AnimationController:
 
         return detected if max_score >= 1 else EmotionType.NEUTRAL
 
-    def trigger_emotion_from_text(self, text: str, lock_duration: float = 3.0):
+    def trigger_emotion_from_text(self, text: str, lock_duration: float = 3.0) -> None:
         """
         从文本中检测情绪并触发对应动画（便捷方法）
 
@@ -279,7 +279,7 @@ class AnimationController:
         if emotion != EmotionType.NEUTRAL:
             self.trigger_emotion(emotion, lock_duration)
 
-    def set_mouth_open(self, value: float):
+    def set_mouth_open(self, value: float) -> None:
         """
         设置口型开合度（TTS 口型同步）
 
@@ -289,14 +289,14 @@ class AnimationController:
         if self._widget and hasattr(self._widget, 'set_mouth_open'):
             self._widget.set_mouth_open(max(0.0, min(1.0, value)))
 
-    def reset_emotion(self):
+    def reset_emotion(self) -> None:
         """重置情绪为中性（恢复 idle 状态）"""
         self._current_emotion = EmotionType.NEUTRAL
         self._apply_expression(EmotionType.NEUTRAL)
 
     # ========== 内部方法 ==========
 
-    def _on_idle_tick(self):
+    def _on_idle_tick(self) -> None:
         """idle 动画定时检查"""
         if not self._is_active:
             return
@@ -313,7 +313,7 @@ class AnimationController:
             self._last_idle_time = now
             self._next_idle_time = self._random_idle_interval()
 
-    def _play_idle_animation(self):
+    def _play_idle_animation(self) -> None:
         """播放一个随机 idle 动画"""
         if not self._widget or not hasattr(self._widget, 'model') or not self._widget.model:
             return
@@ -326,7 +326,7 @@ class AnimationController:
             except Exception as e:
                 pass
 
-    def _play_greeting(self):
+    def _play_greeting(self) -> None:
         """播放启动问候动画"""
         if not self._is_active:
             return
@@ -334,7 +334,7 @@ class AnimationController:
         # 尝试播放挥手动作
         self.trigger_emotion(EmotionType.WAVE, lock_duration=2.0)
 
-    def _apply_expression(self, emotion: str):
+    def _apply_expression(self, emotion: str) -> None:
         """
         应用情绪对应的表情
 
@@ -357,7 +357,7 @@ class AnimationController:
                 except Exception as e:
                     continue
 
-    def _apply_motion(self, emotion: str):
+    def _apply_motion(self, emotion: str) -> None:
         """
         应用情绪对应的动作
 
@@ -398,12 +398,12 @@ class AnimationController:
                 return group
         return None
 
-    def _on_motions_updated(self, motion_groups: list):
+    def _on_motions_updated(self, motion_groups: list) -> None:
         """模型动作分组列表更新"""
         self._available_motions = motion_groups
         logger.info(f"[AnimationController] 可用动作分组: {motion_groups}")
 
-    def _on_expressions_updated(self, expressions: list):
+    def _on_expressions_updated(self, expressions: list) -> None:
         """模型表情列表更新"""
         self._available_expressions = expressions
         logger.info(f"[AnimationController] 可用表情: {expressions}")

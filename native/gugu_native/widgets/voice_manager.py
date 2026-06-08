@@ -35,7 +35,7 @@ class _SileroOnnxWrapper:
     接口与 torch.jit.load 的模型兼容：__call__(audio_tensor, sample_rate) → speech_prob
     """
 
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str) -> None:
         import onnxruntime
         opts = onnxruntime.SessionOptions()
         opts.inter_op_num_threads = 1
@@ -48,13 +48,13 @@ class _SileroOnnxWrapper:
         self._last_sr = 0
         self._last_batch_size = 0
 
-    def reset_states(self, batch_size=1):
+    def reset_states(self, batch_size=1) -> None:
         self._state = np.zeros((2, batch_size, 128), dtype=np.float32)
         self._context = np.zeros(0, dtype=np.float32)
         self._last_sr = 0
         self._last_batch_size = 0
 
-    def __call__(self, x, sr: int):
+    def __call__(self, x, sr: int) -> None:
         if not self._last_batch_size:
             self.reset_states(x.shape[0])
         if self._last_sr and self._last_sr != sr:
@@ -94,12 +94,12 @@ class _ASRWorker(QThread):
     result_ready = Signal(str)       # 识别成功
     error_occurred = Signal(str)     # 识别失败
 
-    def __init__(self, backend, wav_path, parent=None):
+    def __init__(self, backend, wav_path, parent=None) -> None:
         super().__init__(parent)
         self._backend = backend
         self._wav_path = wav_path
 
-    def run(self):
+    def run(self) -> None:
         try:
             if self._backend and hasattr(self._backend, 'asr'):
                 text = self._backend.asr.recognize(self._wav_path)
@@ -137,7 +137,7 @@ class RealtimeVoiceManager(QObject):
     error_occurred = Signal(str)             # error message
     listening_changed = Signal(bool)         # is_listening
 
-    def __init__(self, backend=None, parent=None):
+    def __init__(self, backend=None, parent=None) -> None:
         super().__init__(parent)
         self._backend = backend
         self._is_listening = False
@@ -168,7 +168,7 @@ class RealtimeVoiceManager(QObject):
         self._asr_workers = []
         self._asr_workers_mutex = QMutex()  # KI-012 FIX: 保护 _asr_workers 列表
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """清理资源 — 供 PerformanceManager 调用
 
         注意: 只清理临时缓冲区，不销毁 backend/VAD 等长期资源
@@ -190,7 +190,7 @@ class RealtimeVoiceManager(QObject):
         logger.info("[VoiceManager] cleanup completed")
 
     @property
-    def backend(self):
+    def backend(self) -> None:
         # v1.9.78: 直接返回 _backend，移除 main-thread guard
         # 理由: backend 由 setter 设置（main.py 中 main_window.voice_manager.backend = self._backend），
         # 一旦设置就不会为 None。ASR 工作线程通过 _backend 直接访问，不需要 Qt widget 查找。
@@ -198,14 +198,14 @@ class RealtimeVoiceManager(QObject):
         return self._backend
 
     @backend.setter
-    def backend(self, value):
+    def backend(self, value) -> None:
         self._backend = value
 
     @property
-    def is_listening(self):
+    def is_listening(self) -> None:
         return self._is_listening
 
-    def _init_vad(self):
+    def _init_vad(self) -> None:
         """初始化 Silero VAD 模型
 
         v15 FIX: 优先从本地路径加载，避免 torch.hub.load() 的网络依赖。
@@ -265,7 +265,7 @@ class RealtimeVoiceManager(QObject):
             self._vad_ready = False
             return False
 
-    def _detect_speech_energy(self, audio_chunk):
+    def _detect_speech_energy(self, audio_chunk) -> None:
         """能量检测 VAD（降级方案，不依赖 Silero）"""
         try:
             if isinstance(audio_chunk, bytes):
@@ -278,7 +278,7 @@ class RealtimeVoiceManager(QObject):
         except Exception as e:
             return 0.0
 
-    def _detect_speech_silero(self, audio_chunk):
+    def _detect_speech_silero(self, audio_chunk) -> None:
         """Silero VAD 检测
 
         v15: 兼容 JIT 模型（返回 torch.Tensor）和 ONNX 包装器（返回 numpy array）
@@ -309,7 +309,7 @@ class RealtimeVoiceManager(QObject):
         except Exception as e:
             return self._detect_speech_energy(audio_chunk)
 
-    def start_listening(self):
+    def start_listening(self) -> None:
         """开始实时监听"""
         if self._is_listening:
             return
@@ -338,7 +338,7 @@ class RealtimeVoiceManager(QObject):
         self._thread = threading.Thread(target=self._recording_loop, daemon=True)
         self._thread.start()
 
-    def stop_listening(self):
+    def stop_listening(self) -> None:
         """停止实时监听
 
         v1.9.78: 不再同步调用 _finalize_speech_segment()
@@ -358,7 +358,7 @@ class RealtimeVoiceManager(QObject):
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2.0)
 
-    def _recording_loop(self):
+    def _recording_loop(self) -> None:
         """录音主循环"""
 
         # v1.9.73: 在录音线程中初始化 VAD（避免主线程阻塞/闪退）
@@ -427,7 +427,7 @@ class RealtimeVoiceManager(QObject):
 
         logger.info("[VoiceManager] 实时监听已停止")
 
-    def _finalize_speech_segment(self):
+    def _finalize_speech_segment(self) -> None:
         """结束当前语音段，异步启动 ASR 识别
 
         v1.9.78: 不再同步调用 backend.asr.recognize()
@@ -492,12 +492,12 @@ class RealtimeVoiceManager(QObject):
         except Exception as e:
             self.error_occurred.emit(f"语音段处理失败: {e}")
 
-    def _on_asr_result(self, text: str):
+    def _on_asr_result(self, text: str) -> None:
         """ASR 识别完成回调 — 转发识别结果"""
         if text:
             self.speech_recognized.emit(text)
 
-    def _cleanup_asr_worker(self, worker):
+    def _cleanup_asr_worker(self, worker) -> None:
         """清理已完成的 ASR 工作线程"""
         self._asr_workers_mutex.lock()
         try:

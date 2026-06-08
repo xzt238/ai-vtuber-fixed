@@ -38,7 +38,7 @@ class ThemeDefinition:
     typography: Optional[TypographyStyle] = None
     controls: Optional[ControlStyle] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """初始化后校验：确保 base_mode 是有效值"""
         if self.base_mode not in ("dark", "light"):
             self.base_mode = "dark"

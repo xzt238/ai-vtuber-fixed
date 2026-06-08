@@ -27,12 +27,12 @@ class CheckUpdateWorker(QThread):
     check_done = Signal(dict)  # {has_update, latest_version, download_url, release_notes, error}
     error = Signal(str)
 
-    def __init__(self, repo, current_version):
+    def __init__(self, repo, current_version) -> None:
         super().__init__()
         self.repo = repo
         self.current_version = current_version
 
-    def run(self):
+    def run(self) -> None:
         try:
             import urllib.request
             import urllib.error
@@ -83,7 +83,7 @@ class CheckUpdateWorker(QThread):
         import re
         try:
             # 分离版本号和后缀：1.9.88-hotfix → ("1.9.88", "hotfix")
-            def _parse(v):
+            def _parse(v) -> None:
                 match = re.match(r'^([\d.]+)(?:[-.]?(\w+))?$', v.strip())
                 if not match:
                     return [0], ""
@@ -120,12 +120,12 @@ class DownloadWorker(QThread):
     download_done = Signal(str)  # file_path
     error = Signal(str)
 
-    def __init__(self, url, save_dir=None):
+    def __init__(self, url, save_dir=None) -> None:
         super().__init__()
         self.url = url
         self.save_dir = save_dir or tempfile.gettempdir()
 
-    def run(self):
+    def run(self) -> None:
         try:
 
             req = urllib.request.Request(self.url, headers={"User-Agent": "GuguGaga-AI-VTuber"})
@@ -168,7 +168,7 @@ class UpdateManager(QObject):
     download_done = Signal(str)
     error = Signal(str)
 
-    def __init__(self, repo="xzt238/ai-vtuber-fixed", current_version=None, parent=None):
+    def __init__(self, repo="xzt238/ai-vtuber-fixed", current_version=None, parent=None) -> None:
         super().__init__(parent)
         # 默认版本号从 app/version.py 读取，确保与项目版本一致
         if current_version is None:
@@ -186,7 +186,7 @@ class UpdateManager(QObject):
         self._skip_file = os.path.join(PROJECT_DIR, "app", "cache", "skip_update.json")
         self._load_skip_version()
 
-    def _load_skip_version(self):
+    def _load_skip_version(self) -> None:
         """加载跳过版本"""
         try:
             if os.path.exists(self._skip_file):
@@ -196,7 +196,7 @@ class UpdateManager(QObject):
         except Exception as e:
             pass
 
-    def _save_skip_version(self, version: str):
+    def _save_skip_version(self, version: str) -> None:
         """保存跳过版本"""
         self._skipped_version = version
         try:
@@ -206,14 +206,14 @@ class UpdateManager(QObject):
         except Exception as e:
             pass
 
-    def check_for_updates(self):
+    def check_for_updates(self) -> None:
         """检查更新"""
         self._check_worker = CheckUpdateWorker(self.repo, self.current_version)
         self._check_worker.check_done.connect(self._on_check_done)
         self._check_worker.error.connect(self.error.emit)
         self._check_worker.start()
 
-    def _on_check_done(self, result: dict):
+    def _on_check_done(self, result: dict) -> None:
         """检查完成回调"""
         # 如果用户跳过了此版本，标记为无更新
         if result.get("has_update") and result.get("latest_version") == self._skipped_version:
@@ -221,11 +221,11 @@ class UpdateManager(QObject):
             result["skipped"] = True
         self.check_done.emit(result)
 
-    def skip_version(self, version: str):
+    def skip_version(self, version: str) -> None:
         """跳过指定版本"""
         self._save_skip_version(version)
 
-    def download_update(self, url: str, save_dir: str = None):
+    def download_update(self, url: str, save_dir: str = None) -> None:
         """下载更新包"""
         self._download_worker = DownloadWorker(url, save_dir)
         self._download_worker.download_progress.connect(self.download_progress.emit)
@@ -233,7 +233,7 @@ class UpdateManager(QObject):
         self._download_worker.error.connect(self.error.emit)
         self._download_worker.start()
 
-    def open_release_page(self, url: str):
+    def open_release_page(self, url: str) -> None:
         """打开发布页面"""
         try:
             import webbrowser

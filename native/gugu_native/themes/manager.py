@@ -22,7 +22,7 @@ class ThemeManager:
 
     _instance: 'ThemeManager | None' = None
 
-    def __init__(self, registry: ThemeRegistry, prefs_path: str = ""):
+    def __init__(self, registry: ThemeRegistry, prefs_path: str = "") -> None:
         self._registry = registry
         self._current_id = "dark"
         self._colors = None  # AppColors 实例
@@ -96,7 +96,7 @@ class ThemeManager:
             except Exception as e:
                 pass
 
-    def get_colors(self):
+    def get_colors(self) -> None:
         """获取当前颜色方案（AppColors 实例） — 兼容旧 API
 
         Returns:
@@ -106,7 +106,7 @@ class ThemeManager:
             self._colors = AppColors()  # 默认暗色
         return self._colors
 
-    def get_theme(self):
+    def get_theme(self) -> None:
         """v5.0: 获取当前 AppTheme（含颜色+圆角+间距+阴影+字体+控件）
 
         Returns:
@@ -124,7 +124,7 @@ class ThemeManager:
         return self._theme
 
     @classmethod
-    def get_instance(cls):
+    def get_instance(cls) -> None:
         """获取 ThemeManager 单例（None-safe 版本）
 
         Returns:

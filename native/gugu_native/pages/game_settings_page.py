@@ -46,7 +46,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
     status_updated = Signal(str, str)     # 状态更新信号
     log_message = Signal(str, str)        # 日志消息信号
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         QWidget.__init__(self, parent)
         LazyPageMixin.__init__(self)
         self.setObjectName("gameSettingsPage")
@@ -66,13 +66,13 @@ class GameSettingsPage(QWidget, LazyPageMixin):
         self.status_updated.connect(self._on_status_updated)
         self.log_message.connect(self._on_log_message)
 
-    def show_skeleton(self):
+    def show_skeleton(self) -> None:
         self._skeleton.show_skeleton()
 
-    def hide_skeleton(self):
+    def hide_skeleton(self) -> None:
         self._skeleton.hide_skeleton()
 
-    def lazy_init(self):
+    def lazy_init(self) -> None:
         """首次切换到该页时调用 — 构建完整 UI"""
         if self._is_initialized:
             return
@@ -91,11 +91,11 @@ class GameSettingsPage(QWidget, LazyPageMixin):
         self._refresh_timer.timeout.connect(self._refresh_status)
         self._refresh_timer.start(2000)
 
-    def set_backend(self, backend):
+    def set_backend(self, backend) -> None:
         """设置后端引用"""
         self._backend = backend
 
-    def _load_config(self):
+    def _load_config(self) -> None:
         """加载配置文件"""
         try:
             import yaml
@@ -110,7 +110,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
             self._log("ERROR", f"配置文件加载失败: {e}")
             self._config_data = {}
 
-    def _save_config(self):
+    def _save_config(self) -> None:
         """保存配置文件"""
         try:
             with open(self._config_file, 'w', encoding='utf-8') as f:
@@ -119,7 +119,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
         except Exception as e:
             self._log("ERROR", f"配置文件保存失败: {e}")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """初始化UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(8, 8, 8, 8)
@@ -177,7 +177,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
         
         main_layout.addWidget(main_splitter)
 
-    def _init_game_list(self, layout):
+    def _init_game_list(self, layout) -> None:
         """初始化左侧游戏列表"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -215,7 +215,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
         card_layout.addStretch()
         layout.addWidget(card)
 
-    def _init_all_cards(self):
+    def _init_all_cards(self) -> None:
         """初始化所有配置卡片"""
         self._cards = {}
         
@@ -239,7 +239,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
         self._cards['generic'] = self._create_generic_card()
         self._right_layout.addWidget(self._cards['generic'])
 
-    def _create_minecraft_card(self):
+    def _create_minecraft_card(self) -> None:
         """创建Minecraft配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -341,7 +341,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_factorio_card(self):
+    def _create_factorio_card(self) -> None:
         """创建Factorio配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -419,7 +419,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_terraria_card(self):
+    def _create_terraria_card(self) -> None:
         """创建Terraria配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -497,7 +497,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_stardew_valley_card(self):
+    def _create_stardew_valley_card(self) -> None:
         """创建Stardew Valley配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -575,7 +575,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _create_generic_card(self):
+    def _create_generic_card(self) -> None:
         """创建通用屏幕识别配置卡片"""
         card = CardWidget()
         card_layout = QVBoxLayout(card)
@@ -640,7 +640,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
 
         return card
 
-    def _init_bottom_panel(self, layout):
+    def _init_bottom_panel(self, layout) -> None:
         """初始化底部面板"""
         # 创建标签页
         tab_widget = QTabWidget()
@@ -675,7 +675,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
         
         layout.addWidget(tab_widget)
 
-    def _show_game_config(self, game_key):
+    def _show_game_config(self, game_key) -> None:
         """显示游戏配置"""
         # 隐藏所有卡片
         for key, card in self._cards.items():
@@ -687,7 +687,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
         
         self._log("DEBUG", f"切换到游戏配置: {game_key}")
 
-    def _update_config(self, key, value):
+    def _update_config(self, key, value) -> None:
         """更新配置"""
         # 更新内存中的配置
         keys = key.split('.')
@@ -706,14 +706,14 @@ class GameSettingsPage(QWidget, LazyPageMixin):
         
         self._log("INFO", f"配置更新: {key} = {value}")
 
-    def _on_config_changed(self, key, value):
+    def _on_config_changed(self, key, value) -> None:
         """配置变更处理"""
         # 更新状态标签
         game = key.split('.')[1] if len(key.split('.')) > 1 else key
         if game in self._status_labels:
             self._status_labels[game].setText(f"配置已更新: {key}")
 
-    def _on_status_updated(self, game, status):
+    def _on_status_updated(self, game, status) -> None:
         """状态更新处理"""
         if game in self._status_labels:
             self._status_labels[game].setText(f"状态: {status}")
@@ -723,7 +723,7 @@ class GameSettingsPage(QWidget, LazyPageMixin):
             btn, status_label = self._game_buttons[game]
             status_label.setText(status)
 
-    def _on_log_message(self, level, message):
+    def _on_log_message(self, level, message) -> None:
         """日志消息处理"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{level}] {message}"
@@ -741,11 +741,11 @@ class GameSettingsPage(QWidget, LazyPageMixin):
             scrollbar = self._log_text.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
 
-    def _log(self, level, message):
+    def _log(self, level, message) -> None:
         """记录日志"""
         self.log_message.emit(level, message)
 
-    def _refresh_status(self):
+    def _refresh_status(self) -> None:
         """刷新状态"""
         # 这里应该从后端获取实际状态
         # 简化实现，只更新状态表格
@@ -756,32 +756,32 @@ class GameSettingsPage(QWidget, LazyPageMixin):
             self._status_table.setItem(i, 2, QTableWidgetItem(self._config_data.get('game', {}).get(game, {}).get('host', '')))
             self._status_table.setItem(i, 3, QTableWidgetItem(datetime.now().strftime("%H:%M:%S")))
 
-    def _connect_game(self, game):
+    def _connect_game(self, game) -> None:
         """连接游戏"""
         self._log("INFO", f"正在连接{game}...")
         # 这里应该调用后端的连接功能
 
-    def _disconnect_game(self, game):
+    def _disconnect_game(self, game) -> None:
         """断开游戏连接"""
         self._log("INFO", f"正在断开{game}连接...")
         # 这里应该调用后端的断开功能
 
-    def _test_game(self, game):
+    def _test_game(self, game) -> None:
         """测试游戏连接"""
         self._log("INFO", f"正在测试{game}连接...")
         # 这里应该调用后端的测试功能
 
-    def _start_generic(self):
+    def _start_generic(self) -> None:
         """启动通用屏幕识别"""
         self._log("INFO", "正在启动通用屏幕识别...")
         # 这里应该调用后端的启动功能
 
-    def _stop_generic(self):
+    def _stop_generic(self) -> None:
         """停止通用屏幕识别"""
         self._log("INFO", "正在停止通用屏幕识别...")
         # 这里应该调用后端的停止功能
 
-    def _test_generic(self):
+    def _test_generic(self) -> None:
         """测试通用屏幕识别"""
         self._log("INFO", "正在测试通用屏幕识别...")
         # 这里应该调用后端的测试功能

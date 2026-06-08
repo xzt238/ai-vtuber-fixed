@@ -25,7 +25,7 @@ class ThemeCardWidget(QWidget):
     clicked = Signal(str)
 
     def __init__(self, theme_id: str, name: str, preview_colors: list[str],
-                 base_mode: str, style_tags: str = "", parent=None):
+                 base_mode: str, style_tags: str = "", parent=None) -> None:
         """初始化主题色卡
 
         Args:

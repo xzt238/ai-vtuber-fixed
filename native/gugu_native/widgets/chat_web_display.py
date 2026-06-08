@@ -819,7 +819,7 @@ class ChatBridge(QObject):
     pageReady = Signal()
     markdownRendered = Signal(str, str)   # (request_id, html)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._render_callbacks = {}
 
@@ -830,7 +830,7 @@ class ChatBridge(QObject):
         return render_markdown(text, "dark" if is_dark() else "light")
 
     @Slot(str, str)
-    def renderMarkdown(self, text: str, callback_id: str):
+    def renderMarkdown(self, text: str, callback_id: str) -> None:
         """异步 Markdown 渲染（带回调 ID）"""
         from gugu_native.theme import is_dark
         html = render_markdown(text, "dark" if is_dark() else "light")
@@ -838,12 +838,12 @@ class ChatBridge(QObject):
         self.markdownRendered.emit(callback_id, html)
 
     @Slot(str, str)
-    def onAction(self, action: str, data: str):
+    def onAction(self, action: str, data: str) -> None:
         """JavaScript 消息操作回调"""
         self.actionRequested.emit(action, data)
 
     @Slot()
-    def onPageReady(self):
+    def onPageReady(self) -> None:
         """页面加载完成"""
         self.pageReady.emit()
 
@@ -877,7 +877,7 @@ class ChatWebDisplay(QWidget):
     action_quote = Signal(str)
     action_edit = Signal(str, str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._web_view = None
         self._bridge = None
@@ -913,7 +913,7 @@ class ChatWebDisplay(QWidget):
         else:
             self._init_fallback(layout)
 
-    def _ensure_webengine(self):
+    def _ensure_webengine(self) -> None:
         """优化 #7: 确保QWebEngineView已创建（首次追加消息时调用）"""
         if self._webengine_initialized:
             return
@@ -934,7 +934,7 @@ class ChatWebDisplay(QWidget):
                 getattr(self, method_name)(*args)
             self._pending_messages.clear()
 
-    def _init_webengine(self, layout):
+    def _init_webengine(self, layout) -> None:
         """初始化 QWebEngineView 模式"""
         self._bridge = ChatBridge(self)
         self._bridge.actionRequested.connect(self._on_js_action)
@@ -955,7 +955,7 @@ class ChatWebDisplay(QWidget):
 
         layout.addWidget(self._web_view)
 
-    def _init_fallback(self, layout):
+    def _init_fallback(self, layout) -> None:
         """降级为 QTextEdit 模式"""
         from gugu_native.theme import get_colors
         c = get_colors()
@@ -1007,7 +1007,7 @@ class ChatWebDisplay(QWidget):
 
     # ===== 公共接口 =====
 
-    def append_user_msg(self, text: str, quote: str = "", timestamp: str = None):
+    def append_user_msg(self, text: str, quote: str = "", timestamp: str = None) -> None:
         """添加用户消息
 
         Args:
@@ -1045,7 +1045,7 @@ class ChatWebDisplay(QWidget):
         else:
             self._fallback_append_user(text)
 
-    def append_ai_msg(self, text: str, quote: str = "", timestamp: str = None):
+    def append_ai_msg(self, text: str, quote: str = "", timestamp: str = None) -> None:
         """添加 AI 消息
 
         Args:
@@ -1082,7 +1082,7 @@ class ChatWebDisplay(QWidget):
         else:
             self._fallback_append_ai(text)
 
-    def append_system_msg(self, text: str):
+    def append_system_msg(self, text: str) -> None:
         """添加系统消息"""
         self._ensure_webengine()  # 优化 #7: 懒创建
         if self._web_view:
@@ -1093,7 +1093,7 @@ class ChatWebDisplay(QWidget):
             self._fallback_display.append(get_system_msg_html(text))
             self._fallback_display.moveCursor(QTextCursor.MoveOperation.End)
 
-    def start_streaming(self, msg_id: str = ""):
+    def start_streaming(self, msg_id: str = "") -> None:
         """开始流式消息"""
         from gugu_native.theme import format_timestamp
         ts = format_timestamp(datetime.now())
@@ -1110,7 +1110,7 @@ class ChatWebDisplay(QWidget):
             )
             self._fallback_display.moveCursor(QTextCursor.MoveOperation.End)
 
-    def update_streaming(self, text: str):
+    def update_streaming(self, text: str) -> None:
         """更新流式文本"""
         if self._web_view:
             escaped = json.dumps(text, ensure_ascii=False)
@@ -1119,7 +1119,7 @@ class ChatWebDisplay(QWidget):
             # QTextEdit fallback: 简单追加
             pass
 
-    def finish_streaming(self, text: str):
+    def finish_streaming(self, text: str) -> None:
         """完成流式消息"""
         if self._web_view:
             escaped = json.dumps(text, ensure_ascii=False)
@@ -1128,7 +1128,7 @@ class ChatWebDisplay(QWidget):
             # QTextEdit fallback: 替换思考占位，追加最终消息
             self._fallback_append_ai(text)
 
-    def clear(self):
+    def clear(self) -> None:
         """清空对话"""
         if self._web_view:
             self._run_js("clearChat()")
@@ -1144,7 +1144,7 @@ class ChatWebDisplay(QWidget):
             return 0
         return 0
 
-    def refresh_theme(self):
+    def refresh_theme(self) -> None:
         """刷新主题"""
         if self._web_view:
             from gugu_native.theme import get_colors, is_dark
@@ -1181,7 +1181,7 @@ class ChatWebDisplay(QWidget):
                 }}
             """)
 
-    def append_image(self, image_path: str):
+    def append_image(self, image_path: str) -> None:
         """添加图片消息"""
         abs_path = os.path.abspath(image_path).replace("\\", "/")
         ts_text = ""
@@ -1201,7 +1201,7 @@ class ChatWebDisplay(QWidget):
 
     # ===== 内部方法 =====
 
-    def _on_js_console(self, level, message, line, source):
+    def _on_js_console(self, level, message, line, source) -> None:
         """捕获 JS 控制台消息用于调试"""
         level_names = {0: "INFO", 1: "WARNING", 2: "ERROR", 3: "DEBUG"}
         level_name = level_names.get(level, str(level))
@@ -1209,7 +1209,7 @@ class ChatWebDisplay(QWidget):
         if level >= 1:
             logger.info(f"[ChatWebDisplay JS {level_name}] {message} (line {line})")
 
-    def _run_js(self, js_code: str):
+    def _run_js(self, js_code: str) -> None:
         """执行 JavaScript 代码"""
         if self._web_view:
             if self._page_ready:
@@ -1217,7 +1217,7 @@ class ChatWebDisplay(QWidget):
             else:
                 self._pending_messages.append(js_code)
 
-    def _on_page_ready(self):
+    def _on_page_ready(self) -> None:
         """页面加载完成回调"""
         self._page_ready = True
         logger.info(f"[ChatWebDisplay] Page ready! Executing {len(self._pending_messages)} pending messages")
@@ -1226,7 +1226,7 @@ class ChatWebDisplay(QWidget):
             self._web_view.page().runJavaScript(js_code)
         self._pending_messages.clear()
 
-    def _on_js_action(self, action: str, data: str):
+    def _on_js_action(self, action: str, data: str) -> None:
         """处理 JavaScript 操作回调"""
         if action == "copy":
             self.action_copy.emit(data)
@@ -1250,7 +1250,7 @@ class ChatWebDisplay(QWidget):
 
     # ===== QTextEdit 降级方法 =====
 
-    def _fallback_append_user(self, text: str):
+    def _fallback_append_user(self, text: str) -> None:
         """QTextEdit 降级：用户消息"""
         from gugu_native.theme import (
             get_colors, get_user_avatar_svg
@@ -1272,7 +1272,7 @@ class ChatWebDisplay(QWidget):
         )
         self._fallback_display.moveCursor(QTextCursor.MoveOperation.End)
 
-    def _fallback_append_ai(self, text: str):
+    def _fallback_append_ai(self, text: str) -> None:
         """QTextEdit 降级：AI 消息"""
         from gugu_native.theme import (
             get_colors, get_ai_avatar_svg
