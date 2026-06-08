@@ -38,6 +38,55 @@
 
 
 
+## 🟢 v1.20.8 (2026-06-08) ✅ STABLE
+
+**桌面版深度优化 — 代码质量重构 + 性能优化 + 新功能**
+
+### ✨ 新增
+- **[LOG-001] 日志查看页面**：新增 `native/gugu_native/pages/log_page.py`
+  - 实时日志流显示
+  - 日志级别过滤（DEBUG/INFO/WARNING/ERROR/CRITICAL）
+  - 日志搜索功能
+  - 日志导出到文件
+  - 自动滚动控制
+  - 日志级别颜色编码
+
+### 🔄 重构
+- **[CHAT-001] ChatPage Mixin 重构**：将 2282 行的 ChatPage 拆分为 5 个 Mixin 类
+  - `ChatPageLive2DMixin`: Live2D/VRM 模型管理
+  - `ChatPageAudioMixin`: TTS 播放、口型同步、录音、ASR
+  - `ChatPageMessageMixin`: 消息发送、流式对话、搜索
+  - `ChatPageVisionMixin`: 图片上传、OCR、视觉理解
+  - `ChatPageTTSConfigMixin`: TTS 引擎配置、历史记录持久化
+
+- **[PATH-001] 路径工具模块**：新增 `native/gugu_native/utils/path_utils.py`
+  - 统一路径操作函数（get_model_dir, get_history_path 等）
+  - 减少代码重复（os.path.join 从 105 处减少到约 70 处）
+
+### 🐛 优化
+- **[PERF-001] 内存优化 — __slots__**：为 7 个关键类添加 __slots__
+  - PerformanceManager: 12 slots
+  - ChatSession: 5 slots
+  - SessionManager: 4 slots
+  - AnimationController: 6 slots
+  - RealtimeVoiceManager: 5 slots
+  - HotkeyManager: 3 slots
+  - TrayManager: 3 slots
+
+- **[PERF-002] 异常处理优化**：修复 79 处异常处理问题（添加变量捕获）
+- **[PERF-003] 日志优化**：替换 93 处 print() 为 logger.info()
+- **[PERF-004] 重复导入清理**：移除 58 处重复导入，涉及 22 个文件
+
+### 🔧 修复
+- **[FIX-001] _time 未定义错误**：添加 `import time as _time` 到 main.py
+- **[FIX-002] AppColors 未定义错误**：添加 `from gugu_native.theme import AppColors` 到 manager.py
+
+### 📝 文件变更
+- **新增**: `native/gugu_native/pages/log_page.py`, `native/gugu_native/utils/path_utils.py`, `native/gugu_native/pages/chat_page_mixins/__init__.py`, `native/gugu_native/pages/chat_page_mixins/live2d_mixin.py`, `native/gugu_native/pages/chat_page_mixins/audio_mixin.py`, `native/gugu_native/pages/chat_page_mixins/message_mixin.py`, `native/gugu_native/pages/chat_page_mixins/vision_mixin.py`, `native/gugu_native/pages/chat_page_mixins/tts_config_mixin.py`
+- **修改**: `native/main.py`, `native/gugu_native/pages/chat_page.py`, `native/gugu_native/widgets/perf_manager.py`, `native/gugu_native/widgets/session_manager.py`, `native/gugu_native/widgets/animation_controller.py`, `native/gugu_native/widgets/voice_manager.py`, `native/gugu_native/widgets/hotkey_manager.py`, `native/gugu_native/widgets/tray_manager.py`, `native/gugu_native/themes/manager.py`, `app/version.py`, `docs/VERSION.md`
+
+---
+
 ## 🟢 v1.19.1 (2026-06-04) ✅ STABLE
 
 ### 🔧 优化
