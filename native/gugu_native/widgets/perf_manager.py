@@ -25,6 +25,11 @@ from typing import Optional, Any, Dict
 
 from PySide6.QtCore import QObject, QTimer, Signal, QThread, Slot
 
+from gugu_native.constants import (
+    MEMORY_WARNING_THRESHOLD, MEMORY_CRITICAL_THRESHOLD,
+    GC_GEN0_INTERVAL_MS, GC_GEN1_INTERVAL_MS, GC_GEN2_INTERVAL_MS
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,16 +46,16 @@ class PerformanceManager(QObject):
     # 注意: ASR(FunASR/Paraformer) + TTS(GPT-SoVITS双模型) + LLM + 语义向量(bge-base)
     # 自然内存占用 2-3GB（MiMo ASR/TTS 轻量）到 4-5GB（GPT-SoVITS 本地推理）
     # 阈值必须高于此基线才不会误触发清理
-    MEMORY_WARNING_THRESHOLD = 3500
-    MEMORY_CRITICAL_THRESHOLD = 5500
+    MEMORY_WARNING_THRESHOLD = MEMORY_WARNING_THRESHOLD
+    MEMORY_CRITICAL_THRESHOLD = MEMORY_CRITICAL_THRESHOLD
 
     # 增量 GC 定时器配置 — 分代回收，每代不同间隔
     # gen0: 年轻对象，频繁回收，耗时 <5ms
     # gen1: 中等年龄对象，中等频率，耗时 <16ms
     # gen2: 老年代对象，低频全量回收，耗时 <50ms
-    GC_GEN0_INTERVAL_MS = 5000    # gen0: 每 5s
-    GC_GEN1_INTERVAL_MS = 30000   # gen1: 每 30s
-    GC_GEN2_INTERVAL_MS = 120000  # gen2: 每 120s
+    GC_GEN0_INTERVAL_MS = GC_GEN0_INTERVAL_MS    # gen0: 每 5s
+    GC_GEN1_INTERVAL_MS = GC_GEN1_INTERVAL_MS   # gen1: 每 30s
+    GC_GEN2_INTERVAL_MS = GC_GEN2_INTERVAL_MS  # gen2: 每 120s
 
     def __init__(self, parent=None):
         super().__init__(parent)
