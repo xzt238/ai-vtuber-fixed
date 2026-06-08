@@ -14,7 +14,6 @@ from PySide6.QtGui import QColor
 
 from .registry import ThemeRegistry
 from .definitions import ThemeDefinition
-from gugu_native.theme import AppColors
 
 
 class ThemeManager:
@@ -97,13 +96,14 @@ class ThemeManager:
             except Exception as e:
                 pass
 
-    def get_colors(self) -> None:
+    def get_colors(self):
         """获取当前颜色方案（AppColors 实例） — 兼容旧 API
 
         Returns:
             AppColors 实例
         """
         if self._colors is None:
+            from gugu_native.theme import AppColors
             self._colors = AppColors()  # 默认暗色
         return self._colors
 

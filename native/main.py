@@ -1058,31 +1058,18 @@ def main() -> None:
     splash.append_log("✓ Python 环境就绪")
     splash.set_progress("正在初始化界面组件...")
 
-    import sys as _sys_dbg
-    _sys_dbg.stderr.write("[DBG] About to create GuguGagaApp\n")
-    _sys_dbg.stderr.flush()
-
     try:
-        _sys_dbg.stderr.write("[DBG] Inside try block\n")
-        _sys_dbg.stderr.flush()
         window = GuguGagaApp(start_time=_PROCESS_START, splash=splash)
-        _sys_dbg.stderr.write("[DBG] GuguGagaApp created OK\n")
-        _sys_dbg.stderr.flush()
         _checkpoint("GuguGagaApp 初始化完成")
         window.show()
         _checkpoint("window.show() 完成")
-    except BaseException as e:
-        _sys_err.stderr.write(f"[FATAL] {type(e).__name__}: {e}\n")
-        _sys_err.stderr.flush()
+    except Exception as e:
         splash.append_log(f"[ERROR] 界面初始化失败: {e}")
         splash.set_progress("初始化失败 - 按 Esc 关闭")
         import traceback
-        tb = traceback.format_exc()
-        for line in tb.split('\n'):
+        for line in traceback.format_exc().split('\n'):
             if line.strip():
                 splash.append_log(line)
-                _sys_err.stderr.write(f"  {line}\n")
-        _sys_err.stderr.flush()
         # 保持 splash 显示，不退出——让用户看到错误日志
         exit_code = app.exec()
         sys.exit(1)
