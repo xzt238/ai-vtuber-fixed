@@ -314,6 +314,7 @@ def build_global_qss_v5(theme=None) -> str:
         完整的 QSS 样式表字符串
     """
     if theme is None:
+        from gugu_native.themes.manager import ThemeManager
         manager = ThemeManager.get_instance()
         if manager:
             theme = manager.get_theme()
