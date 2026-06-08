@@ -386,7 +386,6 @@ class PerformanceManager(QObject):
         Args:
             idle_threshold_seconds: 空闲阈值（秒），默认 5 分钟
         """
-        import time
 
         main_window = self.parent()
         if not main_window or not hasattr(main_window, '_lazy_modules'):

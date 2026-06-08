@@ -228,7 +228,6 @@ class SessionManager(QWidget):
         rename_action = menu.addAction("重命名")
         delete_action = menu.addAction("删除")
 
-        from gugu_native.theme import get_colors
         c = get_colors()
         menu.setStyleSheet(f"""
             QMenu {{
@@ -513,7 +512,6 @@ class SessionManager(QWidget):
 
     def refresh_theme(self):
         """刷新主题"""
-        from gugu_native.theme import get_colors
         c = get_colors()
 
         self.setStyleSheet(f"""

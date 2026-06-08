@@ -471,7 +471,6 @@ class _DownloadWorker(QThread):
                     self.finished.emit(mdl_id, False, result.stderr[:200] if result.stderr else "安装失败")
 
             elif mdl_type == "torch_hub":
-                import torch
                 self.progress.emit(mdl_id, 10)
                 model, _ = torch.hub.load(
                     repo_or_dir='snakers4/silero-vad',

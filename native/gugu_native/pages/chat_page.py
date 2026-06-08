@@ -252,7 +252,6 @@ class ChatPage(
             pass  # 由 T10 外层设置
         self._perf_t4_start = time.perf_counter()
 
-        from gugu_native.theme import get_colors
         c = get_colors()
 
         # === 移除对话区占位符 ===
@@ -943,7 +942,6 @@ class ChatPage(
         """读取保存的 VRM 显示配置并应用到当前模型"""
         if not self._vrm_widget:
             return
-        import json
         cache_path = os.path.join(PROJECT_DIR, "app", "cache", "vrm_display.json")
         config = {}
         if os.path.exists(cache_path):
@@ -2064,7 +2062,6 @@ class ChatPage(
 
     def refresh_theme(self):
         """主题切换时刷新所有硬编码样式"""
-        from gugu_native.theme import get_colors
         c = get_colors()
 
         # 如果 _init_ui_content 尚未执行，只刷新 shell 阶段的控件

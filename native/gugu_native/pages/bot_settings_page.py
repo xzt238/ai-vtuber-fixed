@@ -113,7 +113,6 @@ class BotSettingsPage(QWidget, LazyPageMixin):
     def _save_config(self):
         """保存配置文件"""
         try:
-            import yaml
             with open(self._config_file, 'w', encoding='utf-8') as f:
                 yaml.dump(self._config_data, f, allow_unicode=True, default_flow_style=False)
             self._log("INFO", "配置文件保存成功")

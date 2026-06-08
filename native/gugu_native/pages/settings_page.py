@@ -1114,7 +1114,6 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 # KI-013 FIX: 使用线程安全的 rebuild_llm() 方法
                 # 旧方式: 直接 pop _lazy_modules + 后台线程触发懒加载（有竞态风险）
                 # 新方式: 调用后端提供的线程安全 rebuild 方法
-                from PySide6.QtCore import QThread
 
                 class _LLMRebuildWorker(QThread):
                     error = Signal(str)
@@ -1156,7 +1155,6 @@ class SettingsPage(ScrollArea, LazyPageMixin):
         # 先添加占位提示
         self.tts_voice.addItem("加载中...", userData="")
 
-        from PySide6.QtCore import QThread
 
         class _VoiceFetchWorker(QThread):
             finished = Signal(list)  # [(label, value), ...]
@@ -1372,7 +1370,6 @@ class SettingsPage(ScrollArea, LazyPageMixin):
                 # 而 config["tts"] 已在上方更新了 provider/voice/project，
                 # 所以重建后的引擎已经包含了正确的音色配置。
                 # 额外调用 set_project() 反而会重置 GPT-SoVITS 的 pipeline。
-                from PySide6.QtCore import QThread
 
                 class _TTSRebuildWorker(QThread):
                     error = Signal(str)

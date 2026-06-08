@@ -609,7 +609,6 @@ class MemoryPage(QWidget, LazyPageMixin):
             return
 
         # 显示详情
-        from gugu_native.theme import get_colors
         c = get_colors()
         self.detail_text.clear()
         details = []
@@ -673,7 +672,6 @@ class MemoryPage(QWidget, LazyPageMixin):
 
     def _on_search_item_clicked(self, item, column):
         """搜索结果点击"""
-        from gugu_native.theme import get_colors
         c = get_colors()
         text = item.text(2)
         self.detail_text.clear()

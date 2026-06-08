@@ -79,7 +79,6 @@ class VisionWorker(QThread):
                 ocr_result = vision.recognize_text(self.image_path)
                 if not ocr_result:
                     try:
-                        from app.vision import VisionProviderType
                         rapidocr = vision.get_provider(VisionProviderType.RAPIDOCR)
                         if rapidocr:
                             ocr_result = rapidocr.recognize_text(self.image_path)

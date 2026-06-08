@@ -102,7 +102,6 @@ class ThemeManager:
             AppColors 实例
         """
         if self._colors is None:
-            from gugu_native.theme import AppColors
             self._colors = AppColors()  # 默认暗色
         return self._colors
 

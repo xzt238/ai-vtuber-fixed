@@ -127,7 +127,6 @@ class DownloadWorker(QThread):
 
     def run(self):
         try:
-            import urllib.request
 
             req = urllib.request.Request(self.url, headers={"User-Agent": "GuguGaga-AI-VTuber"})
 
@@ -174,7 +173,6 @@ class UpdateManager(QObject):
         # 默认版本号从 app/version.py 读取，确保与项目版本一致
         if current_version is None:
             try:
-                from app.version import VERSION
                 current_version = VERSION
             except ImportError:
                 current_version = "1.11.23"

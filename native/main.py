@@ -475,7 +475,6 @@ class GuguGagaApp(FluentWindow):
         - 其余页面通过 QTimer.singleShot 错峰调度到主线程，避免 UI 操作崩溃
         - 主动说话回调、TTS 预热、ASR 预加载保持原有逻辑
         """
-        import time as _time
         elapsed = _time.time() - self._init_start_time if hasattr(self, '_init_start_time') else 0
         logger.info(f"Backend ready — total startup: {elapsed:.1f}s")
 
@@ -544,7 +543,6 @@ class GuguGagaApp(FluentWindow):
 
     def _prewarm_tts_background(self):
         """后台预热 TTS 模型 — 不阻塞 UI，首次对话前完成加载"""
-        import threading
 
         def _do_prewarm():
             try:
@@ -575,7 +573,6 @@ class GuguGagaApp(FluentWindow):
 
     def _prewarm_tts(self):
         """TTS 引擎预热 — 串行加载上次使用的音色项目,避免 ref_audio_path 为空报错"""
-        import threading
 
         def prewarm_single_voice(voice_name, tts):
             """预热单个音色"""
@@ -606,7 +603,6 @@ class GuguGagaApp(FluentWindow):
                 tts = self.backend.tts
 
                 # 短暂让出 GIL，减少对主线程的争抢
-                import time as _t
                 _t.sleep(0.01)
 
                 # 1. 预热默认音色
@@ -760,7 +756,6 @@ class GuguGagaApp(FluentWindow):
     def _on_update_check(self, result: dict):
         """更新检查完成"""
         if result.get("has_update"):
-            from qfluentwidgets import MessageBox
             version = result.get("latest_version", "")
             notes = result.get("release_notes", "")[:500]
             url = result.get("release_url", "")
@@ -781,7 +776,6 @@ class GuguGagaApp(FluentWindow):
 
     def _on_update_downloaded(self, file_path: str):
         """更新下载完成"""
-        from qfluentwidgets import InfoBar, InfoBarPosition
         InfoBar.success(
             title="下载完成",
             content=f"更新包已下载到: {file_path}",
@@ -933,7 +927,6 @@ def main():
     # v9: 全局启动计时 — 从 main() 入口开始，而非 __init__()
     # 之前放在 __init__ 里测量的是"构造函数→后端就绪"的耗时，
     # 但用户感知的"启动慢"是从双击 start.bat 到 UI 可用的总时间。
-    import time as _time
     _PROCESS_START = _time.time()
     _last_checkpoint = _time.time()
 
@@ -1029,7 +1022,6 @@ def main():
     app.setFont(QFont(font_family, 10))
 
     # 设置应用图标 - 跨平台支持
-    import platform
     if platform.system() == "Windows":
         icon_name = "app.ico"
     elif platform.system() == "Darwin":

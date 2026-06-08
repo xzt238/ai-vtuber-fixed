@@ -80,7 +80,6 @@ class AutoStartManager(QObject):
     def disable(self) -> bool:
         """禁用开机自启"""
         try:
-            from app.platform_abstraction import set_autostart
             ok = set_autostart(False, self.APP_NAME, self._app_path)
             if ok:
                 self.state_changed.emit(False)

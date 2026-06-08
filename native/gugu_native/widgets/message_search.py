@@ -154,7 +154,6 @@ class MessageSearchBar(QWidget):
 
     def refresh_theme(self):
         """刷新主题"""
-        from gugu_native.theme import get_colors
         c = get_colors()
 
         self.setStyleSheet(f"""

@@ -135,7 +135,6 @@ class DualModeCompat:
         通过检测 HTTP 端口是否被占用来判断
         """
         try:
-            import socket
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(1)
                 result = s.connect_ex(('127.0.0.1', self.WEBUI_HTTP_PORT))
@@ -147,7 +146,6 @@ class DualModeCompat:
         """释放互斥锁"""
         if self._mutex_handle:
             try:
-                import ctypes
                 kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
                 kernel32.CloseHandle(self._mutex_handle)
             except Exception as e:

@@ -185,7 +185,6 @@ class MultiLineInput(QWidget):
 
     def refresh_theme(self):
         """刷新主题"""
-        from gugu_native.theme import get_colors
         c = get_colors()
 
         self._text_edit.setStyleSheet(f"""
@@ -246,7 +245,6 @@ class MultiLineInputV2(MultiLineInput):
 
     def _init_ui(self):
         """初始化 UI — 使用自定义 QTextEdit"""
-        from gugu_native.theme import get_colors
         c = get_colors()
 
         main_layout = QVBoxLayout(self)

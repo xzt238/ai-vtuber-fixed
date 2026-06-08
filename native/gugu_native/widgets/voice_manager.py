@@ -269,7 +269,6 @@ class RealtimeVoiceManager(QObject):
     def _detect_speech_energy(self, audio_chunk):
         """能量检测 VAD（降级方案，不依赖 Silero）"""
         try:
-            import numpy as np
             if isinstance(audio_chunk, bytes):
                 data = np.frombuffer(audio_chunk, dtype=np.int16).astype(np.float32) / 32768.0
             else:
@@ -304,7 +303,6 @@ class RealtimeVoiceManager(QObject):
                 return float(result)
             else:
                 # JIT 模型：需要 torch
-                import torch
                 audio_tensor = torch.from_numpy(data).unsqueeze(0)
                 with torch.no_grad():
                     speech_prob = self._vad_model(audio_tensor, self._sample_rate).item()
@@ -324,7 +322,6 @@ class RealtimeVoiceManager(QObject):
 
         try:
             import sounddevice as sd
-            import numpy as np
         except ImportError:
             self.error_occurred.emit("需要 sounddevice 和 numpy: pip install sounddevice numpy")
             return
@@ -364,8 +361,6 @@ class RealtimeVoiceManager(QObject):
 
     def _recording_loop(self):
         """录音主循环"""
-        import sounddevice as sd
-        import numpy as np
 
         # v1.9.73: 在录音线程中初始化 VAD（避免主线程阻塞/闪退）
         self._init_vad()
@@ -452,7 +447,6 @@ class RealtimeVoiceManager(QObject):
                 # 先释放锁再发信号
             else:
                 try:
-                    import numpy as np
                     audio_data = np.concatenate(self._audio_buffer, axis=0)
                     self._audio_buffer = []
                 except Exception as e:

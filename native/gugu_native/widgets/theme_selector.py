@@ -104,7 +104,6 @@ class ThemeSelector(QWidget):
             light_row.setSpacing(8)
 
             for theme_def in light_themes:
-                from gugu_native.widgets.theme_card import ThemeCardWidget as T
                 card = T(theme_id=theme_def.id, name=theme_def.name,
                          preview_colors=theme_def.preview_colors,
                          base_mode=theme_def.base_mode,

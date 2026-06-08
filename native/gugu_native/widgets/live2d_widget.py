@@ -224,7 +224,6 @@ class Live2DWidget(QOpenGLWidget):
 
         v1.11.29 P1-2: 记录活动时间，用于帧率自适应
         """
-        import time
         self._last_activity_time = time.time()  # 记录活动时间
 
         if self.model is not None and self.width() > 0 and self.height() > 0:

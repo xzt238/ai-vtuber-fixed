@@ -371,7 +371,6 @@ class VRMSettingsPage(QWidget, LazyPageMixin):
 
         # 写 config.yaml
         try:
-            import yaml
             config_path = os.path.join(PROJECT_DIR, "app", "config.yaml")
             with open(config_path, "r", encoding="utf-8") as f:
                 yml = yaml.safe_load(f) or {}
