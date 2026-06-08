@@ -38,6 +38,16 @@
 
 
 
+## 🟢 v1.20.9 (2026-06-08) ✅ STABLE
+
+### 🔧 修复
+- **[FIX-001] get_colors 未定义错误**：添加 `from gugu_native.theme import get_colors` 到 chat_page.py
+
+### 📝 文件变更
+- **修改**: `native/gugu_native/pages/chat_page.py`, `app/version.py`, `docs/VERSION.md`
+
+---
+
 ## 🟢 v1.20.8 (2026-06-08) ✅ STABLE
 
 **桌面版深度优化 — 代码质量重构 + 性能优化 + 新功能**
