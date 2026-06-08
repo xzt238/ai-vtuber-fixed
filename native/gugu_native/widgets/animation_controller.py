@@ -132,7 +132,6 @@ IDLE_MOTION_GROUPS = ["Idle", "TapBody"]
 
 
 class AnimationController:
-    __slots__ = ("_widget", "_current_emotion", "_emotion_lock_duration", "_emotion_timer", "_idle_timer", "_last_idle_time")
     """
     Live2D 主动动画控制器
 

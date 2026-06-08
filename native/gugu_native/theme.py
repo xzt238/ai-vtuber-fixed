@@ -40,17 +40,26 @@ _qss_cache_max_size = 10  # 最多缓存 10 个主题的 QSS
 
 def _ensure_manager() -> None:
     """确保 ThemeManager 已初始化，未初始化时自动创建"""
+    import logging as _logging
+    _log = _logging.getLogger('GuguGagaApp')
+    _log.info("[DIAG] _ensure_manager: start")
     global _theme_manager
     if _theme_manager is None:
+        _log.info("[DIAG] _ensure_manager: importing ThemeManager...")
         from gugu_native.themes import ThemeManager, ThemeRegistry
+        _log.info("[DIAG] _ensure_manager: importing presets...")
         from gugu_native.themes.presets import register_all_presets
+        _log.info("[DIAG] _ensure_manager: creating registry...")
         registry = ThemeRegistry()
+        _log.info("[DIAG] _ensure_manager: registering presets...")
         register_all_presets(registry)
+        _log.info("[DIAG] _ensure_manager: creating ThemeManager...")
         prefs_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
             'app', 'cache', 'theme_preferences.json'
         )
         _theme_manager = ThemeManager.initialize(registry, prefs_path)
+        _log.info("[DIAG] _ensure_manager: done")
     return _theme_manager
 
 

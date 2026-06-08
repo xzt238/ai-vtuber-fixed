@@ -128,7 +128,9 @@ class GuguGagaApp(FluentWindow):
 
     def __init__(self, start_time=None, splash=None) -> None:
         """内部方法"""
+        logger.info("[DIAG] __init__ step 0: before super().__init__()")
         super().__init__()
+        logger.info("[DIAG] __init__ step 1: after super().__init__()")
         import time as _time
         self._init_start_time = start_time or _time.time()
         # T10: 性能埋点 — __init__ 入口
@@ -138,10 +140,13 @@ class GuguGagaApp(FluentWindow):
         self.setMinimumSize(960, 600)
         self.resize(1280, 800)
         self.setObjectName("guguGagaApp")
+        logger.info("[DIAG] __init__ step 2: window properties set")
 
         # 标题栏样式 — 深色沉浸式
         from gugu_native.theme import get_colors
+        logger.info("[DIAG] __init__ step 3: get_colors imported")
         c = get_colors()
+        logger.info("[DIAG] __init__ step 4: get_colors() returned")
         self.setStyleSheet(f"""
             FluentWindow {{
                 background-color: {c.window_bg};
@@ -150,17 +155,20 @@ class GuguGagaApp(FluentWindow):
                 background-color: {c.window_bg};
             }}
         """)
+        logger.info("[DIAG] __init__ step 5: stylesheet set")
 
         # 后端引用（延迟初始化 — 异步模式由 PerformanceManager 管理）
         self._backend = None
         self._backend_ready = False
 
         # === 延迟导入（按需加载，节省 ~5s 冷启动）===
+        logger.info("[DIAG] __init__ step 6: importing widgets...")
         from gugu_native.widgets.dual_mode_compat import DualModeCompat
         from gugu_native.widgets.autostart_manager import AutoStartManager
         from gugu_native.widgets.perf_manager import PerformanceManager
         from gugu_native.widgets.tray_manager import TrayManager
         from gugu_native.widgets.update_manager import UpdateManager
+        logger.info("[DIAG] __init__ step 7: widgets imported")
 
         # === 双模式兼容 ===
         self.dual_mode = DualModeCompat(PROJECT_DIR)
@@ -184,8 +192,10 @@ class GuguGagaApp(FluentWindow):
 
         # === 创建各页面 ===
         if self._splash: self._splash.set_progress("正在加载界面...")
+        logger.info("[DIAG] __init__ step 8: before _create_pages()")
         self._perf_t2 = time.perf_counter()  # T10: 开始创建页面
         self._create_pages()
+        logger.info("[DIAG] __init__ step 9: after _create_pages()")
         self._perf_t3 = time.perf_counter()  # T10: 页面创建完成
 
         # 缩短/禁用页面切换动画，减少切换时的主线程卡顿
@@ -197,10 +207,15 @@ class GuguGagaApp(FluentWindow):
 
         # === 设置主题（从持久化偏好恢复）===
         if self._splash: self._splash.set_progress("正在应用主题...")
+        logger.info("[DIAG] __init__ step 10: before _ensure_manager()")
         manager = _ensure_manager()
+        logger.info("[DIAG] __init__ step 11: after _ensure_manager()")
         theme_id = manager.load_preferences()
+        logger.info(f"[DIAG] __init__ step 12: theme_id={theme_id}")
         apply_theme_by_id(theme_id)
+        logger.info("[DIAG] __init__ step 13: apply_theme_by_id done")
         self.setStyleSheet(get_global_qss())
+        logger.info("[DIAG] __init__ step 14: global QSS applied")
 
         # === 性能管理器 ===
         self.perf_manager = PerformanceManager(self)
@@ -305,9 +320,11 @@ class GuguGagaApp(FluentWindow):
 
     def _create_pages(self) -> None:
         """创建导航页面 — 首屏立即创建，其余页面延迟创建以加速冷启动"""
+        logger.info("[DIAG] _create_pages step A: importing ChatPage")
 
         # 对话页面（首屏，立即创建）
         from gugu_native.pages.chat_page import ChatPage
+        logger.info("[DIAG] _create_pages step B: ChatPage imported, creating instance")
         self.chat_page = ChatPage(self)
         self.addSubInterface(
             self.chat_page,
@@ -1059,6 +1076,7 @@ def main() -> None:
     splash.set_progress("正在初始化界面组件...")
 
     try:
+        logger.info("[DIAG] main: about to create GuguGagaApp...")
         window = GuguGagaApp(start_time=_PROCESS_START, splash=splash)
         _checkpoint("GuguGagaApp 初始化完成")
         window.show()

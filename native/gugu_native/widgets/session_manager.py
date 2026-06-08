@@ -39,8 +39,8 @@ from app.shared_config import PROJECT_DIR
 
 
 class ChatSession:
-    __slots__ = ("id", "name", "created_at", "messages", "metadata")
     """单个聊天会话数据"""
+    __slots__ = ("session_id", "title", "messages", "created_at", "updated_at")
 
     def __init__(self, session_id: str = "", title: str = "新对话",
                  messages: list = None, created_at: str = "", updated_at: str = "") -> None:
