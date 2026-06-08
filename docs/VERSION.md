@@ -38,6 +38,26 @@
 
 
 
+## 🟢 v1.20.11 (2026-06-08) ✅ STABLE
+
+### 🔄 重构
+- **[CONST-001] 常量模块**：新增 `native/gugu_native/constants.py`，集中管理魔法数字
+  - 性能相关常量（内存阈值、GC 间隔）
+  - UI 相关常量（窗口尺寸、动画持续时间）
+  - Live2D 相关常量（口型同步、模型尺寸）
+  - TTS 相关常量（音频队列、流式 TTS）
+  - 对话历史常量（历史记录大小）
+  - 录音相关常量（采样率）
+  - 网络相关常量（超时时间）
+
+- **[PERF-001] perf_manager 常量化**：使用 constants.py 中的常量替换硬编码数字
+
+### 📝 文件变更
+- **新增**: `native/gugu_native/constants.py`
+- **修改**: `native/gugu_native/widgets/perf_manager.py`, `app/version.py`
+
+---
+
 ## 🟢 v1.20.10 (2026-06-08) ✅ STABLE
 
 ### 🔧 修复
