@@ -34,6 +34,8 @@ from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
 from gugu_native.widgets.skeleton_container import SkeletonContainer
 
 
+logger = logging.getLogger(__name__)
+
 class DebugPage(QWidget, LazyPageMixin):
     """新增功能调试页面 — 支持懒加载"""
 
@@ -684,6 +686,5 @@ class DebugPage(QWidget, LazyPageMixin):
     def _open_camera(self) -> None:
         """打开摄像头"""
 
-logger = logging.getLogger(__name__)
         logger.info(" 打开摄像头...")
         # 这里应该调用后端的摄像头打开功能

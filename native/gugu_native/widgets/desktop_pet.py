@@ -29,6 +29,8 @@ from gugu_native.widgets.live2d_widget import Live2DWidget
 from app.shared_config import PROJECT_DIR
 
 
+logger = logging.getLogger(__name__)
+
 class DesktopPetWindow(QWidget):
     """
     桌面宠物窗口 — 无边框透明窗口 + Live2D 渲染
@@ -192,7 +194,6 @@ class DesktopPetWindow(QWidget):
     def showEvent(self, event) -> None:
         """显示时重新加载模型"""
 
-logger = logging.getLogger(__name__)
         if hasattr(self, 'live2d_widget') and self.live2d_widget:
             if not self.live2d_widget.model:
                 # 重新加载模型

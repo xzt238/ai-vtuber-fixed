@@ -44,6 +44,8 @@ HOTKEY_LABELS = {
 }
 
 
+logger = logging.getLogger(__name__)
+
 class HotkeyManager(QObject):
     """
     全局快捷键管理器
@@ -170,5 +172,4 @@ class HotkeyManager(QObject):
     def is_running(self) -> None:
         """Is running"""
 
-logger = logging.getLogger(__name__)
         return self._is_running

@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 from PySide6.QtCore import QObject, Signal
 
+logger = logging.getLogger(__name__)
+
 
 class AutoStartManager(QObject):
     """跨平台开机自启管理器"""
@@ -91,8 +93,6 @@ class AutoStartManager(QObject):
 
     def toggle(self) -> bool:
         """切换开机自启状态"""
-
-logger = logging.getLogger(__name__)
         if self.is_enabled():
             return self.disable()
         else:

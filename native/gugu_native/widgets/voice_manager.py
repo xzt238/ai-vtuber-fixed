@@ -28,6 +28,8 @@ from PySide6.QtCore import QObject, Signal, Slot, QThread, QMutex
 from app.shared_config import PROJECT_DIR
 
 
+logger = logging.getLogger(__name__)
+
 class _SileroOnnxWrapper:
     """v15: Silero VAD ONNX 模型包装器 — 轻量级本地推理，不需要 PyTorch JIT
 
@@ -508,7 +510,6 @@ class RealtimeVoiceManager(QObject):
     def _cleanup_asr_worker(self, worker) -> None:
         """清理已完成的 ASR 工作线程"""
 
-logger = logging.getLogger(__name__)
         self._asr_workers_mutex.lock()
         try:
             if worker in self._asr_workers:

@@ -15,6 +15,8 @@ GuguGaga AI-VTuber �� Ʒ����Դ������
 import os
 import struct
 
+logger = logging.getLogger(__name__)
+
 # ��Դ���Ŀ¼
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RESOURCES_DIR = SCRIPT_DIR  # ���� resources/ ��
@@ -178,8 +180,6 @@ def save_ico(img, path) -> None:
 
 def generate_all() -> None:
     """����������Դ"""
-
-logger = logging.getLogger(__name__)
     logger.info("Generating brand resources...")
 
     # Ӧ��ͼ��

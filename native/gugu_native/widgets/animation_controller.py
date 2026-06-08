@@ -27,6 +27,8 @@ from typing import Optional, Dict, List, Tuple
 from PySide6.QtCore import QTimer, Qt
 
 
+logger = logging.getLogger(__name__)
+
 class EmotionType:
     """情绪类型枚举"""
     NEUTRAL = "neutral"
@@ -409,5 +411,4 @@ class AnimationController:
     def _random_idle_interval(self) -> float:
         """生成随机 idle 动画间隔"""
 
-logger = logging.getLogger(__name__)
         return random.uniform(*self._idle_interval_range)

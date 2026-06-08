@@ -52,6 +52,8 @@ _PROACTIVE_PREFS_FILE = os.path.join(_CACHE_DIR, "proactive_prefs.json")
 # Edge TTS 音色列表已从 app/shared_config.py 引入（不再本地维护副本）
 
 
+logger = logging.getLogger(__name__)
+
 class SettingsPage(ScrollArea, LazyPageMixin):
     """设置页面 — 卡片式分组布局，支持懒加载"""
 
@@ -1986,7 +1988,6 @@ class SettingsPage(ScrollArea, LazyPageMixin):
     def _save_vision_config(self) -> None:
         """v1.9.76: 保存视觉配置"""
 
-logger = logging.getLogger(__name__)
         backend = self.backend
         if not backend:
             return
