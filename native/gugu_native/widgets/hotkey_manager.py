@@ -46,7 +46,6 @@ HOTKEY_LABELS = {
 
 
 class HotkeyManager(QObject):
-    __slots__ = ("_main_window", "_hotkeys", "_listener")
     """
     全局快捷键管理器
 

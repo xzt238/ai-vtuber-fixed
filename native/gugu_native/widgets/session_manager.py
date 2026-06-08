@@ -83,7 +83,6 @@ class ChatSession:
 
 
 class SessionManager(QWidget):
-    __slots__ = ("_sessions", "_current_id", "_file_path", "_lock")
     """会话管理器 — 侧边栏
 
     信号:
