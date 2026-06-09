@@ -9,7 +9,7 @@
 **GPT-SoVITS 声音克隆 · Live2D/VRM 双模型 · 四层记忆 · 视觉理解 · Function Calling · 10 主题 · 原生桌面 · Android/iOS**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-v2.6.0-blue.svg)](docs/VERSION.md)
+[![Version](https://img.shields.io/badge/version-v1.20.16-blue.svg)](docs/VERSION.md)
 [![Python](https://img.shields.io/badge/python-3.11-yellow.svg)](https://www.python.org/downloads/release/python-3119/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20iOS-lightgrey)]()
 [![Known Issues](https://img.shields.io/badge/known%20issues-10-orange.svg)](docs/KNOWN_ISSUES.md)
@@ -26,8 +26,8 @@
 
 | 平台 | 技术栈 | 位置 | 版本 | 状态 |
 |------|--------|------|------|------|
-| **Windows 桌面端** | Python + PySide6 | 根目录 | v1.19.1 | ✅ 稳定版 |
-| **Android/iOS 移动端** | React Native + Expo | `mobile/` | v2.6.0 | ✅ 稳定版 |
+| **Windows 桌面端** | Python + PySide6 | 根目录 | v1.20.16 | ✅ 稳定版 |
+| **Android/iOS 移动端** | React Native + Expo | `mobile/` | v1.1.0 | ✅ 稳定版 |
 
 ### 移动端快速开始
 
@@ -164,6 +164,12 @@ mobile/
 | **工具系统** | Function Calling + 沙箱执行 + 伴侣工具 | fc_executor + companion（7 个内置工具） |
 | **VAD** | AI 语音活动检测 | Silero VAD |
 | **桌面端** | PySide6 原生窗口 + 无 CMD 启动 + 系统托盘 | PySide6/Qt6 + QWebEngineView + QOpenGLWidget |
+| **系统监控** | 实时 CPU/内存/GPU/磁盘监控 + 内存泄漏检测 | psutil + nvidia-smi + 线性回归分析 |
+| **日志分析** | LLM 智能分析 + 自动/手动报告 + 报告管理 | 自定义 LLM 集成 + JSON/文本存储 |
+| **错误追踪** | 错误指纹 + 分组聚合 + 堆栈追踪（类 Sentry） | 自定义 ErrorTracker |
+| **告警引擎** | 默认 5 条规则 + 自定义规则 + 冷却时间 | AlertRuleEngine |
+| **模式识别** | 7 种常见问题模式自动识别 | 正则匹配 + 统计分析 |
+| **高级搜索** | 级别/模块/时间/排除词过滤 | LogSearchEngine |
 
 ---
 
@@ -277,6 +283,79 @@ scripts\start_debug.bat # 原生调试模式（CMD 保留查看日志）
 
 ---
 
+## 📊 系统监控与日志分析
+
+v1.20.16 新增完整的系统监控和日志分析功能，对标行业顶尖项目（Datadog/Grafana/Sentry）。
+
+### 功能概览
+
+| 功能 | 说明 | 对标 |
+|------|------|------|
+| **实时日志** | 彩色日志流、级别过滤、搜索、导出 | Grafana Loki |
+| **系统监控** | CPU/内存/GPU/磁盘实时监控 | Datadog |
+| **内存泄漏检测** | 线性回归分析、实时告警 | Datadog |
+| **LLM智能分析** | 自动/手动分析、详细报告生成 | New Relic |
+| **错误追踪** | 错误指纹、分组聚合、堆栈追踪 | Sentry |
+| **告警引擎** | 默认5条规则、自定义规则、冷却时间 | Datadog |
+| **模式识别** | 7种常见问题模式自动识别 | ELK |
+| **高级搜索** | 级别/模块/时间/排除词过滤 | Grafana |
+| **报告管理** | 文件夹式列表、按日期分组、自动清理 | Custom |
+
+### 系统日志页面
+
+桌面模式下的系统日志页面提供：
+
+```
+┌──────────────┬──────────────────────────────────────────────┐
+│ 📁 分析报告   │ CPU: 45% | RAM: 72% | GPU: 30% | 内存: 正常 │
+│              ├──────────────────────────────────────────────┤
+│ 📅 2026-06-09│ 📝 实时日志                                   │
+│   🔄 09:30   │   [ERROR] Connection timeout...              │
+│   📝 08:30   │   [WARNING] Memory usage high...             │
+│ 📅 2026-06-08│   [INFO] System started...                   │
+│   🔄 22:00   ├──────────────────────────────────────────────┤
+│              │ 🤖 LLM智能分析                                │
+│ [刷新][导出] │   📊 系统健康状态评估                          │
+│ [删除]       │   📈 日志统计分析                              │
+│              │   🔍 异常模式识别                              │
+└──────────────┴──────────────────────────────────────────────┘
+```
+
+### 默认告警规则
+
+| 规则 | 条件 | 严重程度 | 冷却时间 |
+|------|------|----------|----------|
+| 错误率过高 | error_rate > 5% | WARNING | 5分钟 |
+| 严重错误 | critical_count > 0 | CRITICAL | 1分钟 |
+| 内存使用过高 | memory_percent > 90% | WARNING | 10分钟 |
+| 内存泄漏 | memory_growth_rate > 10MB/分 | ERROR | 15分钟 |
+| 日志激增 | log_rate > 100条/分 | WARNING | 5分钟 |
+
+### 高级搜索语法
+
+```
+level:ERROR              # 过滤ERROR级别
+module:tts               # 过滤tts模块
+after:2026-06-09         # 时间范围
+before:2026-06-10        # 时间范围
+-timeout                  # 排除包含timeout的日志
+is:error                 # 等同于level:ERROR
+```
+
+### 配置示例
+
+```yaml
+# config.yaml
+monitor:
+  performance: true      # 启用性能监控
+  hot_reload: true       # 启用配置热重载
+  log_analyzer: true     # 启用日志分析
+  perf_interval: 2       # 性能监控间隔（秒）
+  log_analyzer_interval: 10  # 日志分析间隔（分钟）
+```
+
+---
+
 ## ⚙️ 配置说明
 
 主配置文件：`app/config.yaml`
@@ -364,7 +443,12 @@ ai-vtuber-fixed/
 │   │       └── libs/           # 前端库（pixi.js, oh-my-live2d, Silero VAD）
 │   ├── tts_cache.py            # TTS 语音缓存
 │   ├── utils.py                # 工具函数
-│   └── logger_new.py           # 日志模块
+│   ├── logger_new.py           # 日志模块
+│   ├── system_monitor.py       # 系统监控集成（性能+热重载+日志分析）
+│   ├── performance_monitor.py  # 性能监控模块
+│   ├── config_hot_reload.py    # 配置热重载模块
+│   ├── log_analyzer.py         # 日志智能分析（LLM集成）
+│   └── log_monitor.py          # 高级日志监控（错误追踪/告警/模式识别）
 ├── GPT-SoVITS/                 # GPT-SoVITS 声音克隆引擎
 │   ├── GPT_SoVITS/             # 核心代码 + 预训练模型（不包含在 Git 中）
 │   ├── GPT_weights_v3/         # GPT 模型权重（运行时生成）
@@ -378,12 +462,14 @@ ai-vtuber-fixed/
 │   ├── main.py                 # 原生模式入口（惰加载 + 启动画面 + 进度提示）
 │   ├── build.bat               # PyInstaller 打包脚本
 │   └── gugu_native/
-│       ├── pages/              # 5 个页面组件
+│       ├── pages/              # 6 个页面组件
 │       │   ├── chat_page.py    # 聊天页（Live2D/VRM + 实时语音 + 视觉理解）
 │       │   ├── settings_page.py # 设置页（LLM/TTS/ASR/Vision/主题/关于）
 │       │   ├── train_page.py   # 声音训练页（录制+上传+训练+状态监控）
 │       │   ├── memory_page.py  # 记忆管理页（四层架构可视化）
-│       │   └── model_download_page.py # 模型下载页
+│       │   ├── model_download_page.py # 模型下载页
+│       │   ├── log_page.py     # 系统日志页（实时日志+LLM分析+报告管理+错误追踪）
+│       │   └── debug_page_optimized.py # 调试页（性能监控+配置热重载）
 │       ├── widgets/            # 20+ 功能组件
 │       │   ├── chat_web_display.py   # 聊天 Markdown 渲染
 │       │   ├── voice_manager.py      # 实时语音管理（VAD+ASR）

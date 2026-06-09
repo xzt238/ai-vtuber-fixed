@@ -7,5 +7,5 @@
 修改版本号时需要检查的文件列表见: docs/CHANGE_IMPACT_MAP.md
 """
 
-__version__ = "1.20.15"
+__version__ = "1.20.16"
 VERSION = __version__

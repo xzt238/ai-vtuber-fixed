@@ -15,6 +15,7 @@
 import os
 import json
 import yaml
+import logging
 from pathlib import Path
 from datetime import datetime
 
@@ -37,6 +38,23 @@ from qfluentwidgets import (
 from app.shared_config import PROJECT_DIR
 from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
 from gugu_native.widgets.skeleton_container import SkeletonContainer
+
+
+class DebugPageLogHandler(logging.Handler):
+    """自定义日志处理器，将日志发送到调试页面"""
+    
+    def __init__(self, debug_page) -> None:
+        """内部方法"""
+        super().__init__()
+        self.debug_page = debug_page
+    
+    def emit(self, record) -> None:
+        """发送日志记录"""
+        try:
+            msg = self.format(record)
+            self.debug_page.log_message.emit(record.levelname, msg)
+        except Exception:
+            self.handleError(record)
 
 
 class DebugPageOptimized(QWidget, LazyPageMixin):
@@ -90,6 +108,14 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         # 初始化UI
         self._init_ui()
         
+        # 注册日志处理器，接收所有模块的日志
+        self._log_handler = DebugPageLogHandler(self)
+        self._log_handler.setFormatter(logging.Formatter('%(name)s - %(message)s'))
+        logging.getLogger().addHandler(self._log_handler)
+        
+        # 根据配置自动启动已启用的功能
+        self._auto_start_enabled_features()
+        
         # 启动状态刷新定时器
         self._refresh_timer = QTimer(self)
         self._refresh_timer.timeout.connect(self._refresh_status)
@@ -98,6 +124,25 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
     def set_backend(self, backend) -> None:
         """设置后端引用"""
         self._backend = backend
+
+    def _auto_start_enabled_features(self) -> None:
+        """根据配置自动启动已启用的功能"""
+        monitor_config = self._config_data.get('monitor', {})
+        
+        # 自动启动性能监控
+        if monitor_config.get('performance', True):
+            self._log("INFO", "根据配置自动启动性能监控")
+            self._start_performance_monitor()
+        
+        # 自动启动配置热重载
+        if monitor_config.get('hot_reload', False):
+            self._log("INFO", "根据配置自动启动配置热重载")
+            self._start_hot_reload()
+        
+        # 日志分析器默认随系统监控启动，无需单独启动
+        if monitor_config.get('log_analyzer', True):
+            self._log("INFO", "日志分析器已启用（随系统监控启动）")
+            self._status_labels['log_analyzer'].setText("状态: 已启用")
 
     def _load_config(self) -> None:
         """加载配置文件"""
@@ -231,6 +276,10 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         # 配置热重载配置卡片
         self._cards['hot_reload'] = self._create_hot_reload_card()
         self._right_layout.addWidget(self._cards['hot_reload'])
+        
+        # 日志分析配置卡片
+        self._cards['log_analyzer'] = self._create_log_analyzer_card()
+        self._right_layout.addWidget(self._cards['log_analyzer'])
 
     def _create_system_card(self) -> None:
         """创建系统调试配置卡片"""
@@ -248,7 +297,12 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         # 版本信息
         version_layout = QHBoxLayout()
         version_layout.addWidget(CaptionLabel("版本:"))
-        version_label = CaptionLabel("v1.18.4")
+        try:
+            from app.version import VERSION
+            version_text = f"v{VERSION}"
+        except ImportError:
+            version_text = "v1.20.16"
+        version_label = CaptionLabel(version_text)
         version_label.setStyleSheet("font-weight: bold;")
         version_layout.addWidget(version_label)
         version_layout.addStretch()
@@ -304,7 +358,10 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         enable_layout = QHBoxLayout()
         enable_layout.addWidget(CaptionLabel("启用性能监控"))
         self._config_widgets['perf_enabled'] = SwitchButton()
-        self._config_widgets['perf_enabled'].setChecked(True)
+        self._config_widgets['perf_enabled'].setChecked(self._config_data.get('monitor', {}).get('performance', True))
+        self._config_widgets['perf_enabled'].checkedChanged.connect(
+            lambda checked: self._update_config('monitor.performance', checked)
+        )
         enable_layout.addWidget(self._config_widgets['perf_enabled'])
         card_layout.addLayout(enable_layout)
 
@@ -313,7 +370,10 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         interval_layout.addWidget(CaptionLabel("监控间隔（秒）"))
         self._config_widgets['perf_interval'] = SpinBox()
         self._config_widgets['perf_interval'].setRange(1, 60)
-        self._config_widgets['perf_interval'].setValue(1)
+        self._config_widgets['perf_interval'].setValue(self._config_data.get('monitor', {}).get('perf_interval', 1))
+        self._config_widgets['perf_interval'].valueChanged.connect(
+            lambda value: self._update_config('monitor.perf_interval', value)
+        )
         interval_layout.addWidget(self._config_widgets['perf_interval'])
         card_layout.addLayout(interval_layout)
 
@@ -369,7 +429,10 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         enable_layout = QHBoxLayout()
         enable_layout.addWidget(CaptionLabel("启用配置热重载"))
         self._config_widgets['hot_reload_enabled'] = SwitchButton()
-        self._config_widgets['hot_reload_enabled'].setChecked(False)
+        self._config_widgets['hot_reload_enabled'].setChecked(self._config_data.get('monitor', {}).get('hot_reload', False))
+        self._config_widgets['hot_reload_enabled'].checkedChanged.connect(
+            lambda checked: self._update_config('monitor.hot_reload', checked)
+        )
         enable_layout.addWidget(self._config_widgets['hot_reload_enabled'])
         card_layout.addLayout(enable_layout)
 
@@ -378,7 +441,10 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         interval_layout.addWidget(CaptionLabel("监听间隔（秒）"))
         self._config_widgets['hot_reload_interval'] = SpinBox()
         self._config_widgets['hot_reload_interval'].setRange(1, 60)
-        self._config_widgets['hot_reload_interval'].setValue(1)
+        self._config_widgets['hot_reload_interval'].setValue(self._config_data.get('monitor', {}).get('hot_reload_interval', 1))
+        self._config_widgets['hot_reload_interval'].valueChanged.connect(
+            lambda value: self._update_config('monitor.hot_reload_interval', value)
+        )
         interval_layout.addWidget(self._config_widgets['hot_reload_interval'])
         card_layout.addLayout(interval_layout)
 
@@ -412,6 +478,72 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
         # 状态显示
         self._status_labels['hot_reload'] = CaptionLabel("状态: 未启动")
         card_layout.addWidget(self._status_labels['hot_reload'])
+
+        return card
+
+    def _create_log_analyzer_card(self) -> None:
+        """创建日志分析配置卡片"""
+        card = CardWidget()
+        card_layout = QVBoxLayout(card)
+        card_layout.setSpacing(12)
+        card_layout.setContentsMargins(16, 16, 16, 16)
+
+        card_layout.addWidget(SubtitleLabel("🔍 日志智能分析"))
+
+        # 启用开关
+        enable_layout = QHBoxLayout()
+        enable_layout.addWidget(CaptionLabel("启用日志分析"))
+        self._config_widgets['log_analyzer_enabled'] = SwitchButton()
+        self._config_widgets['log_analyzer_enabled'].setChecked(self._config_data.get('monitor', {}).get('log_analyzer', True))
+        self._config_widgets['log_analyzer_enabled'].checkedChanged.connect(
+            lambda checked: self._update_config('monitor.log_analyzer', checked)
+        )
+        enable_layout.addWidget(self._config_widgets['log_analyzer_enabled'])
+        card_layout.addLayout(enable_layout)
+
+        # 分析间隔
+        interval_layout = QHBoxLayout()
+        interval_layout.addWidget(CaptionLabel("分析间隔（秒）"))
+        self._config_widgets['log_analyzer_interval'] = SpinBox()
+        self._config_widgets['log_analyzer_interval'].setRange(30, 600)
+        self._config_widgets['log_analyzer_interval'].setValue(self._config_data.get('monitor', {}).get('log_analyzer_interval', 60))
+        self._config_widgets['log_analyzer_interval'].valueChanged.connect(
+            lambda value: self._update_config('monitor.log_analyzer_interval', value)
+        )
+        interval_layout.addWidget(self._config_widgets['log_analyzer_interval'])
+        card_layout.addLayout(interval_layout)
+
+        # 分析结果显示
+        result_layout = QVBoxLayout()
+        result_layout.setSpacing(4)
+        
+        result_label = CaptionLabel("分析结果:")
+        result_layout.addWidget(result_label)
+        
+        self._log_analysis_result = QTextEdit()
+        self._log_analysis_result.setMaximumHeight(120)
+        self._log_analysis_result.setReadOnly(True)
+        self._log_analysis_result.setPlaceholderText("等待分析结果...")
+        result_layout.addWidget(self._log_analysis_result)
+        
+        card_layout.addLayout(result_layout)
+
+        # 操作按钮
+        btn_layout = QHBoxLayout()
+        
+        analyze_btn = PushButton("立即分析")
+        analyze_btn.clicked.connect(self._analyze_logs_now)
+        btn_layout.addWidget(analyze_btn)
+        
+        clear_btn = PushButton("清空日志")
+        clear_btn.clicked.connect(self._clear_log_analyzer)
+        btn_layout.addWidget(clear_btn)
+        
+        card_layout.addLayout(btn_layout)
+
+        # 状态显示
+        self._status_labels['log_analyzer'] = CaptionLabel("状态: 未启动")
+        card_layout.addWidget(self._status_labels['log_analyzer'])
 
         return card
 
@@ -960,27 +1092,100 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
 
     def _start_performance_monitor(self) -> None:
         """开始性能监控"""
-        self._log("INFO", "开始性能监控...")
-        # 这里应该调用后端的性能监控启动功能
-        self._status_labels['performance'].setText("状态: 监控中")
+        try:
+            from system_monitor import get_system_monitor
+            monitor = get_system_monitor()
+            if not monitor.is_running:
+                monitor.start()
+            self._log("INFO", "性能监控已启动")
+            self._status_labels['performance'].setText("状态: 监控中")
+        except Exception as e:
+            self._log("ERROR", f"启动性能监控失败: {e}")
 
     def _stop_performance_monitor(self) -> None:
         """停止性能监控"""
-        self._log("INFO", "停止性能监控...")
-        # 这里应该调用后端的性能监控停止功能
-        self._status_labels['performance'].setText("状态: 已停止")
+        try:
+            from system_monitor import get_system_monitor
+            monitor = get_system_monitor()
+            monitor.stop()
+            self._log("INFO", "性能监控已停止")
+            self._status_labels['performance'].setText("状态: 已停止")
+        except Exception as e:
+            self._log("ERROR", f"停止性能监控失败: {e}")
 
     def _start_hot_reload(self) -> None:
         """开始配置热重载"""
-        self._log("INFO", "开始配置热重载...")
-        # 这里应该调用后端的配置热重载启动功能
-        self._status_labels['hot_reload'].setText("状态: 监听中")
+        try:
+            from system_monitor import get_system_monitor
+            monitor = get_system_monitor()
+            if not monitor.is_running:
+                monitor.start()
+            self._log("INFO", "配置热重载已启动")
+            self._status_labels['hot_reload'].setText("状态: 监听中")
+        except Exception as e:
+            self._log("ERROR", f"启动配置热重载失败: {e}")
 
     def _stop_hot_reload(self) -> None:
         """停止配置热重载"""
-        self._log("INFO", "停止配置热重载...")
-        # 这里应该调用后端的配置热重载停止功能
-        self._status_labels['hot_reload'].setText("状态: 已停止")
+        try:
+            from system_monitor import get_system_monitor
+            monitor = get_system_monitor()
+            monitor.stop()
+            self._log("INFO", "配置热重载已停止")
+            self._status_labels['hot_reload'].setText("状态: 已停止")
+        except Exception as e:
+            self._log("ERROR", f"停止配置热重载失败: {e}")
+
+    def _analyze_logs_now(self) -> None:
+        """立即分析日志"""
+        try:
+            from system_monitor import get_system_monitor
+            monitor = get_system_monitor()
+            
+            # 获取分析结果
+            result = monitor.get_log_analysis_result()
+            if result:
+                # 显示结果
+                result_text = f"分析时间: {result['timestamp']}\n"
+                result_text += f"摘要: {result['summary']}\n"
+                result_text += f"严重程度: {result['severity']}\n\n"
+                
+                if result['issues']:
+                    result_text += "发现的问题:\n"
+                    for issue in result['issues']:
+                        result_text += f"- [{issue.get('severity', 'unknown')}] {issue.get('message', '')}\n"
+                
+                if result['suggestions']:
+                    result_text += "\n建议:\n"
+                    for suggestion in result['suggestions']:
+                        result_text += f"- {suggestion}\n"
+                
+                self._log_analysis_result.setPlainText(result_text)
+                self._log("INFO", "日志分析完成")
+            else:
+                # 尝试使用LLM分析
+                llm_result = monitor.analyze_logs_with_llm()
+                if llm_result:
+                    self._log_analysis_result.setPlainText(llm_result)
+                else:
+                    self._log_analysis_result.setPlainText("暂无分析结果，请等待自动分析或检查日志分析器是否启用")
+                self._log("INFO", "日志分析完成")
+            
+            self._status_labels['log_analyzer'].setText("状态: 分析完成")
+        except Exception as e:
+            self._log("ERROR", f"日志分析失败: {e}")
+            self._log_analysis_result.setPlainText(f"分析失败: {e}")
+
+    def _clear_log_analyzer(self) -> None:
+        """清空日志分析器"""
+        try:
+            from log_analyzer import get_log_analyzer
+            analyzer = get_log_analyzer()
+            analyzer.clear()
+            self._log_analysis_result.clear()
+            self._log("INFO", "日志分析器已清空")
+        except Exception as e:
+            self._log("ERROR", f"清空日志分析器失败: {e}")
 
     def _navigate_to_features_settings(self) -> None:
         """导航到功能设置页面"""

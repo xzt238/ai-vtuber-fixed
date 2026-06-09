@@ -67,6 +67,12 @@ image_gen:
   provider: mimo
   style: ''
   width: 1024
+interrupt:
+  auto_interrupt: true
+  enabled: true
+  interrupt_cooldown_ms: 500
+  max_interrupt_history: 100
+  save_heard_response: true
 live:
   bilibili:
     room_id: ''
@@ -158,6 +164,8 @@ memory:
   summarize_batch: 5
   summarize_threshold: 20
   working_memory_limit: 30
+monitor:
+  performance: false
 multi_agent:
   conversation_timeout: 3600
   enabled: false
@@ -264,10 +272,12 @@ tts:
     voice: mimo_default
   provider: gptsovits
 vad:
-  stop_threshold_ms: 1800
-  thinking_extend_ms: 2000
-  thinking_pause_ms: 600
-  thinking_threshold_factor: 0.8
+  db_threshold: 60
+  enabled: true
+  model: silero
+  prob_threshold: 0.4
+  required_hits: 3
+  required_misses: 24
 vision:
   default_provider: minimax_vl
   mimo_vision:
@@ -298,23 +308,6 @@ vision_input:
   storage_dir: ./cache/vision
 voice_input:
   provider: web
-
-# VAD语音活动检测配置
-vad:
-  enabled: true
-  model: silero
-  prob_threshold: 0.4
-  db_threshold: 60
-  required_hits: 3
-  required_misses: 24
-
-# 语音打断配置
-interrupt:
-  enabled: true
-  auto_interrupt: true
-  save_heard_response: true
-  max_interrupt_history: 100
-  interrupt_cooldown_ms: 500
 vrm_display:
   ambient_light: 0.8
   anim_amplitude: 1.0

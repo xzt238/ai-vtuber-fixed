@@ -2840,7 +2840,7 @@ class WebSocketServer:
 
     def _handle_system_stats(self, client) -> None:
         """
-        [功能说明]处理系统状态查询请求(GPU/内存)
+        [功能说明]处理系统状态查询请求(GPU/内存/CPU)
 
         [参数说明]
             client: WebSocket 客户端对象
@@ -2848,47 +2848,76 @@ class WebSocketServer:
         [返回值]
             无(通过 WebSocket 发送响应)
         """
-        """处理系统统计请求"""
         try:
             stats = {}
 
-            # GPU 内存
+            # 尝试从性能监控获取数据
             try:
-                import subprocess
-                import sys as _sys
-                import os
-                nvidia_kwargs = dict(capture_output=True, text=True, timeout=5)
-                # v1.9.60: 桌面模式下隐藏 nvidia-smi 的 CMD 窗口
-                if _sys.platform == "win32" and os.getenv("GUGUGAGA_DESKTOP") == "1":
-                    si = subprocess.STARTUPINFO()
-                    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                    si.wShowWindow = subprocess.SW_HIDE
-                    nvidia_kwargs["startupinfo"] = si
-                    nvidia_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-                result = subprocess.run(
-                    ['nvidia-smi', '--query-gpu=memory.used,memory.total,temperature.gpu', '--format=csv,noheader,nounits'],
-                    **nvidia_kwargs,
-                )
-                if result.returncode == 0:
-                    parts = result.stdout.strip().split(',')
-                    if len(parts) >= 3:
-                        stats['vram_used'] = int(parts[0].strip())
-                        stats['vram_total'] = int(parts[1].strip())
-                        stats['gpu_temp'] = int(parts[2].strip())
-                        stats['gpu_memory'] = round(stats['vram_used'] / stats['vram_total'] * 100, 1)
+                from system_monitor import get_system_monitor
+                monitor = get_system_monitor()
+                perf_metrics = monitor.get_performance_metrics()
+                if perf_metrics:
+                    stats['cpu_percent'] = perf_metrics.get('cpu_percent', 0)
+                    stats['ram_percent'] = perf_metrics.get('memory_percent', 0)
+                    stats['ram_used'] = int(perf_metrics.get('memory_used_mb', 0) * 1024 * 1024)
+                    stats['ram_total'] = int(perf_metrics.get('memory_total_mb', 0) * 1024 * 1024)
+                    stats['gpu_percent'] = perf_metrics.get('gpu_percent', 0)
+                    stats['gpu_memory_used'] = perf_metrics.get('gpu_memory_used_mb', 0)
+                    stats['gpu_memory_total'] = perf_metrics.get('gpu_memory_total_mb', 0)
             except Exception as e:
-                logger.info(f"[STATS] GPU获取失败: {e}")
+                logger.debug(f"[STATS] 性能监控数据获取失败: {e}")
 
-            # 系统内存
+            # GPU 内存（备用方案）
+            if 'vram_used' not in stats:
+                try:
+                    import subprocess
+                    import sys as _sys
+                    import os
+                    nvidia_kwargs = dict(capture_output=True, text=True, timeout=5)
+                    # v1.9.60: 桌面模式下隐藏 nvidia-smi 的 CMD 窗口
+                    if _sys.platform == "win32" and os.getenv("GUGUGAGA_DESKTOP") == "1":
+                        si = subprocess.STARTUPINFO()
+                        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                        si.wShowWindow = subprocess.SW_HIDE
+                        nvidia_kwargs["startupinfo"] = si
+                        nvidia_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+                    result = subprocess.run(
+                        ['nvidia-smi', '--query-gpu=memory.used,memory.total,temperature.gpu', '--format=csv,noheader,nounits'],
+                        **nvidia_kwargs,
+                    )
+                    if result.returncode == 0:
+                        parts = result.stdout.strip().split(',')
+                        if len(parts) >= 3:
+                            stats['vram_used'] = int(parts[0].strip())
+                            stats['vram_total'] = int(parts[1].strip())
+                            stats['gpu_temp'] = int(parts[2].strip())
+                            stats['gpu_memory'] = round(stats['vram_used'] / stats['vram_total'] * 100, 1)
+                except Exception as e:
+                    logger.info(f"[STATS] GPU获取失败: {e}")
+
+            # 系统内存（备用方案）
+            if 'ram_used' not in stats:
+                try:
+                    import psutil
+                    mem = psutil.virtual_memory()
+                    stats['ram_used'] = int(mem.used)
+                    stats['ram_total'] = int(mem.total)
+                    stats['ram_percent'] = mem.percent
+                except ImportError:
+                    stats['ram_used'] = 0
+                    stats['ram_total'] = 0
+                    stats['ram_percent'] = 0
+
+            # 添加性能监控统计
             try:
-                import psutil
-                mem = psutil.virtual_memory()
-                stats['ram_used'] = int(mem.used)
-                stats['ram_total'] = int(mem.total)
-            except ImportError:
-                # psutil 未安装,使用默认值
-                stats['ram_used'] = 0
-                stats['ram_total'] = 0
+                from system_monitor import get_system_monitor
+                monitor = get_system_monitor()
+                stats['monitor_stats'] = {
+                    'performance': monitor.get_performance_stats(),
+                    'hot_reload': monitor.get_hot_reload_stats()
+                }
+            except Exception:
+                pass
 
             self.server.send_message(client, json.dumps({
                 "type": "system_stats",

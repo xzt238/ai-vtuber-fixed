@@ -100,6 +100,7 @@ from tts_cache import TTSCache
 from lazy_module_manager import LazyModuleManager
 from history_manager import HistoryManager
 from interaction_manager import InteractionManager
+from system_monitor import init_system_monitor, get_system_monitor
 
 
 class Config:
@@ -403,6 +404,30 @@ class AIVTuber:
         # 初始化交互模式管理器
         self._interaction_manager = InteractionManager(self)
 
+        # 初始化系统监控（性能监控 + 配置热重载 + 日志分析）
+        try:
+            config_dir = str(Path(self.config.config_path).parent)
+            config_files = [self.config.config_path]
+            
+            # 检查配置中是否启用监控
+            monitor_config = self.config.get("monitor", {})
+            enable_performance = monitor_config.get("performance", True)
+            enable_hot_reload = monitor_config.get("hot_reload", True)
+            enable_log_analyzer = monitor_config.get("log_analyzer", True)
+            
+            self._system_monitor = init_system_monitor(
+                config_dir=config_dir,
+                config_files=config_files,
+                enable_performance=enable_performance,
+                enable_hot_reload=enable_hot_reload,
+                enable_log_analyzer=enable_log_analyzer
+            )
+            
+            game_ok("系统监控", f"性能监控={'✓' if enable_performance else '✗'}, 配置热重载={'✓' if enable_hot_reload else '✗'}, 日志分析={'✓' if enable_log_analyzer else '✗'}")
+        except Exception as e:
+            logger.warning(f"系统监控初始化失败（非致命）: {e}")
+            self._system_monitor = None
+
         # TTS 缓存 - 立即初始化（轻量级，仅做文件缓存管理）
         self.tts_cache = TTSCache()
         self.logger.info("TTS 缓存已初始化")
@@ -458,6 +483,11 @@ class AIVTuber:
     def vision(self) -> None:
         """视觉理解模块 - 懒加载"""
         return self._module_manager.vision
+    
+    @property
+    def system_monitor(self):
+        """系统监控实例"""
+        return getattr(self, '_system_monitor', None)
 
     @property
     def live2d(self) -> None:
@@ -854,6 +884,13 @@ class AIVTuber:
 
     def _atexit_flush(self) -> None:
         """atexit 回调：确保异常退出时也能 flush 记忆系统和对话历史"""
+        # 停止系统监控
+        if hasattr(self, '_system_monitor') and self._system_monitor:
+            try:
+                self._system_monitor.stop()
+            except Exception:
+                pass
+        
         self._history_manager.flush()
         if hasattr(self, '_memory') and self._memory:
             try:
@@ -871,6 +908,15 @@ class AIVTuber:
     def stop(self) -> None:
         """停止所有服务并释放资源"""
         self.logger.info("正在停止所有服务...")
+        
+        # 停止系统监控
+        if hasattr(self, '_system_monitor') and self._system_monitor:
+            try:
+                self._system_monitor.stop()
+                self.logger.info("系统监控已停止")
+            except Exception as e:
+                self.logger.warning(f"停止系统监控失败: {e}")
+        
         # 停止各种服务
         for service_name in ['web_server', 'ws_server', 'executor']:
             service = self._module_manager.get_module(service_name)

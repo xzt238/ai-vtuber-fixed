@@ -38,6 +38,22 @@
 
 
 
+## 🟢 v1.20.16 (2026-06-09) ✅ STABLE
+
+### 🔧 修复
+- **[FIX-001] 性能监控未接入主程序**：`performance_monitor.py` 模块已实现但从未在 `main.py` 中导入和启动，导致开启后无效。
+- **[FIX-002] 配置热重载未接入主程序**：`config_hot_reload.py` 模块已实现但从未在 `main.py` 中导入和启动，导致开启后无效。
+- **[FIX-003] README 版本号不一致**：README 显示 v1.19.1（桌面端）和 v2.6.0（移动端），实际应为 v1.20.16 和 v1.1.0。
+
+### ✨ 新增
+- **[NEW-001] 系统监控集成模块**：新增 `system_monitor.py`，统一管理性能监控和配置热重载，使用独立线程运行 asyncio 事件循环。
+
+### 📝 文件变更
+- **新增**: `app/system_monitor.py`
+- **修改**: `app/main.py`, `app/version.py`, `app/web/__init__.py`, `README.md`, `docs/VERSION.md`
+
+---
+
 ## 🟢 v1.20.15 (2026-06-08) ✅ STABLE
 
 ### 🔧 修复
