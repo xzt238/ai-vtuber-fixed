@@ -7,7 +7,7 @@ ChatPage TTS 配置 Mixin
 import os
 import json
 import logging
-from typing import Optional
+
 from datetime import datetime
 
 from PySide6.QtCore import Slot

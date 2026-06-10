@@ -64,8 +64,6 @@ except ImportError:
 
 # ==================== 从子模块导入公开类 ====================
 
-from llm.injection import PromptInjection, PromptInjector, MemoryRAGInjector
-from llm.infrastructure import RateLimiter, RetryStrategy, StreamAccumulator
 from llm.engines import LLMEngine, MiniMaxLLM, OpenAILLM, AnthropicLLM
 
 

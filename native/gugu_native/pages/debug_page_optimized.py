@@ -12,8 +12,8 @@
 6. 性能监控面板
 """
 
-import os
-import json
+
+
 import yaml
 import logging
 from pathlib import Path
@@ -25,8 +25,8 @@ from PySide6.QtWidgets import (
     QComboBox, QLineEdit, QTextEdit, QGroupBox,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QThread
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QFont
 
 from qfluentwidgets import (
     Slider, PushButton, CaptionLabel, InfoBar, InfoBarPosition,
@@ -301,7 +301,7 @@ class DebugPageOptimized(QWidget, LazyPageMixin):
             from app.version import VERSION
             version_text = f"v{VERSION}"
         except ImportError:
-            version_text = "v1.20.16"
+            version_text = "v1.21.2"
         version_label = CaptionLabel(version_text)
         version_label.setStyleSheet("font-weight: bold;")
         version_layout.addWidget(version_label)

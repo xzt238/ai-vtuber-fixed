@@ -9,7 +9,7 @@
 **GPT-SoVITS 声音克隆 · Live2D/VRM 双模型 · 四层记忆 · 视觉理解 · Function Calling · 10 主题 · 原生桌面 · Android/iOS**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-v1.20.16-blue.svg)](docs/VERSION.md)
+[![Version](https://img.shields.io/badge/version-v1.21.5-blue.svg)](docs/VERSION.md)
 [![Python](https://img.shields.io/badge/python-3.11-yellow.svg)](https://www.python.org/downloads/release/python-3119/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20iOS-lightgrey)]()
 [![Known Issues](https://img.shields.io/badge/known%20issues-10-orange.svg)](docs/KNOWN_ISSUES.md)
@@ -26,7 +26,7 @@
 
 | 平台 | 技术栈 | 位置 | 版本 | 状态 |
 |------|--------|------|------|------|
-| **Windows 桌面端** | Python + PySide6 | 根目录 | v1.20.16 | ✅ 稳定版 |
+| **Windows 桌面端** | Python + PySide6 | 根目录 | v1.21.2 | ✅ 稳定版 |
 | **Android/iOS 移动端** | React Native + Expo | `mobile/` | v1.1.0 | ✅ 稳定版 |
 
 ### 移动端快速开始

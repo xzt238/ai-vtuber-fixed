@@ -11,9 +11,9 @@ import logging
 - 实时状态显示
 """
 
-import os
-import json
-from pathlib import Path
+
+
+
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
@@ -29,7 +29,7 @@ from qfluentwidgets import (
     TextEdit, ProgressBar
 )
 
-from app.shared_config import PROJECT_DIR
+
 from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
 from gugu_native.widgets.skeleton_container import SkeletonContainer
 

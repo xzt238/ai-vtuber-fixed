@@ -16,8 +16,7 @@ import time
 import json
 import logging
 from pathlib import Path
-from typing import Optional, Tuple, List
-from contextlib import redirect_stdout, redirect_stderr, contextmanager
+from typing import Optional, List
 import io as _io
 import torch
 import numpy as np

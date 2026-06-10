@@ -7,8 +7,8 @@ import re
 import logging
 import threading
 from typing import List, Dict, Any, Optional, Callable
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime
 from collections import deque
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,7 @@ class LogAnalysisResult:
     suggestions: List[str]
     severity: str  # low, medium, high, critical
     raw_logs: List[str]
+    llm_analysis: Optional[str] = None  # v1.21.3: LLM 深度分析结果
 
 
 class LogAnalyzer:
@@ -71,8 +72,8 @@ class LogAnalyzer:
         self._stop_event = threading.Event()
         
         # LLM配置
-        self._llm_provider = None
-        self._llm_model = None
+        self._llm_config: Optional[Dict[str, Any]] = None
+        self._llm_instance = None
         
         # 问题模式匹配
         self._error_patterns = [
@@ -89,7 +90,36 @@ class LogAnalyzer:
         ]
         
         logger.info("[LogAnalyzer] 初始化完成")
-    
+
+    def set_llm_config(self, llm_config: Dict[str, Any]) -> None:
+        """设置LLM配置"""
+        self._llm_config = llm_config
+        self._llm_instance = None  # 重置实例，下次使用时重新创建
+        logger.info(f"[LogAnalyzer] LLM配置已更新: provider={llm_config.get('provider', 'unknown')}")
+
+    def _get_llm_instance(self):
+        """获取LLM实例（懒加载）"""
+        if self._llm_instance is not None:
+            return self._llm_instance
+
+        if not self._llm_config:
+            return None
+
+        try:
+            from llm import LLMFactory
+            self._llm_instance = LLMFactory.create(self._llm_config)
+            if self._llm_instance and self._llm_instance.is_available():
+                logger.info(f"[LogAnalyzer] LLM实例创建成功: {self._llm_instance.name}")
+                return self._llm_instance
+            else:
+                logger.warning("[LogAnalyzer] LLM实例不可用")
+                self._llm_instance = None
+                return None
+        except Exception as e:
+            logger.error(f"[LogAnalyzer] 创建LLM实例失败: {e}")
+            self._llm_instance = None
+            return None
+
     def add_log(self, record: logging.LogRecord) -> None:
         """添加日志条目"""
         try:
@@ -159,14 +189,16 @@ class LogAnalyzer:
         logger.info("[LogAnalyzer] 分析器已停止")
     
     def _analysis_loop(self) -> None:
-        """分析循环"""
+        """分析循环 — 每隔 analysis_interval 秒自动执行一次分析（含 LLM 深度分析）"""
+        logger.info(f"[LogAnalyzer] 自动分析循环已启动 (间隔: {self.analysis_interval}秒)")
         while self._is_running:
             try:
                 # 等待分析间隔或停止信号
                 if self._stop_event.wait(timeout=self.analysis_interval):
                     break
                 
-                # 执行分析
+                # 执行分析（含 LLM 深度分析）
+                logger.info(f"[LogAnalyzer] 自动分析触发 (缓冲区: {len(self._log_buffer)} 条日志)")
                 self._analyze_logs()
                 
             except Exception as e:
@@ -212,6 +244,13 @@ class LogAnalyzer:
             # 如果有严重问题，记录日志
             if result.severity in ('high', 'critical'):
                 logger.warning(f"[LogAnalyzer] 检测到问题: {result.summary}")
+            
+            # v1.21.3: 自动触发 LLM 深度分析（有错误日志且 LLM 可用时）
+            if self._error_logs:
+                llm_result = self.analyze_with_llm()
+                if llm_result and not llm_result.startswith("LLM未配置") and not llm_result.startswith("没有错误"):
+                    result.llm_analysis = llm_result
+                    logger.info(f"[LogAnalyzer] LLM自动分析完成")
                 
         except Exception as e:
             logger.error(f"[LogAnalyzer] 分析失败: {e}")
@@ -370,35 +409,45 @@ class LogAnalyzer:
         return 'low'
     
     def analyze_with_llm(self, logs: List[str] = None) -> Optional[str]:
-        """使用LLM分析日志（需要配置LLM）"""
+        """使用LLM分析日志"""
         try:
-            # 尝试导入LLM模块
-            from llm import get_llm
-            
+            # 获取LLM实例
+            llm = self._get_llm_instance()
+            if not llm:
+                return "LLM未配置或不可用，请在设置中配置LLM接口"
+
             if logs is None:
-                logs = [log.raw for log in list(self._error_logs)[-10:]]
-            
+                logs = [log.raw for log in list(self._error_logs)[-20:]]
+
             if not logs:
                 return "没有错误日志需要分析"
-            
-            # 构建提示词
-            prompt = f"""请分析以下系统日志，识别问题并提供解决方案：
 
-日志内容：
-{chr(10).join(logs[:10])}
+            # 构建提示词
+            logs_text = chr(10).join(logs[:20])
+            prompt = f"""请作为资深系统运维专家，分析以下AI VTuber系统的日志，识别问题并提供解决方案。
+
+最近错误日志：
+{logs_text}
 
 请提供：
-1. 问题总结
-2. 根本原因分析
-3. 解决方案建议
-4. 预防措施"""
+1. 📊 问题总结
+2. 🔍 根本原因分析
+3. 💡 解决方案建议
+4. 🛡️ 预防措施
 
-            # 调用LLM（这里需要根据实际的LLM接口调整）
-            # response = get_llm().chat(prompt)
-            # return response
-            
-            return "LLM分析功能需要配置LLM接口后使用"
-            
+请用中文回复，格式清晰专业。"""
+
+            # 调用LLM
+            response = llm.chat(prompt)
+
+            # 处理响应
+            if isinstance(response, dict):
+                return response.get("text", str(response))
+            elif isinstance(response, str):
+                return response
+            else:
+                return str(response)
+
         except Exception as e:
             logger.error(f"[LogAnalyzer] LLM分析失败: {e}")
             return f"LLM分析失败: {e}"
@@ -473,21 +522,26 @@ def get_log_analyzer() -> LogAnalyzer:
     return _log_analyzer
 
 
-def init_log_analyzer(analysis_interval: float = 60.0, auto_start: bool = True) -> LogAnalyzer:
+def init_log_analyzer(analysis_interval: float = 60.0, auto_start: bool = True, llm_config: Dict[str, Any] = None) -> LogAnalyzer:
     """
     初始化并启动日志分析器
-    
+
     Args:
         analysis_interval: 分析间隔（秒）
         auto_start: 是否自动启动
-    
+        llm_config: LLM配置（可选）
+
     Returns:
         LogAnalyzer 实例
     """
     global _log_analyzer
-    
+
     # 创建实例
     _log_analyzer = LogAnalyzer(analysis_interval=analysis_interval)
+
+    # 设置LLM配置
+    if llm_config:
+        _log_analyzer.set_llm_config(llm_config)
     
     # 注册到根日志器
     handler = LogAnalyzerHandler(_log_analyzer)

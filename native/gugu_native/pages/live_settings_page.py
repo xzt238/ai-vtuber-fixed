@@ -12,8 +12,8 @@
 日期: 2026-06-03
 """
 
-import os
-import json
+
+
 from pathlib import Path
 from datetime import datetime
 
@@ -23,8 +23,8 @@ from PySide6.QtWidgets import (
     QComboBox, QLineEdit, QTextEdit, QGroupBox,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QThread
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QFont
 
 from qfluentwidgets import (
     Slider, PushButton, CaptionLabel, InfoBar, InfoBarPosition,

@@ -7,7 +7,7 @@ ChatPage 音频 Mixin
 import os
 import random
 import logging
-from typing import Optional
+
 
 from PySide6.QtCore import QTimer, QUrl, Slot
 from PySide6.QtMultimedia import QMediaPlayer

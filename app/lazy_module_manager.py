@@ -25,16 +25,18 @@ class LazyModuleManager:
     使用字典缓存已加载的模块实例，后续访问直接返回缓存。
     """
 
-    def __init__(self, config: Any, logger_instance: Optional[Any] = None) -> None:
+    def __init__(self, config: Any, logger_instance: Optional[Any] = None, app: Optional[Any] = None) -> None:
         """
         初始化懒加载管理器
 
         Args:
             config: Config 实例，包含所有模块的配置
             logger_instance: 可选的日志实例
+            app: 可选的 AIVTuber 实例引用（用于需要访问 app 的模块）
         """
         self.config = config
         self.logger = logger_instance or logger
+        self.app = app  # v1.21.5: 存储 app 引用
         self._lazy_modules: Dict[str, Any] = {}
         self._lazy_modules_lock = threading.Lock()
 
@@ -163,8 +165,12 @@ class LazyModuleManager:
         def _create_proactive() -> Any:
             """内部方法"""
             from proactive import ProactiveSpeechManager
-            proactive_config = self.config.config.get("proactive", {})
-            return ProactiveSpeechManager(proactive_config)
+            if self.app:
+                return ProactiveSpeechManager(self.app)
+            else:
+                # Fallback: 如果没有 app 引用，创建一个简单的配置包装器
+                proactive_config = self.config.config.get("proactive_speech", {})
+                return ProactiveSpeechManager(proactive_config)
         return self._get_module("proactive", _create_proactive)
 
     @property

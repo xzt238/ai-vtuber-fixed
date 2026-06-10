@@ -30,7 +30,7 @@ import time
 import threading
 import logging
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 from dataclasses import asdict
 
 logger = logging.getLogger("memory")
@@ -39,7 +39,7 @@ logger = logging.getLogger("memory")
 from memory.models import MemoryItem, FactItem
 from memory.scoring import RetentionScorer, ImportanceScorer
 from memory.extraction import FactExtractor, AutoTagger
-from memory.storage import LRUCache, VectorStore, FileStorage
+from memory.storage import VectorStore, FileStorage
 from memory.summary import SummaryGenerator
 
 

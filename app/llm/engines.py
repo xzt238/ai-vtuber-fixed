@@ -4,14 +4,12 @@ LLM 引擎模块
 包含 LLMEngine（抽象基类）和三种引擎实现：MiniMaxLLM、OpenAILLM、AnthropicLLM。
 """
 
-import os
-import re
 import json
 import time
 import logging
 import threading
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, List, Callable
+from typing import Dict, Any, List
 
 from llm.infrastructure import RateLimiter, RetryStrategy, StreamAccumulator
 

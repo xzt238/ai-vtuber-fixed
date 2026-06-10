@@ -33,15 +33,15 @@ import time
 import logging
 import random  # 优化 #5: 移到顶层，避免 _lipsync_tick 每 50ms 重复导入
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
+    QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QComboBox,
-    QGroupBox, QApplication, QFrame, QSplitter
+    QApplication, QFrame
 )
-from PySide6.QtCore import Qt, Signal, Slot, QThread, Q_ARG, QTimer
-from PySide6.QtGui import QTextCursor, QFont, QDragEnterEvent, QDropEvent
+from PySide6.QtCore import Qt, Signal, Slot, Q_ARG, QTimer
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtCore import QUrl
 
@@ -69,7 +69,7 @@ def _hex_to_rgba(hex_color: str, alpha: float) -> str:
 from gugu_native.widgets.live2d_widget import Live2DWidget
 from gugu_native.widgets.chat_web_display import ChatWebDisplay
 from gugu_native.widgets.multi_line_input import MultiLineInputV2
-from gugu_native.widgets.session_manager import SessionManager, ChatSession
+from gugu_native.widgets.session_manager import SessionManager
 from gugu_native.widgets.message_search import MessageSearchBar
 from gugu_native.widgets.animation_controller import AnimationController
 

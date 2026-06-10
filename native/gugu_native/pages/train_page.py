@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QFileDialog, QListWidget, QListWidgetItem
 )
 from PySide6.QtCore import Qt, Signal, Slot, QTimer, QThread
-from PySide6.QtGui import QFont, QColor, QAction
+from PySide6.QtGui import QFont, QAction
 
 from qfluentwidgets import (
     PushButton, LineEdit, ComboBox, TitleLabel, SubtitleLabel,
@@ -33,7 +33,7 @@ from qfluentwidgets import (
 )
 
 # 项目根目录 — KI-005: 从 shared_config 统一引用
-from app.shared_config import PROJECT_DIR
+
 
 from gugu_native.theme import get_colors, register_theme_callback
 from gugu_native.widgets.lazy_page_mixin import LazyPageMixin

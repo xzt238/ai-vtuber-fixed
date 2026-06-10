@@ -12,23 +12,22 @@ import logging
 
 import os
 import json
-from pathlib import Path
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QFormLayout, QSizePolicy
+    QWidget, QVBoxLayout, QHBoxLayout,
+    QFormLayout
 )
 from PySide6.QtCore import Qt, Signal, QThread
 from qfluentwidgets import (
-    TitleLabel, SubtitleLabel, ComboBox, LineEdit,
+    TitleLabel, ComboBox, LineEdit,
     PushButton, FluentIcon, InfoBar, InfoBarPosition,
     SwitchButton, SpinBox, HeaderCardWidget, ScrollArea,
-    ToolButton, BodyLabel, CaptionLabel, HyperlinkButton,
+    ToolButton, CaptionLabel, HyperlinkButton,
     StrongBodyLabel
 )
 
 from app.shared_config import PROJECT_DIR
 
-from gugu_native.theme import apply_theme, get_global_qss, is_dark, apply_theme_by_id, get_current_theme_id, get_colors, register_theme_callback
+from gugu_native.theme import get_global_qss, apply_theme_by_id, get_colors, register_theme_callback
 from gugu_native.widgets.theme_selector import ThemeSelector
 from gugu_native.widgets.lazy_page_mixin import LazyPageMixin
 from gugu_native.widgets.skeleton_container import SkeletonContainer

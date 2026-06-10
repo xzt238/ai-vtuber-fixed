@@ -166,6 +166,9 @@ memory:
   working_memory_limit: 30
 monitor:
   performance: false
+  hot_reload: true
+  log_analyzer: true
+  log_analyzer_interval: 300  # 日志分析间隔（秒），默认5分钟
 multi_agent:
   conversation_timeout: 3600
   enabled: false

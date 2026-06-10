@@ -8,7 +8,6 @@ import asyncio
 import threading
 import logging
 from typing import Optional, Dict, Any, List, Callable
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -23,29 +22,31 @@ class SystemMonitor:
     - 日志分析 (LogAnalyzer)
     """
     
-    def __init__(self, config_dir: str = ".", enable_performance: bool = True, enable_hot_reload: bool = True, enable_log_analyzer: bool = True) -> None:
+    def __init__(self, config_dir: str = ".", enable_performance: bool = True, enable_hot_reload: bool = True, enable_log_analyzer: bool = True, log_analyzer_interval: float = 300.0, llm_config: Dict[str, Any] = None) -> None:
         """初始化系统监控"""
         self.config_dir = config_dir
         self.enable_performance = enable_performance
         self.enable_hot_reload = enable_hot_reload
         self.enable_log_analyzer = enable_log_analyzer
-        
+        self.log_analyzer_interval = log_analyzer_interval
+        self._llm_config = llm_config
+
         # asyncio 事件循环（在独立线程中运行）
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._thread: Optional[threading.Thread] = None
-        
+
         # 模块实例
         self._performance_monitor = None
         self._config_hot_reload = None
         self._log_analyzer = None
-        
+
         # 状态
         self.is_running = False
-        
+
         # 配置文件列表
         self._config_files: List[str] = []
-        
-        logger.info("[SystemMonitor] 初始化完成")
+
+        logger.info(f"[SystemMonitor] 初始化完成 (日志分析间隔: {log_analyzer_interval}秒)")
     
     def _run_event_loop(self) -> None:
         """在独立线程中运行 asyncio 事件循环"""
@@ -84,8 +85,12 @@ class SystemMonitor:
             # 启动日志分析器
             if self.enable_log_analyzer:
                 from log_analyzer import init_log_analyzer
-                self._log_analyzer = init_log_analyzer(analysis_interval=60.0, auto_start=True)
-                logger.info("[SystemMonitor] 日志分析器已启动")
+                self._log_analyzer = init_log_analyzer(
+                    analysis_interval=self.log_analyzer_interval,
+                    auto_start=True,
+                    llm_config=self._llm_config
+                )
+                logger.info(f"[SystemMonitor] 日志分析器已启动 (间隔: {self.log_analyzer_interval}秒)")
                 
         except Exception as e:
             logger.error(f"[SystemMonitor] 启动模块失败: {e}")
@@ -301,33 +306,39 @@ def init_system_monitor(
     config_files: List[str] = None,
     enable_performance: bool = True,
     enable_hot_reload: bool = True,
-    enable_log_analyzer: bool = True
+    enable_log_analyzer: bool = True,
+    log_analyzer_interval: float = 300.0,
+    llm_config: Dict[str, Any] = None
 ) -> SystemMonitor:
     """
     初始化并启动系统监控
-    
+
     Args:
         config_dir: 配置文件目录
         config_files: 要监听的配置文件列表
         enable_performance: 是否启用性能监控
         enable_hot_reload: 是否启用配置热重载
         enable_log_analyzer: 是否启用日志分析器
-    
+        log_analyzer_interval: 日志分析间隔（秒）
+        llm_config: LLM配置（可选）
+
     Returns:
         SystemMonitor 实例
     """
     global _system_monitor
-    
+
     # 停止旧实例
     if _system_monitor and _system_monitor.is_running:
         _system_monitor.stop()
-    
+
     # 创建新实例
     _system_monitor = SystemMonitor(
         config_dir=config_dir,
         enable_performance=enable_performance,
         enable_hot_reload=enable_hot_reload,
-        enable_log_analyzer=enable_log_analyzer
+        enable_log_analyzer=enable_log_analyzer,
+        log_analyzer_interval=log_analyzer_interval,
+        llm_config=llm_config
     )
     
     # 添加配置文件

@@ -8,7 +8,7 @@ import json
 import os
 import shutil
 import logging
-from typing import Optional
+
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QFileDialog

@@ -45,7 +45,6 @@ import json
 import time
 import threading
 import subprocess
-import tempfile
 import shutil
 import yaml
 import logging

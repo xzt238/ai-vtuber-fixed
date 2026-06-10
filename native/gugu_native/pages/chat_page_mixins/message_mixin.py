@@ -6,7 +6,7 @@ ChatPage 消息处理 Mixin
 
 import os
 import logging
-from typing import Optional
+
 
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QApplication

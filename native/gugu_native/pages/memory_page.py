@@ -11,8 +11,8 @@
 - 实时统计面板
 """
 
-import os
-import time
+
+
 from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QProgressBar, QGroupBox
 )
 from PySide6.QtCore import Qt, Signal, Slot, QTimer, QThread, QThreadPool
-from PySide6.QtGui import QFont, QColor, QAction, QTextCursor
+from PySide6.QtGui import QFont, QColor, QAction
 
 from qfluentwidgets import (
     PushButton, LineEdit, ComboBox, TitleLabel, SubtitleLabel,
@@ -32,7 +32,7 @@ from qfluentwidgets import (
 )
 
 # 项目根目录 — KI-005: 从 shared_config 统一引用
-from app.shared_config import PROJECT_DIR
+
 
 from gugu_native.theme import get_colors, register_theme_callback
 from gugu_native.widgets.lazy_page_mixin import LazyPageMixin

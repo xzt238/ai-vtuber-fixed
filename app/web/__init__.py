@@ -84,12 +84,9 @@
 作者: 咕咕嘎嘎
 日期: 2026-04-01
 """
-import http.server
-import socketserver
 import threading
 import json
 import os
-import glob
 import time
 import re
 import tempfile
@@ -137,10 +134,6 @@ except ImportError:
 # =============================================================================
 # 静态文件处理器
 # =============================================================================
-
-# 从子模块导入（保持向后兼容）
-from web.static_handler import _StaticFileHandler
-from web.server import WebServer
 
 class WebSocketServer:
     """
@@ -552,6 +545,11 @@ class WebSocketServer:
                 # ---------- 系统统计 ----------
                 elif msg_type == "system_stats":
                     self._handle_system_stats(client)
+                    return
+
+                # ---------- 日志分析 ----------
+                elif msg_type == "log_analysis":
+                    self._handle_log_analysis(client, data)
                     return
 
                 # ---------- 配置更新 ----------
@@ -2932,6 +2930,93 @@ class WebSocketServer:
                     "error": str(e)
                 }))
             except Exception as e:
+                pass
+
+    def _handle_log_analysis(self, client, data) -> None:
+        """
+        [功能说明]处理日志分析请求
+
+        [参数说明]
+            client: WebSocket 客户端对象
+            data (dict): 消息数据,包含:
+                - action: "analyze" (手动分析) | "get_stats" (获取统计) | "get_latest" (获取最新结果)
+
+        [返回值]
+            无(通过 WebSocket 发送响应)
+        """
+        try:
+            from system_monitor import get_system_monitor
+            monitor = get_system_monitor()
+
+            action = data.get("action", "analyze")
+
+            if action == "analyze":
+                # 手动触发日志分析
+                result = monitor.analyze_logs_with_llm()
+                if result:
+                    self.server.send_message(client, json.dumps({
+                        "type": "log_analysis_result",
+                        "action": "analyze",
+                        "success": True,
+                        "result": result
+                    }))
+                else:
+                    # 尝试获取基础分析结果
+                    basic_result = monitor.get_log_analysis_result()
+                    if basic_result:
+                        self.server.send_message(client, json.dumps({
+                            "type": "log_analysis_result",
+                            "action": "analyze",
+                            "success": True,
+                            "result": basic_result.get("summary", "分析完成"),
+                            "details": basic_result
+                        }))
+                    else:
+                        self.server.send_message(client, json.dumps({
+                            "type": "log_analysis_result",
+                            "action": "analyze",
+                            "success": False,
+                            "error": "日志分析器未启用或无日志可分析"
+                        }))
+
+            elif action == "get_stats":
+                # 获取日志分析器统计信息
+                stats = monitor.get_log_analyzer_stats()
+                self.server.send_message(client, json.dumps({
+                    "type": "log_analysis_result",
+                    "action": "get_stats",
+                    "stats": stats
+                }))
+
+            elif action == "get_latest":
+                # 获取最新的分析结果
+                result = monitor.get_log_analysis_result()
+                error_summary = monitor.get_log_error_summary()
+                self.server.send_message(client, json.dumps({
+                    "type": "log_analysis_result",
+                    "action": "get_latest",
+                    "result": result,
+                    "error_summary": error_summary
+                }))
+
+            else:
+                self.server.send_message(client, json.dumps({
+                    "type": "log_analysis_result",
+                    "action": action,
+                    "success": False,
+                    "error": f"未知操作: {action}"
+                }))
+
+        except Exception as e:
+            logger.error(f"[LOG_ANALYSIS] 错误: {e}")
+            try:
+                self.server.send_message(client, json.dumps({
+                    "type": "log_analysis_result",
+                    "action": data.get("action", "unknown"),
+                    "success": False,
+                    "error": str(e)
+                }))
+            except Exception:
                 pass
 
     def _save_llm_preferences(self, llm_config) -> None:

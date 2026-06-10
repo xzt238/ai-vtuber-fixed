@@ -10,8 +10,8 @@ GuguGaga AI VTuber 支持两个平台：
 
 | 平台 | 技术栈 | 位置 | 版本 |
 |------|--------|------|------|
-| **Windows 桌面端** | Python + PySide6 | 根目录 | v1.19.1 |
-| **Android/iOS 移动端** | React Native + Expo | `mobile/` | v2.6.0 |
+| **Windows 桌面端** | Python + PySide6 | 根目录 | v1.21.2 |
+| **Android/iOS 移动端** | React Native + Expo | `mobile/` | v1.1.0 |
 
 ### 同步开发原则
 

@@ -20,7 +20,6 @@ import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
-from collections import Counter
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
@@ -32,7 +31,7 @@ from PySide6.QtGui import QTextCursor, QFont, QColor
 
 from qfluentwidgets import (
     PushButton, FluentIcon, CaptionLabel, InfoBar,
-    ComboBox, CheckBox, SearchLineEdit, StrongBodyLabel
+    ComboBox, CheckBox, SearchLineEdit
 )
 
 from gugu_native.theme import get_colors, register_theme_callback
@@ -41,6 +40,7 @@ logger = logging.getLogger('LogPage')
 
 # 配置常量
 REPORTS_DIR = Path(__file__).parent.parent.parent / "app" / "cache" / "log_reports"
+ANALYSIS_CONFIG_FILE = REPORTS_DIR / "analysis_config.json"  # v1.21.4: 分析配置持久化
 MAX_LOG_BUFFER = 10000
 MAX_REPORT_DAYS = 30  # 报告保留天数
 SYS_INFO_UPDATE_INTERVAL = 3000  # 系统信息更新间隔(ms)
@@ -79,6 +79,9 @@ class LogPage(QWidget):
         self._analysis_interval = 10  # 默认10分钟
         self._is_analyzing = False
         self._auto_analysis_enabled = True
+
+        # v1.21.4: 加载持久化的分析配置
+        self._load_analysis_config()
         
         # 系统信息缓存
         self._sys_info_cache: Dict[str, Any] = {}
@@ -757,6 +760,31 @@ class LogPage(QWidget):
 
     # ==================== 分析功能 ====================
 
+    def _load_analysis_config(self) -> None:
+        """v1.21.4: 加载持久化的分析配置"""
+        try:
+            if ANALYSIS_CONFIG_FILE.exists():
+                with open(ANALYSIS_CONFIG_FILE, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                self._analysis_interval = config.get("interval", 10)
+                self._auto_analysis_enabled = config.get("auto_enabled", True)
+                logger.info(f"[LogPage] 加载分析配置: interval={self._analysis_interval}min, auto={self._auto_analysis_enabled}")
+        except Exception as e:
+            logger.debug(f"[LogPage] 加载分析配置失败: {e}")
+
+    def _save_analysis_config(self) -> None:
+        """v1.21.4: 保存分析配置到文件"""
+        try:
+            REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+            config = {
+                "interval": self._analysis_interval,
+                "auto_enabled": self._auto_analysis_enabled
+            }
+            with open(ANALYSIS_CONFIG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.debug(f"[LogPage] 保存分析配置失败: {e}")
+
     def _toggle_auto_analysis(self, checked: bool) -> None:
         """切换自动分析"""
         self._auto_analysis_enabled = checked
@@ -766,6 +794,7 @@ class LogPage(QWidget):
         else:
             self._analysis_timer.stop()
             logger.info("自动分析已禁用")
+        self._save_analysis_config()  # v1.21.4: 持久化配置
 
     def _update_analysis_interval(self, value: int) -> None:
         """更新分析间隔"""
@@ -773,6 +802,7 @@ class LogPage(QWidget):
         if self._auto_analysis_enabled:
             self._analysis_timer.start(value * 60 * 1000)
         logger.info(f"分析间隔已更新为 {value} 分钟")
+        self._save_analysis_config()  # v1.21.4: 持久化配置
 
     def _run_auto_analysis(self) -> None:
         """运行自动分析"""
@@ -837,14 +867,14 @@ class LogPage(QWidget):
         try:
             import sys
             sys.path.insert(0, str(Path(__file__).parent.parent.parent / "app"))
-            from llm import get_llm
-            
+            from llm import LLMFactory
+
             # 获取系统信息
             sys_info = self._get_system_info_for_prompt()
-            
+
             # 统计日志信息
             stats = self._compute_log_stats()
-            
+
             prompt = f"""请作为资深系统运维专家，分析以下咕咕嘎嘎AI VTuber系统的日志和状态，生成一份全面专业的分析报告。
 
 {sys_info}
@@ -895,13 +925,32 @@ class LogPage(QWidget):
 
 请用中文回复，格式清晰专业。"""
 
-            llm = get_llm()
-            if llm and hasattr(llm, 'chat'):
-                response = llm.chat(prompt)
-                return response
-            
+            # 获取LLM配置
+            try:
+                import yaml
+                config_path = Path(__file__).parent.parent.parent / "app" / "config.yaml"
+                if config_path.exists():
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        config = yaml.safe_load(f)
+                    llm_config = config.get("llm", {})
+                    llm_provider = llm_config.get("provider", "openai")
+                    if llm_provider in llm_config:
+                        active_config = llm_config[llm_provider].copy()
+                        active_config["provider"] = llm_provider
+                    else:
+                        active_config = llm_config
+
+                    llm = LLMFactory.create(active_config)
+                    if llm and llm.is_available():
+                        response = llm.chat(prompt)
+                        if isinstance(response, dict):
+                            return response.get("text", str(response))
+                        return response
+            except Exception as e:
+                logger.debug(f"LLM创建失败: {e}")
+
             return None
-            
+
         except Exception as e:
             logger.debug(f"LLM分析不可用: {e}")
             return None

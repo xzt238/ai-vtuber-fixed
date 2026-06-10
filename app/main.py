@@ -80,9 +80,8 @@ os.environ.setdefault("HUGGINGFACE_HUB_CACHE", str(MODELS_CACHE / "hf"))
 
 # ============ 游戏风格日志系统 ============
 from log_style import (
-    LogStyle, game_header, game_box, game_loading,
-    game_ok, game_skip, game_fail, game_info, game_warn,
-    game_debug, game_progress, game_section, game_separator,
+    game_ok, game_skip, game_fail, game_warn,
+    game_section,
 )
 
 import warnings
@@ -100,7 +99,7 @@ from tts_cache import TTSCache
 from lazy_module_manager import LazyModuleManager
 from history_manager import HistoryManager
 from interaction_manager import InteractionManager
-from system_monitor import init_system_monitor, get_system_monitor
+from system_monitor import init_system_monitor
 
 
 class Config:
@@ -395,7 +394,7 @@ class AIVTuber:
         game_ok("配置管理器", f"已加载 {Path(self.config.config_path).name}")
 
         # 初始化懒加载模块管理器
-        self._module_manager = LazyModuleManager(self.config, self.logger)
+        self._module_manager = LazyModuleManager(self.config, self.logger, app=self)
 
         # 初始化历史记录管理器
         self._history_manager = HistoryManager(max_history=100)
@@ -408,22 +407,35 @@ class AIVTuber:
         try:
             config_dir = str(Path(self.config.config_path).parent)
             config_files = [self.config.config_path]
-            
+
             # 检查配置中是否启用监控
             monitor_config = self.config.get("monitor", {})
             enable_performance = monitor_config.get("performance", True)
             enable_hot_reload = monitor_config.get("hot_reload", True)
             enable_log_analyzer = monitor_config.get("log_analyzer", True)
-            
+            log_analyzer_interval = monitor_config.get("log_analyzer_interval", 300)  # 默认5分钟
+
+            # 获取LLM配置用于日志分析
+            llm_config = self.config.get("llm", {})
+            # 提取当前使用的provider配置
+            llm_provider = llm_config.get("provider", "openai")
+            if llm_provider in llm_config:
+                active_llm_config = llm_config[llm_provider].copy()
+                active_llm_config["provider"] = llm_provider
+            else:
+                active_llm_config = llm_config
+
             self._system_monitor = init_system_monitor(
                 config_dir=config_dir,
                 config_files=config_files,
                 enable_performance=enable_performance,
                 enable_hot_reload=enable_hot_reload,
-                enable_log_analyzer=enable_log_analyzer
+                enable_log_analyzer=enable_log_analyzer,
+                log_analyzer_interval=float(log_analyzer_interval),
+                llm_config=active_llm_config
             )
-            
-            game_ok("系统监控", f"性能监控={'✓' if enable_performance else '✗'}, 配置热重载={'✓' if enable_hot_reload else '✗'}, 日志分析={'✓' if enable_log_analyzer else '✗'}")
+
+            game_ok("系统监控", f"性能监控={'✓' if enable_performance else '✗'}, 配置热重载={'✓' if enable_hot_reload else '✗'}, 日志分析={'✓' if enable_log_analyzer else '✗'} (间隔: {log_analyzer_interval}秒)")
         except Exception as e:
             logger.warning(f"系统监控初始化失败（非致命）: {e}")
             self._system_monitor = None
