@@ -52,7 +52,7 @@ class AhoCorasick:
         self.patterns: List[str] = []
         self._built = False
 
-    def add_pattern(self, pattern: str, pattern_id: int = None):
+    def add_pattern(self, pattern: str, pattern_id: Optional[int] = None) -> None:
         """添加模式串"""
         if pattern_id is None:
             pattern_id = len(self.patterns)
@@ -68,7 +68,7 @@ class AhoCorasick:
         self.patterns.append(pattern)
         self._built = False
 
-    def build(self):
+    def build(self) -> None:
         """构建失败指针（BFS）"""
         if self._built:
             return
@@ -179,7 +179,7 @@ class BM25:
         self._idf_cache: Dict[str, float] = {}
         self._lock = threading.Lock()
 
-    def add_document(self, doc_id: str, text: str):
+    def add_document(self, doc_id: str, text: str) -> None:
         """添加文档"""
         with self._lock:
             words = self._tokenize(text)
@@ -303,7 +303,7 @@ class Centroid:
     mean: float
     count: int
 
-    def __lt__(self, other):
+    def __lt__(self, other: 'Centroid') -> bool:
         return self.mean < other.mean
 
 
@@ -327,7 +327,7 @@ class TDigest:
         self._max = float('-inf')
         self._lock = threading.Lock()
 
-    def update(self, value: float, weight: int = 1):
+    def update(self, value: float, weight: int = 1) -> None:
         """添加数据点"""
         with self._lock:
             self.count += weight
@@ -362,7 +362,7 @@ class TDigest:
                 hi = mid - 1
         return lo
 
-    def _compress(self):
+    def _compress(self) -> None:
         """压缩质心列表"""
         if len(self.centroids) <= 1:
             return
@@ -504,7 +504,7 @@ class HNSW:
         """计算距离（1 - 相似度）"""
         return 1.0 - self._cosine_similarity(a, b)
 
-    def insert(self, id: str, vector: List[float]):
+    def insert(self, id: str, vector: List[float]) -> None:
         """插入节点"""
         with self._lock:
             if id in self.nodes:
