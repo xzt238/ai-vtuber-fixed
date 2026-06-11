@@ -40,6 +40,7 @@ class HistoryManager:
         self._history_lock = threading.Lock()
         self._history_needs_restore = False
         self._save_executor = None
+        self._shutdown = False
 
         # 设置历史记录文件路径
         if history_file is None:
@@ -98,6 +99,11 @@ class HistoryManager:
 
         使用异步写入，不阻塞主线程。
         """
+        # 检查是否已关闭
+        if self._shutdown:
+            logger.debug("[历史] 已关闭，跳过保存")
+            return
+
         try:
             data = self.history[-(self.max_history * 2):]
             # 为缺少 time 的旧消息补充时间戳
@@ -121,6 +127,12 @@ class HistoryManager:
                     logger.info(f"  [历史] 异步保存对话历史失败: {e}")
 
             self._save_executor.submit(_async_write)
+        except RuntimeError as e:
+            # 线程池已关闭的情况
+            if "cannot schedule new futures after shutdown" in str(e):
+                logger.debug("[历史] 线程池已关闭，跳过异步保存")
+            else:
+                logger.info(f"  [历史] 保存对话历史失败: {e}")
         except Exception as e:
             logger.info(f"  [历史] 保存对话历史失败: {e}")
 
@@ -239,9 +251,31 @@ class HistoryManager:
         logger.info("已清空对话历史")
 
     def flush(self) -> None:
-        """强制保存历史记录到磁盘"""
+        """强制保存历史记录到磁盘并关闭线程池"""
+        self._shutdown = True
+        
+        # 同步保存一次（确保数据不丢失）
         if self.history:
             try:
-                self.save_history()
+                data = self.history[-(self.max_history * 2):]
+                # 为缺少 time 的旧消息补充时间戳
+                for m in data:
+                    if not m.get('time'):
+                        m['time'] = datetime.now().isoformat()
+                
+                # 直接同步写入
+                tmp_file = self._history_file.with_suffix('.tmp')
+                with open(tmp_file, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                os.replace(tmp_file, self._history_file)
+                logger.info(f"[历史] 同步保存 {len(data)} 条历史记录")
             except Exception as e:
+                logger.info(f"[历史] 同步保存失败: {e}")
+        
+        # 关闭线程池
+        if self._save_executor is not None:
+            try:
+                self._save_executor.shutdown(wait=False)
+                self._save_executor = None
+            except Exception:
                 pass
