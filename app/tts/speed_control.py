@@ -34,6 +34,7 @@ class SpeedConfig:
     emotion_speed_map: Dict[str, float] = None
     
     def __post_init__(self) -> None:
+        """初始化后处理"""
         if self.emotion_speed_map is None:
             self.emotion_speed_map = {
                 "happy": 1.1,      # 开心时稍快
