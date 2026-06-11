@@ -304,6 +304,7 @@ class Centroid:
     count: int
 
     def __lt__(self, other: 'Centroid') -> bool:
+        """比较两个质心的均值"""
         return self.mean < other.mean
 
 

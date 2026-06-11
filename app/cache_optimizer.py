@@ -448,11 +448,13 @@ def get_cache_optimizer() -> CacheOptimizer:
     return _cache_optimizer
 
 # 缓存装饰器
-def cached(key_func: Callable = None, ttl: int = None, memory_only: bool = False) -> None:
+def cached(key_func: Callable = None, ttl: int = None, memory_only: bool = False) -> Callable:
     """缓存装饰器"""
-    def decorator(func) -> None:
+    def decorator(func: Callable) -> Callable:
+        """装饰器内部"""
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> None:
+        async def wrapper(*args, **kwargs) -> Any:
+            """缓存包装函数"""
             # 生成缓存键
             if key_func:
                 cache_key = key_func(*args, **kwargs)
