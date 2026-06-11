@@ -646,7 +646,7 @@ class AIVTuber:
         self._history_manager.record_interaction(
             user_text, assistant_text,
             memory=self.memory,
-            llm=self._lazy_modules.get('llm')
+            llm=self._module_manager._lazy_modules.get('llm')
         )
 
     # ============ 交互模式（委托给 InteractionManager）============
