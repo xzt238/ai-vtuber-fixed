@@ -44,6 +44,7 @@ class DouyuPlatform(LivePlatform):
         self._api_base = "https://www.douyu.com"
     
     def _get_platform_type(self) -> PlatformType:
+        """获取平台类型"""
         return PlatformType.DOUYU
     
     async def connect(self, room_id: str, **kwargs) -> bool:

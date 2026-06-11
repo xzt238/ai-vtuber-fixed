@@ -51,6 +51,7 @@ class DanmakuMessage:
     extra: Dict[str, Any] = None
     
     def __post_init__(self) -> None:
+        """初始化后处理"""
         if self.extra is None:
             self.extra = {}
 
@@ -68,6 +69,7 @@ class GiftMessage:
     extra: Dict[str, Any] = None
     
     def __post_init__(self) -> None:
+        """初始化后处理"""
         if self.extra is None:
             self.extra = {}
 
@@ -83,6 +85,7 @@ class SystemMessage:
     extra: Dict[str, Any] = None
     
     def __post_init__(self) -> None:
+        """初始化后处理"""
         if self.extra is None:
             self.extra = {}
 
@@ -211,9 +214,10 @@ class LivePlatformFactory:
     _platforms: Dict[PlatformType, type] = {}
     
     @classmethod
-    def register(cls, platform_type: PlatformType) -> None:
+    def register(cls, platform_type: PlatformType) -> Callable:
         """注册平台装饰器"""
-        def decorator(platform_class) -> None:
+        def decorator(platform_class: type) -> type:
+            """装饰器内部"""
             cls._platforms[platform_type] = platform_class
             return platform_class
         return decorator

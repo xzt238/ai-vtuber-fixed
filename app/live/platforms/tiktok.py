@@ -44,6 +44,7 @@ class TikTokPlatform(LivePlatform):
         self._api_base = "https://www.tiktok.com"
     
     def _get_platform_type(self) -> PlatformType:
+        """获取平台类型"""
         return PlatformType.TIKTOK
     
     async def connect(self, room_id: str, **kwargs) -> bool:

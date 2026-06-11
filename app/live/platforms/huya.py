@@ -44,6 +44,7 @@ class HuyaPlatform(LivePlatform):
         self._api_base = "https://www.huya.com"
     
     def _get_platform_type(self) -> PlatformType:
+        """获取平台类型"""
         return PlatformType.HUYA
     
     async def connect(self, room_id: str, **kwargs) -> bool:

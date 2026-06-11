@@ -48,6 +48,7 @@ class YouTubePlatform(LivePlatform):
         self._next_page_token = None
     
     def _get_platform_type(self) -> PlatformType:
+        """获取平台类型"""
         return PlatformType.YOUTUBE
     
     async def connect(self, room_id: str, **kwargs) -> bool:
