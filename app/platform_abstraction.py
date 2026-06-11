@@ -23,12 +23,15 @@ _logger = logging.getLogger("Platform")
 # ========== 平台检测 ==========
 
 def is_windows() -> bool:
+    """检查是否为 Windows 系统"""
     return sys.platform == "win32"
 
 def is_macos() -> bool:
+    """检查是否为 macOS 系统"""
     return sys.platform == "darwin"
 
 def is_linux() -> bool:
+    """检查是否为 Linux 系统"""
     return sys.platform.startswith("linux")
 
 

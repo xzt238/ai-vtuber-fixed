@@ -57,6 +57,7 @@ class ErrorGroup:
     status: str = "unresolved"  # unresolved, resolved, ignored
     
     def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
         return {
             "fingerprint": self.fingerprint,
             "error_type": self.error_type,
@@ -85,6 +86,7 @@ class AlertRule:
     last_triggered: Optional[datetime] = None
     
     def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
         return {
             "rule_id": self.rule_id,
             "name": self.name,
@@ -113,6 +115,7 @@ class Alert:
     context: Dict[str, Any] = field(default_factory=dict)
     
     def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
         return {
             "alert_id": self.alert_id,
             "rule_id": self.rule_id,
@@ -140,6 +143,7 @@ class LogPattern:
     examples: List[str] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
         return {
             "pattern_id": self.pattern_id,
             "pattern_type": self.pattern_type,
@@ -165,6 +169,7 @@ class PerformanceMetric:
     error_rate: float  # 错误率
     
     def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
         return {
             "timestamp": self.timestamp.isoformat(),
             "cpu_percent": self.cpu_percent,
@@ -263,7 +268,7 @@ class AlertRuleEngine:
         # 初始化默认规则
         self._init_default_rules()
     
-    def _init_default_rules(self):
+    def _init_default_rules(self) -> None:
         """初始化默认告警规则"""
         default_rules = [
             AlertRule(
@@ -316,12 +321,12 @@ class AlertRuleEngine:
         for rule in default_rules:
             self.rules[rule.rule_id] = rule
     
-    def add_rule(self, rule: AlertRule):
+    def add_rule(self, rule: AlertRule) -> None:
         """添加规则"""
         with self._lock:
             self.rules[rule.rule_id] = rule
     
-    def remove_rule(self, rule_id: str):
+    def remove_rule(self, rule_id: str) -> None:
         """移除规则"""
         with self._lock:
             if rule_id in self.rules:
@@ -385,7 +390,7 @@ class AlertRuleEngine:
             pass
         return False
     
-    def acknowledge_alert(self, alert_id: str):
+    def acknowledge_alert(self, alert_id: str) -> None:
         """确认告警"""
         for alert in self.alerts:
             if alert.alert_id == alert_id:
@@ -393,7 +398,7 @@ class AlertRuleEngine:
                 alert.acknowledged_at = datetime.now()
                 break
     
-    def resolve_alert(self, alert_id: str):
+    def resolve_alert(self, alert_id: str) -> None:
         """解决告警"""
         for alert in self.alerts:
             if alert.alert_id == alert_id:
@@ -405,7 +410,7 @@ class AlertRuleEngine:
         """获取活跃告警"""
         return [a for a in self.alerts if a.status == AlertStatus.ACTIVE]
     
-    def on_alert(self, callback):
+    def on_alert(self, callback: Callable[[Alert], None]) -> None:
         """注册告警回调"""
         self._callbacks.append(callback)
 
@@ -574,7 +579,7 @@ class LogSearchEngine:
         self._max_index_size = 50000
         self._lock = threading.Lock()
     
-    def index_log(self, log_entry: Dict[str, Any]):
+    def index_log(self, log_entry: Dict[str, Any]) -> None:
         """索引日志"""
         with self._lock:
             self._log_index.append(log_entry)
@@ -715,7 +720,7 @@ class LogMonitor:
         
         logger.info("[LogMonitor] 初始化完成")
     
-    def _load_config(self):
+    def _load_config(self) -> None:
         """加载配置"""
         config_file = self.config_dir / "alert_rules.json"
         if config_file.exists():
@@ -740,7 +745,7 @@ class LogMonitor:
             except Exception as e:
                 logger.error(f"[LogMonitor] 加载配置失败: {e}")
     
-    def _save_config(self):
+    def _save_config(self) -> None:
         """保存配置"""
         config_file = self.config_dir / "alert_rules.json"
         try:
@@ -752,7 +757,7 @@ class LogMonitor:
         except Exception as e:
             logger.error(f"[LogMonitor] 保存配置失败: {e}")
     
-    def process_log(self, log_line: str):
+    def process_log(self, log_line: str) -> None:
         """处理单条日志"""
         # 解析日志
         entry = LogParser.parse_log_line(log_line)
@@ -782,7 +787,7 @@ class LogMonitor:
                     except Exception:
                         pass
     
-    def process_logs_batch(self, log_lines: List[str]):
+    def process_logs_batch(self, log_lines: List[str]) -> None:
         """批量处理日志"""
         entries = []
         for line in log_lines:
@@ -795,7 +800,7 @@ class LogMonitor:
         if entries:
             self.pattern_recognizer.analyze(entries)
     
-    def update_metrics(self, metrics: Dict[str, Any]):
+    def update_metrics(self, metrics: Dict[str, Any]) -> None:
         """更新性能指标"""
         try:
             metric = PerformanceMetric(
@@ -869,15 +874,15 @@ class LogMonitor:
             logger.error(f"[LogMonitor] 添加规则失败: {e}")
             return False
     
-    def acknowledge_alert(self, alert_id: str):
+    def acknowledge_alert(self, alert_id: str) -> None:
         """确认告警"""
         self.alert_engine.acknowledge_alert(alert_id)
     
-    def resolve_alert(self, alert_id: str):
+    def resolve_alert(self, alert_id: str) -> None:
         """解决告警"""
         self.alert_engine.resolve_alert(alert_id)
     
-    def _handle_alert(self, alert: Alert):
+    def _handle_alert(self, alert: Alert) -> None:
         """处理告警"""
         for callback in self._on_alert_callbacks:
             try:
@@ -885,11 +890,11 @@ class LogMonitor:
             except Exception:
                 pass
     
-    def on_alert(self, callback):
+    def on_alert(self, callback: Callable[[Alert], None]) -> None:
         """注册告警回调"""
         self._on_alert_callbacks.append(callback)
     
-    def on_error(self, callback):
+    def on_error(self, callback: Callable[[ErrorGroup], None]) -> None:
         """注册错误回调"""
         self._on_error_callbacks.append(callback)
 

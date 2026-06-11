@@ -55,11 +55,14 @@ except ImportError:
     else:
         SYSTEM_PROMPT = "你是一个AI助手。"
         AGENT_PROMPT = ""
-        def get_system_prompt(e="") -> None:
+        def get_system_prompt(e: str = "") -> str:
+            """获取系统提示词（fallback）"""
             return SYSTEM_PROMPT
-        def build_system_prompt(e="") -> None:
+        def build_system_prompt(e: str = "") -> str:
+            """构建系统提示词（fallback）"""
             return SYSTEM_PROMPT
-        def inject_memories(t) -> None:
+        def inject_memories(t: str) -> str:
+            """注入记忆（fallback）"""
             return ""
 
 # ==================== 从子模块导入公开类 ====================

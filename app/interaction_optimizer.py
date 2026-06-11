@@ -59,6 +59,7 @@ class Debouncer:
         
         # 创建新的定时器
         async def delayed_execution() -> None:
+            """延迟执行函数"""
             await asyncio.sleep(self.delay_ms / 1000)
             return await func(*args, **kwargs)
         
@@ -133,6 +134,7 @@ class ActionQueue:
         self.is_processing = True
         
         async def process_loop() -> None:
+            """处理循环"""
             while self.is_processing:
                 try:
                     action = await asyncio.wait_for(self.queue.get(), timeout=1.0)
@@ -287,6 +289,7 @@ class InteractionOptimizer:
         self.stats["debounced_actions"] += 1
         
         async def wrapped_handler() -> None:
+            """包装处理器"""
             return await self.process_action(action, handler)
         
         return await self.debouncer.debounce(key, wrapped_handler)
@@ -334,20 +337,24 @@ def get_interaction_optimizer() -> InteractionOptimizer:
     return _interaction_optimizer
 
 # 便捷装饰器
-def debounce(key: str, delay_ms: int = 300) -> None:
+def debounce(key: str, delay_ms: int = 300) -> Callable:
     """防抖装饰器"""
-    def decorator(func) -> None:
-        async def wrapper(*args, **kwargs) -> None:
+    def decorator(func: Callable) -> Callable:
+        """装饰器内部"""
+        async def wrapper(*args, **kwargs) -> Any:
+            """防抖包装函数"""
             optimizer = get_interaction_optimizer()
             optimizer.debouncer.delay_ms = delay_ms
             return await optimizer.debouncer.debounce(key, func, *args, **kwargs)
         return wrapper
     return decorator
 
-def throttle(key: str, interval_ms: int = 100) -> None:
+def throttle(key: str, interval_ms: int = 100) -> Callable:
     """节流装饰器"""
-    def decorator(func) -> None:
-        async def wrapper(*args, **kwargs) -> None:
+    def decorator(func: Callable) -> Callable:
+        """装饰器内部"""
+        async def wrapper(*args, **kwargs) -> Any:
+            """节流包装函数"""
             optimizer = get_interaction_optimizer()
             optimizer.throttler.interval_ms = interval_ms
             return await optimizer.throttler.throttle(key, func, *args, **kwargs)
