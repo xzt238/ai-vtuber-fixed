@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List
 
 from llm.infrastructure import RateLimiter, RetryStrategy, StreamAccumulator
+from llm.injection import build_messages
 
 logger = logging.getLogger(__name__)
 

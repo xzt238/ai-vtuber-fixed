@@ -635,7 +635,7 @@ class AIVTuber:
 
     def _load_history(self) -> None:
         """从磁盘恢复对话历史"""
-        self._history_manager.load_history(self._memory)
+        self._history_manager.load_history(self.memory)
 
     def _save_history(self) -> None:
         """保存对话历史到磁盘"""
@@ -645,7 +645,7 @@ class AIVTuber:
         """统一记录对话交互"""
         self._history_manager.record_interaction(
             user_text, assistant_text,
-            memory=self._memory,
+            memory=self.memory,
             llm=self._lazy_modules.get('llm')
         )
 
@@ -904,9 +904,12 @@ class AIVTuber:
                 pass
         
         self._history_manager.flush()
-        if hasattr(self, '_memory') and self._memory:
+        # 检查 memory 模块是否已加载
+        if hasattr(self, '_module_manager') and self._module_manager:
             try:
-                self._memory.flush()
+                memory_module = self._module_manager._lazy_modules.get('memory')
+                if memory_module:
+                    memory_module.flush()
             except Exception as e:
                 pass
 
